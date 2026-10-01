@@ -7,6 +7,8 @@ import unittest
 from unittest.mock import patch
 from watcher import (
     HEADERS,
+    call,
+    can_retain_previous_schedule,
     calendar_fingerprint,
     discover_latest_season,
     edge_signal_aggregate,
@@ -14,6 +16,20 @@ from watcher import (
     normalize,
     valid_previous_schedule,
 )
+
+class FakeResponse:
+    def __init__(self, payload):
+        self.payload = json.dumps(payload).encode()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return False
+
+    def read(self):
+        return self.payload
+
 
 class ScheduleTests(unittest.TestCase):
     def setUp(self):
@@ -151,4 +167,37 @@ class ScheduleTests(unittest.TestCase):
         self.assertTrue(valid_previous_schedule({'ok': True, 'teams': []}))
         self.assertFalse(valid_previous_schedule({'ok': False, 'teams': []}))
         self.assertFalse(valid_previous_schedule(None))
+
+    @patch('watcher.time.sleep')
+    @patch('watcher.urllib.request.urlopen')
+    def test_transient_source_call_retries_then_succeeds(self, urlopen, sleep):
+        transient = urllib.error.HTTPError(
+            'https://example.invalid', 502, 'Bad Gateway', {}, None
+        )
+        urlopen.side_effect = [transient, transient, FakeResponse({'ok': True})]
+
+        self.assertEqual(call('test', {'x': 1}), {'ok': True})
+        self.assertEqual(urlopen.call_count, 3)
+        self.assertEqual([item.args[0] for item in sleep.call_args_list], [1, 2])
+
+    @patch('watcher.time.sleep')
+    @patch('watcher.urllib.request.urlopen')
+    def test_permanent_source_error_is_not_retried(self, urlopen, sleep):
+        urlopen.side_effect = urllib.error.HTTPError(
+            'https://example.invalid', 401, 'Unauthorized', {}, None
+        )
+
+        with self.assertRaises(urllib.error.HTTPError):
+            call('test', {'x': 1})
+        self.assertEqual(urlopen.call_count, 1)
+        sleep.assert_not_called()
+
+    def test_production_can_retain_verified_schedule_on_transient_source_error(self):
+        transient = urllib.error.HTTPError(
+            'https://example.invalid', 503, 'Unavailable', {}, None
+        )
+        previous = {'ok': True, 'teams': []}
+        self.assertTrue(can_retain_previous_schedule(transient, previous))
+        self.assertFalse(can_retain_previous_schedule(ValueError('schema'), previous))
+        self.assertFalse(can_retain_previous_schedule(transient, None))
 if __name__ == '__main__': unittest.main()
