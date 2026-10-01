@@ -99,7 +99,7 @@ It provides:
 - Web Push controls inside the notification bell for pickup, real RATS schedule-change, and version notifications;
 - a manual local notification test for confirming iPhone notification display while the app is closed.
 
-On iPhone, open the site in Safari, choose **Share → Add to Home Screen**, open the installed BallerWatch app, then tap **Enable push**.
+On iPhone, open the site in Safari, choose **Share → Add to Home Screen**, open the installed BallerWatch app, then use the notification bell to turn Push notifications on.
 
 The anonymous public web surface remains read-only and deliberately strips RSVP participant names, waitlist names, owner-specific status, secrets, and private settings. An owner-paired device can view/change only the pickup RSVP name and monitored league teams through the Settings gear.
 
