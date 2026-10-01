@@ -2,6 +2,12 @@ name: RATS league watcher
 
 on:
   workflow_dispatch:
+    inputs:
+      external_fallback:
+        description: "Set by the enabled cron-job.org failover dispatcher"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -23,14 +29,34 @@ jobs:
           ref: main
           fetch-depth: 1
 
-      - name: Pull runtime state from Cloudflare KV
+      - name: Gate external fallback against Cloudflare health
+        id: gate
+        working-directory: .
+        env:
+          EXTERNAL_FALLBACK: ${{ inputs.external_fallback }}
+          TELEGRAM_WEBHOOK_HEALTH_URL: https://ballerwatch-telegram.vudhone.workers.dev/health
+        run: node infra/fallback-gate.mjs league
+
+      - name: Restore encrypted failover state cache
+        if: steps.gate.outputs.should_run == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: .runtime/failover/league.json
+          key: ballerwatch-runtime-league-${{ github.run_id }}
+          restore-keys: |
+            ballerwatch-runtime-league-
+
+      - name: Pull runtime state
+        if: steps.gate.outputs.should_run == 'true'
         working-directory: .
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
         run: node shared/runtime-state.mjs pull league
 
       - name: Prepare encrypted league state
+        if: steps.gate.outputs.should_run == 'true'
         working-directory: .
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
@@ -40,15 +66,18 @@ jobs:
           node shared/league-state.mjs prepare
 
       - name: Fetch and validate league schedules
+        if: steps.gate.outputs.should_run == 'true'
         run: /usr/bin/time -f 'leagueWatcherSeconds=%e' python3 watcher.py
 
       - name: Notify Telegram about score changes
+        if: steps.gate.outputs.should_run == 'true'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python3 telegram_score_notify.py
 
       - name: Compare with applied Calendar snapshot
+        if: steps.gate.outputs.should_run == 'true'
         id: calendar_gate
         shell: bash
         run: |
@@ -57,21 +86,21 @@ jobs:
           grep '^pendingCount=' /tmp/calendar-gate.txt >> "$GITHUB_OUTPUT"
 
       - name: Sync changed matches to Google Calendar
-        if: steps.calendar_gate.outputs.needsCalendar == 'true'
+        if: steps.gate.outputs.should_run == 'true' && steps.calendar_gate.outputs.needsCalendar == 'true'
         env:
           GOOGLE_CALENDAR_WEBHOOK_URL: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_URL }}
           GOOGLE_CALENDAR_WEBHOOK_SECRET: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_SECRET }}
         run: python3 google_calendar_sync.py
 
       - name: Notify Telegram about successful schedule update
-        if: steps.calendar_gate.outputs.needsCalendar == 'true'
+        if: steps.gate.outputs.should_run == 'true' && steps.calendar_gate.outputs.needsCalendar == 'true'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python3 telegram_notify.py
 
       - name: Seal league runtime state
-        if: always()
+        if: always() && steps.gate.outputs.should_run == 'true'
         working-directory: .
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
@@ -80,19 +109,37 @@ jobs:
           node shared/league-state.mjs seal
           rm -f league/teams.json
 
-      - name: Push runtime state to Cloudflare KV
-        if: always()
+      - name: Push runtime state
+        if: always() && steps.gate.outputs.should_run == 'true'
         working-directory: .
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          BALLERWATCH_ALLOW_OFFLINE: ${{ inputs.external_fallback }}
         run: node shared/runtime-state.mjs push league
+
+      - name: Build encrypted failover backup
+        if: always() && steps.gate.outputs.should_run == 'true'
+        working-directory: .
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: node shared/failover-state.mjs save league
+
+      - name: Save encrypted failover state cache
+        if: always() && steps.gate.outputs.should_run == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .runtime/failover/league.json
+          key: ballerwatch-runtime-league-${{ github.run_id }}
 
       - name: Remove local runtime data
         if: always()
         working-directory: .
         run: |
           node shared/runtime-state.mjs clean league
+          rm -rf .runtime
           rm -f league/teams.json league/schedule.json league/today.json
           rm -f league/calendar-snapshot.json league/calendar-changes.json
           rm -f league/telegram-update.json league/score-changes.json league/status.json
