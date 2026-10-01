@@ -130,6 +130,7 @@ function applyUpdate_(calendar, props, item) {
 
 function purgeManagedEvents_(calendar, props) {
   const deletedIds = {};
+  const errors = [];
   let deleted = 0;
   let clearedProperties = 0;
   const properties = props.getProperties();
@@ -137,40 +138,62 @@ function purgeManagedEvents_(calendar, props) {
   Object.keys(properties).forEach(key => {
     if (key.indexOf(TRACK_PREFIX) !== 0) return;
     const eventId = properties[key];
-    let event = null;
     try {
-      event = calendar.getEventById(eventId);
-    } catch (_) {}
-    if (event) {
-      event.deleteEvent();
-      deletedIds[eventId] = true;
-      deleted += 1;
+      const event = calendar.getEventById(eventId);
+      if (event) {
+        event.deleteEvent();
+        deletedIds[eventId] = true;
+        deleted += 1;
+      }
+    } catch (err) {
+      errors.push('tracked event delete failed: ' + String(err && err.message || err));
+    } finally {
+      props.deleteProperty(key);
+      clearedProperties += 1;
     }
-    props.deleteProperty(key);
-    clearedProperties += 1;
   });
 
   // Safety net for legacy events whose Script Property mapping was lost.
-  // Only events carrying BallerWatch's explicit tracking marker are eligible.
+  // Search one calendar year at a time to avoid large CalendarApp queries.
   const now = new Date();
-  const start = new Date(now.getFullYear() - 5, 0, 1);
-  const end = new Date(now.getFullYear() + 6, 0, 1);
-  const candidates = calendar.getEvents(start, end, {search: 'RATS tracking key:'});
-  candidates.forEach(event => {
-    const description = String(event.getDescription() || '');
-    if (description.indexOf('RATS tracking key:') === -1) return;
-    const eventId = event.getId();
-    if (deletedIds[eventId]) return;
-    event.deleteEvent();
-    deletedIds[eventId] = true;
-    deleted += 1;
-  });
+  const currentYear = Number(
+    Utilities.formatDate(now, TZ, 'yyyy')
+  );
+  for (let year = currentYear - 5; year <= currentYear + 5; year += 1) {
+    let candidates = [];
+    try {
+      candidates = calendar.getEvents(
+        new Date(year, 0, 1),
+        new Date(year + 1, 0, 1),
+        {search: 'RATS tracking key:'}
+      );
+    } catch (err) {
+      errors.push('legacy marker scan failed: ' + String(err && err.message || err));
+      continue;
+    }
+
+    candidates.forEach(event => {
+      const description = String(event.getDescription() || '');
+      if (description.indexOf('RATS tracking key:') === -1) return;
+      const eventId = event.getId();
+      if (deletedIds[eventId]) return;
+      try {
+        event.deleteEvent();
+        deletedIds[eventId] = true;
+        deleted += 1;
+      } catch (err) {
+        errors.push('legacy event delete failed: ' + String(err && err.message || err));
+      }
+    });
+  }
 
   return {
-    ok: true,
+    ok: errors.length === 0,
     action: 'purge',
     deleted: deleted,
-    clearedProperties: clearedProperties
+    clearedProperties: clearedProperties,
+    errorCount: errors.length,
+    error: errors.length ? errors[0] : ''
   };
 }
 
