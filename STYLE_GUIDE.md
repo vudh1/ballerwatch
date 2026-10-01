@@ -1,0 +1,48 @@
+# BallerWatch code style
+
+This repository uses one consistent style across runtime code, workflows, tests, documentation, and the web app.
+
+## General
+
+- UTF-8, LF line endings, final newline, no trailing whitespace.
+- Prefer small modules with one responsibility over large multi-purpose files.
+- Every runtime source file starts with a short module comment/docstring describing responsibility, inputs/outputs, privacy boundaries, and the release in which its documentation baseline was added.
+- Public functions should have descriptive names; avoid unexplained abbreviations.
+- Secrets, participant identities, runtime snapshots, and other private state never appear in source, logs, fixtures, or documentation.
+- Comments explain **why** a rule exists, not line-by-line syntax.
+
+## JavaScript / MJS
+
+- ECMAScript modules only.
+- 2-space indentation, semicolons, double quotes.
+- Prefer `const`; use `let` only for reassignment.
+- Prefer `async/await` over promise chains.
+- Keep pure parsing/formatting functions separate from network/storage side effects.
+- Export reusable logic and cover it with `node:test`.
+- Keep functions focused; when a module grows beyond one domain, split it.
+
+## Python
+
+- PEP 8 / Ruff-style conventions.
+- 4-space indentation and approximately 100-character lines.
+- snake_case functions/variables, CapWords classes, UPPER_CASE constants.
+- Network/storage code should be isolated from normalization/business rules when practical.
+- Public modules start with a descriptive module docstring and use `unittest` for existing test suites.
+
+## Workflows and configuration
+
+- YAML uses 2-space indentation.
+- GitHub Actions should have explicit permissions, timeouts, and concurrency where appropriate.
+- Production workflows must not commit runtime data.
+- Test workflows must not send Telegram notifications or mutate Calendar data.
+
+## Releases
+
+Normal changes use `release/<version>`, pass validation/smoke tests, then squash into exactly one commit on `main`.
+
+Each release should update:
+- `features/versions.json`;
+- relevant README/wiki documentation;
+- module comments when responsibilities or boundaries change.
+
+Historical release snapshots are not rewritten merely to add comments; current documentation explains the evolution without falsifying old source snapshots.
