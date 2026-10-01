@@ -1,7 +1,7 @@
 /**
  * Routes Telegram webhooks, edge Q&A, runtime-state APIs, health checks, and scheduled edge work.
  *
- * Documentation baseline: v2.3.0. Runtime/private data must never be committed to Git.
+ * Documentation baseline: v2.4.0. Runtime/private data must never be committed to Git.
  */
 import {
   fetchPickupSnapshot,
@@ -104,9 +104,9 @@ async function decryptState(payload, env) {
   }
 }
 
-async function githubFile(env, path) {
+async function githubFile(env, path, ref = "main") {
   const response = await fetch(
-    `https://api.github.com/repos/${REPO}/contents/${path}?ref=main`,
+    `https://api.github.com/repos/${REPO}/contents/${path}?ref=${encodeURIComponent(ref)}`,
     {
       headers: {
         accept: "application/vnd.github+json",
@@ -218,31 +218,92 @@ async function rememberFastReplyInRuntime(env, question, reply, messageId, lastD
   } catch {}
 }
 
-async function loadSnapshot(env) {
-  if (!env.BALLERWATCH_STATE) throw new Error("Runtime KV is unavailable.");
-  const [pickup, pickupPrivate, league, today, teams, version, settings] = await Promise.all([
-    kvJsonGet(env, "snapshot:pickup"),
-    kvJsonGet(env, "snapshot:pickup-private"),
-    kvJsonGet(env, "snapshot:league"),
-    kvJsonGet(env, "snapshot:today"),
-    kvJsonGet(env, "snapshot:teams"),
-    kvTextGet(env, "snapshot:version"),
-    runtimeSettings(env),
-  ]);
-  if (!pickup || !league || !Array.isArray(teams)) {
-    throw new Error("Cloudflare KV soccer snapshot is incomplete.");
+async function cachedJson(key, ttlSeconds, loader) {
+  const request = new Request(`https://ballerwatch.internal/cache/${key}`);
+  const hit = await caches.default.match(request);
+  if (hit) {
+    const value = await hit.json().catch(() => null);
+    if (value) return value;
   }
-  return {
-    pickup,
-    pickupPrivate: pickupPrivate || { events: {} },
-    league,
-    today: today || league.today || { games: [] },
-    teams,
-    settings: settings || {},
-    version: version || "unknown",
-    loadedAt: new Date().toISOString(),
-    source: "cloudflare-kv",
-  };
+  const value = await loader();
+  await caches.default.put(
+    request,
+    new Response(JSON.stringify(value), {
+      headers: { "cache-control": `public,max-age=${ttlSeconds}` },
+    }),
+  );
+  return value;
+}
+
+async function loadGitHubSnapshot(env) {
+  return cachedJson("github-runtime-snapshot-v2", 45, async () => {
+    const [pickupEncrypted, privateEncrypted, leagueEncrypted, todayEncrypted, teamsEncrypted, listenerState, versions] =
+      await Promise.all([
+        githubFile(env, "pickup/state/feed.json", "runtime-state"),
+        githubFile(env, "pickup/state/events.json", "runtime-state"),
+        githubFile(env, "league/state/schedule.json", "runtime-state"),
+        githubFile(env, "league/state/today.json", "runtime-state"),
+        githubFile(env, "league/state/teams.json", "runtime-state"),
+        githubFile(env, "state/listener.json", "runtime-state").catch(() => null),
+        githubFile(env, "features/versions.json", "main"),
+      ]);
+
+    const [pickup, pickupPrivate, league, today, teamsPayload, settings] = await Promise.all([
+      decryptState(pickupEncrypted, env),
+      decryptState(privateEncrypted, env),
+      decryptState(leagueEncrypted, env),
+      decryptState(todayEncrypted, env),
+      decryptState(teamsEncrypted, env),
+      listenerState?.settings ? decryptState(listenerState.settings, env) : null,
+    ]);
+
+    const teams = Array.isArray(teamsPayload?.teams) ? teamsPayload.teams : [];
+    if (!pickup || !league || !teams.length) {
+      throw new Error("GitHub runtime snapshot is incomplete.");
+    }
+
+    return {
+      pickup,
+      pickupPrivate: pickupPrivate || { events: {} },
+      league,
+      today: today || league.today || { games: [] },
+      teams,
+      settings: settings || {},
+      version: String(versions?.currentVersion || "unknown"),
+      loadedAt: new Date().toISOString(),
+      source: "github-runtime-state",
+    };
+  });
+}
+
+async function loadSnapshot(env) {
+  if (env.BALLERWATCH_STATE) {
+    try {
+      const [pickup, pickupPrivate, league, today, teams, version, settings] = await Promise.all([
+        kvJsonGet(env, "snapshot:pickup"),
+        kvJsonGet(env, "snapshot:pickup-private"),
+        kvJsonGet(env, "snapshot:league"),
+        kvJsonGet(env, "snapshot:today"),
+        kvJsonGet(env, "snapshot:teams"),
+        kvTextGet(env, "snapshot:version"),
+        runtimeSettings(env),
+      ]);
+      if (pickup && league && Array.isArray(teams)) {
+        return {
+          pickup,
+          pickupPrivate: pickupPrivate || { events: {} },
+          league,
+          today: today || league.today || { games: [] },
+          teams,
+          settings: settings || {},
+          version: version || "unknown",
+          loadedAt: new Date().toISOString(),
+          source: "cloudflare-kv-migration",
+        };
+      }
+    } catch {}
+  }
+  return loadGitHubSnapshot(env);
 }
 
 async function telegram(env, method, body) {
@@ -611,6 +672,15 @@ async function fastReply(env, message) {
     updatedAt:new Date().toISOString(),
   }, env);
   await rememberFastReplyInRuntime(env, text, reply, sent?.message_id, lastDate);
+  await dispatchWorkflow(env, "listener.yml", {
+    history_event_b64: base64Json({
+      question: text,
+      reply,
+      messageId: Number(sent?.message_id || 0),
+      lastDate,
+      intent,
+    }),
+  }).catch(() => null);
   return {reply,messageId:Number(sent?.message_id||0),intent};
 }
 
@@ -790,21 +860,19 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (request.method === "GET" && url.pathname === "/health") {
-      const [pickup,league]=env.BALLERWATCH_STATE ? await Promise.all([
-        kvTextGet(env,"heartbeat:pickup"),kvTextGet(env,"heartbeat:league")
-      ]) : ["",""];
       return Response.json({
         ok:true,
         service:"ballerwatch-telegram-webhook",
         fastPath:true,
-        runtime:"cloudflare-primary-preview",
-        kv:Boolean(env.BALLERWATCH_STATE),
-        pickupAgeMinutes:pickup?Math.round(ageMinutes(pickup)*10)/10:null,
-        leagueAgeMinutes:league?Math.round(ageMinutes(league)*10)/10:null,
+        runtime:"cloudflare-webhook",
+        storage:"github-runtime-state",
+        scheduler:"cron-job.org",
+        kv:false,
       });
     }
     if (request.method === "GET" && url.pathname === "/public/feature-summary") {
-      const summary=await kvJsonGet(env,"runtime:feature-summary");
+      let summary=null;
+      try { summary=await githubFile(env,"requests/unknown.json","runtime-state"); } catch {}
       return Response.json(summary || {version:3,requests:[]},{
         headers:{"cache-control":"public,max-age=60"}
       });
