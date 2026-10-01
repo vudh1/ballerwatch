@@ -3,9 +3,18 @@
  * Does not load chats/state or import Telegram/Calendar clients; prints only provider status.
  */
 import assert from "node:assert/strict";
+import { requestAiJson } from "../shared/ai-provider.mjs";
 import { answerUnknownWithAi } from "../shared/ai-fallback.mjs";
 
 assert.ok(process.env.GEMINI_API_KEY, "GEMINI_API_KEY must be wired into the smoke workflow");
+const probe = await requestAiJson("gemini", process.env, {
+  system: 'Return JSON only: {"color":"blue"}.',
+  user: "The fictional practice ball is blue. What color is it?",
+  tokens: 120,
+  timeoutMs: 2500,
+  onFailure: reason => console.log(`Gemini availability: ${reason}`),
+});
+console.log(`Gemini direct synthetic probe: ${probe?.color === "blue" ? "passed" : "unavailable"}.`);
 const result = await answerUnknownWithAi(
   "What color is the fictional practice ball?",
   "The fictional practice ball is blue.",

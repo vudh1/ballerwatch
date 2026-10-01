@@ -17,7 +17,7 @@ export function parseAiJson(text) {
   }
 }
 
-export async function requestAiJson(provider, env, { system, user, tokens, timeoutMs }) {
+export async function requestAiJson(provider, env, { system, user, tokens, timeoutMs, onFailure = () => {} }) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -50,7 +50,10 @@ export async function requestAiJson(provider, env, { system, user, tokens, timeo
       },
       body: JSON.stringify(body),
     });
-    if (!response.ok) return null;
+    if (!response.ok) {
+      onFailure(`http_${response.status}`);
+      return null;
+    }
     const payload = await response.json();
     if (gemini) {
       const candidate = payload?.candidates?.[0];
@@ -60,6 +63,9 @@ export async function requestAiJson(provider, env, { system, user, tokens, timeo
     const choice = payload?.choices?.[0];
     if (choice?.finish_reason && choice.finish_reason !== "stop") return null;
     return parseAiJson(choice?.message?.content);
-  } catch { return null; }
+  } catch (error) {
+    onFailure(error?.name === "AbortError" ? "timeout" : "request_failed");
+    return null;
+  }
   finally { clearTimeout(timer); }
 }
