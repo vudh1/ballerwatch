@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "2.0.0",
+  "currentVersion": "2.1.0",
   "releases": [
+    {
+      "version": "2.1.0",
+      "date": "2026-10-01",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "KV-only runtime state",
+      "changes": [
+        "Migrated all remaining listener, pickup, league, Calendar, watchdog and feature-request runtime state from tracked repository files into the private Cloudflare KV namespace.",
+        "Removed all 12 runtime-state files from GitHub and changed the privacy audit to fail if those runtime paths are ever tracked again.",
+        "Updated listener, pickup, league and watchdog workflows to pull state from KV at startup, push updated state back to KV, clean the local runner copy, and never commit runtime data.",
+        "Moved manual data purge to Cloudflare KV and updated the notification-silent smoke test to use KV runtime fixtures.",
+        "Added protected Worker runtime-state APIs, a public privacy-safe feature-summary endpoint, fast-reply state synchronization, and deployment round-trip verification for all runtime scopes.",
+        "Removed the production fallback that read runtime soccer state from GitHub; Cloudflare KV is now the sole runtime-state authority."
+      ]
+    },
     {
       "version": "2.0.0",
       "date": "2026-10-01",

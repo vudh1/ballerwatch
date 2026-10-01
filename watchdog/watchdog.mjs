@@ -4,8 +4,6 @@ import crypto from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { decryptState, encryptState } from "../shared/state-crypto.mjs";
 import { sendTelegram } from "../shared/telegram.mjs";
-import { loadEncryptedLeagueState } from "../shared/league-state.mjs";
-import { loadLeagueTeams } from "../shared/league-teams.mjs";
 
 const STATE_PATH = "state/watchdog.json";
 const RECOVERY_COOLDOWN_MINUTES = 10;
@@ -255,25 +253,6 @@ async function validationProblem() {
   return null;
 }
 
-function checkEncryptedFile(file, label) {
-  const raw = readJson(file);
-  if (!raw) {
-    return {
-      key: `state:missing:${file}`,
-      message: `${label}: encrypted state is missing`,
-      recoverable: false,
-    };
-  }
-  if (!decryptState(raw)) {
-    return {
-      key: `state:decrypt:${file}`,
-      message: `${label}: encrypted state cannot be decrypted`,
-      recoverable: false,
-    };
-  }
-  return null;
-}
-
 function sensitivePlaintextProblems() {
   const files = [
     "league/teams.json",
@@ -300,50 +279,6 @@ function sensitivePlaintextProblems() {
       recoverable: false,
     });
   }
-  return problems;
-}
-
-function stateProblems() {
-  const problems = [];
-
-  if (fs.existsSync("requests/private.json")) {
-    const problem = checkEncryptedFile("requests/private.json", "Private feature-request archive");
-    if (problem) problems.push(problem);
-  }
-
-  for (const [file, label] of [
-    ["pickup/state/feed.json", "Pickup feed"],
-    ["pickup/state/events.json", "Pickup private snapshot"],
-    ["pickup/state/notify.json", "Pickup notification state"],
-  ]) {
-    const problem = checkEncryptedFile(file, label);
-    if (problem) problems.push(problem);
-  }
-
-  const teams = loadLeagueTeams();
-  if (!teams.length) {
-    problems.push({
-      key: "state:league-teams",
-      message: "League teams: encrypted configuration is missing or empty",
-      recoverable: false,
-    });
-  }
-
-  for (const [name, label] of [
-    ["schedule.json", "League schedule"],
-    ["today.json", "League today feed"],
-    ["calendar-snapshot.json", "League Calendar snapshot"],
-  ]) {
-    const value = loadEncryptedLeagueState(name);
-    if (!value) {
-      problems.push({
-        key: `state:league:${name}`,
-        message: `${label}: encrypted state is missing or unreadable`,
-        recoverable: false,
-      });
-    }
-  }
-
   return problems;
 }
 
@@ -393,7 +328,6 @@ export async function runWatchdog() {
   const validation = await validationProblem();
   if (validation) problems.push(validation);
   problems.push(...sensitivePlaintextProblems());
-  problems.push(...stateProblems());
 
   const fingerprint = crypto
     .createHash("sha256")

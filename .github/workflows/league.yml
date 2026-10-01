@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ballerwatch-league
@@ -26,6 +26,13 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
+
+      - name: Pull runtime state from Cloudflare KV
+        working-directory: .
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: node shared/runtime-state.mjs pull league
 
       - name: Prepare encrypted league state
         working-directory: .
@@ -81,33 +88,19 @@ jobs:
           node shared/league-state.mjs seal
           rm -f league/teams.json
 
-      - name: Persist encrypted league state
+      - name: Push runtime state to Cloudflare KV
+        if: always()
+        working-directory: .
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: node shared/runtime-state.mjs push league
+
+      - name: Remove local runtime data
         if: always()
         working-directory: .
         run: |
-          if [ -z "$(git status --porcelain -- league)" ]; then
-            echo "No league state changes."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A -- league
-          git commit -m "Refresh RATS league state"
-          STATE_COMMIT="$(git rev-parse HEAD)"
-          for attempt in 1 2 3 4; do
-            git fetch --depth=1 origin main
-            git reset --hard origin/main
-            if ! git cherry-pick -X theirs "$STATE_COMMIT"; then
-              git cherry-pick --abort || true
-              echo "Could not replay generated state; retrying ($attempt/4)."
-              sleep $((attempt * 2))
-              continue
-            fi
-            if git push origin HEAD:main; then
-              exit 0
-            fi
-            echo "Push raced with another workflow; retrying ($attempt/4)."
-            sleep $((attempt * 2))
-          done
-          echo "Failed to persist state after 4 push attempts."
-          exit 1
+          node shared/runtime-state.mjs clean league
+          rm -f league/teams.json league/schedule.json league/today.json
+          rm -f league/calendar-snapshot.json league/calendar-changes.json
+          rm -f league/telegram-update.json league/score-changes.json league/status.json
