@@ -48,6 +48,8 @@ jobs:
           node --check manual-test.mjs
           node --check privacy-audit.mjs
           node --check infra/sync-cron.mjs
+          node --check infra/disable-listener-cron.mjs
+          node --check infra/telegram-webhook/worker.mjs
           node --check infra/validate-versions.mjs
 
       - name: Validate release history
