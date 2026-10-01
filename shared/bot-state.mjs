@@ -1,3 +1,8 @@
+/**
+ * Loads and stores encrypted Telegram bot settings inside temporary runtime state.
+ *
+ * Documentation baseline: v2.3.0. Runtime/private data must never be committed to Git.
+ */
 import fs from "node:fs";
 import path from "node:path";
 import { decryptState, encryptState } from "./state-crypto.mjs";
