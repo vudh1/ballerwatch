@@ -53,11 +53,10 @@ jobs:
             echo "No encrypted league teams configured; league live test skipped."
           fi
 
-      - name: Send Telegram smoke-test summary
+      - name: Verify refreshed data without notifications
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           OWNER_RSVP_NAME: ${{ secrets.OWNER_RSVP_NAME }}
         run: node manual-test.mjs
 
