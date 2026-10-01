@@ -32,3 +32,5 @@ league/state/
 state/
 requests/private.json
 requests/unknown.json
+
+league/status.json
