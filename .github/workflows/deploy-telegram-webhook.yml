@@ -105,12 +105,6 @@ jobs:
           echo
           echo "Telegram webhook: $WEBHOOK_URL"
 
-          echo "Migrating any remaining repository runtime state into private Cloudflare KV..."
-          curl --max-time 45 --fail-with-body --silent --show-error \
-            -X POST "https://ballerwatch-telegram.$SUBDOMAIN.workers.dev/admin/migrate-repo-state" \
-            -H "x-ballerwatch-admin: $SECRET"
-          echo
-
           echo "Running notification-silent edge verification and priming private KV..."
           curl --max-time 75 --fail-with-body --silent --show-error \
             -X POST "https://ballerwatch-telegram.$SUBDOMAIN.workers.dev/admin/shadow-refresh?target=all&write=1" \
@@ -122,9 +116,11 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          node shared/runtime-state.mjs pull watchdog
-          node shared/runtime-state.mjs push watchdog
-          node shared/runtime-state.mjs clean watchdog
+          for scope in listener pickup league watchdog; do
+            node shared/runtime-state.mjs pull "$scope"
+            node shared/runtime-state.mjs push "$scope"
+            node shared/runtime-state.mjs clean "$scope"
+          done
 
       - name: Enable verified Cloudflare schedules
         working-directory: infra/telegram-webhook
