@@ -9,6 +9,8 @@ const els = {
   notificationBadge: document.querySelector("#notification-badge"),
   notificationDialog: document.querySelector("#notification-dialog"),
   closeNotifications: document.querySelector("#close-notifications"),
+  bellPushToggle: document.querySelector("#bell-push-toggle"),
+  bellPushStatus: document.querySelector("#bell-push-status"),
   form: document.querySelector("#question-form"),
   question: document.querySelector("#question"),
   answer: document.querySelector("#answer"),
@@ -86,7 +88,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=3.1.1", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=3.1.2", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -177,10 +179,23 @@ async function currentSubscription() {
   return registration.pushManager.getSubscription();
 }
 
+function setPushUi({ status, hint, enabled, toggleDisabled = false, color = "" }) {
+  els.pushStatus.textContent = status;
+  els.pushStatus.style.color = color;
+  els.pushHint.textContent = hint;
+  els.bellPushStatus.textContent = status;
+  els.bellPushToggle.checked = enabled;
+  els.bellPushToggle.disabled = toggleDisabled;
+}
+
 async function updatePushStatus() {
   if (!("Notification" in window) || !("PushManager" in window)) {
-    els.pushStatus.textContent = "Unsupported";
-    els.pushHint.textContent = "This browser does not expose Web Push.";
+    setPushUi({
+      status: "Unsupported",
+      hint: "This browser does not expose Web Push.",
+      enabled: false,
+      toggleDisabled: true,
+    });
     return;
   }
 
@@ -192,18 +207,27 @@ async function updatePushStatus() {
   }
 
   if (subscription) {
-    els.pushStatus.textContent = "Enabled";
-    els.pushStatus.style.color = "#86efac";
-    els.pushHint.textContent = "Backup push is active on this device.";
+    setPushUi({
+      status: "On",
+      hint: "Backup push is active on this device.",
+      enabled: true,
+      color: "#86efac",
+    });
   } else if (Notification.permission === "denied") {
-    els.pushStatus.textContent = "Blocked";
-    els.pushHint.textContent = "Notifications are blocked in device settings.";
+    setPushUi({
+      status: "Blocked",
+      hint: "Notifications are blocked in device settings.",
+      enabled: false,
+      toggleDisabled: true,
+    });
   } else {
-    els.pushStatus.textContent = "Off";
-    els.pushHint.textContent =
-      ios() && !standalone()
+    setPushUi({
+      status: "Off",
+      hint: ios() && !standalone()
         ? "On iPhone, add BallerWatch to the Home Screen before enabling push."
-        : "Tap Enable push to subscribe this device.";
+        : "Tap Enable push to subscribe this device.",
+      enabled: false,
+    });
   }
 }
 
@@ -294,6 +318,16 @@ els.closeNotifications.addEventListener("click", () => els.notificationDialog.cl
 els.refresh.addEventListener("click", loadBoard);
 els.enablePush.addEventListener("click", enablePush);
 els.disablePush.addEventListener("click", disablePush);
+els.bellPushToggle.addEventListener("change", async () => {
+  const requested = els.bellPushToggle.checked;
+  els.bellPushToggle.disabled = true;
+  if (requested) {
+    await enablePush();
+  } else {
+    await disablePush();
+  }
+  await updatePushStatus();
+});
 els.installHelp?.addEventListener("click", () => els.installDialog.showModal());
 
 window.addEventListener("online", () => { els.system.textContent = "Online"; });
