@@ -67,5 +67,5 @@ Common factual soccer questions should prefer deterministic runtime-state answer
 
 `runtime-state` is a snapshot branch, not an audit log. Each successful state write constructs the complete current encrypted tree as a parentless commit and updates the branch only if the expected previous head is still current. A concurrent writer causes a retry against the newer snapshot.
 
-This keeps one reachable commit on `runtime-state` while preserving the existing encrypted-file boundaries and concurrent pickup/league/listener/watchdog updates. PURGE uses the same snapshot mechanism.
+This keeps one reachable commit on `runtime-state` while preserving the existing encrypted-file boundaries and concurrent pickup/league/listener/watchdog updates. The snapshot tree is built only from the canonical runtime paths, so repository source files never appear on `runtime-state`. PURGE uses the same mechanism and produces an empty runtime tree.
 
