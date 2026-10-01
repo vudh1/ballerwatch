@@ -105,9 +105,8 @@ Calendar:
 Optional free AI fallback:
 
 - `GROQ_API_KEY` — API key from a dedicated Groq **Free-tier** organization.
-- `GROQ_FREE_TIER_ONLY` — set to `true` to enable the AI fallback.
 
-For zero-cost protection, do **not** add a payment method to the Groq organization used by BallerWatch. The listener is fail-closed: without both values above it skips AI and saves unsupported questions as feature requests instead. AI is used only after the normal command parser cannot answer, is limited to 50 calls per UTC day, and each request has a 2.5-second hard timeout.
+BallerWatch is permanently configured for free-tier-only AI use; there is no paid-mode switch. For zero-cost protection, do **not** add a payment method to the Groq organization used by BallerWatch. Without `GROQ_API_KEY`, it skips AI and saves unsupported questions as feature requests instead. AI is used only after the normal command parser cannot answer, is limited to 50 calls per UTC day, and each request has a 2.5-second hard timeout.
 
 cron-job.org:
 
@@ -129,7 +128,7 @@ Never commit any of these values.
 ## Initial setup
 
 1. Add the required GitHub Actions secrets.
-2. Optional: create a dedicated Groq Free-tier API key with **no payment method**, add it as `GROQ_API_KEY`, and set `GROQ_FREE_TIER_ONLY=true`. If you skip this, unknown Telegram requests continue directly to the encrypted feature-request queue.
+2. Optional: create a dedicated Groq Free-tier API key with **no payment method** and add it as `GROQ_API_KEY`. If you skip this, unknown Telegram requests continue directly to the encrypted feature-request queue.
 3. Run **Configure external cron**.
 4. Run **Deploy Calendar bridge**.
 5. Optionally run **Configure repository** once to set the repo description.
