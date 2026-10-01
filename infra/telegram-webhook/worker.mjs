@@ -697,6 +697,11 @@ async function refreshLeagueEdge(env,{dispatch=true,write=true}={}) {
   }
 
   const signal=await fetchLeagueSignal(teams,seasonId);
+  await runtimeFilePut(
+    env,
+    "league/state/edge-signal.json",
+    JSON.stringify({schemaVersion:1,...signal,updatedAt:new Date().toISOString()}, null, 2) + "\n",
+  );
   const fp=await fingerprint(signal);
   const old=await kvTextGet(env,"fingerprint:league");
   const changed=old!==fp;
