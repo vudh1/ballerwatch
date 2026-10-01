@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "3.0.2",
+  "currentVersion": "3.1.0",
   "releases": [
+    {
+      "version": "3.1.0",
+      "date": "2026-10-01",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Installed app navigation",
+      "telegramAnnouncement": "The BallerWatch Home Screen app now hides installation help, opens recent updates from a top-right bell, and keeps push controls in Settings at the bottom.",
+      "changes": [
+        "Hide and remove the Home Screen installation section whenever BallerWatch is already running as an installed standalone app, while retaining install help for normal browser visits.",
+        "Moved the recent notification board out of the main page into a top-right bell button that opens a dedicated notification dialog with refresh and close controls.",
+        "Moved Web Push enable/disable controls into a Settings section at the bottom of the app so the primary screen stays focused on Q&A.",
+        "Bumped the PWA shell cache generation so existing Home Screen installs refresh the redesigned HTML, JavaScript, and CSS instead of remaining on cached v3.0.x assets.",
+        "Added regression coverage for standalone install-card removal, bell navigation, Settings placement, and the new PWA cache generation."
+      ]
+    },
     {
       "version": "3.0.2",
       "date": "2026-10-01",
