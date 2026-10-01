@@ -5,6 +5,7 @@ Always read the current `README.md`, this file, and `features/versions.json` fro
 ## Privacy and architecture
 
 - Keep this public repository free of secrets and readable live/private soccer data.
+- Public feature-request summaries may contain only version 2 fixed categories and counts. Never restore free text, IDs, timestamps, or hashes of request text. Exact requests require private authorized decryption; do not infer them from categories.
 - Runtime plaintext belongs only in ignored temporary paths. Persistent private state must stay encrypted.
 - Keep cron-job.org as the recurring scheduler. Do not add GitHub `schedule:` cron.
 - Keep exactly one Telegram `getUpdates` consumer.

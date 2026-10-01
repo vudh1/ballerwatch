@@ -1,16 +1,14 @@
+import { recordUnknownQuestion, refreshPublicRequests } from "../shared/feature-requests.mjs";
 import fs from "node:fs";
-import crypto from "node:crypto";
 import { getTelegramUpdates, isOwnerChat, sendTelegram } from "../shared/telegram.mjs";
 import { loadBotState, saveBotState } from "../shared/bot-state.mjs";
-import { decryptState, encryptState } from "../shared/state-crypto.mjs";
+import { decryptState } from "../shared/state-crypto.mjs";
 import { ensureEncryptedLeagueTeams, loadLeagueTeams, normalizeLeagueTeamName, saveLeagueTeams } from "../shared/league-teams.mjs";
 import { loadEncryptedLeagueState } from "../shared/league-state.mjs";
 
 const TIME_ZONE = "America/Los_Angeles";
 const PICKUP_PRIVATE_STATE = "pickup/state/events.json";
 const PICKUP_FEED_STATE = "pickup/state/feed.json";
-const UNKNOWN_REQUESTS_PATH = "requests/unknown.json";
-const PRIVATE_UNKNOWN_REQUESTS_PATH = "requests/private.json";
 const FEATURE_ANNOUNCEMENTS_PATH = "features/announcements.json";
 const VERSION_HISTORY_PATH = "features/versions.json";
 
@@ -857,156 +855,6 @@ function handleLeagueTeamCommand(command) {
 }
 
 
-function loadUnknownRequests() {
-  const data = readJson(UNKNOWN_REQUESTS_PATH);
-  return data && Array.isArray(data.requests)
-    ? data
-    : { version: 1, requests: [] };
-}
-
-function loadPrivateUnknownRequests() {
-  const raw = readJson(PRIVATE_UNKNOWN_REQUESTS_PATH);
-  const data = raw ? decryptState(raw) : null;
-  return data && Array.isArray(data.requests)
-    ? data
-    : { version: 1, requests: [] };
-}
-
-function writePrivateUnknownRequests(data) {
-  fs.mkdirSync("requests", { recursive: true });
-  fs.writeFileSync(
-    PRIVATE_UNKNOWN_REQUESTS_PATH,
-    JSON.stringify(encryptState(data), null, 2) + "\n",
-  );
-}
-
-function escapeRegExp(value) {
-  return String(value).replace(/[.*+?^$()|[\]{}\\]/g, "\\$&");
-}
-
-function replaceKnownValue(text, value, placeholder) {
-  const clean = normalizeText(value);
-  if (clean.length < 2) return text;
-  return text.replace(new RegExp(escapeRegExp(clean), "gi"), placeholder);
-}
-
-function sensitiveValues(settings) {
-  const values = [];
-  const add = (value, placeholder) => {
-    const clean = normalizeText(value);
-    if (clean) values.push({ value: clean, placeholder });
-  };
-
-  add(effectiveOwnerName(settings), "<owner-name>");
-
-  for (const team of loadLeagueTeams()) {
-    add(team, "<league-team>");
-  }
-
-  const privatePickup = decryptState(readJson(PICKUP_PRIVATE_STATE)) || {};
-  for (const event of Object.values(privatePickup.events || {})) {
-    add(event?.fieldName, "<field>");
-    add(event?.address, "<address>");
-    for (const person of event?.players || []) add(person?.name, "<player>");
-    for (const person of event?.waitlist || []) add(person?.name, "<player>");
-  }
-
-  const league = loadEncryptedLeagueState("schedule.json");
-  for (const team of league?.teams || []) {
-    add(team?.name, "<league-team>");
-    add(team?.division, "<division>");
-    for (const match of team?.matches || []) {
-      add(match?.team, "<league-team>");
-      add(match?.opponent, "<opponent>");
-      add(match?.location, "<field>");
-      add(match?.fieldNotes, "<field-notes>");
-      add(match?.division, "<division>");
-    }
-  }
-
-  return values.sort((a, b) => b.value.length - a.value.length);
-}
-
-function redactUnknownQuestion(question, settings) {
-  let text = normalizeText(question).slice(0, 500);
-  if (!text) return "";
-
-  for (const item of sensitiveValues(settings)) {
-    text = replaceKnownValue(text, item.value, item.placeholder);
-  }
-
-  text = text
-    .replace(/https?:\/\/\S+/gi, "<url>")
-    .replace(/\b20\d{2}-\d{1,2}-\d{1,2}\b/g, "<date>")
-    .replace(/\b\d{1,2}\/\d{1,2}(?:\/20\d{2})?\b/g, "<date>")
-    .replace(
-      /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2}(?:,?\s+20\d{2})?\b/gi,
-      "<date>",
-    )
-    .replace(/\b\d{1,2}:\d{2}(?:\s*[AP]M)?\b/gi, "<time>");
-
-  return normalizeText(text) || "<redacted-request>";
-}
-
-function recordUnknownQuestion(question, settings) {
-  const original = normalizeText(question).slice(0, 500);
-  if (!original) return null;
-
-  const redacted = redactUnknownQuestion(original, settings);
-  const id = crypto
-    .createHash("sha256")
-    .update(redacted.toLocaleLowerCase("en-US"))
-    .digest("hex")
-    .slice(0, 16);
-
-  const now = new Date().toISOString();
-  const data = loadUnknownRequests();
-  const existing = data.requests.find((item) => item.id === id);
-
-  if (existing) {
-    existing.count = Number(existing.count || 1) + 1;
-    existing.lastSeenAt = now;
-    existing.question = redacted;
-    if (existing.status === "implemented") existing.status = "reopened";
-  } else {
-    data.requests.push({
-      id,
-      question: redacted,
-      status: "open",
-      count: 1,
-      firstSeenAt: now,
-      lastSeenAt: now,
-    });
-  }
-
-  data.requests = data.requests.slice(-100);
-  fs.mkdirSync("requests", { recursive: true });
-  fs.writeFileSync(
-    UNKNOWN_REQUESTS_PATH,
-    JSON.stringify(data, null, 2) + "\n",
-  );
-
-  const privateData = loadPrivateUnknownRequests();
-  const privateExisting = privateData.requests.find((item) => item.id === id);
-  if (privateExisting) {
-    privateExisting.count = Number(privateExisting.count || 1) + 1;
-    privateExisting.lastSeenAt = now;
-    privateExisting.question = original;
-  } else {
-    privateData.requests.push({
-      id,
-      question: original,
-      count: 1,
-      firstSeenAt: now,
-      lastSeenAt: now,
-    });
-  }
-  privateData.requests = privateData.requests.slice(-100);
-  writePrivateUnknownRequests(privateData);
-
-  return id;
-}
-
 async function announceNewFeatures(settings) {
   const data = readJson(FEATURE_ANNOUNCEMENTS_PATH);
   const items = Array.isArray(data?.announcements) ? data.announcements : [];
@@ -1280,16 +1128,17 @@ async function handleMessage(text, settings) {
     };
   }
 
-  const requestId = recordUnknownQuestion(clean, settings);
+  const requestId = recordUnknownQuestion(clean);
   return {
     settings,
     reply: requestId
-      ? `I don't know how to answer that yet. I saved a privacy-redacted feature request as ${requestId}; the feature builder reviews requests every 3 days.`
+      ? `I don't know how to answer that yet. I saved your request privately as ${requestId}.`
       : "I don't know how to answer that yet.",
   };
 }
 
 async function main() {
+  refreshPublicRequests();
   ensureEncryptedLeagueTeams();
   const state = loadBotState();
   let settings = state.settings || {};

@@ -1,21 +1,9 @@
 {
-  "version": 1,
+  "version": 2,
   "requests": [
     {
-      "id": "6442a60249f3a787",
-      "question": "what game is <date>",
-      "status": "open",
-      "count": 1,
-      "firstSeenAt": "2026-10-01T04:51:32.289Z",
-      "lastSeenAt": "2026-10-01T04:51:32.289Z"
-    },
-    {
-      "id": "364e96eb442cd9b9",
-      "question": "any game for <date>",
-      "status": "open",
-      "count": 1,
-      "firstSeenAt": "2026-10-01T04:52:17.498Z",
-      "lastSeenAt": "2026-10-01T04:52:17.498Z"
+      "category": "schedule",
+      "count": 2
     }
   ]
 }
