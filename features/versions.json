@@ -1,7 +1,19 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "1.2.0",
+  "currentVersion": "1.2.1",
   "releases": [
+    {
+      "version": "1.2.1",
+      "date": "2026-09-30",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Operational setup runbooks",
+      "changes": [
+        "Added an agent skill for safely discovering and verifying the pickup UPSTREAM_ENDPOINT without committing its live value.",
+        "Added repository agent guidance so future maintenance uses the endpoint-discovery procedure and preserves privacy.",
+        "Clarified that TRACKER_STATE_KEY is optional when the existing deployment uses the TELEGRAM_BOT_TOKEN encryption fallback."
+      ]
+    },
     {
       "version": "1.2.0",
       "date": "2026-09-30",
