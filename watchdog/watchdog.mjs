@@ -1,7 +1,7 @@
 /**
  * Performs deep health, privacy, validation, edge, and external-scheduler checks.
  *
- * v2.5.0: caches encrypted scheduler audits for 30 minutes; other checks remain every run. Runtime/private data must never be committed to Git.
+ * v2.5.0: caches encrypted scheduler audits for 6 hours; other checks remain every run. Runtime/private data must never be committed to Git.
  */
 import fs from "node:fs";
 import path from "node:path";
