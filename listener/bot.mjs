@@ -1210,8 +1210,13 @@ async function main() {
   let lastUpdateId = state.lastUpdateId || 0;
 
   for (const update of updates) {
-    if (Number(update?.update_id) > lastUpdateId) {
-      lastUpdateId = Number(update.update_id);
+    const updateId = Number(update?.update_id || 0);
+    if (injectedUpdate && updateId > 0 && updateId <= lastUpdateId) {
+      console.log(`Skipping duplicate Telegram update ${updateId}.`);
+      continue;
+    }
+    if (updateId > lastUpdateId) {
+      lastUpdateId = updateId;
     }
 
     const message = update?.message;
