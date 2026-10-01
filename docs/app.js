@@ -14,10 +14,7 @@ const els = {
   form: document.querySelector("#question-form"),
   question: document.querySelector("#question"),
   answer: document.querySelector("#answer"),
-  enablePush: document.querySelector("#enable-push"),
-  disablePush: document.querySelector("#disable-push"),
-  pushStatus: document.querySelector("#push-status"),
-  pushHint: document.querySelector("#push-hint"),
+  questionSuggestions: document.querySelector("#question-suggestions"),
   installCard: document.querySelector("#install-card"),
   installHelp: document.querySelector("#install-help"),
   installDialog: document.querySelector("#install-dialog"),
@@ -36,6 +33,105 @@ const els = {
 
 let config = null;
 let currentNextGame = null;
+let activeSuggestionIndex = -1;
+
+const COMMAND_SUGGESTIONS = [
+  { value: "/today", label: "/today", description: "Today's games" },
+  { value: "/next", label: "/next", description: "Next upcoming game" },
+  { value: "/teams", label: "/teams", description: "Monitored league teams" },
+  { value: "/count Thursday", label: "/count [day]", description: "Pickup RSVP count" },
+  { value: "/field Thursday", label: "/field [day]", description: "Pickup field" },
+  { value: "/time Thursday", label: "/time [day]", description: "Pickup time" },
+  { value: "/version", label: "/version", description: "BallerWatch version" },
+  { value: "/help", label: "/help", description: "Available questions and commands" },
+];
+
+const QUESTION_SUGGESTIONS = [
+  "What game is today?",
+  "What's my next game?",
+  "What's the count for Thursday?",
+  "What field is Thursday?",
+  "What time is Thursday?",
+  "What league teams are you monitoring?",
+];
+
+function suggestionMatches(value) {
+  const raw = String(value || "");
+  const lower = raw.trim().toLowerCase();
+
+  if (raw.startsWith("/")) {
+    return COMMAND_SUGGESTIONS.filter((item) =>
+      item.label.toLowerCase().startsWith(lower) ||
+      item.value.toLowerCase().startsWith(lower),
+    );
+  }
+
+  if (lower.length < 2) return [];
+  return QUESTION_SUGGESTIONS
+    .filter((item) => item.toLowerCase().includes(lower))
+    .map((value) => ({ value, label: value, description: "Suggested question" }));
+}
+
+function hideQuestionSuggestions() {
+  els.questionSuggestions.hidden = true;
+  els.question.setAttribute("aria-expanded", "false");
+  activeSuggestionIndex = -1;
+}
+
+function selectQuestionSuggestion(index) {
+  const options = [...els.questionSuggestions.querySelectorAll("[role=option]")];
+  const option = options[index];
+  if (!option) return;
+  els.question.value = option.dataset.value || option.textContent || "";
+  hideQuestionSuggestions();
+  els.question.focus();
+}
+
+function renderQuestionSuggestions() {
+  const suggestions = suggestionMatches(els.question.value);
+  els.questionSuggestions.replaceChildren();
+  activeSuggestionIndex = -1;
+
+  if (!suggestions.length) {
+    hideQuestionSuggestions();
+    return;
+  }
+
+  suggestions.forEach((suggestion, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "question-suggestion";
+    button.setAttribute("role", "option");
+    button.setAttribute("aria-selected", "false");
+    button.dataset.value = suggestion.value;
+    button.dataset.index = String(index);
+
+    const label = document.createElement("strong");
+    label.textContent = suggestion.label;
+
+    const description = document.createElement("span");
+    description.textContent = suggestion.description;
+
+    button.append(label, description);
+    button.addEventListener("click", () => selectQuestionSuggestion(index));
+    els.questionSuggestions.append(button);
+  });
+
+  els.questionSuggestions.hidden = false;
+  els.question.setAttribute("aria-expanded", "true");
+}
+
+function moveSuggestionSelection(delta) {
+  const options = [...els.questionSuggestions.querySelectorAll("[role=option]")];
+  if (!options.length) return;
+  activeSuggestionIndex =
+    (activeSuggestionIndex + delta + options.length) % options.length;
+  options.forEach((option, index) => {
+    const selected = index === activeSuggestionIndex;
+    option.setAttribute("aria-selected", String(selected));
+    if (selected) option.scrollIntoView({ block: "nearest" });
+  });
+}
 
 function standalone() {
   return window.matchMedia("(display-mode: standalone)").matches ||
@@ -100,7 +196,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=3.2.0", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=3.3.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -301,11 +397,9 @@ async function currentSubscription() {
   return registration.pushManager.getSubscription();
 }
 
-function setPushUi({ status, hint, enabled, toggleDisabled = false, color = "" }) {
-  els.pushStatus.textContent = status;
-  els.pushStatus.style.color = color;
-  els.pushHint.textContent = hint;
+function setPushUi({ status, enabled, toggleDisabled = false, color = "" }) {
   els.bellPushStatus.textContent = status;
+  els.bellPushStatus.style.color = color;
   els.bellPushToggle.checked = enabled;
   els.bellPushToggle.disabled = toggleDisabled;
 }
@@ -314,7 +408,6 @@ async function updatePushStatus() {
   if (!("Notification" in window) || !("PushManager" in window)) {
     setPushUi({
       status: "Unsupported",
-      hint: "This browser does not expose Web Push.",
       enabled: false,
       toggleDisabled: true,
     });
@@ -325,36 +418,29 @@ async function updatePushStatus() {
   if (subscription && config?.push?.applicationServerKey && !subscriptionMatchesConfig(subscription)) {
     await subscription.unsubscribe().catch(() => false);
     subscription = null;
-    els.pushHint.textContent = "Push identity was reset. Tap Enable push to subscribe again.";
   }
 
   if (subscription) {
     setPushUi({
       status: "On",
-      hint: "Backup push is active on this device.",
       enabled: true,
       color: "#86efac",
     });
   } else if (Notification.permission === "denied") {
     setPushUi({
       status: "Blocked",
-      hint: "Notifications are blocked in device settings.",
       enabled: false,
       toggleDisabled: true,
     });
   } else {
     setPushUi({
       status: "Off",
-      hint: ios() && !standalone()
-        ? "On iPhone, add BallerWatch to the Home Screen before enabling push."
-        : "Tap Enable push to subscribe this device.",
       enabled: false,
     });
   }
 }
 
 async function enablePush() {
-  els.enablePush.disabled = true;
   try {
     if (ios() && !standalone()) {
       els.installDialog.showModal();
@@ -384,17 +470,14 @@ async function enablePush() {
       method: "POST",
       body: JSON.stringify({ subscription: subscription.toJSON() }),
     });
-    els.pushHint.textContent = "Subscription saved. Push delivery will activate after runtime-state sync.";
   } catch (error) {
-    els.pushHint.textContent = error.message;
+    els.bellPushStatus.textContent = error.message;
   } finally {
-    els.enablePush.disabled = false;
     await updatePushStatus();
   }
 }
 
 async function disablePush() {
-  els.disablePush.disabled = true;
   try {
     const subscription = await currentSubscription();
     if (!subscription) return;
@@ -403,17 +486,39 @@ async function disablePush() {
       body: JSON.stringify({ subscription: subscription.toJSON() }),
     }).catch(() => null);
     await subscription.unsubscribe();
-    els.pushHint.textContent = "Push disabled on this device.";
   } finally {
-    els.disablePush.disabled = false;
     await updatePushStatus();
   }
 }
+
+els.question.addEventListener("input", renderQuestionSuggestions);
+els.question.addEventListener("focus", renderQuestionSuggestions);
+els.question.addEventListener("keydown", (event) => {
+  if (els.questionSuggestions.hidden) return;
+
+  if (event.key === "ArrowDown") {
+    event.preventDefault();
+    moveSuggestionSelection(1);
+  } else if (event.key === "ArrowUp") {
+    event.preventDefault();
+    moveSuggestionSelection(-1);
+  } else if (event.key === "Enter" && activeSuggestionIndex >= 0) {
+    event.preventDefault();
+    selectQuestionSuggestion(activeSuggestionIndex);
+  } else if (event.key === "Escape") {
+    hideQuestionSuggestions();
+  }
+});
+
+document.addEventListener("pointerdown", (event) => {
+  if (!event.target.closest(".question-input-wrap")) hideQuestionSuggestions();
+});
 
 els.form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const question = els.question.value.trim();
   if (!question) return;
+  hideQuestionSuggestions();
   const button = els.form.querySelector("button");
   button.disabled = true;
   els.answer.hidden = false;
@@ -440,8 +545,6 @@ els.nextGameShare.addEventListener("click", shareNextGame);
 els.testNotification.addEventListener("click", scheduleTestNotification);
 els.closeNotifications.addEventListener("click", () => els.notificationDialog.close());
 els.refresh.addEventListener("click", loadBoard);
-els.enablePush.addEventListener("click", enablePush);
-els.disablePush.addEventListener("click", disablePush);
 els.bellPushToggle.addEventListener("change", async () => {
   const requested = els.bellPushToggle.checked;
   els.bellPushToggle.disabled = true;

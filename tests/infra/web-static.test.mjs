@@ -13,17 +13,16 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   const html = fs.readFileSync("docs/index.html", "utf8");
   assert.match(html, /manifest\.webmanifest/);
   assert.match(html, /apple-touch-icon\.png/);
-  assert.match(html, /Enable push/);
+  assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /id="settings"/);
-  assert.match(html, /styles\.css\?v=3\.2\.0/);
-  assert.match(html, /app\.js\?v=3\.2\.0/);
+  assert.match(html, /styles\.css\?v=3\.3\.0/);
+  assert.match(html, /app\.js\?v=3\.3\.0/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v3-2-0-shell/);
+  assert.match(sw, /ballerwatch-v3-3-0-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -64,7 +63,7 @@ test("Home Screen install card is removed in standalone mode and notifications u
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=3\.2\.0/);
+  assert.match(app, /sw\.js\?v=3\.3\.0/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -110,4 +109,34 @@ test("notification test is local and service-worker driven", () => {
   assert.match(sw, /self\.addEventListener\("message"/);
   assert.match(sw, /BallerWatch test/);
   assert.match(sw, /showNotification/);
+});
+
+
+test("main page keeps push controls inside the bell only and install help in the footer", () => {
+  const html = fs.readFileSync("docs/index.html", "utf8");
+  assert.match(html, /<footer>[\s\S]*id="install-card"[\s\S]*id="version"/);
+  assert.match(html, /id="bell-push-toggle"/);
+  assert.doesNotMatch(html, /id="enable-push"/);
+  assert.doesNotMatch(html, /id="disable-push"/);
+  assert.doesNotMatch(html, /id="settings"/);
+});
+
+test("question box supports slash commands and autosuggestions", () => {
+  const html = fs.readFileSync("docs/index.html", "utf8");
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  assert.match(html, /id="question-suggestions"/);
+  assert.match(html, /aria-autocomplete="list"/);
+  assert.match(html, /type \/ for commands/);
+  assert.match(app, /COMMAND_SUGGESTIONS/);
+  assert.match(app, /QUESTION_SUGGESTIONS/);
+  assert.match(app, /ArrowDown/);
+  assert.match(app, /ArrowUp/);
+  assert.match(app, /activeSuggestionIndex/);
+});
+
+test("app-facing copy does not mention Telegram", () => {
+  const html = fs.readFileSync("docs/index.html", "utf8");
+  const manifest = fs.readFileSync("docs/manifest.webmanifest", "utf8");
+  assert.doesNotMatch(html, /Telegram/i);
+  assert.doesNotMatch(manifest, /Telegram/i);
 });

@@ -383,7 +383,7 @@ export function normalize(
         end = zonedIso(endDate, publishedEnd, TZ);
         if (new Date(end) <= new Date(start)) throw new Error("Invalid published end time");
       } else if (start) {
-        end = instantToZonedIso(new Date(new Date(start).getTime() + 60 * 60 * 1000), TZ);
+        end = instantToZonedIso(new Date(new Date(start).getTime() + 2 * 60 * 60 * 1000), TZ);
       }
 
       const homeScore = eventScore(event, "home");
