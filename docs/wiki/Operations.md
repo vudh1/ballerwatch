@@ -40,6 +40,10 @@ Twelve workflows remain after the 2.7.0 audit:
 
 The old one-time repository-configuration workflow and redundant failover-cache seeding workflow were removed.
 
+## RATS source resilience
+
+The league watcher retries transient RATS failures such as HTTP 429/502/503/504 and network timeouts with bounded exponential backoff. If all retries fail but an already-validated schedule exists, production keeps that last-good schedule and skips Calendar/Telegram changes for that refresh. Cold starts, authentication failures, malformed schemas, and integrity mismatches still fail closed.
+
 ## External schedules
 
 cron-job.org jobs are expected to exist and stay enabled:
