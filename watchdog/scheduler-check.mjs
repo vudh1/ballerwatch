@@ -1,11 +1,11 @@
 /**
- * v2.5.0: bounds recurring scheduler audits to 48 calls/day within the 100/day API quota.
+ * v2.5.0: bounds recurring scheduler audits to 4 calls/day within the 100/day API quota.
  * Cached results (including failures) live inside encrypted watchdog state. Release smoke
  * always checks live; missing, expired or invalid audit records never imply health.
  */
 import { analyzeExternalSchedules, listExternalSchedules } from "../infra/external-schedules.mjs";
 
-export const SCHEDULER_AUDIT_MS = 30 * 60 * 1000;
+export const SCHEDULER_AUDIT_MS = 6 * 60 * 60 * 1000;
 
 export async function checkScheduler(previous, { now = Date.now(), list = listExternalSchedules, repo = process.env.GITHUB_REPOSITORY || "vudh1/ballerwatch" } = {}) {
   const age = now - Date.parse(previous?.checkedAt || "");
