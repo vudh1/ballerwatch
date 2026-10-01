@@ -123,6 +123,179 @@ async function githubFile(env, path, ref = "main") {
   return JSON.parse(text);
 }
 
+function base64Text(value) {
+  const bytes = new TextEncoder().encode(String(value));
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+async function githubStateRecord(env, path) {
+  const response = await fetch(
+    `https://api.github.com/repos/${REPO}/contents/${path}?ref=runtime-state`,
+    {
+      headers: {
+        accept: "application/vnd.github+json",
+        authorization: `Bearer ${env.GITHUB_DISPATCH_TOKEN}`,
+        "user-agent": "ballerwatch-cloudflare-history",
+        "x-github-api-version": "2022-11-28",
+      },
+    },
+  );
+  if (response.status === 404) return { value: null, sha: null };
+  if (!response.ok) throw new Error(`GitHub history fetch failed: ${path} HTTP ${response.status}`);
+  const data = await response.json();
+  const raw = atob(String(data?.content || "").replace(/\n/g, ""));
+  return { value: raw ? JSON.parse(raw) : null, sha: String(data?.sha || "") || null };
+}
+
+async function githubStatePut(env, path, value, sha, message) {
+  const body = {
+    message,
+    branch: "runtime-state",
+    content: base64Text(JSON.stringify(value, null, 2) + "\n"),
+    ...(sha ? { sha } : {}),
+  };
+  const response = await fetch(
+    `https://api.github.com/repos/${REPO}/contents/${path}`,
+    {
+      method: "PUT",
+      headers: {
+        accept: "application/vnd.github+json",
+        authorization: `Bearer ${env.GITHUB_DISPATCH_TOKEN}`,
+        "content-type": "application/json",
+        "user-agent": "ballerwatch-cloudflare-history",
+        "x-github-api-version": "2022-11-28",
+      },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!response.ok) throw new Error(`GitHub history write failed: ${path} HTTP ${response.status}`);
+}
+
+async function compactHistoryWithAi(env, question, reply) {
+  if (!env.GROQ_API_KEY || !(await edgeAiBudgetTake(env))) return null;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 1800);
+  try {
+    const response = await fetch(GROQ_URL, {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${env.GROQ_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        temperature: 0,
+        max_completion_tokens: 180,
+        messages: [
+          {
+            role: "system",
+            content: [
+              "Summarize one BallerWatch Telegram exchange for engineering review.",
+              "Remove names, IDs, tokens, URLs, exact addresses, and personal details.",
+              "Do not quote the user.",
+              "Classify as normal, bug_candidate, feature_candidate, or negative_feedback.",
+              "Return JSON only with keys kind, summary, reason.",
+              "Keep summary and reason each under 180 characters.",
+            ].join(" "),
+          },
+          {
+            role: "user",
+            content: `User: ${cleanText(question,600)}\nBot: ${cleanText(reply,1000)}`,
+          },
+        ],
+      }),
+    });
+    if (!response.ok) return null;
+    const payload = await response.json().catch(() => null);
+    const raw = String(payload?.choices?.[0]?.message?.content || "");
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    const parsed = JSON.parse(match[0]);
+    const kinds = new Set(["normal","bug_candidate","feature_candidate","negative_feedback"]);
+    if (!kinds.has(parsed?.kind)) return null;
+    return {
+      kind: parsed.kind,
+      summary: cleanText(parsed.summary,220),
+      reason: cleanText(parsed.reason,220),
+    };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function recent48Hours(entries) {
+  const cutoff = Date.now() - 48 * 60 * 60 * 1000;
+  return (Array.isArray(entries) ? entries : [])
+    .filter((entry) => Date.parse(String(entry?.createdAt || "")) >= cutoff)
+    .slice(-200);
+}
+
+async function persistFastChatHistory(env, event) {
+  const compact = await compactHistoryWithAi(env, event.question, event.reply);
+  const entry = {
+    createdAt: new Date().toISOString(),
+    source: "cloudflare-fast-path",
+    ...(Number(event.messageId) > 0 ? { messageId: Number(event.messageId) } : {}),
+    kind: compact?.kind || "normal",
+    summary: compact?.summary || `Fast-path ${cleanText(event.intent,60) || "read-only"} question answered.`,
+    reason: compact?.reason || "",
+  };
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const record = await githubStateRecord(env, "state/chat-history.json");
+      const current = record.value ? await decryptState(record.value, env) : null;
+      const payload = {
+        version: 1,
+        entries: recent48Hours([...(current?.entries || []), entry]),
+      };
+      await githubStatePut(
+        env,
+        "state/chat-history.json",
+        await encryptState(payload, env),
+        record.sha,
+        "runtime(listener): append encrypted chat history",
+      );
+      break;
+    } catch (error) {
+      if (attempt === 1) throw error;
+    }
+  }
+
+  if (!["bug_candidate","feature_candidate","negative_feedback"].includes(entry.kind)) return;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const record = await githubStateRecord(env, "state/chat-review.json");
+      const signals = recent48Hours([...(record.value?.signals || []), {
+        createdAt: entry.createdAt,
+        kind: entry.kind,
+        summary: entry.summary,
+        reason: entry.reason,
+      }]);
+      await githubStatePut(
+        env,
+        "state/chat-review.json",
+        {
+          version: 1,
+          retentionHours: 48,
+          generatedAt: new Date().toISOString(),
+          signals,
+        },
+        record.sha,
+        "runtime(listener): update sanitized chat review",
+      );
+      break;
+    } catch (error) {
+      if (attempt === 1) throw error;
+    }
+  }
+}
+
 function runtimeKey(path) {
   if (!RUNTIME_FILE_PATHS.has(path)) throw new Error("Runtime-state path is not allowed.");
   return `file:${path}`;
@@ -672,16 +845,12 @@ async function fastReply(env, message) {
     updatedAt:new Date().toISOString(),
   }, env);
   await rememberFastReplyInRuntime(env, text, reply, sent?.message_id, lastDate);
-  await dispatchWorkflow(env, "listener.yml", {
-    history_event_b64: base64Json({
-      question: text,
-      reply,
-      messageId: Number(sent?.message_id || 0),
-      lastDate,
-      intent,
-    }),
-  }).catch(() => null);
-  return {reply,messageId:Number(sent?.message_id||0),intent};
+  return {
+    reply,
+    messageId:Number(sent?.message_id||0),
+    intent,
+    history:{question:text,reply,messageId:Number(sent?.message_id||0),lastDate,intent},
+  };
 }
 
 async function runtimeLeagueBundle(env) {
@@ -958,7 +1127,16 @@ export default {
 
     try {
       const fast=await fastReply(env,message);
-      if(fast) return new Response("OK-fast", {status:200});
+      if(fast) {
+        ctx.waitUntil(
+          persistFastChatHistory(env, fast.history).catch(() =>
+            dispatchWorkflow(env, "listener.yml", {
+              history_event_b64: base64Json(fast.history),
+            }),
+          ),
+        );
+        return new Response("OK-fast", {status:200});
+      }
       await dispatchGitHub(env,update);
       return new Response("OK-github", {status:200});
     } catch (error) {
