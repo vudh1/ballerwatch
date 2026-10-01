@@ -126,7 +126,7 @@ test("question box supports slash commands and autosuggestions", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   assert.match(html, /id="question-suggestions"/);
   assert.match(html, /aria-autocomplete="list"/);
-  assert.match(html, /type \/ for commands/);
+  assert.match(html, /\/ commands|type <strong>\/<\/strong> for commands/);
   assert.match(app, /COMMAND_SUGGESTIONS/);
   assert.match(app, /QUESTION_COMPLETIONS/);
   assert.match(app, /ArrowDown/);
