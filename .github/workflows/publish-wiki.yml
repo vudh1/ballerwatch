@@ -24,11 +24,15 @@ jobs:
 
       - name: Publish docs/wiki to GitHub Wiki
         env:
-          GH_TOKEN: ${{ github.token }}
+          WIKI_TOKEN: ${{ secrets.WIKI_TOKEN || secrets.REPO_ADMIN_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
-          WIKI_URL="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git"
+          if [ -z "${WIKI_TOKEN:-}" ]; then
+            echo "::notice::Wiki source is current in docs/wiki/. Add a WIKI_TOKEN secret with repository write access to initialize/sync GitHub Wiki."
+            exit 0
+          fi
+          WIKI_URL="https://x-access-token:${WIKI_TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git"
           if ! git clone "$WIKI_URL" /tmp/ballerwatch-wiki; then
             mkdir -p /tmp/ballerwatch-wiki
             git -C /tmp/ballerwatch-wiki init
