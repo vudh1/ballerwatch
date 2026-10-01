@@ -2,6 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   directIntent,
+  issueOwnerToken,
+  normalizeOwnerSettingsInput,
+  verifyOwnerToken,
   validWebSubscription,
   webNextGameDetails,
   webSafeSnapshot,
@@ -127,4 +130,27 @@ test("league next-game details expose a two-hour time window from normalized end
 
   assert.equal(details.kind, "league");
   assert.equal(details.time, "7:30 PM–9:30 PM");
+});
+
+
+test("owner capability tokens are signed and expire-bound", async () => {
+  const env = { TRACKER_STATE_KEY: "test-owner-secret" };
+  const issued = await issueOwnerToken(env);
+  assert.match(issued.token, /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
+  assert.equal(await verifyOwnerToken(env, issued.token), true);
+  assert.equal(await verifyOwnerToken(env, issued.token + "x"), false);
+  assert.equal(await verifyOwnerToken({TRACKER_STATE_KEY: "wrong"}, issued.token), false);
+});
+
+test("owner settings input normalizes and deduplicates teams", () => {
+  const settings = normalizeOwnerSettingsInput({
+    ownerName: "  Alex Smith  ",
+    teams: [" Team Alpha ", "team alpha", "Team Beta"],
+  });
+  assert.equal(settings.ownerName, "Alex Smith");
+  assert.deepEqual(settings.teams, ["Team Alpha", "Team Beta"]);
+  assert.throws(
+    () => normalizeOwnerSettingsInput({ownerName: "Alex", teams: []}),
+    /1 and 20/,
+  );
 });
