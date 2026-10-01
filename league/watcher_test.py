@@ -65,6 +65,10 @@ class ScheduleTests(unittest.TestCase):
     def test_duplicate_rejected(self):
         self.aggregate['events'] *= 2
         with self.assertRaises(ValueError): normalize('fall-2026', self.aggregate, self.exports)
+    def test_calendar_tracking_key_is_versioned(self):
+        game = normalize('fall-2026', self.aggregate, self.exports)['teams'][0]['matches'][0]
+        self.assertTrue(game['key'].startswith('v2:'))
+
     def test_metadata_changes_fingerprint(self):
         before = normalize('fall-2026', self.aggregate, self.exports)['teams'][0]['matches'][0]
         self.aggregate['events'][0]['home_color'] = 'Blue'
