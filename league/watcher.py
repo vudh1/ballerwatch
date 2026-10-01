@@ -1,7 +1,8 @@
-"""Fetch and validate Seattle RATS schedules while preserving the last-good snapshot on failure.
+"""Fetch and validate Seattle RATS schedules with bounded transient recovery.
 
-v2.5.0 adds a smoke-test-only escape hatch for transient source outages; production behavior
-remains fail-closed so reconciliation never accepts unverified league data.
+The watcher retries only transient source failures and may retain an already-validated
+last-good schedule when RATS is temporarily unavailable. Cold starts, auth/configuration
+errors, and schema/integrity failures remain fail-closed.
 """
 import hashlib
 import json
