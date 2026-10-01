@@ -25,3 +25,10 @@ league/score-changes.json
 
 # Generated at deploy time; contains the private Cloudflare KV binding ID.
 infra/telegram-webhook/wrangler.generated.jsonc
+
+# BallerWatch runtime state lives only in private Cloudflare KV.
+pickup/state/
+league/state/
+state/
+requests/private.json
+requests/unknown.json
