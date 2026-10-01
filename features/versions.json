@@ -1,7 +1,19 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "2.5.1",
+  "currentVersion": "2.5.2",
   "releases": [
+    {
+      "version": "2.5.2",
+      "date": "2026-10-01",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Webhook-only Telegram listener hardening",
+      "changes": [
+        "Removed the GitHub listener's legacy Telegram getUpdates fallback so empty workflow dispatches no-op instead of conflicting with the active Cloudflare webhook.",
+        "Processed Cloudflare fast-path history-only dispatches directly before Telegram update handling, fixing failed history persistence runs after the runtime purge.",
+        "Made primary cron-job.org scheduler synchronization explicitly disable any legacy Telegram listener polling schedule whenever the management API is available."
+      ]
+    },
     {
       "version": "2.5.1",
       "date": "2026-10-01",
