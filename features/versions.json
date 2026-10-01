@@ -1,7 +1,24 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "3.2.0",
+  "currentVersion": "3.3.0",
   "releases": [
+    {
+      "version": "3.3.0",
+      "date": "2026-10-01",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Command suggestions and two-hour league windows",
+      "telegramAnnouncement": "BallerWatch web Q&A now supports slash commands and autosuggestions, the app layout is cleaner, and league games without a published end time use a two-hour window.",
+      "changes": [
+        "Removed the standalone main-page Push notifications card; enable/disable now lives only in the notification bell slider.",
+        "Moved Home Screen installation help to a compact footer section for browser visits while keeping it hidden in the installed Home Screen app.",
+        "Added a slash-command dropdown and natural-language autosuggestions to the one-question/one-answer box, with tap and keyboard selection.",
+        "Added read-only web shortcuts for /today, /next, /teams, /count [day], /field [day], /time [day], /version, and /help.",
+        "Removed Telegram references from app-facing HTML and manifest description.",
+        "Changed the RATS fallback duration from one hour to two hours when the source does not publish an end time, and updated Calendar explanatory text and tests.",
+        "Bumped the versioned PWA shell so installed devices refresh to the new interface."
+      ]
+    },
     {
       "version": "3.2.0",
       "date": "2026-10-01",
