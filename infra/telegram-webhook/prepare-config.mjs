@@ -6,6 +6,7 @@ if(!token||!account) throw new Error("Cloudflare credentials are required");
 
 const API="https://api.cloudflare.com/client/v4";
 const title="ballerwatch-runtime";
+const suppliedNamespaceId=String(process.env.CLOUDFLARE_KV_NAMESPACE_ID||"").trim();
 
 async function cf(path,{method="GET",body}={}) {
   const r=await fetch(API+path,{
@@ -18,13 +19,25 @@ async function cf(path,{method="GET",body}={}) {
   return data.result;
 }
 
-const namespaces=await cf(`/accounts/${account}/storage/kv/namespaces?per_page=1000`);
-let ns=(Array.isArray(namespaces)?namespaces:[]).find(x=>x.title===title);
-if(!ns) {
-  ns=await cf(`/accounts/${account}/storage/kv/namespaces`,{method:"POST",body:{title}});
-  console.log("Created private KV namespace for BallerWatch runtime.");
+let ns;
+if (suppliedNamespaceId) {
+  ns={id:suppliedNamespaceId,title};
+  console.log("Using CLOUDFLARE_KV_NAMESPACE_ID supplied through GitHub secrets.");
 } else {
-  console.log("Using existing BallerWatch runtime KV namespace.");
+  try {
+    const namespaces=await cf(`/accounts/${account}/storage/kv/namespaces?per_page=1000`);
+    ns=(Array.isArray(namespaces)?namespaces:[]).find(x=>x.title===title);
+    if(!ns) {
+      ns=await cf(`/accounts/${account}/storage/kv/namespaces`,{method:"POST",body:{title}});
+      console.log("Created private KV namespace for BallerWatch runtime.");
+    } else {
+      console.log("Using existing BallerWatch runtime KV namespace.");
+    }
+  } catch (error) {
+    throw new Error(
+      `${error.message}. Grant the Cloudflare token Workers KV Storage Write/Admin access, or create a KV namespace manually and save its ID as CLOUDFLARE_KV_NAMESPACE_ID.`
+    );
+  }
 }
 
 if(!ns?.id) throw new Error("KV namespace id was not returned");
