@@ -8,13 +8,17 @@ The web app is an alternate read-only surface for BallerWatch and a notification
 
 ## What the web app does
 
-- shows a recent notification board for pickup, RATS schedule, and version updates;
+- shows recent pickup, RATS schedule, and version updates from a top-right notification bell instead of occupying the main screen;
 - answers one read-only question at a time using the same deterministic/AI intent path as the Telegram fast path;
 - can be added to the iPhone Home Screen and opened in standalone app mode;
 - can subscribe the installed app to standards-based Web Push notifications;
 - keeps state-changing commands on Telegram in v3.0.0.
 
 There is intentionally no chat history in the web UI. Each new question replaces the previous answer.
+
+## Installed-app navigation
+
+When BallerWatch is opened from the iPhone Home Screen, the install card is removed entirely. The main screen stays focused on Q&A, push controls live in **Settings** at the bottom, and recent notifications open from the bell button in the top-right corner as a modal panel. Browser visits still show the Home Screen installation help.
 
 ## iPhone installation
 
@@ -24,7 +28,7 @@ On iPhone or iPad:
 2. Tap **Share**.
 3. Choose **Add to Home Screen**.
 4. Open BallerWatch from the Home Screen icon.
-5. Tap **Enable push** inside the installed app and approve notifications.
+5. Scroll to **Settings** at the bottom, tap **Enable push**, and approve notifications.
 
 Web Push for Home Screen web apps requires iOS/iPadOS 16.4 or newer. Notification permission must be requested in response to a user action, so the app never prompts automatically.
 

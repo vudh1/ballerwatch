@@ -14,10 +14,14 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /manifest\.webmanifest/);
   assert.match(html, /apple-touch-icon\.png/);
   assert.match(html, /Enable push/);
+  assert.match(html, /id="notification-bell"/);
+  assert.match(html, /id="notification-dialog"/);
+  assert.match(html, /id="settings"/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
+  assert.match(sw, /ballerwatch-v3-1-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -43,4 +47,13 @@ test("GitHub Pages workflow avoids admin-level self-enable permissions", () => {
   assert.doesNotMatch(workflow, /enablement:\s*true/);
   assert.match(workflow, /Check GitHub Pages activation/);
   assert.match(workflow, /Settings → Pages → Build and deployment → Source → GitHub Actions/);
+});
+
+
+test("Home Screen install card is removed in standalone mode and notifications use the bell panel", () => {
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  const css = fs.readFileSync("docs/styles.css", "utf8");
+  assert.match(app, /els\.installCard\?\.remove\(\)/);
+  assert.match(app, /notificationDialog\.showModal\(\)/);
+  assert.match(css, /\[hidden\]\s*\{\s*display:\s*none\s*!important;/);
 });

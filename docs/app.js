@@ -1,11 +1,14 @@
 const API = "https://ballerwatch-telegram.vudhone.workers.dev";
-const APP_URL = "https://vudh1.github.io/ballerwatch/";
 
 const els = {
   system: document.querySelector("#system-status"),
   version: document.querySelector("#version"),
   board: document.querySelector("#board"),
   refresh: document.querySelector("#refresh-board"),
+  notificationBell: document.querySelector("#notification-bell"),
+  notificationBadge: document.querySelector("#notification-badge"),
+  notificationDialog: document.querySelector("#notification-dialog"),
+  closeNotifications: document.querySelector("#close-notifications"),
   form: document.querySelector("#question-form"),
   question: document.querySelector("#question"),
   answer: document.querySelector("#answer"),
@@ -27,6 +30,12 @@ function standalone() {
 
 function ios() {
   return /iPad|iPhone|iPod/.test(navigator.userAgent);
+}
+
+function applyInstallState() {
+  if (standalone()) {
+    els.installCard?.remove();
+  }
 }
 
 function urlBase64ToUint8Array(value) {
@@ -84,8 +93,19 @@ async function loadConfig() {
   }
 }
 
+function updateNotificationBadge(count) {
+  if (!count) {
+    els.notificationBadge.hidden = true;
+    return;
+  }
+  els.notificationBadge.textContent = count > 9 ? "9+" : String(count);
+  els.notificationBadge.hidden = false;
+}
+
 function renderBoard(entries) {
   els.board.replaceChildren();
+  updateNotificationBadge(entries.length);
+
   if (!entries.length) {
     const empty = document.createElement("p");
     empty.className = "muted";
@@ -123,10 +143,19 @@ async function loadBoard() {
     const payload = await api("/web/board?limit=30");
     renderBoard(payload.entries || []);
   } catch (error) {
-    els.board.innerHTML = `<p class="muted">${error.message}</p>`;
+    els.board.replaceChildren();
+    const message = document.createElement("p");
+    message.className = "muted";
+    message.textContent = error.message;
+    els.board.append(message);
   } finally {
     els.refresh.disabled = false;
   }
+}
+
+function openNotifications() {
+  els.notificationDialog.showModal();
+  void loadBoard();
 }
 
 async function currentSubscription() {
@@ -141,12 +170,14 @@ async function updatePushStatus() {
     els.pushHint.textContent = "This browser does not expose Web Push.";
     return;
   }
+
   let subscription = await currentSubscription().catch(() => null);
   if (subscription && config?.push?.applicationServerKey && !subscriptionMatchesConfig(subscription)) {
     await subscription.unsubscribe().catch(() => false);
     subscription = null;
     els.pushHint.textContent = "Push identity was reset. Tap Enable push to subscribe again.";
   }
+
   if (subscription) {
     els.pushStatus.textContent = "Enabled";
     els.pushStatus.style.color = "#86efac";
@@ -245,18 +276,17 @@ els.form.addEventListener("submit", async (event) => {
   }
 });
 
+els.notificationBell.addEventListener("click", openNotifications);
+els.closeNotifications.addEventListener("click", () => els.notificationDialog.close());
 els.refresh.addEventListener("click", loadBoard);
 els.enablePush.addEventListener("click", enablePush);
 els.disablePush.addEventListener("click", disablePush);
-els.installHelp.addEventListener("click", () => els.installDialog.showModal());
+els.installHelp?.addEventListener("click", () => els.installDialog.showModal());
 
 window.addEventListener("online", () => { els.system.textContent = "Online"; });
 window.addEventListener("offline", () => { els.system.textContent = "Offline"; });
 
+applyInstallState();
 await registerServiceWorker().catch(() => null);
 await Promise.all([loadConfig(), loadBoard()]);
 await updatePushStatus();
-
-if (standalone()) {
-  els.installCard.hidden = true;
-}
