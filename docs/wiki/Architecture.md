@@ -1,23 +1,29 @@
 # Architecture
 
+BallerWatch 2.4 separates the fast Telegram path from durable watcher state.
+
 ## Request path
 
-Telegram sends webhook updates to the Cloudflare Worker. Read-only questions are answered at the edge when possible. State-changing or unsupported requests are dispatched to GitHub Actions.
+Telegram sends webhook updates to the Cloudflare Worker. Common read-only questions are answered there from a short-lived Workers Cache backed by encrypted files on the GitHub `runtime-state` branch.
 
-## Scheduled path
+State-changing or unsupported requests are dispatched to the GitHub listener workflow.
 
-Cloudflare Cron Triggers perform lightweight pickup and RATS change detection. cron-job.org is an independent external failover scheduler. Its jobs remain enabled, but fallback-dispatched pickup/league workflows first check Cloudflare health and skip expensive source work when edge heartbeats are fresh.
+## Scheduler path
 
-## State
+cron-job.org is the primary scheduler:
 
-Cloudflare KV is the primary runtime datastore. GitHub Actions can materialize runtime state temporarily and clean it before completion. Encrypted GitHub Actions cache backups provide a last-known-state fallback if the Worker/KV API path is unavailable.
+- pickup every 2 minutes;
+- RATS league every 5 minutes;
+- watchdog every 10 minutes.
 
-## Reconciliation
+The scheduled jobs dispatch GitHub Actions directly. Cloudflare Cron Triggers are disabled.
 
-GitHub Actions owns heavier work:
-- pickup notification reconciliation;
-- full RATS schedule validation;
-- score-change handling;
-- Google Calendar writes;
-- deep watchdog checks;
-- deployment and CI.
+## Durable state
+
+The `runtime-state` branch is the durable runtime store. Private state is AES-GCM encrypted before it is written. Workflows materialize state temporarily, persist only changed files, and clean local runtime paths afterward.
+
+GitHub Actions cache keeps encrypted last-known backups for recovery.
+
+## Chat review
+
+Telegram conversations may be retained for up to 48 hours as Groq-condensed encrypted records. Only sanitized engineering signals are readable by the scheduled maintenance task.
