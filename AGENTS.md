@@ -7,12 +7,12 @@ Always read the current `README.md`, this file, and `features/versions.json` fro
 - `main` contains source code, static configuration, documentation, and release history. Do not commit generated runtime state to `main`.
 - Durable runtime state lives on the dedicated `runtime-state` branch so frequent state updates do not pollute release history.
 - Private runtime files on `runtime-state` must remain AES-GCM encrypted with the existing state-encryption boundary. Never write plaintext rosters, private settings, Telegram text, Calendar IDs, or secrets there.
-- `state/chat-history.json` retains only Groq-condensed conversation records for up to 48 hours and is encrypted.
+- `state/chat-history.json` retains only Groq-condensed owner conversation records for up to 48 hours and is encrypted. Owner-authenticated PWA Q&A and private bot Q&A share this review pipeline; anonymous public-web questions are not retained.
 - `state/chat-review.json` is the only readable chat-derived review artifact. It may contain only privacy-minimized engineering signals: timestamp, `bug_candidate|feature_candidate|negative_feedback`, short sanitized summary, and short sanitized reason. Never include names, IDs, tokens, URLs, addresses, raw questions, raw replies, or quotes.
 - Explicit `/feature <request>` remains a deliberate feature-request path. Ordinary unanswered questions and thumbs-down feedback belong in the 48-hour chat review flow instead of automatically becoming feature requests.
 - Cloudflare Workers hosts the Telegram webhook plus the read-only Telegram/PWA API. **Workers KV is not part of the production runtime and Cloudflare Cron Triggers must stay disabled.**
 - The fast path reads encrypted state from the `runtime-state` branch and uses the Workers Cache API only as a short-lived best-effort cache.
-- The GitHub Pages PWA at `vudh1.github.io/ballerwatch` is read-only in v3.x. State-changing commands remain on Telegram.
+- The GitHub Pages PWA keeps anonymous/public access read-only. Starting in v4, a device may be owner-paired with a short-lived one-time code; only an authenticated paired device may read/change the limited owner settings surface (RSVP name and monitored league teams). Arbitrary state-changing commands remain outside the public web API.
 - Web Push VAPID keys and subscriptions live only in encrypted `state/web-push.json` on `runtime-state`; never commit a VAPID private key or push endpoint to `main`.
 - Web notification-board entries exposed to the public Pages origin must be public-safe: never include RSVP names, waitlist names, owner-specific status, tokens, IDs, or private settings.
 - cron-job.org is the primary recurring scheduler and dispatches the GitHub pickup, league, and watchdog workflows at their 2/5/10-minute cadences.
