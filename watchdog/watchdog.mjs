@@ -158,12 +158,12 @@ async function externalCronProblems() {
     });
     return messages.map((message, index) => ({
       key: `external-cron:${index}:${message}`,
-      message: `cron-job.org fallback: ${message}`,
+      message: `cron-job.org scheduler: ${message}`,
     }));
   } catch (error) {
     return [{
       key: "external-cron:unreachable",
-      message: `cron-job.org fallback: unable to verify jobs (${error.message})`,
+      message: `cron-job.org scheduler: unable to verify jobs (${error.message})`,
     }];
   }
 }
