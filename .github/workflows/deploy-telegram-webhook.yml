@@ -101,11 +101,34 @@ jobs:
           echo
           echo "Telegram webhook: $WEBHOOK_URL"
 
-          echo "Running notification-silent edge shadow refresh..."
-          curl --fail --silent --show-error \
-            -X POST "https://ballerwatch-telegram.$SUBDOMAIN.workers.dev/admin/shadow-refresh?target=all" \
+          echo "Running notification-silent pickup shadow refresh..."
+          curl --max-time 45 --fail-with-body --silent --show-error \
+            -X POST "https://ballerwatch-telegram.$SUBDOMAIN.workers.dev/admin/shadow-refresh?target=pickup" \
             -H "x-ballerwatch-admin: $SECRET"
           echo
+
+          echo "Running notification-silent RATS shadow refresh..."
+          curl --max-time 45 --fail-with-body --silent --show-error \
+            -X POST "https://ballerwatch-telegram.$SUBDOMAIN.workers.dev/admin/shadow-refresh?target=league" \
+            -H "x-ballerwatch-admin: $SECRET"
+          echo
+
+          echo "Priming private Cloudflare KV state..."
+          curl --max-time 60 --fail-with-body --silent --show-error \
+            -X POST "https://ballerwatch-telegram.$SUBDOMAIN.workers.dev/admin/shadow-refresh?target=all&write=1" \
+            -H "x-ballerwatch-admin: $SECRET"
+          echo
+
+      - name: Enable verified Cloudflare schedules
+        working-directory: infra/telegram-webhook
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_KV_NAMESPACE_ID: ${{ secrets.CLOUDFLARE_KV_NAMESPACE_ID }}
+          EDGE_CRONS_ENABLED: "true"
+        run: |
+          node prepare-config.mjs
+          npx --yes wrangler@4 deploy --config wrangler.generated.jsonc
 
       - name: Disable legacy external schedules after edge verification
         env:
