@@ -1,0 +1,92 @@
+name: Configure repository
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  configure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    env:
+      GH_TOKEN: ${{ secrets.REPO_ADMIN_TOKEN }}
+    steps:
+      - name: Require repository admin token
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::Add REPO_ADMIN_TOKEN as a repository secret. It needs Administration: read/write for this repository."
+            exit 1
+          fi
+
+      - name: Set repository description
+        run: |
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY" \
+            -f description="Privacy-first soccer automation for pickup RSVP and Seattle RATS schedules, with Telegram alerts, Google Calendar sync, and self-healing GitHub Actions."
+
+      - name: Require pull requests for main
+        run: |
+          cat > /tmp/ruleset.json <<'JSON'
+          {
+            "name": "Protect main via pull requests",
+            "target": "branch",
+            "enforcement": "active",
+            "bypass_actors": [
+              {
+                "actor_id": 15368,
+                "actor_type": "Integration",
+                "bypass_mode": "always"
+              }
+            ],
+            "conditions": {
+              "ref_name": {
+                "include": ["~DEFAULT_BRANCH"],
+                "exclude": []
+              }
+            },
+            "rules": [
+              {
+                "type": "pull_request",
+                "parameters": {
+                  "allowed_merge_methods": ["squash", "merge", "rebase"],
+                  "dismiss_stale_reviews_on_push": false,
+                  "require_code_owner_review": false,
+                  "require_last_push_approval": false,
+                  "required_approving_review_count": 0,
+                  "required_review_thread_resolution": true
+                }
+              },
+              {
+                "type": "required_status_checks",
+                "parameters": {
+                  "do_not_enforce_on_create": true,
+                  "required_status_checks": [
+                    {
+                      "context": "validate",
+                      "integration_id": 15368
+                    }
+                  ],
+                  "strict_required_status_checks_policy": true
+                }
+              },
+              {
+                "type": "non_fast_forward"
+              }
+            ]
+          }
+          JSON
+
+          RULESET_ID="$(gh api "repos/$GITHUB_REPOSITORY/rulesets" --jq '.[] | select(.name == "Protect main via pull requests") | .id' | head -n1)"
+          if [ -n "$RULESET_ID" ]; then
+            gh api --method PUT "repos/$GITHUB_REPOSITORY/rulesets/$RULESET_ID" --input /tmp/ruleset.json >/dev/null
+            echo "Updated main protection ruleset $RULESET_ID."
+          else
+            gh api --method POST "repos/$GITHUB_REPOSITORY/rulesets" --input /tmp/ruleset.json >/dev/null
+            echo "Created main protection ruleset."
+          fi
+
+      - name: Verify repository policy
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY" --jq '{description, default_branch}'
+          gh api "repos/$GITHUB_REPOSITORY/rulesets" --jq '.[] | select(.name == "Protect main via pull requests") | {id,name,enforcement}'
