@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "2.5.3",
+  "currentVersion": "2.5.4",
   "releases": [
+    {
+      "version": "2.5.4",
+      "date": "2026-10-01",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Single-snapshot runtime-state retention",
+      "changes": [
+        "Changed runtime-state persistence so each successful write replaces branch history with one parentless snapshot commit containing only the current encrypted runtime files.",
+        "Made PURGE compact runtime-state to the same one-commit form while preserving optimistic concurrency with the existing retry behavior.",
+        "Added regression coverage proving both a purge and a subsequent state rebuild leave runtime-state with exactly one root commit.",
+        "Added automatic cleanup of stale release branches that no longer have an open pull request."
+      ]
+    },
     {
       "version": "2.5.3",
       "date": "2026-10-01",

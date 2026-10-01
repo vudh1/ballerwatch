@@ -3,6 +3,7 @@
  *
  * Documentation baseline: v2.4.0. The runtime-state branch is durable storage; main stays release-only.
  * v2.5.0: missing files on a readable branch are authoritative after purge, never cache misses.
+ * v2.5.4: each write replaces branch history with one root snapshot commit, preserving only current encrypted state.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -110,11 +111,33 @@ function removeWorktree(directory) {
   try { fs.rmSync(directory, { recursive: true, force: true }); } catch {}
 }
 
+export function snapshotPushArgs(branch, expectedHead, commit) {
+  return [
+    "push",
+    "--quiet",
+    `--force-with-lease=refs/heads/${branch}:${expectedHead}`,
+    "origin",
+    `${commit}:refs/heads/${branch}`,
+  ];
+}
+
+function createRootSnapshotCommit(directory, message) {
+  const tree = git(["-C", directory, "write-tree"]).trim();
+  return git(["-C", directory, "commit-tree", tree, "-m", message]).trim();
+}
+
+function pushRootSnapshot(directory, expectedHead, message) {
+  const commit = createRootSnapshotCommit(directory, message);
+  git(["-C", directory, ...snapshotPushArgs(STATE_BRANCH, expectedHead, commit)]);
+  return commit;
+}
+
 function pushChangedFiles(scope, changed) {
   const directory = path.join(".runtime", `state-worktree-${scope}`);
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     removeWorktree(directory);
     fetchStateBranch();
+    const expectedHead = git(["rev-parse", "FETCH_HEAD"]).trim();
     git(["worktree", "add", "--quiet", "--detach", directory, "FETCH_HEAD"]);
     try {
       git(["-C", directory, "config", "user.name", "BallerWatch Runtime"]);
@@ -133,10 +156,11 @@ function pushChangedFiles(scope, changed) {
         return 0;
       } catch {}
 
-      git(["-C", directory, "commit", "--quiet", "-m", `runtime(${scope}): update encrypted state`]);
       try {
-        git(["-C", directory, "push", "--quiet", "origin", `HEAD:${STATE_BRANCH}`]);
-        console.log(`Pushed ${changed.length} changed ${scope} runtime file(s) to ${STATE_BRANCH}.`);
+        pushRootSnapshot(directory, expectedHead, `runtime(${scope}): current encrypted state`);
+        console.log(
+          `Pushed ${changed.length} changed ${scope} runtime file(s) and compacted ${STATE_BRANCH} to one snapshot commit.`,
+        );
         return changed.length;
       } catch (error) {
         if (attempt === 3) throw error;
@@ -167,32 +191,36 @@ export async function pushRuntimeState(scope) {
 
 export function purgeRuntimeState() {
   const directory = path.join(".runtime", "state-worktree-purge");
-  removeWorktree(directory);
-  fetchStateBranch();
-  git(["worktree", "add", "--quiet", "--detach", directory, "FETCH_HEAD"]);
-  try {
-    git(["-C", directory, "config", "user.name", "BallerWatch Runtime"]);
-    git(["-C", directory, "config", "user.email", "actions@users.noreply.github.com"]);
-    let removed = 0;
-    for (const file of ALL_RUNTIME_FILE_PATHS) {
-      const target = path.join(directory, file);
-      if (!fs.existsSync(target)) continue;
-      fs.rmSync(target, { force: true });
-      removed += 1;
-    }
-    git(["-C", directory, "add", "-A", "--"]);
-    try {
-      git(["-C", directory, "diff", "--cached", "--quiet"]);
-      console.log("Runtime-state branch is already empty.");
-      return 0;
-    } catch {}
-    git(["-C", directory, "commit", "--quiet", "-m", "runtime: purge generated state"]);
-    git(["-C", directory, "push", "--quiet", "origin", `HEAD:${STATE_BRANCH}`]);
-    console.log(`Purged ${removed} runtime file(s) from ${STATE_BRANCH}.`);
-    return removed;
-  } finally {
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
     removeWorktree(directory);
+    fetchStateBranch();
+    const expectedHead = git(["rev-parse", "FETCH_HEAD"]).trim();
+    git(["worktree", "add", "--quiet", "--detach", directory, "FETCH_HEAD"]);
+    try {
+      git(["-C", directory, "config", "user.name", "BallerWatch Runtime"]);
+      git(["-C", directory, "config", "user.email", "actions@users.noreply.github.com"]);
+      let removed = 0;
+      for (const file of ALL_RUNTIME_FILE_PATHS) {
+        const target = path.join(directory, file);
+        if (!fs.existsSync(target)) continue;
+        fs.rmSync(target, { force: true });
+        removed += 1;
+      }
+      git(["-C", directory, "add", "-A", "--"]);
+      try {
+        pushRootSnapshot(directory, expectedHead, "runtime: purged factory-reset snapshot");
+        console.log(
+          `Purged ${removed} runtime file(s) and compacted ${STATE_BRANCH} to one root commit.`,
+        );
+        return removed;
+      } catch (error) {
+        if (attempt === 3) throw error;
+      }
+    } finally {
+      removeWorktree(directory);
+    }
   }
+  return 0;
 }
 
 export function cleanRuntimeState(scope) {
