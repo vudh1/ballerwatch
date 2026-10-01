@@ -1,7 +1,7 @@
 import { recordUnknownQuestion, refreshPublicRequests } from "../shared/feature-requests.mjs";
 import { answerUnknownWithAi } from "../shared/ai-fallback.mjs";
 import fs from "node:fs";
-import { getTelegramUpdates, isOwnerChat, sendTelegram } from "../shared/telegram.mjs";
+import { getTelegramUpdates, isOwnerChat, sendTelegram, sendTyping } from "../shared/telegram.mjs";
 import { loadBotState, saveBotState } from "../shared/bot-state.mjs";
 import { decryptState } from "../shared/state-crypto.mjs";
 import { ensureEncryptedLeagueTeams, loadLeagueTeams, normalizeLeagueTeamName, saveLeagueTeams } from "../shared/league-teams.mjs";
@@ -1207,6 +1207,7 @@ async function main() {
     const message = update?.message;
     if (!message || !isOwnerChat(message.chat?.id)) continue;
 
+    void sendTyping();
     const result = await handleMessage(message.text, settings);
     settings = result.settings;
 
