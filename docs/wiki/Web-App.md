@@ -81,7 +81,7 @@ The Q&A endpoint strips private pickup roster/owner state before answering. Stat
 
 The **Deploy GitHub Pages app** workflow publishes the `docs/` directory.
 
-The workflow attempts to enable GitHub Pages automatically using the existing repository automation PAT and configures Actions-based deployment. If the token ever loses the required Pages/repository permission, the manual fallback is **Settings → Pages → Build and deployment → Source → GitHub Actions**, then rerun the workflow.
+GitHub Pages requires a one-time repository-admin activation. Open **Settings → Pages → Build and deployment → Source → GitHub Actions**, then run **Deploy GitHub Pages app**. After that activation, the workflow uses the normal workflow-scoped `GITHUB_TOKEN` with `pages: write`; BallerWatch does not grant an automation PAT repository Administration permission merely to self-enable Pages. If Pages is not activated yet, the workflow exits successfully with an activation notice instead of failing the release.
 
 A full BallerWatch PURGE clears device subscriptions and notification-board history, then immediately generates a fresh empty encrypted Web Push identity. An installed app detects a changed VAPID application key and asks the user to enable push again rather than silently keeping a stale subscription.
 
