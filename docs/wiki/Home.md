@@ -1,6 +1,6 @@
 # BallerWatch Wiki
 
-BallerWatch is a privacy-first soccer automation system that watches pickup RSVP data and Seattle RATS schedules, sends Telegram and Web Push updates, synchronizes Google Calendar, and uses Cloudflare as its fast read-only runtime.
+BallerWatch is a privacy-first soccer automation system that watches pickup RSVP data and Seattle RATS schedules, sends Telegram and Web Push updates, synchronizes Google Calendar, and uses Cloudflare as its fast public-safe runtime with an owner-paired settings boundary.
 
 Start here:
 
