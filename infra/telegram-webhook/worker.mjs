@@ -1,6 +1,6 @@
 import {
   fetchPickupSnapshot,
-  fetchLeagueSnapshot,
+  fetchLeagueSignal,
   fingerprint,
   kvJsonGet,
   kvJsonPut,
@@ -525,14 +525,29 @@ async function fastReply(env, message) {
   return {reply,messageId:Number(sent?.message_id||0),intent};
 }
 
-async function githubLeagueTeams(env) {
+async function githubLeagueBundle(env) {
   try {
-    const encrypted=await githubFile(env,"league/state/teams.json");
-    const payload=await decryptState(encrypted,env);
-    if(payload && Array.isArray(payload.teams) && payload.teams.length) return payload.teams.map(cleanText).filter(Boolean);
+    const [teamsEncrypted,scheduleEncrypted,todayEncrypted]=await Promise.all([
+      githubFile(env,"league/state/teams.json"),
+      githubFile(env,"league/state/schedule.json"),
+      githubFile(env,"league/state/today.json"),
+    ]);
+    const [teamsPayload,schedule,today]=await Promise.all([
+      decryptState(teamsEncrypted,env),
+      decryptState(scheduleEncrypted,env),
+      decryptState(todayEncrypted,env),
+    ]);
+    const teams=Array.isArray(teamsPayload?.teams)
+      ? teamsPayload.teams.map(cleanText).filter(Boolean)
+      : [];
+    if(teams.length && schedule) return {teams,schedule,today:today||{games:[]}};
   } catch {}
   const snap=await loadSnapshot(env).catch(()=>null);
-  return Array.isArray(snap?.teams) ? snap.teams : [];
+  return {
+    teams:Array.isArray(snap?.teams)?snap.teams:[],
+    schedule:snap?.league||null,
+    today:snap?.today||null,
+  };
 }
 
 function ageMinutes(value) {
@@ -575,26 +590,43 @@ async function refreshPickupEdge(env,{dispatch=true,write=true}={}) {
 }
 
 async function refreshLeagueEdge(env,{dispatch=true,write=true}={}) {
-  const teams=await githubLeagueTeams(env);
+  const bundle=await githubLeagueBundle(env);
+  const teams=bundle.teams;
   if(!teams.length) throw new Error("No monitored league teams available");
-  const previous=await kvJsonGet(env,"snapshot:league");
-  const league=await fetchLeagueSnapshot(teams,previous?.season||previous?.seasonId||"");
-  const fp=await fingerprint({teams:league.teams,season:league.season});
+  const seasonId=String(bundle.schedule?.seasonId || bundle.schedule?.season || "").trim();
+  if(!seasonId || !/^(winter|spring|summer|fall)-\d{4}$/i.test(seasonId)) {
+    throw new Error("Current RATS season id is unavailable");
+  }
+
+  const signal=await fetchLeagueSignal(teams,seasonId);
+  const fp=await fingerprint(signal);
   const old=await kvTextGet(env,"fingerprint:league");
   const changed=old!==fp;
+
   if(write) {
-    if(changed || !previous) {
-      await Promise.all([
-        kvJsonPut(env,"snapshot:league",league),
-        kvJsonPut(env,"snapshot:today",league.today),
-        kvJsonPut(env,"snapshot:teams",teams),
-        kvTextPut(env,"fingerprint:league",fp),
-      ]);
+    const previous=await kvJsonGet(env,"snapshot:league");
+    const githubFingerprint=bundle.schedule ? await fingerprint(bundle.schedule) : "";
+    const cachedFingerprint=previous ? await fingerprint(previous) : "";
+    const writes=[
+      kvTextPut(env,"fingerprint:league",fp),
+      kvJsonPut(env,"snapshot:teams",teams),
+    ];
+    if(bundle.schedule && githubFingerprint!==cachedFingerprint) {
+      writes.push(kvJsonPut(env,"snapshot:league",bundle.schedule));
+      writes.push(kvJsonPut(env,"snapshot:today",bundle.today||{games:[]}));
     }
+    await Promise.all(writes);
     await heartbeat(env,"league",changed);
   }
+
   if(changed && dispatch) await dispatchWorkflow(env,"league.yml");
-  return {ok:true,changed,teamCount:teams.length,matchCount:league.teams.reduce((n,t)=>n+(t.matches?.length||0),0)};
+  return {
+    ok:true,
+    changed,
+    seasonId,
+    teamCount:teams.length,
+    eventCount:signal.events.length,
+  };
 }
 
 async function refreshVersionEdge(env) {
@@ -656,10 +688,18 @@ export default {
       const secret=request.headers.get("x-ballerwatch-admin")||"";
       if(!secret || secret!==env.TELEGRAM_WEBHOOK_SECRET) return new Response("Unauthorized",{status:401});
       const target=url.searchParams.get("target")||"all";
+      const write=url.searchParams.get("write")==="1";
       const out={};
-      if(target==="all"||target==="pickup") out.pickup=await refreshPickupEdge(env,{dispatch:false,write:false});
-      if(target==="all"||target==="league") out.league=await refreshLeagueEdge(env,{dispatch:false,write:false});
-      return Response.json({ok:true,...out});
+      let ok=true;
+      if(target==="all"||target==="pickup") {
+        try { out.pickup=await refreshPickupEdge(env,{dispatch:false,write}); }
+        catch(error) { ok=false; out.pickup={ok:false,error:cleanText(error?.message||"pickup refresh failed",200)}; }
+      }
+      if(target==="all"||target==="league") {
+        try { out.league=await refreshLeagueEdge(env,{dispatch:false,write}); }
+        catch(error) { ok=false; out.league={ok:false,error:cleanText(error?.message||"league refresh failed",200)}; }
+      }
+      return Response.json({ok,...out},{status:ok?200:500});
     }
     if (request.method !== "POST" || url.pathname !== "/telegram") {
       return new Response("Not found", { status: 404 });
