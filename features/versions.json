@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "1.6.0",
+  "currentVersion": "2.0.0",
   "releases": [
+    {
+      "version": "2.0.0",
+      "date": "2026-10-01",
+      "type": "major",
+      "source": "user-requested",
+      "title": "Cloudflare-first runtime",
+      "changes": [
+        "Cut over recurring pickup, RATS and health checks from cron-job.org/GitHub Actions polling to Cloudflare Cron Triggers with private KV hot state.",
+        "Common Telegram read-only questions now stay on the Cloudflare fast path with structured deterministic intent handling, bounded Groq intent classification and short conversation context.",
+        "Cloudflare performs lightweight source change detection and dispatches GitHub pickup/league reconciliation only when data changes; GitHub remains responsible for CI, deployment, durable encrypted repository state, Calendar reconciliation and state-changing fallback commands.",
+        "Added notification-silent live source verification and KV priming before edge activation, stable webhook authentication, serialized Worker deployments and automatic cron-job.org fallback restoration if an edge deployment fails.",
+        "Moved watchdog health semantics from GitHub workflow freshness to Cloudflare KV/source heartbeats and hardened source fingerprints so failed reconciliation dispatches are retried."
+      ]
+    },
     {
       "version": "1.6.0",
       "date": "2026-09-30",
