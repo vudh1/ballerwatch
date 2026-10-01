@@ -1,7 +1,7 @@
 /**
  * Routes Telegram webhooks, edge Q&A, runtime-state APIs, health checks, and scheduled edge work.
  *
- * Updated v3.2.0: adds structured next-game data for the PWA while preserving the read-only privacy boundary, Telegram fast path, and encrypted Web Push registration flow.
+ * Updated v3.3.0: adds web command shortcuts and two-hour league display windows while preserving the read-only privacy boundary, Telegram fast path, and encrypted Web Push registration flow.
  */
 import {
   fetchPickupSnapshot,
@@ -755,6 +755,10 @@ export function directIntent(text) {
   // static index so common phrasing avoids a network round-trip to Groq.
   if (/^\/?version\b/.test(lower)) return "version";
   if (/^\/?help\b/.test(lower)) return "help";
+  if (/^\/today(?:\s|$)/.test(lower)) return "today_games";
+  if (/^\/next(?:\s|$)/.test(lower)) return "next_game";
+  if (/^\/teams(?:\s|$)/.test(lower)) return "league_teams";
+  if (/^\/(?:count|field|time)(?:\s|$)/.test(lower)) return "pickup_status";
   return classifyIndexedIntent(clean);
 }
 
@@ -989,7 +993,9 @@ export function webNextGameDetails(snapshot) {
   const opponent = cleanText(game.opponent, 120) || "opponent";
   const location = cleanText(game.location, 200);
   const address = cleanText(game.address, 200);
-  const time = clock(game.start || game.startTime);
+  const startTime = clock(game.start || game.startTime);
+  const endTime = clock(game.end || game.endTime);
+  const time = startTime && endTime ? `${startTime}–${endTime}` : startTime;
   const jerseyColor = cleanText(game.jerseyColor, 80);
   return {
     kind: "league",
@@ -1040,7 +1046,7 @@ async function webAnswer(env, question, context = {}) {
   if (isStateChanging(text)) {
     return {
       ok: false,
-      error: "The web app is read-only in v3.0.0. Use Telegram for state-changing commands.",
+      error: "This web app is read-only. State-changing commands are not available here yet.",
     };
   }
 
