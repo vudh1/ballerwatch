@@ -2,6 +2,11 @@ name: Telegram listener
 
 on:
   workflow_dispatch:
+    inputs:
+      telegram_update_b64:
+        description: "Base64 Telegram update from webhook"
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -28,6 +33,7 @@ jobs:
           OWNER_RSVP_NAME: ${{ secrets.OWNER_RSVP_NAME }}
           UPSTREAM_ENDPOINT: ${{ secrets.UPSTREAM_ENDPOINT }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          TELEGRAM_UPDATE_B64: ${{ inputs.telegram_update_b64 }}
           # This workflow is dispatched every minute. A long poll only keeps
           # the runner alive; a short poll lets the next run pick up anything
           # that arrives later in the minute.
