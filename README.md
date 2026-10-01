@@ -4,7 +4,15 @@ BallerWatch is a small soccer automation system for pickup games and Seattle RAT
 
 It uses Telegram for questions and alerts, Cloudflare Workers for the webhook/fast reply path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Gemini Flash with Groq fallback for bounded AI assistance, and Google Calendar for league match sync.
 
-**Current version: 2.5.3**
+**Current version: 2.5.4**
+
+## What changed in 2.5.4
+
+2.5.4 keeps `runtime-state` as a current snapshot instead of an accumulating history. Every successful runtime write now publishes a new parentless root commit containing the complete current encrypted state, so older runtime commits are no longer reachable from the branch.
+
+Writes still use an optimistic lease and retry against the latest snapshot so pickup, league, listener, and watchdog updates do not intentionally overwrite a newer concurrent state. PURGE also produces a single root snapshot.
+
+A repository cleanup workflow removes stale `release/*` branches after they no longer have an open pull request.
 
 ## What changed in 2.5.3
 
