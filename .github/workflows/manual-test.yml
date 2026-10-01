@@ -21,6 +21,14 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Pull runtime fixtures from Cloudflare KV
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          node shared/runtime-state.mjs pull pickup
+          node shared/runtime-state.mjs pull league
+
       - name: Refresh live pickup source
         env:
           UPSTREAM_ENDPOINT: ${{ secrets.UPSTREAM_ENDPOINT }}
@@ -41,7 +49,7 @@ jobs:
             node shared/league-state.mjs prepare
             (cd league && python watcher.py)
           else
-            echo "No encrypted league teams configured; league live test skipped."
+            echo "No league teams configured; league live test skipped."
           fi
 
       - name: Verify refreshed data without notifications
@@ -51,10 +59,12 @@ jobs:
           OWNER_RSVP_NAME: ${{ secrets.OWNER_RSVP_NAME }}
         run: node manual-test.mjs
 
-      - name: Remove all transient plaintext
+      - name: Remove all transient runtime data
         if: always()
         run: |
+          node shared/runtime-state.mjs clean pickup || true
+          node shared/runtime-state.mjs clean league || true
           rm -rf .runtime
           rm -f league/teams.json
           rm -f league/schedule.json league/today.json league/calendar-snapshot.json
-          rm -f league/score-changes.json league/calendar-changes.json league/telegram-update.json
+          rm -f league/score-changes.json league/calendar-changes.json league/telegram-update.json league/status.json
