@@ -1,7 +1,7 @@
 /**
  * Manages cron-job.org primary GitHub schedules and validates their target/cadence posture.
  *
- * Documentation baseline: v2.5.0. Release smoke may tolerate only temporary scheduler-API unavailability; a verified bad scheduler posture still fails. Runtime/private data must never be committed to Git.
+ * Documentation baseline: v2.5.1. Release, deployment, and scheduler-setup flows may tolerate only temporary scheduler-API unavailability; verified bad posture and non-transient errors still fail. Runtime/private data must never be committed to Git.
  */
 const API = "https://api.cron-job.org";
 
@@ -176,6 +176,19 @@ function desiredJob(spec, { repo, branch, githubPat, enabled }) {
   };
 }
 
+export async function syncExternalSchedulesOptional(mode, options = {}, sync = syncExternalSchedules) {
+  try {
+    await sync(mode, options);
+    return { available: true, warning: null };
+  } catch (error) {
+    if (!isTemporarySchedulerApiError(error)) throw error;
+    return {
+      available: false,
+      warning: `cron-job.org scheduler synchronization temporarily unavailable: ${error.message}`,
+    };
+  }
+}
+
 export async function syncExternalSchedules(mode, {
   apiKey = process.env.CRON_JOB_ORG_API_KEY || "",
   githubPat = process.env.CRON_GITHUB_PAT || "",
@@ -234,7 +247,10 @@ export async function syncExternalSchedules(mode, {
 const isCli = process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href;
 if (isCli) {
   const mode = process.argv[2] || "";
-  if (["check-enabled", "check-enabled-optional", "check-disabled"].includes(mode)) {
+  if (mode === "ensure-enabled-optional") {
+    const result = await syncExternalSchedulesOptional("ensure-enabled");
+    if (!result.available) console.warn(`::warning::${result.warning}`);
+  } else if (["check-enabled", "check-enabled-optional", "check-disabled"].includes(mode)) {
     const expectEnabled = mode !== "check-disabled";
     const result = await verifyExternalSchedules({
       expectEnabled,
