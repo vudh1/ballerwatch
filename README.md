@@ -4,10 +4,11 @@ BallerWatch is a small soccer automation system for pickup games and Seattle RAT
 
 It uses Telegram and an installable GitHub Pages web app for questions and alerts, Cloudflare Workers for the webhook/read-only API path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Gemini Flash with Groq fallback for bounded AI assistance, standards-based Web Push for a Telegram-independent notification channel, and Google Calendar for league match sync.
 
-**Current version: 4.1.2**
+**Current version: 5.0.0**
 
 ## Recent changes
 
+- **5.0.0** — Redesigned match dashboard with a 14-day game calendar, match-window weather, and a leaner scheduler.
 - **4.1.2** — Fix owner pairing “Load failed” by consuming pairing codes through the listener workflow and returning readable web errors.
 - **4.1.1** — Keep Settings and notification bell aligned on one row in the installed mobile app.
 - **4.1.0** — Long-press wrong-answer feedback plus Google-style sentence autocomplete.
@@ -40,12 +41,14 @@ GitHub Pages PWA -----------+--> Cloudflare Worker
                                   GitHub runtime-state
 
 cron-job.org
-   |-- every 2 min  --> Pickup watcher
-   |-- every 5 min  --> RATS league watcher
-   '-- every 10 min --> System watchdog
-                         |
-                         v
-                    GitHub Actions
+   |-- every 2 min --> Pickup watcher
+   '-- every 5 min --> RATS league watcher
+
+GitHub schedule
+   '-- every 6 hr --> Watchdog + match weather
+                        |
+                        v
+                   GitHub Actions
                          |
                          +--> encrypted runtime-state
                          +--> Telegram alerts
@@ -96,7 +99,9 @@ The v3 PWA is published at:
 It provides:
 
 - an installable Home Screen app shell;
-- a next-game card with Google Maps directions and native share;
+- a redesigned match dashboard with a next-game spotlight, Google Maps directions, and native share;
+- a compact 14-day game calendar for pickup and monitored RATS teams;
+- match-window weather showing condition, temperature, and the maximum rain probability during the scheduled game window;
 - a recent notification panel behind the top-right bell;
 - one-question/one-answer Q&A with slash commands and Google-style full-sentence autocomplete; paired-owner questions join the same privacy-minimized 48-hour review history while anonymous web questions are not retained;
 - owner-paired long-press feedback on an answer to mark it wrong for the next engineering review;
@@ -169,9 +174,15 @@ The workflow:
 
 This avoids unnecessary Calendar calls when nothing changed.
 
-## Watchdog
+### Match weather
 
-cron-job.org dispatches the watchdog every **10 minutes**.
+Weather is refreshed every six hours from Open-Meteo for the actual scheduled match window. BallerWatch reports the maximum hourly rain probability that overlaps the game, plus temperature and a compact condition label. Venue coordinates are cached so recurring fields are not repeatedly geocoded; new public venue names/addresses are resolved conservatively through OpenStreetMap Nominatim.
+
+Weather data and cached coordinates live in encrypted `state/weather.json` on `runtime-state`. No weather API key is required.
+
+## Watchdog and match weather
+
+The watchdog runs on a native GitHub Actions schedule every **6 hours**. The same maintenance run refreshes the encrypted 14-day match-weather cache.
 
 It checks:
 
@@ -222,7 +233,7 @@ Runtime pushes retry on branch races so overlapping watcher/listener runs do not
 | --- | --- | --- |
 | Pickup watcher | Every 2 minutes | cron-job.org → GitHub Action |
 | RATS watcher | Every 5 minutes | cron-job.org → GitHub Action |
-| System watchdog | Every 10 minutes | cron-job.org → GitHub Action |
+| System watchdog + match weather | Every 6 hours | GitHub Actions native schedule |
 | Telegram webhook | Event-driven | Cloudflare Worker |
 | Fast Telegram read-only reply | Event-driven | Cloudflare Worker |
 | PWA public-safe Q&A / board | Event-driven | GitHub Pages → Cloudflare Worker |
@@ -232,7 +243,7 @@ Runtime pushes retry on branch races so overlapping watcher/listener runs do not
 | State-changing Telegram command | Event-driven | GitHub listener |
 | Calendar sync | Only when league snapshot requires it | GitHub Action |
 
-There is no GitHub `schedule:` cron and no Cloudflare Cron Trigger.
+Cloudflare Cron Triggers remain disabled. The only native GitHub `schedule:` is the six-hour watchdog/weather maintenance run.
 
 ## Cloudflare outage behavior
 
@@ -240,7 +251,8 @@ Cloudflare is the Telegram webhook and PWA read-only API endpoint, so a total Cl
 
 Core monitoring and subscribed-device signaling continue independently:
 
-- cron-job.org still dispatches pickup/league/watchdog;
+- cron-job.org still dispatches pickup/league;
+- GitHub's six-hour maintenance schedule can still refresh watchdog/weather state;
 - GitHub Actions can still retrieve soccer sources;
 - GitHub can still attempt Telegram delivery;
 - GitHub Actions can send Web Push signals directly to registered browser push endpoints;
@@ -323,7 +335,7 @@ The next watcher runs rebuild current source state and built-in defaults.
 | **Validate code** | Style, syntax, tests, privacy audit |
 | **Manual smoke test** | Notification-silent live-source verification |
 | **Purge current data** | Factory-reset generated runtime state |
-| **Configure external cron** | Create/repair the 2/5/10-minute cron-job.org schedules |
+| **Configure external cron** | Create/repair the 2/5-minute cron-job.org schedules and disable retired listener/watchdog jobs |
 | **Web app runtime** | Initialize/update encrypted Web Push subscription state |
 | **Deploy GitHub Pages app** | Publish the installable PWA from `docs/` |
 | **Publish wiki** | Mirror `docs/wiki/` into the GitHub Wiki |
