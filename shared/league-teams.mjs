@@ -6,10 +6,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import { decryptState, encryptState } from "./state-crypto.mjs";
+import { DEFAULT_LEAGUE_TEAMS } from "./defaults.mjs";
 
 export const LEAGUE_TEAM_STATE_PATH = "league/state/teams.json";
 export const LEAGUE_TEAM_RUNTIME_PATH = "league/teams.json";
-export const DEFAULT_LEAGUE_TEAMS = ["Third Touch FC", "PhoSaiGon"];
+export { DEFAULT_LEAGUE_TEAMS } from "./defaults.mjs";
 
 export function normalizeLeagueTeamName(name) {
   let value = String(name || "").trim().replace(/\s+/g, " ");
