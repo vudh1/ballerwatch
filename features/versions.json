@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "5.0.1",
+  "currentVersion": "5.0.2",
   "releases": [
+    {
+      "version": "5.0.2",
+      "date": "2026-10-01",
+      "type": "patch",
+      "source": "operational-hardening",
+      "title": "Retired watchdog dispatch guard",
+      "telegramAnnouncement": "BallerWatch now skips any lingering retired external watchdog dispatch before allocating a GitHub runner.",
+      "changes": [
+        "Added a workflow-level guard so the retired cron-job.org watchdog dispatch with default inputs is skipped before runner allocation.",
+        "Native six-hour scheduled watchdog runs remain enabled, and an explicit manual/fallback dispatch can still run by setting external_fallback=true.",
+        "This limits cost even while cron-job.org's management API is temporarily returning HTTP 429 and cannot yet confirm remote job disablement."
+      ]
+    },
     {
       "version": "5.0.1",
       "date": "2026-10-01",
