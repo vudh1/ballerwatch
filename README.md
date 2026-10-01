@@ -4,10 +4,11 @@ BallerWatch is a small soccer automation system for pickup games and Seattle RAT
 
 It uses Telegram and an installable GitHub Pages web app for questions and alerts, Cloudflare Workers for the webhook/read-only API path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Gemini Flash with Groq fallback for bounded AI assistance, standards-based Web Push for a Telegram-independent notification channel, and Google Calendar for league match sync.
 
-**Current version: 3.1.1**
+**Current version: 3.1.2**
 
 ## Recent changes
 
+- **3.1.2** — Push notification on/off switch inside the notification bell panel.
 - **3.1.1** — Force installed PWA clients to refresh release assets.
 - **3.1.0** — Home Screen-aware app layout with bell notifications and bottom push settings.
 - **3.0.2** — Least-privilege GitHub Pages activation and deployment recovery.
