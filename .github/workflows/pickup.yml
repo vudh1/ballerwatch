@@ -13,20 +13,12 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 3
     steps:
       - uses: actions/checkout@v5
         with:
-          fetch-depth: 0
-
-      - name: Sync latest state
-        run: git pull --rebase origin main
-
-      - name: Validate pickup watcher
-        run: |
-          node --check pickup/update.mjs
-          node --check pickup/notify.mjs
-          node --check pickup/selection.mjs
+          ref: main
+          fetch-depth: 1
 
       - name: Refresh pickup data
         env:
@@ -60,7 +52,7 @@ jobs:
           git commit -m "Refresh pickup watcher state"
           STATE_COMMIT="$(git rev-parse HEAD)"
           for attempt in 1 2 3 4; do
-            git fetch origin main
+            git fetch --depth=1 origin main
             git reset --hard origin/main
             if ! git cherry-pick -X theirs "$STATE_COMMIT"; then
               git cherry-pick --abort || true
@@ -68,7 +60,7 @@ jobs:
               sleep $((attempt * 2))
               continue
             fi
-            if git push; then
+            if git push origin HEAD:main; then
               exit 0
             fi
             echo "Push raced with another workflow; retrying ($attempt/4)."
