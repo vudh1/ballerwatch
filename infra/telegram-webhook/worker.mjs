@@ -268,12 +268,33 @@ async function ownerSettingsRecord(env) {
 async function pairOwnerDevice(env, code) {
   const normalized = cleanText(code, 12);
   if (!/^\d{6}$/.test(normalized)) return null;
-  const { settings } = await ownerSettingsRecord(env);
+  const { listenerRecord, settings } = await ownerSettingsRecord(env);
   const expiresAt = Date.parse(String(settings.webPairExpiresAt || ""));
   if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) return null;
   const expected = cleanText(settings.webPairCodeHash, 128);
   if (!expected || expected !== await sha256Hex(normalized)) return null;
-  return issueOwnerToken(env);
+
+  const paired = await issueOwnerToken(env);
+  const nextListener = {
+    ...(listenerRecord.value || {}),
+    lastUpdateId: Number(listenerRecord.value?.lastUpdateId || 0),
+    settings: await encryptState(
+      {
+        ...settings,
+        webPairCodeHash: "",
+        webPairExpiresAt: "",
+      },
+      env,
+    ),
+  };
+  await githubStatePut(
+    env,
+    "state/listener.json",
+    nextListener,
+    listenerRecord.sha,
+    "runtime(listener): consume web owner pairing code",
+  );
+  return paired;
 }
 
 async function ownerSettingsView(env) {
