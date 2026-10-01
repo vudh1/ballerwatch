@@ -5,7 +5,7 @@
  */
 import { recordUnknownQuestion, refreshPublicRequests } from "../shared/feature-requests.mjs";
 import { answerUnknownWithAi } from "../shared/ai-fallback.mjs";
-import { recordChatExchange } from "../shared/chat-history.mjs";
+import { findChatExchange, recordChatExchange } from "../shared/chat-history.mjs";
 import fs from "node:fs";
 import { getTelegramUpdates, isOwnerChat, sendTelegram, sendTyping } from "../shared/telegram.mjs";
 import { loadBotState, saveBotState } from "../shared/bot-state.mjs";
@@ -1279,7 +1279,7 @@ async function main() {
 
     const repliedToId = Number(message.reply_to_message?.message_id || 0);
     if (isThumbsDownFeedback(message.text) && repliedToId) {
-      const remembered = findRememberedReply(settings, repliedToId);
+      const remembered = findRememberedReply(settings, repliedToId) || findChatExchange(repliedToId);
       if (remembered) {
         const feedbackReply = "Got it — I saved that answer as negative feedback for the next review.";
         await recordChatExchange({
@@ -1305,6 +1305,7 @@ async function main() {
         question: message.text,
         reply: result.reply,
         source: "github-listener",
+        messageId: Number(sent?.message_id || 0),
       });
     }
   }
