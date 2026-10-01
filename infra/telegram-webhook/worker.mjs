@@ -909,6 +909,30 @@ export default {
       const migrated=await runtimeFilesMigrateFromRepo(env);
       return Response.json({ok:true,migrated});
     }
+    if (request.method === "POST" && url.pathname === "/admin/purge-runtime") {
+      const secret=request.headers.get("x-ballerwatch-admin")||"";
+      if(!secret || secret!==env.TELEGRAM_WEBHOOK_SECRET) return new Response("Unauthorized",{status:401});
+      const preserved=new Set(["state/listener.json","league/state/teams.json"]);
+      for(const path of RUNTIME_FILE_PATHS) {
+        if(!preserved.has(path)) await env.BALLERWATCH_STATE.delete(runtimeKey(path));
+      }
+      for(const key of [
+        "snapshot:pickup",
+        "snapshot:pickup-private",
+        "snapshot:league",
+        "snapshot:today",
+        "fingerprint:pickup",
+        "fingerprint:league",
+        "heartbeat:pickup",
+        "heartbeat:league",
+        "watchdog:last-deep",
+        "runtime:feature-summary",
+      ]) {
+        await env.BALLERWATCH_STATE.delete(key);
+      }
+      await kvJsonPut(env,"runtime:feature-summary",{version:3,requests:[]});
+      return Response.json({ok:true,preserved:["listener-settings","league-teams"]});
+    }
     if (request.method === "POST" && url.pathname === "/admin/shadow-refresh") {
       const secret=request.headers.get("x-ballerwatch-admin")||"";
       if(!secret || secret!==env.TELEGRAM_WEBHOOK_SECRET) return new Response("Unauthorized",{status:401});
