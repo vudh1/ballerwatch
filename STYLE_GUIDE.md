@@ -6,7 +6,7 @@ This repository uses one consistent style across runtime code, workflows, tests,
 
 - UTF-8, LF line endings, final newline, no trailing whitespace.
 - Prefer small modules with one responsibility over large multi-purpose files.
-- Every runtime source file starts with a short module comment/docstring describing responsibility, inputs/outputs, privacy boundaries, and the release in which its documentation baseline was added.
+- Every runtime source file starts with a short module documentation block describing responsibility, inputs/outputs, privacy boundaries, and the release in which its documentation baseline was added.
 - Public functions should have descriptive names; avoid unexplained abbreviations.
 - Secrets, participant identities, runtime snapshots, and other private state never appear in source, logs, fixtures, or documentation.
 - Comments explain **why** a rule exists, not line-by-line syntax.
@@ -21,18 +21,10 @@ This repository uses one consistent style across runtime code, workflows, tests,
 - Export reusable logic and cover it with `node:test`.
 - Keep functions focused; when a module grows beyond one domain, split it.
 
-## Python
-
-- PEP 8 / Ruff-style conventions.
-- 4-space indentation and approximately 100-character lines.
-- snake_case functions/variables, CapWords classes, UPPER_CASE constants.
-- Network/storage code should be isolated from normalization/business rules when practical.
-- Public modules start with a descriptive module docstring and use `unittest` for existing test suites.
-
 ## Tests
 
 - All test-only source lives under `tests/`, mirroring the production source area where practical.
-- Production source folders should not contain `*.test.mjs`, `*_test.py`, or smoke-only scripts.
+- Production source folders should not contain `*.test.mjs` or smoke-only scripts.
 - Smoke helpers belong in `tests/smoke/`.
 - Tests must remain notification-silent and must not mutate Calendar data.
 
