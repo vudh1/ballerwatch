@@ -61,7 +61,7 @@ export function refreshPublicRequests(directory = "requests") {
   fs.writeFileSync(path.join(directory, "unknown.json"), JSON.stringify(publicRequestSummary(data.requests), null, 2) + "\n");
 }
 
-export function recordUnknownQuestion(question, directory = "requests") {
+export function recordUnknownQuestion(question, directory = "requests", metadata = {}) {
   const original = String(question || "").trim().replace(/\s+/g, " ").slice(0, 500);
   if (!original) return null;
   const data = loadPrivate(directory);
@@ -70,9 +70,20 @@ export function recordUnknownQuestion(question, directory = "requests") {
   if (request) {
     request.count = (Number.isSafeInteger(request.count) && request.count > 0 ? request.count : 1) + 1;
     request.lastSeenAt = now;
+    if (metadata?.source) request.source = String(metadata.source).slice(0, 50);
+    if (metadata?.rejectedAnswer) request.rejectedAnswer = String(metadata.rejectedAnswer).slice(0, 1200);
     if (request.status === "implemented") request.status = "reopened";
   } else {
-    request = { id: crypto.randomUUID(), question: original, count: 1, status: "open", firstSeenAt: now, lastSeenAt: now };
+    request = {
+      id: crypto.randomUUID(),
+      question: original,
+      count: 1,
+      status: "open",
+      firstSeenAt: now,
+      lastSeenAt: now,
+      ...(metadata?.source ? { source: String(metadata.source).slice(0, 50) } : {}),
+      ...(metadata?.rejectedAnswer ? { rejectedAnswer: String(metadata.rejectedAnswer).slice(0, 1200) } : {}),
+    };
     data.requests.push(request);
   }
   data.requests = data.requests.slice(-100);
