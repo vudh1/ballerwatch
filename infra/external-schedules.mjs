@@ -46,7 +46,7 @@ export function analyzeExternalSchedules(jobs, {
     }
 
     const job = matches[0];
-    if (Boolean(job.enabled) !== Boolean(expectEnabled)) {
+    if (expectEnabled !== null && Boolean(job.enabled) !== Boolean(expectEnabled)) {
       problems.push(
         `${spec.title}: expected ${expectEnabled ? "enabled" : "disabled"} but is ${job.enabled ? "enabled" : "disabled"}`,
       );
