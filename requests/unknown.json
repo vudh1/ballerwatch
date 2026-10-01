@@ -1,13 +1,4 @@
 {
   "version": 1,
-  "requests": [
-    {
-      "id": "b34dafd9a78e1808",
-      "question": "/start",
-      "status": "open",
-      "count": 1,
-      "firstSeenAt": "2026-10-01T04:21:20.021Z",
-      "lastSeenAt": "2026-10-01T04:21:20.021Z"
-    }
-  ]
+  "requests": []
 }
