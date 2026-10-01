@@ -315,6 +315,16 @@ export function normalize(
       .filter((row) => String(row[0]).toLocaleLowerCase("en-US") !== "bye")
       .map(rowObject);
 
+    const division = `${team.day} ${team.gender} D-${team.division}`;
+    const divisionTeams = new Map(
+      aggregate.teams
+        .filter(
+          (candidate) =>
+            `${candidate.day} ${candidate.gender} D-${candidate.division}` === division,
+        )
+        .map((candidate) => [candidate.name, candidate]),
+    );
+
     const games = [];
     for (const event of aggregate.events) {
       if (!event || typeof event !== "object" || Array.isArray(event)) {
@@ -358,15 +368,6 @@ export function normalize(
         throw new Error("Source changed during fetch; retry next refresh");
       }
 
-      const division = `${team.day} ${team.gender} D-${team.division}`;
-      const divisionTeams = new Map(
-        aggregate.teams
-          .filter(
-            (candidate) =>
-              `${candidate.day} ${candidate.gender} D-${candidate.division}` === division,
-          )
-          .map((candidate) => [candidate.name, candidate]),
-      );
       let homeColor = event.home_color;
       if (homeColor === event.away_color) {
         homeColor = divisionTeams.get(event.home_team_name)?.color_alt || homeColor;
