@@ -1,4 +1,5 @@
 import { recordUnknownQuestion, refreshPublicRequests } from "../shared/feature-requests.mjs";
+import { answerUnknownWithAi } from "../shared/ai-fallback.mjs";
 import fs from "node:fs";
 import { getTelegramUpdates, isOwnerChat, sendTelegram } from "../shared/telegram.mjs";
 import { loadBotState, saveBotState } from "../shared/bot-state.mjs";
@@ -954,6 +955,32 @@ function versionReply() {
   return lines.join("\n");
 }
 
+function buildAiContext(settings) {
+  const pickupFeed = loadPickupFeed();
+  const ratsToday = loadRatsToday();
+  const teams = loadLeagueTeams();
+  const payload = {
+    localDate: localToday(),
+    pickup: pickupFeed
+      ? {
+          dates: Array.isArray(pickupFeed.dates) ? pickupFeed.dates.slice(0, 8) : [],
+          events: pickupFeed.events || {},
+        }
+      : null,
+    ratsToday: ratsToday || null,
+    leagueTeams: teams,
+    settings: {
+      mutedDates: settings.mutedDates || [],
+      snoozeUntil: settings.snoozeUntil || "",
+      snoozedDates: settings.snoozedDates || {},
+      lastReferencedDate: settings.lastReferencedDate || "",
+      ownerNameConfigured: Boolean(effectiveOwnerName(settings)),
+      pickupEndpointConfigured: Boolean(effectivePickupEndpoint(settings)),
+    },
+  };
+  return JSON.stringify(payload);
+}
+
 function isVersionIntent(text) {
   return /^\/?version(?:@[a-z0-9_]+)?$/i.test(normalizeText(text)) ||
     /\bwhat(?:'s| is) (?:the )?(?:bot |ballerwatch )?version\b/i.test(normalizeText(text));
@@ -1128,12 +1155,19 @@ async function handleMessage(text, settings) {
     };
   }
 
+  const ai = await answerUnknownWithAi(clean, buildAiContext(settings), settings);
+  settings = ai.settings;
+
+  if (ai.decision?.action === "answer") {
+    return { settings, reply: ai.decision.reply };
+  }
+
   const requestId = recordUnknownQuestion(clean);
   return {
     settings,
     reply: requestId
-      ? `I don't know how to answer that yet. I saved your request privately as ${requestId}.`
-      : "I don't know how to answer that yet.",
+      ? `I couldn't answer that reliably yet. I saved your request privately as ${requestId} for the next feature cycle.`
+      : "I couldn't answer that reliably yet.",
   };
 }
 
