@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "2.5.2",
+  "currentVersion": "2.5.3",
   "releases": [
+    {
+      "version": "2.5.3",
+      "date": "2026-10-01",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Chat-review-driven schedule question fixes",
+      "changes": [
+        "Used privacy-minimized 48-hour chat-review signals to identify recurring failures for today's schedule, specific-date schedules, pickup details, and next/recommended-game wording.",
+        "Added deterministic routing and date-aware schedule lookup across both pickup and RATS league data so common read-only questions are answered from existing runtime state before AI.",
+        "Expanded bounded Gemini/Groq fallback context with upcoming league matches while keeping private participant data out of prompts.",
+        "Added regression tests for the reviewed natural-language phrasings and date-specific fast-path schedule replies."
+      ]
+    },
     {
       "version": "2.5.2",
       "date": "2026-10-01",
