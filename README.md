@@ -16,6 +16,8 @@ It runs in GitHub Actions, sends Telegram updates, keeps Google Calendar in sync
 - Syncs changed RATS games to Google Calendar.
 - Keeps private runtime data encrypted in the public repository.
 - Lets monitored RATS teams be added, removed, or renamed through Telegram.
+- Lets you force a feature request with `/feature <request>`.
+- If a bot answer is wrong, reply directly to that answer with `👎`; BallerWatch privately stores the original question and rejected answer for feature review.
 
 Recurring runs come from cron-job.org. BallerWatch intentionally does **not** use GitHub's built-in scheduled cron.
 
@@ -77,7 +79,7 @@ This is a public repository, so private runtime information is never intentional
 
 Pickup and league state is encrypted with AES-256-GCM. Plaintext is allowed only temporarily inside a GitHub Actions runner and is removed before state is committed.
 
-Unsupported Telegram questions are stored only in encrypted `requests/private.json`. Public `requests/unknown.json` contains only fixed categories and aggregate counts—no text, request IDs, or timestamps. Commit times and changing counts still reveal activity. Existing public summaries remain in Git history; this change does not rewrite history.
+Unsupported Telegram questions, manual feature requests, and rejected-answer feedback are stored only in encrypted `requests/private.json`. A thumbs-down feedback item can include the rejected bot answer privately so a later feature-review cycle can diagnose the failure. Public `requests/unknown.json` contains only fixed categories and aggregate counts—no text, request IDs, rejected answers, or timestamps. Commit times and changing counts still reveal activity. Existing public summaries remain in Git history; this change does not rewrite history.
 
 Feature builders may use public categories to prioritize general improvements. Exact requests require authorized access to the encrypted archive in a private runtime; never publish decrypted text or guess the original request from a category.
 
