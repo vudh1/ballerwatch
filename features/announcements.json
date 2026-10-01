@@ -48,6 +48,14 @@
       "message": "BallerWatch added a manual action to clear current generated data.",
       "example": "GitHub Actions → Purge current data",
       "enabled": false
+    },
+    {
+      "id": "2026-09-30-cloudflare-fast-path",
+      "version": "1.5.0",
+      "title": "Faster Telegram answers",
+      "message": "Common read-only questions can now be answered directly at the Cloudflare edge, with short conversation context and AI intent recognition for natural-language questions.",
+      "example": "Ask: what's my next game? Then follow with: what field?",
+      "enabled": true
     }
   ]
 }
