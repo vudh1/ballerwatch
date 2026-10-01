@@ -27,6 +27,7 @@ export const RUNTIME_SCOPES = Object.freeze({
     "league/state/schedule.json",
     "league/state/today.json",
     "league/state/calendar-snapshot.json",
+    "league/state/edge-signal.json",
   ]),
   watchdog: Object.freeze([
     "state/watchdog.json",
