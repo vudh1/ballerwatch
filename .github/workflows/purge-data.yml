@@ -1,0 +1,63 @@
+name: Purge current data
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type PURGE to delete current generated data'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ballerwatch-data-purge
+  cancel-in-progress: false
+
+jobs:
+  purge:
+    if: inputs.confirm == 'PURGE'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Sync latest main
+        run: git pull --rebase origin main
+
+      - name: Delete generated data
+        run: |
+          rm -f \
+            pickup/state/events.json \
+            pickup/state/feed.json \
+            pickup/state/notify.json \
+            pickup/state/source-health.json \
+            league/state/schedule.json \
+            league/state/today.json \
+            league/state/calendar-snapshot.json \
+            league/status.json \
+            league/calendar-bootstrap.json \
+            state/watchdog.json \
+            requests/private.json
+          printf '{\n  "version": 1,\n  "requests": []\n}\n' > requests/unknown.json
+
+      - name: Show purge scope
+        run: |
+          echo "Deleted current pickup/league snapshots, Calendar reconciliation state, watchdog state, and feature-request data."
+          echo "Preserved code, secrets, Telegram listener settings/offsets, announcement history, and encrypted league team configuration."
+          echo "Google Calendar events are not deleted."
+
+      - name: Persist purge
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No generated data was present."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A -- pickup/state league/state league/status.json league/calendar-bootstrap.json state/watchdog.json requests
+          git commit -m "Purge current BallerWatch data"
+          git push origin HEAD:main
