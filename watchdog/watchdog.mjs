@@ -1,7 +1,7 @@
 /**
  * Performs deep health, privacy, validation, edge, and external-scheduler checks.
  *
- * Documentation baseline: v2.4.0. Runtime/private data must never be committed to Git.
+ * v2.5.0: caches encrypted scheduler audits for 30 minutes; other checks remain every run. Runtime/private data must never be committed to Git.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -9,10 +9,7 @@ import crypto from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { decryptState, encryptState } from "../shared/state-crypto.mjs";
 import { sendTelegram } from "../shared/telegram.mjs";
-import {
-  analyzeExternalSchedules,
-  listExternalSchedules,
-} from "../infra/external-schedules.mjs";
+import { checkScheduler } from "./scheduler-check.mjs";
 
 const STATE_PATH = "state/watchdog.json";
 
@@ -148,26 +145,6 @@ async function validationProblem() {
   return null;
 }
 
-async function externalCronProblems() {
-  try {
-    const jobs = await listExternalSchedules();
-    const messages = analyzeExternalSchedules(jobs, {
-      repo: process.env.GITHUB_REPOSITORY || "vudh1/ballerwatch",
-      expectEnabled: true,
-      requireAll: true,
-    });
-    return messages.map((message, index) => ({
-      key: `external-cron:${index}:${message}`,
-      message: `cron-job.org scheduler: ${message}`,
-    }));
-  } catch (error) {
-    return [{
-      key: "external-cron:unreachable",
-      message: `cron-job.org scheduler: unable to verify jobs (${error.message})`,
-    }];
-  }
-}
-
 function sensitivePlaintextProblems() {
   const files = [
     "league/teams.json",
@@ -206,7 +183,8 @@ export async function runWatchdog() {
   const validation = await validationProblem();
   if (validation) problems.push(validation);
 
-  problems.push(...await externalCronProblems());
+  const schedulerAudit = await checkScheduler(previous.schedulerAudit);
+  problems.push(...schedulerAudit.problems);
   problems.push(...sensitivePlaintextProblems());
 
   const fingerprint = crypto
@@ -225,6 +203,7 @@ export async function runWatchdog() {
     }
 
     saveState({
+      schedulerAudit,
       healthy: false,
       fingerprint,
       checkedAt: new Date().toISOString(),
@@ -239,6 +218,7 @@ export async function runWatchdog() {
   }
 
   saveState({
+    schedulerAudit,
     healthy: true,
     fingerprint,
     checkedAt: new Date().toISOString(),

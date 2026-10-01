@@ -91,7 +91,9 @@ async function cronCall(apiKey, path, { method = "GET", body } = {}) {
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(`cron-job.org ${method} ${path} failed (${response.status})`);
+    const retry = response.headers.get("retry-after");
+    const wait = /^\d+$/.test(retry || "") ? `; retry after ${retry}s` : "";
+    throw new Error(`cron-job.org ${method} ${path} failed (${response.status})${wait}`);
   }
   return data;
 }

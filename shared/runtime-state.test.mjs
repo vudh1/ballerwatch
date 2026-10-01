@@ -1,0 +1,35 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { execFileSync } from "node:child_process";
+import { pullRuntimeState, purgeRuntimeState } from "./runtime-state.mjs";
+import { encryptState } from "./state-crypto.mjs";
+import { saveFailoverState } from "./failover-state.mjs";
+
+test("purged branch boots clean without restoring encrypted stale backup or calling Cloudflare", async t => {
+  const cwd = process.cwd();
+  const env = process.env;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ballerwatch-purge-"));
+  t.after(() => { process.chdir(cwd); process.env = env; fs.rmSync(dir, { recursive: true, force: true }); });
+  process.env = { ...env, TRACKER_STATE_KEY: "synthetic-encryption-test-key" };
+  const git = (args, at = dir) => execFileSync("git", args, { cwd: at, stdio: "pipe" });
+  git(["init", "--bare", "remote.git"]);
+  git(["clone", "remote.git", "work"]);
+  process.chdir(path.join(dir, "work"));
+  const run = args => git(args, process.cwd());
+  run(["config", "user.name", "Fixture"]);
+  run(["config", "user.email", "fixture@example.invalid"]);
+  run(["checkout", "-b", "runtime-state"]);
+  fs.mkdirSync("state", { recursive: true });
+  fs.writeFileSync("state/watchdog.json", JSON.stringify(encryptState({ synthetic: true })) + "\n");
+  run(["add", "."]); run(["commit", "-m", "encrypted fixture"]); run(["push", "origin", "runtime-state"]);
+  saveFailoverState("watchdog");
+  t.mock.method(globalThis, "fetch", () => { assert.fail("No Cloudflare or Telegram calls allowed"); });
+  assert.equal(await pullRuntimeState("watchdog"), 1);
+  assert.equal(purgeRuntimeState(), 1);
+  assert.equal(await pullRuntimeState("watchdog"), 0);
+  assert.equal(fs.existsSync("state/watchdog.json"), false);
+  assert.equal(fs.existsSync(".runtime/failover/watchdog.json"), true);
+});

@@ -27,3 +27,23 @@ GitHub Actions cache keeps encrypted last-known backups for recovery.
 ## Chat review
 
 Telegram conversations may be retained for up to 48 hours as Groq-condensed encrypted records. Only sanitized engineering signals are readable by the scheduled maintenance task.
+
+## Gemini-first answer path
+
+Common questions retain deterministic routing. Remaining read-only questions try Gemini Flash
+(`gemini-3.8-flash`) before Groq, then return to non-AI handling if both fail. The Worker only
+accepts known intent labels and renders facts itself. The listener rejects action requests and
+completion claims; models receive no tools. Each provider attempt consumes the existing AI budget.
+Requests have bounded inputs, outputs and timeouts (1.2 seconds at the edge, 2.5 seconds in Actions).
+The Cache API edge budget is best-effort per location, not a global billing limit.
+
+Gemini authentication uses the `GEMINI_API_KEY` repository secret, deployed to the Worker.
+Chat condensation remains on Groq and retains the encrypted 48-hour history design.
+
+Scheduler configuration audits are cached for 30 minutes in encrypted watchdog state, limiting
+routine management-API reads to 48/day. The watchdog still runs every 10 minutes and checks
+webhook, validation and privacy each time. Cached failures remain failures; release smoke always
+requires a fresh scheduler API check. Source polling cadences remain 2/5/10 minutes.
+
+A readable runtime-state branch is authoritative, including missing files after PURGE. Encrypted
+backup recovery applies only when the branch cannot be fetched, never to individual absent files.
