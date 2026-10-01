@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "4.1.1",
+  "currentVersion": "4.1.2",
   "releases": [
+    {
+      "version": "4.1.2",
+      "date": "2026-10-01",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Owner pairing reliability fix",
+      "telegramAnnouncement": "BallerWatch owner pairing now consumes codes through the listener workflow and returns readable errors instead of iPhone “Load failed” failures.",
+      "changes": [
+        "Removed the direct runtime-state write from the successful Cloudflare owner-pairing path.",
+        "Pair-code consumption now dispatches the existing listener workflow, which owns durable encrypted listener-state writes.",
+        "Added CORS-safe 503/401 JSON responses so iPhone shows a useful pairing error instead of the generic Safari/PWA “Load failed” message.",
+        "Added regression coverage to prevent pairing from reintroducing direct Worker writes."
+      ]
+    },
     {
       "version": "4.1.1",
       "date": "2026-10-01",
