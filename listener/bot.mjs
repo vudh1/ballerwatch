@@ -184,6 +184,67 @@ function resolveDate(text, settings) {
   return null;
 }
 
+function availableScheduleDates() {
+  const dates = new Set(availableDates());
+  const schedule = loadRatsSchedule();
+  for (const team of schedule?.teams || []) {
+    for (const match of team?.matches || []) {
+      if (match?.date) dates.add(String(match.date));
+    }
+  }
+  return [...dates].sort();
+}
+
+function explicitScheduleDate(text) {
+  const lower = String(text || "").toLowerCase();
+  const iso = lower.match(/\b(20\d{2})-(\d{1,2})-(\d{1,2})\b/);
+  if (iso) {
+    return `${iso[1]}-${String(Number(iso[2])).padStart(2, "0")}-${String(Number(iso[3])).padStart(2, "0")}`;
+  }
+
+  const md = lower.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(20\d{2}))?\b/);
+  if (md) {
+    const year = md[3] ? Number(md[3]) : Number(localToday().slice(0, 4));
+    return `${year}-${String(Number(md[1])).padStart(2, "0")}-${String(Number(md[2])).padStart(2, "0")}`;
+  }
+
+  const months = {
+    january:1, jan:1, february:2, feb:2, march:3, mar:3, april:4, apr:4,
+    may:5, june:6, jun:6, july:7, jul:7, august:8, aug:8,
+    september:9, sep:9, sept:9, october:10, oct:10,
+    november:11, nov:11, december:12, dec:12,
+  };
+  for (const [name, month] of Object.entries(months)) {
+    const match = text.match(new RegExp(`\\b${name}\\s+(\\d{1,2})\\b`, "i"));
+    if (match) {
+      return `${localToday().slice(0, 4)}-${String(month).padStart(2, "0")}-${String(Number(match[1])).padStart(2, "0")}`;
+    }
+  }
+
+  if (/\btoday\b/i.test(text)) return localToday();
+  if (/\btomorrow\b/i.test(text)) return addDays(localToday(), 1);
+  return "";
+}
+
+function resolveScheduleDate(text, settings) {
+  const explicit = explicitScheduleDate(text);
+  if (explicit) return explicit;
+
+  const dates = availableScheduleDates();
+  const lower = String(text || "").toLowerCase();
+  for (const name of ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"]) {
+    if (lower.includes(name)) {
+      const date = dates.find(value => value >= localToday() && weekday(value) === name);
+      if (date) return date;
+    }
+  }
+
+  if (/\bthat (?:day|date)\b/i.test(text) && settings.lastReferencedDate) {
+    return String(settings.lastReferencedDate);
+  }
+  return "";
+}
+
 function eventForDate(date) {
   const feed = loadPickupFeed();
   const aggregate = feed?.events?.[date] || null;
@@ -275,6 +336,11 @@ function loadRatsToday() {
   return payload?.ok ? payload : null;
 }
 
+function loadRatsSchedule() {
+  const payload = loadEncryptedLeagueState("schedule.json");
+  return payload?.ok ? payload : null;
+}
+
 function pickupTodayBlock(date) {
   const event = eventForDate(date);
   if (!event) return null;
@@ -327,6 +393,47 @@ function ratsTodayBlocks(feed, date) {
     blocks.push(lines);
   }
   return blocks;
+}
+
+function leagueBlocksForDate(date) {
+  const schedule = loadRatsSchedule();
+  const games = [];
+  for (const team of schedule?.teams || []) {
+    for (const match of team?.matches || []) {
+      if (String(match?.date || "") === date) {
+        games.push({ ...match, team: match?.team || team?.name || "RATS team" });
+      }
+    }
+  }
+  return ratsTodayBlocks({ games }, date);
+}
+
+function gamesForDateReply(date, settings) {
+  const blocks = [];
+  const pickupEvent = eventForDate(date);
+  if (pickupEvent) {
+    blocks.push(["⚽ Pickup (TTF)", ...statusReply(date, pickupEvent, settings).split("\n")]);
+  }
+  blocks.push(...leagueBlocksForDate(date));
+
+  if (!blocks.length) {
+    return `No pickup or RATS game is currently published for ${formatDate(date)}.`;
+  }
+
+  const lines = [`Games — ${formatDate(date)}`];
+  blocks.forEach((block, index) => {
+    if (index > 0) lines.push("");
+    lines.push(...block);
+  });
+  return lines.join("\n");
+}
+
+function nextGameReply(settings) {
+  const next = availableScheduleDates()
+    .filter(date => date >= localToday())
+    .sort()[0];
+  if (!next) return { reply: "No upcoming game is currently published.", date: "" };
+  return { reply: gamesForDateReply(next, settings), date: next };
 }
 
 async function todayGamesReply() {
@@ -500,14 +607,31 @@ function isCountIntent(text) {
   return /\b(count|how many|spots?|rsvp|availability|status|reserved|capacity)\b/i.test(text);
 }
 
+function isPickupDetailsIntent(text) {
+  return /\bpickup\b.*\b(game|details?|info(?:rmation)?|field|where|time|when)\b/i.test(text);
+}
+
 function isTodayGamesIntent(text) {
   const lower = text.toLowerCase();
   return (
-    /\b(today'?s?\s+games?|games?\s+today)\b/.test(lower) ||
+    /\b(today'?s?\s+(?:games?|schedule)|(?:games?|schedule)\s+today)\b/.test(lower) ||
     /\bwhat\s+(?:game|games)\s+(?:is|are|do we have|we have)\s+today\b/.test(lower) ||
     /\bdo\s+we\s+have\s+(?:a\s+)?game\s+today\b/.test(lower) ||
     /\bany\s+(?:game|games)\s+today\b/.test(lower)
   );
+}
+
+function isNextGameIntent(text) {
+  return (
+    /\b(?:next|upcoming)\s+(?:soccer\s+)?(?:game|match)\b/i.test(text) ||
+    /\b(?:recommend|suggest)\b.*\b(?:game|match)\b/i.test(text) ||
+    /\bwhich\s+(?:game|match)\b.*\b(?:next|upcoming|play|go)\b/i.test(text)
+  );
+}
+
+function isDateGamesIntent(text) {
+  return hasExplicitDateReference(text) &&
+    /\b(game|games|match|matches|schedule|playing|play|pickup|soccer|availability|available)\b/i.test(text);
 }
 
 
@@ -1002,6 +1126,7 @@ function versionReply() {
 function buildAiContext(settings) {
   const pickupFeed = loadPickupFeed();
   const ratsToday = loadRatsToday();
+  const ratsSchedule = loadRatsSchedule();
   const teams = loadLeagueTeams();
   const payload = {
     localDate: localToday(),
@@ -1012,6 +1137,25 @@ function buildAiContext(settings) {
         }
       : null,
     ratsToday: ratsToday || null,
+    leagueSchedule: ratsSchedule
+      ? {
+          season: ratsSchedule.season || "",
+          teams: (ratsSchedule.teams || []).map(team => ({
+            name: team?.name || "",
+            matches: (team?.matches || [])
+              .filter(match => String(match?.date || "") >= localToday())
+              .slice(0, 6)
+              .map(match => ({
+                date: match?.date || "",
+                startTime: match?.startTime || "",
+                team: match?.team || team?.name || "",
+                opponent: match?.opponent || "",
+                location: match?.location || "",
+                jerseyColor: match?.jerseyColor || "",
+              })),
+          })),
+        }
+      : null,
     leagueTeams: teams,
     settings: {
       mutedDates: settings.mutedDates || [],
@@ -1072,11 +1216,20 @@ async function handleMessage(text, settings) {
 
   const explicitDate = hasExplicitDateReference(clean);
   const date = resolveDate(clean, settings);
+  const scheduleDate = resolveScheduleDate(clean, settings);
 
   if (isTodayGamesIntent(clean)) {
     return {
       settings,
       reply: await todayGamesReply(),
+    };
+  }
+
+  if (isNextGameIntent(clean)) {
+    const next = nextGameReply(settings);
+    return {
+      settings: next.date ? { ...settings, lastReferencedDate: next.date } : settings,
+      reply: next.reply,
     };
   }
 
@@ -1162,20 +1315,33 @@ async function handleMessage(text, settings) {
     };
   }
 
-  if (isCountIntent(clean)) {
-    if (!date) {
-      return { settings, reply: "Tell me the date, for example: what’s the count for 10/8?" };
-    }
-    const event = eventForDate(date);
-    if (!event) {
+  if (isCountIntent(clean) || isPickupDetailsIntent(clean)) {
+    if (date) {
+      const event = eventForDate(date);
+      if (!event) {
+        return {
+          settings: { ...settings, lastReferencedDate: date },
+          reply: `I don’t currently have RSVP data for ${formatDate(date)}.`,
+        };
+      }
       return {
         settings: { ...settings, lastReferencedDate: date },
-        reply: `I don’t currently have RSVP data for ${formatDate(date)}.`,
+        reply: statusReply(date, event, settings),
       };
     }
+    if (explicitDate && scheduleDate && isDateGamesIntent(clean)) {
+      return {
+        settings: { ...settings, lastReferencedDate: scheduleDate },
+        reply: gamesForDateReply(scheduleDate, settings),
+      };
+    }
+    return { settings, reply: "Tell me the pickup date, for example: what’s the count for 10/8?" };
+  }
+
+  if (isDateGamesIntent(clean) && scheduleDate) {
     return {
-      settings: { ...settings, lastReferencedDate: date },
-      reply: statusReply(date, event, settings),
+      settings: { ...settings, lastReferencedDate: scheduleDate },
+      reply: gamesForDateReply(scheduleDate, settings),
     };
   }
 
@@ -1185,6 +1351,10 @@ async function handleMessage(text, settings) {
       reply: [
         "You can ask:",
         "• what game is today?",
+        "• what’s today’s schedule?",
+        "• what games are on 10/5?",
+        "• what’s my next game?",
+        "• show me the pickup game details",
         "• what league teams are you monitoring?",
         "• /setup",
         "• /version",

@@ -1,7 +1,7 @@
 /**
  * Shared deterministic intent index for fast natural-language routing before Groq.
  *
- * Documentation baseline: v2.3.0. This module contains no user data and is safe to bundle at the edge.
+ * Documentation baseline: v2.5.2. Common schedule/date phrasing from privacy-minimized chat review is routed deterministically before AI. This module contains no user data and is safe to bundle at the edge.
  */
 
 const INTENT_INDEX = Object.freeze([
@@ -12,18 +12,62 @@ const INTENT_INDEX = Object.freeze([
   },
   {
     intent: "today_games",
-    phrases: ["games today", "game today", "today games", "playing today", "soccer today"],
-    tags: ["today", "game", "games", "match", "soccer"],
+    phrases: [
+      "games today",
+      "game today",
+      "today games",
+      "playing today",
+      "soccer today",
+      "today schedule",
+      "schedule today",
+      "today's schedule",
+    ],
+    tags: ["today", "game", "games", "match", "soccer", "schedule"],
   },
   {
     intent: "next_game",
-    phrases: ["next game", "next match", "when next game", "upcoming game", "upcoming match"],
-    tags: ["next", "upcoming", "game", "match", "when"],
+    phrases: [
+      "next game",
+      "next match",
+      "when next game",
+      "upcoming game",
+      "upcoming match",
+      "recommend a game",
+      "suggest a game",
+      "which game should i play",
+    ],
+    tags: ["next", "upcoming", "game", "match", "when", "recommend", "suggest"],
   },
   {
     intent: "pickup_status",
-    phrases: ["how many", "rsvp count", "reserved count", "spots left", "pickup status", "what field", "what time"],
-    tags: ["count", "many", "spots", "rsvp", "reserved", "capacity", "availability", "field", "where", "time", "when"],
+    phrases: [
+      "how many",
+      "rsvp count",
+      "reserved count",
+      "spots left",
+      "pickup status",
+      "pickup game",
+      "pickup details",
+      "what field",
+      "what time",
+    ],
+    tags: ["count", "many", "spots", "rsvp", "reserved", "capacity", "availability", "pickup", "details", "field", "where", "time", "when"],
+  },
+  {
+    intent: "date_games",
+    phrases: [
+      "game on",
+      "games on",
+      "games are on",
+      "what games are on",
+      "match on",
+      "matches on",
+      "schedule for",
+      "schedule on",
+      "game schedule",
+      "soccer schedule",
+    ],
+    tags: ["schedule", "game", "games", "match", "matches", "playing", "soccer"],
   },
   {
     intent: "league_teams",

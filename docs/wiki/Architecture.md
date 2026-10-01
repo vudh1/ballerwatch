@@ -56,3 +56,10 @@ cadences remain 2/5/10 minutes.
 
 A readable runtime-state branch is authoritative, including missing files after PURGE. Encrypted
 backup recovery applies only when the branch cannot be fetched, never to individual absent files.
+
+## Feedback-driven answer quality
+
+The 48-hour chat review is an engineering feedback loop, not online model training. Privacy-minimized recurring failures can be promoted into deterministic intent phrases, regression tests, and bounded prompt examples. Raw Telegram text is not committed to source or used as a persistent training corpus.
+
+Common factual soccer questions should prefer deterministic runtime-state answers. Gemini Flash is the first bounded fallback for unfamiliar read-only wording, with Groq next; neither model receives action tools.
+
