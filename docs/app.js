@@ -78,7 +78,20 @@ async function api(path, options = {}) {
 
 async function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return null;
-  return navigator.serviceWorker.register("./sw.js", { scope: "./" });
+
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
+
+  const registration = await navigator.serviceWorker.register("./sw.js?v=3.1.1", {
+    scope: "./",
+    updateViaCache: "none",
+  });
+  await registration.update().catch(() => null);
+  return registration;
 }
 
 async function loadConfig() {
