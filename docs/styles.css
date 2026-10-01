@@ -250,3 +250,82 @@ dialog li { margin: 0.55rem 0; }
   .question-row { grid-template-columns: 1fr; }
   .question-row button { width: 100%; }
 }
+
+
+.notification-push-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.9rem;
+  padding: 0.8rem 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.notification-push-row strong {
+  display: block;
+  font-size: 0.92rem;
+}
+
+.switch-state {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+
+.switch input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.switch-track {
+  position: relative;
+  width: 3rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  background: rgba(71, 85, 105, 0.9);
+  border: 1px solid var(--border);
+  transition: background 160ms ease, opacity 160ms ease;
+}
+
+.switch-thumb {
+  position: absolute;
+  top: 0.18rem;
+  left: 0.18rem;
+  width: 1.28rem;
+  height: 1.28rem;
+  border-radius: 999px;
+  background: #f8fafc;
+  transition: transform 160ms ease;
+}
+
+.switch input:checked + .switch-track {
+  background: var(--good);
+}
+
+.switch input:checked + .switch-track .switch-thumb {
+  transform: translateX(1.24rem);
+}
+
+.switch input:focus-visible + .switch-track {
+  outline: 3px solid rgba(56, 189, 248, 0.28);
+  outline-offset: 2px;
+}
+
+.switch input:disabled + .switch-track {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

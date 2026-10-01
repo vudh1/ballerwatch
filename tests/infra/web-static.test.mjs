@@ -17,13 +17,13 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
   assert.match(html, /id="settings"/);
-  assert.match(html, /styles\.css\?v=3\.1\.1/);
-  assert.match(html, /app\.js\?v=3\.1\.1/);
+  assert.match(html, /styles\.css\?v=3\.1\.2/);
+  assert.match(html, /app\.js\?v=3\.1\.2/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v3-1-1-shell/);
+  assert.match(sw, /ballerwatch-v3-1-2-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -64,9 +64,25 @@ test("Home Screen install card is removed in standalone mode and notifications u
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=3\.1\.1/);
+  assert.match(app, /sw\.js\?v=3\.1\.2/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
   assert.match(sw, /cache:\s*"no-store"/);
+});
+
+
+test("notification bell exposes a synchronized push switch", () => {
+  const html = fs.readFileSync("docs/index.html", "utf8");
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  const css = fs.readFileSync("docs/styles.css", "utf8");
+  assert.match(html, /id="bell-push-toggle"/);
+  assert.match(html, /role="switch"/);
+  assert.match(html, /id="bell-push-status"/);
+  assert.match(app, /bellPushToggle\.checked = enabled/);
+  assert.match(app, /bellPushToggle\.addEventListener\("change"/);
+  assert.match(app, /await enablePush\(\)/);
+  assert.match(app, /await disablePush\(\)/);
+  assert.match(css, /\.switch-track/);
+  assert.match(css, /input:checked \+ \.switch-track/);
 });
