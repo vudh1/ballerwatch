@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - "league/google_apps_script/Code.gs"
+      - ".github/workflows/deploy-apps-script.yml"
 
 permissions:
   contents: read
