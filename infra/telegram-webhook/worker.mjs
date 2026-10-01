@@ -1,3 +1,8 @@
+/**
+ * Routes Telegram webhooks, edge Q&A, runtime-state APIs, health checks, and scheduled edge work.
+ *
+ * Documentation baseline: v2.3.0. Runtime/private data must never be committed to Git.
+ */
 import {
   fetchPickupSnapshot,
   fetchLeagueSignal,
