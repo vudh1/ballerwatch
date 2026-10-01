@@ -136,7 +136,7 @@ The applied Calendar snapshot is stored in KV, so Calendar is only contacted whe
 
 Deterministic parsing always runs before AI.
 
-Groq is used as a bounded language-understanding fallback rather than as the source of soccer facts.
+Most common natural-language questions are routed through a small deterministic intent index before any AI call. Groq is used only as a bounded language-understanding fallback rather than as the source of soccer facts.
 
 Current free-tier safety limits:
 
@@ -188,7 +188,7 @@ That endpoint exposes only fixed categories and counters. It does not expose ori
 | **Pickup RSVP source** | Pickup-game RSVP source |
 | **Google Apps Script** | Secure Calendar bridge |
 | **Google Calendar** | Synchronized league schedule |
-| **cron-job.org** | Emergency scheduling fallback; normally disabled |
+| **cron-job.org** | Independent external failover dispatcher; always enabled, with pickup/league work health-gated against Cloudflare |
 
 ## Runtime schedule
 
@@ -203,6 +203,24 @@ That endpoint exposes only fixed categories and counters. It does not expose ori
 | Validation | Relevant code/config changes | GitHub Action |
 
 cron-job.org keeps three emergency fallback jobs for pickup, league, and watchdog. A healthy deployment ensures those jobs exist with the expected 2/5/10-minute cadences but keeps them disabled. If an edge deployment fails before verified activation, the deployment workflow can enable them as a safety fallback.
+
+## Cloudflare outage behavior
+
+Cloudflare is the preferred fast runtime, but it is no longer the only scheduler path.
+
+- cron-job.org continues dispatching pickup every 2 minutes, league every 5 minutes, and watchdog every 10 minutes.
+- When Cloudflare is healthy, pickup/league fallback runs exit after a lightweight health check.
+- When Cloudflare is unavailable or stale, GitHub performs the full source refresh.
+- GitHub workflows restore last-known runtime files from an **encrypted GitHub Actions cache** if the Worker runtime-state API cannot be reached.
+- Telegram delivery from GitHub remains independent of Cloudflare.
+
+A total Cloudflare outage still makes the Worker-hosted fast Q&A/web API unavailable until Cloudflare recovers, but the core soccer monitoring/Telegram fallback can continue through cron-job.org + GitHub Actions.
+
+## Code style and onboarding
+
+Repository-wide conventions are documented in [STYLE_GUIDE.md](STYLE_GUIDE.md). CI enforces whitespace, source-file documentation headers, syntax, privacy rules, and unit tests.
+
+Long-form onboarding and operations documentation lives in `docs/wiki/` and is synchronized to the repository's GitHub Wiki after changes land on `main`.
 
 ## Privacy model
 
@@ -243,9 +261,9 @@ The deeper GitHub watchdog verifies:
 - KV availability
 - latest code-validation status
 - repository privacy rules
-- cron-job.org fallback-job existence, cadence, target, and enabled/disabled posture
+- cron-job.org failover-job existence, cadence, target, and enabled posture
 
-While Cloudflare is healthy, all three cron-job.org fallback jobs must exist and remain disabled. A legacy Telegram polling cron must also remain disabled.
+All three cron-job.org failover jobs must exist and remain enabled. A legacy Telegram polling cron must remain disabled.
 
 It no longer expects pickup or league GitHub workflows to run on fixed intervals.
 
@@ -266,6 +284,8 @@ It no longer expects pickup or league GitHub workflows to run on fixed intervals
 
 ## Purge current data
 
+`PURGE` is a runtime factory reset. It deletes all keys from the private Cloudflare KV namespace, including custom league-team runtime state, so the next league run bootstraps the built-in default teams again. It also clears contexts, feature requests, AI counters, notification/watchdog state, and generated snapshots. Source code, GitHub/Worker secrets, and existing Google Calendar events are not deleted.
+
 Use:
 
 **Actions → Purge current data → Run workflow**
@@ -276,26 +296,7 @@ Enter:
 PURGE
 ```
 
-The purge removes from KV:
-
-- current pickup snapshots
-- pickup notification state
-- current league schedule/today state
-- Calendar reconciliation state
-- watchdog state
-- stored feature-request data
-- source fingerprints/heartbeats
-
-It preserves:
-
-- source code and release history
-- GitHub Actions secrets
-- Telegram listener settings
-- monitored league-team configuration
-- announcement history
-- Google Calendar events
-
-Cloudflare rebuilds current soccer snapshots on subsequent edge checks.
+The purge removes every current KV runtime key. Cloudflare rebuilds current soccer snapshots on subsequent edge checks, and league-team configuration returns to the built-in defaults unless changed again afterward.
 
 ## Required secrets
 
@@ -391,7 +392,7 @@ Important architecture rules:
 - Cloudflare KV is the runtime-state authority
 - GitHub Actions may materialize state only temporarily
 - Cloudflare Cron Triggers are the normal recurring scheduler
-- cron-job.org is fallback-only; its three fallback jobs should exist but stay disabled while Cloudflare is healthy
+- cron-job.org is independent failover; its three jobs stay enabled, while pickup/league GitHub runs self-skip when Cloudflare heartbeats are fresh
 - do not add GitHub `schedule:` polling
 - keep AI bounded and read-only with respect to real-world actions
 - keep live/private soccer data out of source control
