@@ -1,7 +1,19 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "1.3.1",
+  "currentVersion": "1.3.2",
   "releases": [
+    {
+      "version": "1.3.2",
+      "date": "2026-09-30",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Deleted Calendar event recovery",
+      "changes": [
+        "Versioned league Calendar tracking keys so stale Apps Script event-ID mappings from manually deleted Calendar events are invalidated.",
+        "The Calendar bridge now falls back to matching an active event or creating a fresh event instead of reusing the previous tracking property.",
+        "Added regression coverage for the versioned Calendar tracking key."
+      ]
+    },
     {
       "version": "1.3.1",
       "date": "2026-09-30",
