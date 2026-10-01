@@ -39,8 +39,10 @@ def purge_calendar_events():
         raise RuntimeError(f"Apps Script Calendar purge failed: {detail}")
 
     deleted = int(result.get("deleted") or 0)
+    stale = int(result.get("stale") or 0)
     cleared = int(result.get("clearedProperties") or 0)
     print(f"calendarDeleted={deleted}")
+    print(f"calendarStaleMappingsCleared={stale}")
     print(f"calendarTrackingPropertiesCleared={cleared}")
     return result
 
