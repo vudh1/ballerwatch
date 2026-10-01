@@ -40,8 +40,8 @@ The Cache API edge budget is best-effort per location, not a global billing limi
 Gemini authentication uses the `GEMINI_API_KEY` repository secret, deployed to the Worker.
 Chat condensation remains on Groq and retains the encrypted 48-hour history design.
 
-Scheduler configuration audits are cached for 30 minutes in encrypted watchdog state, limiting
-routine management-API reads to 48/day. The watchdog still runs every 10 minutes and checks
+Scheduler configuration audits are cached for 6 hours in encrypted watchdog state, limiting
+routine management-API reads to 4/day. The watchdog still runs every 10 minutes and checks
 webhook, validation and privacy each time. Cached failures remain failures; release smoke always
 requires a fresh scheduler API check. Source polling cadences remain 2/5/10 minutes.
 
