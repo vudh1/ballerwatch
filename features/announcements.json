@@ -6,7 +6,7 @@
       "title": "Self-improving bot requests",
       "message": "If I don't understand a Telegram question, I now save it as a feature request for the periodic ChatGPT feature builder.",
       "example": "Ask a new soccer-bot question; if unsupported, I'll queue it and tell you the request ID.",
-      "enabled": true,
+      "enabled": false,
       "version": "1.0.0"
     },
     {
@@ -63,7 +63,7 @@
       "title": "BallerWatch 2.0",
       "message": "BallerWatch now runs Cloudflare-first: Telegram fast-path answers and 2/5/10-minute source checks happen at the edge, while GitHub runs only when reconciliation, writes, CI or maintenance are needed.",
       "example": "Ask: what's my next game? Then follow with: what field?",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "2026-10-01-kv-only-runtime",
@@ -71,7 +71,7 @@
       "title": "Private KV-only runtime state",
       "message": "BallerWatch runtime data now stays in private Cloudflare KV. GitHub stores code, configuration, documentation and release history only — live soccer and bot state are no longer committed to the repository.",
       "example": "Use /version to confirm BallerWatch 2.1.0.",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "2026-10-01-release-workflow-and-faster-rats",
@@ -87,6 +87,14 @@
       "title": "Independent failover is now always on",
       "message": "BallerWatch now keeps its external cron failover enabled, health-gates duplicate work, maintains encrypted last-known runtime backups, and has expanded onboarding/wiki documentation.",
       "example": "Use /version to confirm BallerWatch 2.3.0.",
+      "enabled": false
+    },
+    {
+      "id": "2026-10-01-kv-free-runtime",
+      "version": "2.4.0",
+      "title": "KV-free runtime and short-lived chat review",
+      "message": "BallerWatch no longer uses Workers KV. Monitoring now runs through cron-job.org + GitHub, while Telegram keeps its Cloudflare fast path and uses a privacy-minimized 48-hour review history for bugs and feature ideas.",
+      "example": "Use /version to confirm BallerWatch 2.4.0.",
       "enabled": true
     }
   ]
