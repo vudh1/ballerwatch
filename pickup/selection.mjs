@@ -1,3 +1,8 @@
+/**
+ * Selects the primary pickup date deterministically from eligible dates and location/vote state.
+ *
+ * Documentation baseline: v2.3.0. Runtime/private data must never be committed to Git.
+ */
 function parseDate(date) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(date || ""));
   if (!match) return null;

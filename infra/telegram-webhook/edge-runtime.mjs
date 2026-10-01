@@ -1,3 +1,8 @@
+/**
+ * Contains Cloudflare edge source adapters, normalization, KV helpers, and lightweight change detection.
+ *
+ * Documentation baseline: v2.3.0. Runtime/private data must never be committed to Git.
+ */
 const RATS_API = "https://service.rats.team.op-dev.io/";
 const TIME_ZONE = "America/Los_Angeles";
 const HEADERS = ["Event Type","Start Date","Start Time","End Date","End Time","Timezone ID","Home or Away","Opponent/Event Title","Location Name","Shirt Color","Opponent Shirt Color","Allow RSVPs","Send Reminders","Notes/Comments"];

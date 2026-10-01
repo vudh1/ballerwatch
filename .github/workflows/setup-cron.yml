@@ -2,6 +2,14 @@ name: Configure external cron
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "infra/external-schedules.mjs"
+      - ".github/workflows/setup-cron.yml"
+      - ".github/workflows/pickup.yml"
+      - ".github/workflows/league.yml"
+      - ".github/workflows/watchdog.yml"
 
 permissions:
   contents: read
@@ -21,9 +29,14 @@ jobs:
           test -n "$CRON_JOB_ORG_API_KEY" || { echo "Missing CRON_JOB_ORG_API_KEY secret"; exit 1; }
           test -n "$CRON_GITHUB_PAT" || { echo "Missing CRON_GITHUB_PAT secret"; exit 1; }
 
-      - name: Prepare disabled cron-job.org fallback jobs
+      - name: Ensure cron-job.org failover jobs are enabled
         env:
           CRON_JOB_ORG_API_KEY: ${{ secrets.CRON_JOB_ORG_API_KEY }}
           CRON_GITHUB_PAT: ${{ secrets.CRON_GITHUB_PAT }}
           BALLERWATCH_BRANCH: main
-        run: node infra/external-schedules.mjs ensure-disabled
+        run: node infra/external-schedules.mjs ensure-enabled
+
+      - name: Verify enabled failover posture
+        env:
+          CRON_JOB_ORG_API_KEY: ${{ secrets.CRON_JOB_ORG_API_KEY }}
+        run: node infra/external-schedules.mjs check-enabled

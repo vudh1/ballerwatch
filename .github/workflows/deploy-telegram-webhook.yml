@@ -6,7 +6,9 @@ on:
     branches: [main]
     paths:
       - "infra/telegram-webhook/**"
-      - "infra/disable-listener-cron.mjs"
+      - "infra/external-schedules.mjs"
+      - "shared/runtime-paths.mjs"
+      - "shared/intent-index.mjs"
       - ".github/workflows/deploy-telegram-webhook.yml"
 
 permissions:
@@ -133,18 +135,11 @@ jobs:
           node prepare-config.mjs
           npx --yes wrangler@4 deploy --config wrangler.generated.jsonc
 
-      - name: Prepare disabled external fallback schedules
+      - name: Ensure external failover schedules stay enabled
         env:
           CRON_JOB_ORG_API_KEY: ${{ secrets.CRON_JOB_ORG_API_KEY }}
           CRON_GITHUB_PAT: ${{ secrets.CRON_GITHUB_PAT }}
-        run: node infra/external-schedules.mjs ensure-disabled
-
-      - name: Restore legacy schedules if edge deployment fails
-        if: failure()
-        env:
-          CRON_JOB_ORG_API_KEY: ${{ secrets.CRON_JOB_ORG_API_KEY }}
-          CRON_GITHUB_PAT: ${{ secrets.CRON_GITHUB_PAT }}
-        run: node infra/external-schedules.mjs enable
+        run: node infra/external-schedules.mjs ensure-enabled
 
       - name: Clean temporary files
         if: always()

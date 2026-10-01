@@ -9,7 +9,7 @@ Always read the current `README.md`, this file, and `features/versions.json` fro
 - Workflows may temporarily materialize runtime files by using `shared/runtime-state.mjs pull <scope>`; they must push needed changes back to KV and remove local state before completion.
 - The privacy audit must continue to reject tracked `pickup/state/`, `league/state/`, `state/`, `league/status.json`, `requests/private.json`, and `requests/unknown.json`.
 - The public feature-request summary is served from the Worker `/public/feature-summary` endpoint and must remain version 3 fixed categories/counters only. Never expose free text, IDs, timestamps, hashes of request text, or rejected answers.
-- Cloudflare Cron Triggers are the recurring scheduler. cron-job.org contains three emergency fallback jobs (pickup, league, watchdog); they should exist but remain disabled while Cloudflare is healthy.
+- Cloudflare Cron Triggers are the primary recurring scheduler. cron-job.org also keeps three **enabled** external failover jobs (pickup, league, watchdog). Pickup/league fallback runs health-gate against Cloudflare and skip source work while the edge heartbeat is fresh.
 - Telegram is webhook-driven through Cloudflare. Do not recreate a recurring `getUpdates` poller.
 - To recover or verify `UPSTREAM_ENDPOINT`, follow `skills/find-upstream-endpoint/SKILL.md`. Never commit the live endpoint.
 
@@ -51,7 +51,7 @@ The watchdog must verify:
 - public-repo privacy rules; and
 - cron-job.org fallback posture.
 
-While Cloudflare is healthy, the three cron-job.org fallback jobs must exist with their expected 2/5/10-minute cadences and remain disabled. A legacy Telegram polling cron must remain disabled.
+The three cron-job.org failover jobs must exist with their expected 2/5/10-minute cadences and remain enabled. A legacy Telegram polling cron must remain disabled.
 
 ## Versioning
 
@@ -61,3 +61,23 @@ While Cloudflare is healthy, the three cron-job.org fallback jobs must exist wit
 - No repository change means no version bump.
 
 Announcements must reference an exact release version and preserve one-time announcement behavior.
+
+## Code style and module documentation
+
+Read `STYLE_GUIDE.md` before editing code.
+
+- Keep runtime modules small and domain-focused; extract pure routing/parsing/formatting logic when a file starts mixing multiple concerns.
+- Every non-test runtime `.mjs` file begins with a module documentation block. Every non-test Python runtime module begins with a module docstring.
+- Comments explain responsibility, privacy boundaries, failure behavior, or non-obvious invariants rather than restating syntax.
+- When a release materially changes a module's responsibility, update its header/documentation and the relevant `docs/wiki/` page.
+- Do not rewrite old release snapshots merely to add comments. Current release documentation is the source of onboarding truth.
+
+## Purge semantics
+
+`PURGE` is a full runtime factory reset. It clears all Cloudflare KV runtime keys, including custom league-team state and listener/runtime settings. The next run rebuilds default teams and fresh source snapshots from code/secrets. It does not delete source code, secrets, or Google Calendar events.
+
+## Cloudflare outage resilience
+
+Enabled cron-job.org jobs provide an independent scheduler path. Pickup/league external-fallback dispatches first run `infra/fallback-gate.mjs`; they proceed only when the corresponding Cloudflare heartbeat is stale/unreachable.
+
+GitHub workflows restore encrypted last-known runtime files from GitHub Actions cache if the Worker runtime-state API is unavailable. Cache payloads must remain encrypted and must never be committed.

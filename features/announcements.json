@@ -80,6 +80,14 @@
       "message": "BallerWatch now reconciles RATS changes faster, verifies its cron-job.org emergency fallback jobs, and develops each new release on a tested branch before one squash commit reaches main.",
       "example": "Use /version to confirm BallerWatch 2.2.0.",
       "enabled": true
+    },
+    {
+      "id": "2026-10-01-resilient-failover",
+      "version": "2.3.0",
+      "title": "Independent failover is now always on",
+      "message": "BallerWatch now keeps its external cron failover enabled, health-gates duplicate work, maintains encrypted last-known runtime backups, and has expanded onboarding/wiki documentation.",
+      "example": "Use /version to confirm BallerWatch 2.3.0.",
+      "enabled": true
     }
   ]
 }

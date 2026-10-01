@@ -1,0 +1,65 @@
+name: Seed failover cache
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "shared/runtime-state.mjs"
+      - "shared/runtime-paths.mjs"
+      - "shared/failover-state.mjs"
+      - ".github/workflows/seed-failover-cache.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ballerwatch-failover-cache-seed
+  cancel-in-progress: true
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Pull current runtime scopes from Cloudflare KV
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: |
+          node shared/runtime-state.mjs pull pickup
+          node shared/failover-state.mjs save pickup
+          node shared/runtime-state.mjs clean pickup
+
+          node shared/runtime-state.mjs pull league
+          node shared/failover-state.mjs save league
+          node shared/runtime-state.mjs clean league
+
+          node shared/runtime-state.mjs pull watchdog
+          node shared/failover-state.mjs save watchdog
+          node shared/runtime-state.mjs clean watchdog
+
+      - name: Save pickup failover cache
+        uses: actions/cache/save@v4
+        with:
+          path: .runtime/failover/pickup.json
+          key: ballerwatch-runtime-pickup-seed-${{ github.run_id }}
+
+      - name: Save league failover cache
+        uses: actions/cache/save@v4
+        with:
+          path: .runtime/failover/league.json
+          key: ballerwatch-runtime-league-seed-${{ github.run_id }}
+
+      - name: Save watchdog failover cache
+        uses: actions/cache/save@v4
+        with:
+          path: .runtime/failover/watchdog.json
+          key: ballerwatch-runtime-watchdog-seed-${{ github.run_id }}
+
+      - name: Remove local runtime data
+        if: always()
+        run: rm -rf .runtime pickup/state league/state state requests

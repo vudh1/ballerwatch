@@ -1,3 +1,8 @@
+/**
+ * Routes Telegram webhooks, edge Q&A, runtime-state APIs, health checks, and scheduled edge work.
+ *
+ * Documentation baseline: v2.3.0. Runtime/private data must never be committed to Git.
+ */
 import {
   fetchPickupSnapshot,
   fetchLeagueSignal,
@@ -7,6 +12,8 @@ import {
   kvTextGet,
   kvTextPut,
 } from "./edge-runtime.mjs";
+import { classifyIndexedIntent } from "../../shared/intent-index.mjs";
+import { ALL_RUNTIME_FILE_PATHS } from "../../shared/runtime-paths.mjs";
 
 const REPO = "vudh1/ballerwatch";
 const CONTEXT_CACHE_SECONDS = 600;
@@ -16,20 +23,7 @@ const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_MODEL = "openai/gpt-oss-20b";
 const TIME_ZONE = "America/Los_Angeles";
 
-const RUNTIME_FILE_PATHS = new Set([
-  "state/listener.json",
-  "state/watchdog.json",
-  "pickup/state/feed.json",
-  "pickup/state/events.json",
-  "pickup/state/notify.json",
-  "pickup/state/source-health.json",
-  "league/state/teams.json",
-  "league/state/schedule.json",
-  "league/state/today.json",
-  "league/state/calendar-snapshot.json",
-  "requests/private.json",
-  "requests/unknown.json",
-]);
+const RUNTIME_FILE_PATHS = new Set(ALL_RUNTIME_FILE_PATHS);
 
 function base64Json(value) {
   const bytes = new TextEncoder().encode(JSON.stringify(value));
@@ -461,16 +455,14 @@ function nextGame(snapshot) {
 }
 
 function directIntent(text) {
-  const clean=cleanText(text,600);
-  const lower=clean.toLowerCase();
-  if (/^\/?version\b/.test(lower) || /what(?:'s| is).*(?:version)/.test(lower)) return "version";
+  const clean = cleanText(text, 600);
+  const lower = clean.toLowerCase();
+
+  // Slash commands stay exact. Natural-language routing then uses the shared
+  // static index so common phrasing avoids a network round-trip to Groq.
+  if (/^\/?version\b/.test(lower)) return "version";
   if (/^\/?help\b/.test(lower)) return "help";
-  if (/league teams?|teams?.*(?:monitor|watch)|(?:monitoring|watching).*teams?/.test(lower)) return "league_teams";
-  if (/today'?s? games?|games? today|game today|do we have.*game.*today/.test(lower)) return "today_games";
-  if (/next (?:soccer )?game|next match|when.*next.*game/.test(lower)) return "next_game";
-  if (/\b(count|how many|spots?|rsvp|reserved|capacity|availability|status)\b/.test(lower)) return "pickup_status";
-  if (/^(where|what field|which field|what time|when|how many|how many spots)\??$/.test(lower)) return "pickup_status";
-  return null;
+  return classifyIndexedIntent(clean);
 }
 
 function isStateChanging(text) {
@@ -705,6 +697,11 @@ async function refreshLeagueEdge(env,{dispatch=true,write=true}={}) {
   }
 
   const signal=await fetchLeagueSignal(teams,seasonId);
+  await runtimeFilePut(
+    env,
+    "league/state/edge-signal.json",
+    JSON.stringify({schemaVersion:1,...signal,updatedAt:new Date().toISOString()}, null, 2) + "\n",
+  );
   const fp=await fingerprint(signal);
   const old=await kvTextGet(env,"fingerprint:league");
   const changed=old!==fp;
@@ -828,26 +825,25 @@ export default {
     if (request.method === "POST" && url.pathname === "/admin/purge-runtime") {
       const secret=request.headers.get("x-ballerwatch-admin")||"";
       if(!secret || secret!==env.TELEGRAM_WEBHOOK_SECRET) return new Response("Unauthorized",{status:401});
-      const preserved=new Set(["state/listener.json","league/state/teams.json"]);
-      for(const path of RUNTIME_FILE_PATHS) {
-        if(!preserved.has(path)) await env.BALLERWATCH_STATE.delete(runtimeKey(path));
-      }
-      for(const key of [
-        "snapshot:pickup",
-        "snapshot:pickup-private",
-        "snapshot:league",
-        "snapshot:today",
-        "fingerprint:pickup",
-        "fingerprint:league",
-        "heartbeat:pickup",
-        "heartbeat:league",
-        "watchdog:last-deep",
-        "runtime:feature-summary",
-      ]) {
-        await env.BALLERWATCH_STATE.delete(key);
-      }
-      await kvJsonPut(env,"runtime:feature-summary",{version:3,requests:[]});
-      return Response.json({ok:true,preserved:["listener-settings","league-teams"]});
+
+      // PURGE is intentionally a runtime factory reset. All KV keys are
+      // generated or user runtime state; required configuration lives in
+      // Worker/GitHub secrets and league teams can bootstrap from code defaults.
+      let cursor;
+      let deleted=0;
+      do {
+        const page=await env.BALLERWATCH_STATE.list({limit:1000,cursor});
+        await Promise.all((page.keys||[]).map(({name})=>env.BALLERWATCH_STATE.delete(name)));
+        deleted += (page.keys||[]).length;
+        cursor=page.list_complete ? undefined : page.cursor;
+      } while(cursor);
+
+      return Response.json({
+        ok:true,
+        deleted,
+        preserved:[],
+        defaultsRebuild:["league-teams","pickup/league snapshots","listener defaults"],
+      });
     }
     if (request.method === "POST" && url.pathname === "/admin/shadow-refresh") {
       const secret=request.headers.get("x-ballerwatch-admin")||"";

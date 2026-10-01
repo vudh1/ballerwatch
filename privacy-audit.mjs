@@ -1,3 +1,8 @@
+/**
+ * Fails CI when public Git history contains forbidden runtime, credential, or private-data paths.
+ *
+ * Documentation baseline: v2.3.0. Runtime/private data must never be committed to Git.
+ */
 import { execFileSync } from "node:child_process";
 
 const FORBIDDEN_TRACKED = new Set([

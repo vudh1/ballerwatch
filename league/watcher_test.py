@@ -1,7 +1,10 @@
 import copy
+import json
+import os
+from pathlib import Path
 import unittest
 from unittest.mock import patch
-from watcher import normalize, discover_latest_season, HEADERS
+from watcher import normalize, discover_latest_season, edge_signal_aggregate, HEADERS
 
 class ScheduleTests(unittest.TestCase):
     def setUp(self):
@@ -30,6 +33,29 @@ class ScheduleTests(unittest.TestCase):
         self.assertEqual(season, 'fall-2026')
         self.assertIs(returned, aggregate)
         mocked.assert_called_once_with('get-aggregate', {'season': 'fall-2026'})
+
+    def test_fresh_edge_signal_can_replace_duplicate_aggregate_fetch(self):
+        state_dir = Path('state')
+        state_dir.mkdir(exist_ok=True)
+        signal_path = state_dir / 'edge-signal.json'
+        self.addCleanup(lambda: signal_path.unlink(missing_ok=True))
+        self.addCleanup(lambda: state_dir.rmdir() if state_dir.exists() and not any(state_dir.iterdir()) else None)
+        signal_path.write_text(json.dumps({
+            'season': 'fall-2026',
+            'teams': [
+                {'name': 'Team Alpha', 'schedule_key': 'a'},
+                {'name': 'Team Beta', 'schedule_key': 'b'},
+            ],
+            'events': [],
+        }))
+        with patch.dict(os.environ, {'EXTERNAL_FALLBACK': 'false'}):
+            result = edge_signal_aggregate('fall-2026')
+        self.assertEqual(result[0], 'fall-2026')
+        self.assertEqual(len(result[1]['teams']), 2)
+
+    def test_external_fallback_ignores_cached_edge_signal(self):
+        with patch.dict(os.environ, {'EXTERNAL_FALLBACK': 'true'}):
+            self.assertIsNone(edge_signal_aggregate('fall-2026'))
 
     def test_exact_team_and_byes(self):
         out = normalize('fall-2026', self.aggregate, self.exports)

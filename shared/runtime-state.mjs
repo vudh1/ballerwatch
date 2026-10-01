@@ -1,37 +1,15 @@
+/**
+ * Transfers scoped runtime files between GitHub Actions and the private Cloudflare runtime store.
+ *
+ * Documentation baseline: v2.3.0. Runtime/private data must never be committed to Git.
+ */
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { restoreFailoverState } from "./failover-state.mjs";
+import { runtimePathsFor } from "./runtime-paths.mjs";
 
 const DEFAULT_URL = "https://ballerwatch-telegram.vudhone.workers.dev";
-
-const SCOPES = Object.freeze({
-  listener: [
-    "state/listener.json",
-    "league/state/teams.json",
-    "pickup/state/feed.json",
-    "pickup/state/events.json",
-    "league/state/schedule.json",
-    "league/state/today.json",
-    "requests/private.json",
-    "requests/unknown.json",
-  ],
-  pickup: [
-    "state/listener.json",
-    "pickup/state/feed.json",
-    "pickup/state/events.json",
-    "pickup/state/notify.json",
-    "pickup/state/source-health.json",
-  ],
-  league: [
-    "league/state/teams.json",
-    "league/state/schedule.json",
-    "league/state/today.json",
-    "league/state/calendar-snapshot.json",
-  ],
-  watchdog: [
-    "state/watchdog.json",
-  ],
-});
 
 function clean(value) {
   return String(value || "").trim();
@@ -51,12 +29,6 @@ function adminSecret() {
     .createHash("sha256")
     .update(`${token}|${chat}|ballerwatch-webhook-v1`)
     .digest("hex");
-}
-
-function pathsFor(scope) {
-  const items = SCOPES[scope];
-  if (!items) throw new Error(`Unknown runtime-state scope: ${scope}`);
-  return items;
 }
 
 async function call(body) {
@@ -79,34 +51,49 @@ async function call(body) {
 }
 
 export async function pullRuntimeState(scope) {
-  const files = pathsFor(scope);
-  const payload = await call({ action: "get", paths: files });
-  let count = 0;
-  for (const file of files) {
-    const raw = payload.files?.[file];
-    if (typeof raw !== "string" || !raw) continue;
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, raw.endsWith("\n") ? raw : raw + "\n");
-    count += 1;
+  const files = runtimePathsFor(scope);
+  try {
+    const payload = await call({ action: "get", paths: files });
+    let count = 0;
+    for (const file of files) {
+      const raw = payload.files?.[file];
+      if (typeof raw !== "string" || !raw) continue;
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, raw.endsWith("\n") ? raw : raw + "\n");
+      count += 1;
+    }
+    console.log(`Pulled ${count}/${files.length} ${scope} runtime-state file(s) from Cloudflare KV.`);
+    return count;
+  } catch (error) {
+    const restored = restoreFailoverState(scope);
+    if (!restored) throw error;
+    console.warn(
+      `Cloudflare runtime-state access failed; continuing with encrypted ${scope} Actions-cache backup.`,
+    );
+    return restored;
   }
-  console.log(`Pulled ${count}/${files.length} ${scope} runtime-state file(s) from Cloudflare KV.`);
-  return count;
 }
 
 export async function pushRuntimeState(scope) {
   const files = {};
-  for (const file of pathsFor(scope)) {
+  for (const file of runtimePathsFor(scope)) {
     if (!fs.existsSync(file)) continue;
     files[file] = fs.readFileSync(file, "utf8");
   }
-  const payload = await call({ action: "put", files });
-  console.log(`Pushed ${payload.count || 0} ${scope} runtime-state file(s) to Cloudflare KV.`);
-  return Number(payload.count || 0);
+  try {
+    const payload = await call({ action: "put", files });
+    console.log(`Pushed ${payload.count || 0} ${scope} runtime-state file(s) to Cloudflare KV.`);
+    return Number(payload.count || 0);
+  } catch (error) {
+    if (String(process.env.BALLERWATCH_ALLOW_OFFLINE || "").toLowerCase() !== "true") throw error;
+    console.warn("Cloudflare runtime-state write unavailable; encrypted failover backup remains authoritative until recovery.");
+    return 0;
+  }
 }
 
 export function cleanRuntimeState(scope) {
   let count = 0;
-  for (const file of pathsFor(scope)) {
+  for (const file of runtimePathsFor(scope)) {
     try {
       fs.rmSync(file, { force: true });
       count += 1;

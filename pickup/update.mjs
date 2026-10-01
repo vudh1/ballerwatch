@@ -1,3 +1,8 @@
+/**
+ * Fetches and normalizes pickup source data into the temporary runtime representation.
+ *
+ * Documentation baseline: v2.3.0. Runtime/private data must never be committed to Git.
+ */
 import fs from "node:fs";
 import path from "node:path";
 import { decryptState, encryptState } from "../shared/state-crypto.mjs";

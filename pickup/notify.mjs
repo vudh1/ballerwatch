@@ -1,3 +1,8 @@
+/**
+ * Calculates pickup notification transitions while honoring owner, mute, snooze, and waitlist rules.
+ *
+ * Documentation baseline: v2.3.0. Runtime/private data must never be committed to Git.
+ */
 import fs from "node:fs";
 import crypto from "node:crypto";
 import { sendTelegram } from "../shared/telegram.mjs";

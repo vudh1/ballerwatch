@@ -73,10 +73,10 @@ jobs:
           OWNER_RSVP_NAME: ${{ secrets.OWNER_RSVP_NAME }}
         run: node manual-test.mjs
 
-      - name: Verify disabled external fallback posture
+      - name: Verify enabled external failover posture
         env:
           CRON_JOB_ORG_API_KEY: ${{ secrets.CRON_JOB_ORG_API_KEY }}
-        run: node infra/external-schedules.mjs check-disabled
+        run: node infra/external-schedules.mjs check-enabled
 
       - name: Remove all transient runtime data
         if: always()

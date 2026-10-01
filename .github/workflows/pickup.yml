@@ -2,6 +2,12 @@ name: Pickup watcher
 
 on:
   workflow_dispatch:
+    inputs:
+      external_fallback:
+        description: "Set by the enabled cron-job.org failover dispatcher"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -20,13 +26,32 @@ jobs:
           ref: main
           fetch-depth: 1
 
-      - name: Pull runtime state from Cloudflare KV
+      - name: Gate external fallback against Cloudflare health
+        id: gate
+        env:
+          EXTERNAL_FALLBACK: ${{ inputs.external_fallback }}
+          TELEGRAM_WEBHOOK_HEALTH_URL: https://ballerwatch-telegram.vudhone.workers.dev/health
+        run: node infra/fallback-gate.mjs pickup
+
+      - name: Restore encrypted failover state cache
+        if: steps.gate.outputs.should_run == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: .runtime/failover/pickup.json
+          key: ballerwatch-runtime-pickup-${{ github.run_id }}
+          restore-keys: |
+            ballerwatch-runtime-pickup-
+
+      - name: Pull runtime state
+        if: steps.gate.outputs.should_run == 'true'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
         run: node shared/runtime-state.mjs pull pickup
 
       - name: Refresh pickup data
+        if: steps.gate.outputs.should_run == 'true'
         env:
           UPSTREAM_ENDPOINT: ${{ secrets.UPSTREAM_ENDPOINT }}
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
@@ -34,6 +59,7 @@ jobs:
         run: node pickup/update.mjs
 
       - name: Send pickup notifications
+        if: steps.gate.outputs.should_run == 'true'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -41,12 +67,28 @@ jobs:
           OWNER_RSVP_NAME: ${{ secrets.OWNER_RSVP_NAME }}
         run: node pickup/notify.mjs
 
-      - name: Push runtime state to Cloudflare KV
-        if: always()
+      - name: Push runtime state
+        if: always() && steps.gate.outputs.should_run == 'true'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          BALLERWATCH_ALLOW_OFFLINE: ${{ inputs.external_fallback }}
         run: node shared/runtime-state.mjs push pickup
+
+      - name: Build encrypted failover backup
+        if: always() && steps.gate.outputs.should_run == 'true'
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: node shared/failover-state.mjs save pickup
+
+      - name: Save encrypted failover state cache
+        if: always() && steps.gate.outputs.should_run == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .runtime/failover/pickup.json
+          key: ballerwatch-runtime-pickup-${{ github.run_id }}
 
       - name: Remove local runtime data
         if: always()

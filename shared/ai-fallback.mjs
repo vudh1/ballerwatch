@@ -1,3 +1,8 @@
+/**
+ * Provides bounded Groq fallback answering for questions deterministic routing cannot handle.
+ *
+ * Documentation baseline: v2.3.0. Runtime/private data must never be committed to Git.
+ */
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const DEFAULT_MODEL = "openai/gpt-oss-20b";
 export const DAILY_AI_LIMIT = 25;

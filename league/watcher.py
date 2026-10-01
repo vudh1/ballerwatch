@@ -1,6 +1,7 @@
 """Fetch the public API used by the Seattle RATS standings widget."""
 import hashlib
 import json
+import os
 import time
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -103,6 +104,29 @@ def discover_latest_season(preferred=None):
         if all(len(items) == 1 for items in matched):
             return season_id, aggregate
     raise ValueError('No recent RATS season contains all configured teams') from last_error
+
+def edge_signal_aggregate(preferred=None):
+    """Use the just-fetched Cloudflare signal when it matches current monitored teams."""
+    if str(os.environ.get('EXTERNAL_FALLBACK', '')).lower() == 'true':
+        return None
+    path = Path('state/edge-signal.json')
+    if not path.exists():
+        return None
+    try:
+        signal = json.loads(path.read_text())
+    except Exception:
+        return None
+    season_id = str(signal.get('season') or '').strip()
+    if preferred and season_id != preferred:
+        return None
+    aggregate = {'teams': signal.get('teams'), 'events': signal.get('events')}
+    if not isinstance(aggregate['teams'], list) or not isinstance(aggregate['events'], list):
+        return None
+    matched = [team_matches(aggregate, name) for name in configured_teams()]
+    if not all(len(items) == 1 and items[0].get('schedule_key') for items in matched):
+        return None
+    return season_id, aggregate
+
 
 def call(action, params):
     for attempt in range(3):
@@ -218,7 +242,12 @@ def main():
     try:
         previous = json.loads(Path('schedule.json').read_text()) if Path('schedule.json').exists() else None
         preferred_season = previous.get('seasonId') if isinstance(previous, dict) else None
-        season_id, aggregate = discover_latest_season(preferred_season)
+        edge = edge_signal_aggregate(preferred_season)
+        if edge:
+            season_id, aggregate = edge
+            print('Using fresh Cloudflare RATS signal; skipped duplicate aggregate fetch.')
+        else:
+            season_id, aggregate = discover_latest_season(preferred_season)
 
         teams = configured_teams()
         schedule_keys = {}
