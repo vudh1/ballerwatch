@@ -1,7 +1,18 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "1.2.2",
+  "currentVersion": "1.2.3",
   "releases": [
+    {
+      "version": "1.2.3",
+      "date": "2026-09-30",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Concurrent state persistence hardening",
+      "changes": [
+        "Added bounded pull/rebase/push retries to listener, pickup, league, and watchdog state persistence.",
+        "Prevents transient Git ref races between independently scheduled workflows from dropping otherwise successful runs."
+      ]
+    },
     {
       "version": "1.2.2",
       "date": "2026-09-30",
