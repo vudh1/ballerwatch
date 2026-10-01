@@ -71,6 +71,11 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Validate Apps Script syntax
+        run: |
+          cp league/google_apps_script/Code.gs /tmp/ballerwatch-calendar-bridge.mjs
+          node --check /tmp/ballerwatch-calendar-bridge.mjs
+
       - name: Compile Python modules
         run: python -m compileall -q league
 
