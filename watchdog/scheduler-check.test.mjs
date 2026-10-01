@@ -6,14 +6,14 @@ import { EXTERNAL_SCHEDULE_SPECS } from "../infra/external-schedules.mjs";
 const now = Date.parse("2026-10-01T00:00:00Z");
 const jobs = EXTERNAL_SCHEDULE_SPECS.map(spec => ({ title: spec.title, enabled: true, schedule: { minutes: spec.minutes }, url: `https://api.github.com/repos/vudh1/ballerwatch/actions/workflows/${spec.workflow}/dispatches` }));
 
-test("10-minute watchdog calls make at most 48 scheduler requests per day", async () => {
+test("10-minute watchdog calls make at most 4 scheduler requests per day", async () => {
   let previous;
   let calls = 0;
   for (let i = 0; i < 144; i++) {
     previous = await checkScheduler(previous, { now: now + i * 600000, list: async () => { calls++; return jobs; } });
     assert.deepEqual(previous.problems, []);
   }
-  assert.equal(calls, 48);
+  assert.equal(calls, 4);
 });
 
 test("429 stays unhealthy during backoff; fresh successful audit recovers", async () => {
