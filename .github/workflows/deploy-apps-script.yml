@@ -53,7 +53,7 @@ jobs:
         working-directory: .runtime/apps-script
         run: |
           clasp pull
-          cp ../../league/google_apps_script/Code.gs ./Code.gs
+          cp ../../league/google_apps_script/Code.gs ./Code.js
           clasp push --force
 
       - name: Redeploy existing web app without changing its URL

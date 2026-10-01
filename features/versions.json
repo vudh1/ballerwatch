@@ -1,7 +1,18 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "1.2.4",
+  "currentVersion": "1.2.5",
   "releases": [
+    {
+      "version": "1.2.5",
+      "date": "2026-09-30",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Calendar bridge deployment compatibility",
+      "changes": [
+        "Updated the Apps Script deployment workflow to replace the Code.js filename produced by clasp pull, avoiding duplicate Code.js/Code.gs conflicts.",
+        "Verified the full Calendar bridge CI path: project pull, code push, existing deployment update, live webhook health check, and OAuth cleanup."
+      ]
+    },
     {
       "version": "1.2.4",
       "date": "2026-09-30",
