@@ -16,13 +16,13 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=4\.1\.2/);
-  assert.match(html, /app\.js\?v=4\.1\.2/);
+  assert.match(html, /styles\.css\?v=5\.0\.0/);
+  assert.match(html, /app\.js\?v=5\.0\.0/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v4-1-2-shell/);
+  assert.match(sw, /ballerwatch-v5-0-0-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -63,7 +63,7 @@ test("Home Screen install card is removed in standalone mode and notifications u
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=4\.1\.2/);
+  assert.match(app, /sw\.js\?v=5\.0\.0/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -126,7 +126,7 @@ test("question box supports slash commands and autosuggestions", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   assert.match(html, /id="question-suggestions"/);
   assert.match(html, /aria-autocomplete="list"/);
-  assert.match(html, /type \/ for commands/);
+  assert.match(html, /\/ commands|type <strong>\/<\/strong> for commands/);
   assert.match(app, /COMMAND_SUGGESTIONS/);
   assert.match(app, /QUESTION_COMPLETIONS/);
   assert.match(app, /ArrowDown/);
@@ -219,4 +219,37 @@ test("owner pairing consumes codes through listener workflow and returns web-saf
   assert.match(listener, /webPairCodeHash: ""/);
   assert.match(worker, /Pairing service is temporarily unavailable/);
   assert.match(worker, /webJson\([\s\S]*status: 503/);
+});
+
+
+test("two-week dashboard renders cached match weather", () => {
+  const html = fs.readFileSync("docs/index.html", "utf8");
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  const css = fs.readFileSync("docs/styles.css", "utf8");
+  const watchdog = fs.readFileSync(".github/workflows/watchdog.yml", "utf8");
+
+  assert.match(html, /id="two-week-calendar"/);
+  assert.match(html, /id="calendar-grid"/);
+  assert.match(html, /id="calendar-detail"/);
+  assert.match(html, /Open-Meteo/);
+  assert.match(html, /OpenStreetMap contributors/);
+  assert.match(app, /\/web\/calendar/);
+  assert.match(app, /weatherSummary/);
+  assert.match(app, /renderCalendarDetail/);
+  assert.match(css, /\.calendar-grid/);
+  assert.match(css, /\.spotlight-card/);
+  assert.match(css, /\/\* v5 dashboard \*\//);
+  assert.match(watchdog, /cron: "17 \*\/6 \* \* \*"/);
+  assert.match(watchdog, /node weather\/update\.mjs/);
+});
+
+test("cron-job.org is reserved for pickup and league while watchdog is retired", () => {
+  const schedules = fs.readFileSync("infra/external-schedules.mjs", "utf8");
+  assert.match(schedules, /BallerWatch - Pickup watcher/);
+  assert.match(schedules, /BallerWatch - League watcher/);
+  assert.match(schedules, /RETIRED_EXTERNAL_SCHEDULE_SPECS/);
+  assert.match(schedules, /BallerWatch - System watchdog/);
+  const primaryBlock = schedules.match(/EXTERNAL_SCHEDULE_SPECS = Object\.freeze\(\[([\s\S]*?)\]\);/);
+  assert.ok(primaryBlock);
+  assert.doesNotMatch(primaryBlock[1], /System watchdog/);
 });

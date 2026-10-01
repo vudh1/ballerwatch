@@ -22,17 +22,20 @@ The version announcer runs alongside the watchdog schedule but is independent of
 
 ## Scheduler path
 
-cron-job.org is the primary scheduler:
+cron-job.org is reserved for the two high-frequency source watchers:
 
 - pickup every 2 minutes;
-- RATS league every 5 minutes;
-- watchdog every 10 minutes.
+- RATS league every 5 minutes.
 
-The scheduled jobs dispatch GitHub Actions directly. Cloudflare Cron Triggers are disabled.
+The legacy Telegram listener cron and the retired external watchdog cron must stay disabled. System watchdog/maintenance now uses a native GitHub Actions schedule every 6 hours, and that same run refreshes the encrypted 14-day match-weather snapshot. Cloudflare Cron Triggers remain disabled.
 
 ## Runtime platform
 
 GitHub Actions runtime code is dependency-free Node.js 22 / ECMAScript modules. League source normalization, Calendar reconciliation, bridge clients, Telegram notification formatting, state helpers, and tests use one runtime while the Apps Script bridge remains Google Apps Script JavaScript.
+
+## Match-weather path
+
+The six-hour maintenance workflow reads the latest encrypted pickup and league schedules, resolves only new public venue locations, fetches hourly forecast data, and writes an encrypted `state/weather.json` snapshot. Venue coordinates are cached so repeat fields do not require repeat geocoding. The public Worker exposes only the public-safe 14-day game/weather projection through `GET /web/calendar`.
 
 ## Durable state
 
@@ -56,15 +59,12 @@ The Cache API edge budget is best-effort per location, not a global billing limi
 Gemini authentication uses the `GEMINI_API_KEY` repository secret, deployed to the Worker.
 Chat condensation remains on Groq and retains the encrypted 48-hour history design.
 
-Scheduler configuration audits are cached for 6 hours in encrypted watchdog state, limiting
-routine management-API reads to 4/day. The watchdog still runs every 10 minutes and checks
-webhook, validation and privacy each time. Cached failures remain failures. Release smoke makes
+Scheduler configuration audits are cached for 6 hours in encrypted watchdog state. The watchdog itself now runs every 6 hours and checks webhook, validation, privacy, the two required cron-job.org jobs, and the disabled posture of retired listener/watchdog schedules. Cached failures remain failures. Release smoke makes
 a fresh scheduler API check when available; temporary management-API failures such as HTTP 429
 are warnings, while any successfully retrieved missing, disabled, duplicated, mistargeted, or
 wrong-cadence scheduler posture still fails. The same temporary-unavailability rule applies to
 post-merge scheduler setup and the final scheduler step of Worker deployment, so cron-job.org
-quota exhaustion cannot mark an otherwise healthy Worker deployment as failed. Source polling
-cadences remain 2/5/10 minutes.
+quota exhaustion cannot mark an otherwise healthy Worker deployment as failed. Source polling cadences remain 2/5 minutes; weather/maintenance is six-hourly.
 
 A readable runtime-state branch is authoritative, including missing files after PURGE. Encrypted
 backup recovery applies only when the branch cannot be fetched, never to individual absent files.

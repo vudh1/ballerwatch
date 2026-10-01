@@ -9,9 +9,12 @@ const allMinutes = (step) =>
   Array.from({ length: Math.ceil(60 / step) }, (_, i) => i * step).filter((v) => v < 60);
 
 export const EXTERNAL_SCHEDULE_SPECS = Object.freeze([
-  { title: "BallerWatch - Pickup watcher", workflow: "pickup.yml", minutes: allMinutes(2) },
-  { title: "BallerWatch - League watcher", workflow: "league.yml", minutes: allMinutes(5) },
-  { title: "BallerWatch - System watchdog", workflow: "watchdog.yml", minutes: allMinutes(10) },
+  { title: "BallerWatch - Pickup watcher", workflow: "pickup.yml", minutes: allMinutes(2), hours: [-1] },
+  { title: "BallerWatch - League watcher", workflow: "league.yml", minutes: allMinutes(5), hours: [-1] },
+]);
+
+export const RETIRED_EXTERNAL_SCHEDULE_SPECS = Object.freeze([
+  { title: "BallerWatch - System watchdog", workflow: "watchdog.yml" },
 ]);
 
 function normalizeMinutes(value) {
@@ -22,6 +25,15 @@ function normalizeMinutes(value) {
 
 function sameNumbers(a, b) {
   return JSON.stringify(normalizeMinutes(a)) === JSON.stringify(normalizeMinutes(b));
+}
+
+function retiredExternalJobs(jobs, repo) {
+  return (Array.isArray(jobs) ? jobs : []).filter((job) =>
+    RETIRED_EXTERNAL_SCHEDULE_SPECS.some((spec) =>
+      job?.title === spec.title ||
+      String(job?.url || "").includes("/repos/" + repo + "/actions/workflows/" + spec.workflow + "/dispatches")
+    )
+  );
 }
 
 function legacyListenerJobs(jobs) {
@@ -66,7 +78,11 @@ export function analyzeExternalSchedules(jobs, {
 
     const minutes = job?.schedule?.minutes;
     if (Array.isArray(minutes) && !sameNumbers(minutes, spec.minutes)) {
-      problems.push(`${spec.title}: schedule cadence is not the expected ${spec.minutes.length}-run/hour schedule`);
+      problems.push(`${spec.title}: minute cadence does not match the expected schedule`);
+    }
+    const hours = job?.schedule?.hours;
+    if (Array.isArray(hours) && !sameNumbers(hours, spec.hours || [-1])) {
+      problems.push(`${spec.title}: hour cadence does not match the expected schedule`);
     }
 
     const expectedUrl = `/repos/${repo}/actions/workflows/${spec.workflow}/dispatches`;
@@ -78,6 +94,10 @@ export function analyzeExternalSchedules(jobs, {
   const listenerJobs = legacyListenerJobs(list);
   if (listenerJobs.some((job) => job.enabled)) {
     problems.push("BallerWatch - Telegram listener: legacy polling job must stay disabled");
+  }
+  const retiredJobs = retiredExternalJobs(list, repo);
+  if (retiredJobs.some((job) => job.enabled)) {
+    problems.push("BallerWatch - System watchdog: retired cron-job.org schedule must stay disabled");
   }
 
   return problems;
@@ -154,7 +174,7 @@ function desiredJob(spec, { repo, branch, githubPat, enabled }) {
     schedule: {
       timezone: "UTC",
       expiresAt: 0,
-      hours: [-1],
+      hours: spec.hours || [-1],
       mdays: [-1],
       minutes: spec.minutes,
       months: [-1],
@@ -209,6 +229,7 @@ export async function syncExternalSchedules(mode, {
   if (mode === "disable") {
     const recognized = jobs.filter((job) =>
       EXTERNAL_SCHEDULE_SPECS.some((spec) => jobMatchesSpec(job, spec, repo)) ||
+      retiredExternalJobs([job], repo).length > 0 ||
       legacyListenerJobs([job]).length > 0
     );
     for (const job of recognized.filter((job) => job.enabled)) {
@@ -233,6 +254,13 @@ export async function syncExternalSchedules(mode, {
         body: { job: { enabled: false } },
       });
       console.log(`Disabled legacy Telegram polling schedule ${job.jobId}.`);
+    }
+    for (const job of retiredExternalJobs(jobs, repo).filter((item) => item.enabled)) {
+      await cronCall(apiKey, `/jobs/${job.jobId}`, {
+        method: "PATCH",
+        body: { job: { enabled: false } },
+      });
+      console.log(`Disabled retired external schedule ${job.jobId} (${job.title || "watchdog"}).`);
     }
   }
 
@@ -276,7 +304,7 @@ if (isCli) {
       process.exitCode = 1;
     } else {
       console.log(
-        `All three cron-job.org scheduled jobs exist, have the expected cadence, and are ${expectEnabled ? "enabled" : "disabled"}.`,
+        `All required cron-job.org scheduled jobs exist, have the expected cadence, and are ${expectEnabled ? "enabled" : "disabled"}; retired listener/watchdog jobs are disabled.`,
       );
     }
   } else {

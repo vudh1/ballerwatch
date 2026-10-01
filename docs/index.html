@@ -11,15 +11,18 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
-  <link rel="stylesheet" href="./styles.css?v=4.1.2">
+  <link rel="stylesheet" href="./styles.css?v=5.0.0">
 </head>
 <body>
   <main class="shell">
     <header class="hero">
-      <div>
-        <p class="eyebrow">SOCCER WATCHER</p>
-        <h1>BallerWatch</h1>
-        <p class="subtitle">Pickup and RATS game updates, schedules, and alerts in one place.</p>
+      <div class="brand-lockup">
+        <div class="brand-mark" aria-hidden="true">BW</div>
+        <div>
+          <p class="eyebrow">MATCH CONTROL</p>
+          <h1>BallerWatch</h1>
+          <p class="subtitle">Games, weather, RSVP and match-day details.</p>
+        </div>
       </div>
       <div class="hero-actions">
         <button class="utility-button" id="settings-button" type="button"
@@ -36,11 +39,15 @@
           </svg>
           <span class="notification-badge" id="notification-badge" hidden>0</span>
         </button>
-        <div class="status-pill" id="system-status">Connecting…</div>
       </div>
     </header>
 
-    <section class="card next-game-card" id="next-game-card">
+    <div class="system-line">
+      <span class="system-dot" aria-hidden="true"></span>
+      <span id="system-status">Connecting…</span>
+    </div>
+
+    <section class="card next-game-card spotlight-card" id="next-game-card">
       <div class="section-heading">
         <div>
           <p class="eyebrow">NEXT GAME</p>
@@ -50,6 +57,7 @@
       </div>
       <p class="next-game-meta" id="next-game-meta"></p>
       <p class="next-game-location muted" id="next-game-location"></p>
+      <div class="next-game-weather" id="next-game-weather" hidden></div>
       <div class="button-row next-game-actions" id="next-game-actions" hidden>
         <a class="button-link" id="next-game-directions" target="_blank" rel="noopener">Directions</a>
         <button class="secondary" id="next-game-share" type="button">Share</button>
@@ -57,19 +65,33 @@
       <p class="hint" id="next-game-hint"></p>
     </section>
 
-    <section class="card">
+    <section class="card calendar-card" id="two-week-calendar">
+      <div class="section-heading calendar-heading">
+        <div>
+          <p class="eyebrow">NEXT 14 DAYS</p>
+          <h2>Game calendar</h2>
+        </div>
+        <span class="calendar-updated" id="calendar-updated">Weather every 6h</span>
+      </div>
+      <div class="calendar-grid" id="calendar-grid" aria-label="Two-week game calendar"></div>
+      <div class="calendar-detail" id="calendar-detail"></div>
+      <p class="weather-credit">Weather: Open-Meteo · Venue geocoding: © OpenStreetMap contributors</p>
+    </section>
+
+    <section class="card ask-card">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">ASK</p>
-          <h2>One question, one answer</h2>
+          <p class="eyebrow">ASK BALLERWATCH</p>
+          <h2>Find a game detail</h2>
         </div>
+        <span class="ask-shortcut">/ commands</span>
       </div>
       <form id="question-form">
         <label class="sr-only" for="question">Question</label>
         <div class="question-row">
           <div class="question-input-wrap">
             <input id="question" name="question" maxlength="600" autocomplete="off"
-              placeholder="Ask about games, or type / for commands" role="combobox"
+              placeholder="Ask about a game, field, time or RSVP…" role="combobox"
               aria-autocomplete="list" aria-expanded="false" aria-controls="question-suggestions" required>
             <div class="question-suggestions" id="question-suggestions" role="listbox" hidden></div>
           </div>
@@ -189,6 +211,6 @@
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=4.1.2"></script>
+  <script type="module" src="./app.js?v=5.0.0"></script>
 </body>
 </html>

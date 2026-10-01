@@ -6,6 +6,7 @@ import {
   normalizeOwnerSettingsInput,
   verifyOwnerToken,
   validWebSubscription,
+  webCalendarDetails,
   webNextGameDetails,
   webSafeSnapshot,
 } from "../../../infra/telegram-webhook/worker.mjs";
@@ -153,4 +154,54 @@ test("owner settings input normalizes and deduplicates teams", () => {
     () => normalizeOwnerSettingsInput({ownerName: "Alex", teams: []}),
     /1 and 20/,
   );
+});
+
+
+test("web calendar merges public games with cached match-window weather", () => {
+  const snapshot = {
+    pickup: {
+      dates: [{ date: "2099-10-08" }],
+      events: {
+        "2099-10-08": {
+          ok: true,
+          reserved: 12,
+          capacity: 16,
+          startTime: "20:30",
+          endTime: "22:30",
+        },
+      },
+    },
+    pickupPrivate: {
+      events: {
+        "2099-10-08": {
+          fieldName: "Washington Park Soccer",
+          address: "Seattle, WA",
+          players: [{ name: "Private Person" }],
+        },
+      },
+    },
+    league: { teams: [] },
+    today: { games: [] },
+  };
+  const weather = {
+    updatedAt: "2099-10-01T12:00:00Z",
+    refreshHours: 6,
+    games: [{
+      id: "pickup:2099-10-08",
+      weather: {
+        rainProbability: 65,
+        temperatureF: 58,
+        weatherCode: 61,
+        condition: "Rain",
+      },
+    }],
+  };
+
+  const calendar = webCalendarDetails(snapshot, weather, 14, "2099-10-01");
+  assert.equal(calendar.games.length, 1);
+  assert.equal(calendar.games[0].id, "pickup:2099-10-08");
+  assert.equal(calendar.games[0].weather.rainProbability, 65);
+  assert.equal(calendar.games[0].weather.temperatureF, 58);
+  assert.doesNotMatch(JSON.stringify(calendar), /Private Person/);
+  assert.equal(calendar.refreshHours, 6);
 });

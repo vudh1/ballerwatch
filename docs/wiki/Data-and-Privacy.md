@@ -6,7 +6,7 @@ The public `main` branch contains source code, documentation, static configurati
 
 Generated state lives on the dedicated `runtime-state` branch.
 
-Private runtime payloads are AES-GCM encrypted before storage, including listener settings, soccer snapshots, monitored-team state, Calendar reconciliation state, watchdog state, Web Push VAPID private material/subscriptions, notification-board state, explicit private feature requests, and condensed Telegram history.
+Private runtime payloads are AES-GCM encrypted before storage, including listener settings, soccer snapshots, monitored-team state, Calendar reconciliation state, watchdog state, the match-weather/geocode cache, Web Push VAPID private material/subscriptions, notification-board state, explicit private feature requests, and condensed owner conversation history.
 
 ## 48-hour chat history
 
@@ -36,6 +36,12 @@ The Cloudflare Worker strips pickup roster and owner-specific state before answe
 Private owner settings are never exposed to anonymous visitors. A paired device uses a locally stored, signed capability token to access only the owner-settings endpoints. The pairing code is stored only as a hash inside encrypted listener settings, expires after 10 minutes, and is consumed after successful use.
 
 The authenticated settings surface may return/update the effective pickup RSVP name and monitored league-team list. Updates are persisted through encrypted runtime state. Pairing tokens are not committed to Git and contain no owner name, team names, or repository secrets.
+
+## Match-weather data
+
+`state/weather.json` is encrypted on `runtime-state`. It may contain published game dates/times, public venue names or addresses, cached venue coordinates, and forecast summaries. It must not contain RSVP participant names, waitlist names, owner settings, tokens, or other personal data.
+
+Only public venue information is sent to the geocoding/forecast providers. Cached coordinates avoid repeatedly sending the same venue query.
 
 ## Web Push privacy
 

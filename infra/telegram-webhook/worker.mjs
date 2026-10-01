@@ -1,7 +1,7 @@
 /**
  * Routes Telegram webhooks, edge Q&A, runtime-state APIs, health checks, and scheduled edge work.
  *
- * Updated v4.0.0: adds owner-paired web settings and owner-only web Q&A review history while preserving public-safe anonymous reads and encrypted runtime state.
+ * Updated v5.0.0: adds a public-safe 14-day game/weather calendar while preserving owner pairing, anonymous-read privacy, and encrypted runtime state.
  */
 import {
   fetchPickupSnapshot,
@@ -1071,6 +1071,113 @@ function webJson(request, value, init = {}) {
   return new Response(JSON.stringify(value), { ...init, headers });
 }
 
+function webCalendarGameId(kind, value) {
+  return `${kind}:${cleanText(value, 300)}`;
+}
+
+export function webCalendarDetails(
+  snapshot,
+  weatherState = {},
+  days = 14,
+  startDate = localDate(),
+) {
+  const safe = webSafeSnapshot(snapshot);
+  const endDate = addDays(startDate, Math.max(1, Number(days) || 14) - 1);
+  const weatherById = new Map(
+    (Array.isArray(weatherState?.games) ? weatherState.games : [])
+      .map((game) => [cleanText(game?.id, 320), game]),
+  );
+  const games = [];
+
+  for (const date of availableDates(safe)) {
+    if (date < startDate || date > endDate) continue;
+    const facts = pickupFacts(safe, date);
+    if (!facts || (!facts.field && !facts.address)) continue;
+    const id = webCalendarGameId("pickup", date);
+    const sourceWeather = weatherById.get(id)?.weather || null;
+    games.push({
+      id,
+      kind: "pickup",
+      date,
+      dateLabel: formatDate(date),
+      title: "Pickup",
+      startTime: facts.start,
+      endTime: facts.end,
+      time: facts.start || facts.end
+        ? `${facts.start || "?"}${facts.end ? `–${facts.end}` : ""}`
+        : "",
+      location: cleanText(facts.field, 150),
+      address: cleanText(facts.address, 200),
+      mapsQuery: cleanText(facts.address || facts.field, 220),
+      reserved: facts.reserved,
+      capacity: facts.capacity,
+      jerseyColor: "",
+      weather: sourceWeather,
+      weatherStale: Boolean(weatherById.get(id)?.weatherStale),
+    });
+  }
+
+  for (const game of leagueMatches(safe)) {
+    const date = String(game?.date || "");
+    if (!date || date < startDate || date > endDate) continue;
+    const team = cleanText(game?.team, 120) || "RATS team";
+    const opponent = cleanText(game?.opponent, 120) || "opponent";
+    const startTime = clock(game?.start || game?.startTime);
+    const endTime = clock(game?.end || game?.endTime);
+    const key = cleanText(game?.key, 240) ||
+      [team, opponent, date, startTime].join("|");
+    const id = webCalendarGameId("league", key);
+    const sourceWeather = weatherById.get(id)?.weather || null;
+    games.push({
+      id,
+      kind: "league",
+      date,
+      dateLabel: formatDate(date),
+      title: `${team} vs ${opponent}`,
+      team,
+      opponent,
+      startTime,
+      endTime,
+      time: startTime && endTime ? `${startTime}–${endTime}` : startTime,
+      location: cleanText(game?.location, 200),
+      address: "",
+      mapsQuery: cleanText(game?.location, 220),
+      reserved: null,
+      capacity: null,
+      jerseyColor: cleanText(game?.jerseyColor, 80),
+      weather: sourceWeather,
+      weatherStale: Boolean(weatherById.get(id)?.weatherStale),
+    });
+  }
+
+  games.sort((left, right) =>
+    left.date.localeCompare(right.date) ||
+    String(left.startTime || "").localeCompare(String(right.startTime || "")) ||
+    left.title.localeCompare(right.title),
+  );
+
+  return {
+    startDate,
+    endDate,
+    updatedAt: cleanText(weatherState?.updatedAt, 60),
+    refreshHours: Number(weatherState?.refreshHours || 6),
+    providers: {
+      weather: "Open-Meteo",
+      geocoding: "OpenStreetMap Nominatim",
+    },
+    games,
+  };
+}
+
+async function loadWebWeather(env) {
+  try {
+    const encrypted = await githubFile(env, "state/weather.json", "runtime-state");
+    return (await decryptState(encrypted, env)) || {};
+  } catch {
+    return {};
+  }
+}
+
 export function webNextGameDetails(snapshot) {
   const safe = webSafeSnapshot(snapshot);
   const today = localDate();
@@ -1527,6 +1634,25 @@ export default {
       const entries = await webBoard(env, url.searchParams.get("limit") || 30);
       return webJson(request, { ok: true, entries });
     }
+    if (request.method === "GET" && url.pathname === "/web/calendar") {
+      try {
+        const [snapshot, weather] = await Promise.all([
+          loadSnapshot(env),
+          loadWebWeather(env),
+        ]);
+        return webJson(request, {
+          ok: true,
+          calendar: webCalendarDetails(snapshot, weather, 14),
+        });
+      } catch {
+        return webJson(
+          request,
+          { ok: false, error: "BallerWatch calendar data is temporarily unavailable." },
+          { status: 503 },
+        );
+      }
+    }
+
     if (request.method === "GET" && url.pathname === "/web/next-game") {
       try {
         const snapshot = await loadSnapshot(env);

@@ -1,10 +1,12 @@
 name: System watchdog
 
 on:
+  schedule:
+    - cron: "17 */6 * * *"
   workflow_dispatch:
     inputs:
       external_fallback:
-        description: "Set by the enabled cron-job.org scheduler"
+        description: "Optional manual/fallback execution flag"
         required: false
         default: false
         type: boolean
@@ -41,6 +43,26 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
         run: node shared/runtime-state.mjs pull watchdog
+
+      - name: Pull game/weather runtime state
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: node shared/runtime-state.mjs pull weather
+
+      - name: Refresh 14-day match weather
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: node weather/update.mjs
+
+      - name: Persist match weather
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: node shared/runtime-state.mjs push weather
 
       - name: Verify validation, privacy, edge health, and external schedules
         env:
@@ -93,4 +115,5 @@ jobs:
         if: always()
         run: |
           node shared/runtime-state.mjs clean watchdog
+          node shared/runtime-state.mjs clean weather
           rm -rf .runtime
