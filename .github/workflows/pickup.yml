@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ballerwatch-pickup
@@ -19,6 +19,12 @@ jobs:
         with:
           ref: main
           fetch-depth: 1
+
+      - name: Pull runtime state from Cloudflare KV
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: node shared/runtime-state.mjs pull pickup
 
       - name: Refresh pickup data
         env:
@@ -35,36 +41,15 @@ jobs:
           OWNER_RSVP_NAME: ${{ secrets.OWNER_RSVP_NAME }}
         run: node pickup/notify.mjs
 
-      - name: Remove transient private data
+      - name: Push runtime state to Cloudflare KV
         if: always()
-        run: rm -rf .runtime
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: node shared/runtime-state.mjs push pickup
 
-      - name: Persist encrypted pickup snapshots
+      - name: Remove local runtime data
         if: always()
         run: |
-          if [ -z "$(git status --porcelain -- pickup)" ]; then
-            echo "No pickup changes."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A -- pickup
-          git commit -m "Refresh pickup watcher state"
-          STATE_COMMIT="$(git rev-parse HEAD)"
-          for attempt in 1 2 3 4; do
-            git fetch --depth=1 origin main
-            git reset --hard origin/main
-            if ! git cherry-pick -X theirs "$STATE_COMMIT"; then
-              git cherry-pick --abort || true
-              echo "Could not replay generated state; retrying ($attempt/4)."
-              sleep $((attempt * 2))
-              continue
-            fi
-            if git push origin HEAD:main; then
-              exit 0
-            fi
-            echo "Push raced with another workflow; retrying ($attempt/4)."
-            sleep $((attempt * 2))
-          done
-          echo "Failed to persist state after 4 push attempts."
-          exit 1
+          node shared/runtime-state.mjs clean pickup
+          rm -rf .runtime
