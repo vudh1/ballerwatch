@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "4.1.0",
+  "currentVersion": "4.1.1",
   "releases": [
+    {
+      "version": "4.1.1",
+      "date": "2026-10-01",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Inline mobile header actions",
+      "telegramAnnouncement": "BallerWatch now keeps the Settings gear and notification bell aligned on one row in the installed mobile app.",
+      "changes": [
+        "Removed the narrow-screen rule that stacked header actions vertically.",
+        "Kept Settings and notification bell on one row in the installed iPhone PWA and mobile browser layout.",
+        "Bumped versioned PWA assets/service-worker cache so existing Home Screen installs refresh to the corrected layout.",
+        "Added regression coverage for the mobile header action layout."
+      ]
+    },
     {
       "version": "4.1.0",
       "date": "2026-10-01",
