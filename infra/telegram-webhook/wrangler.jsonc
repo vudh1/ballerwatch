@@ -1,0 +1,11 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ballerwatch-telegram",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-09-30",
+  "workers_dev": true,
+  "limits": {
+    "cpu_ms": 10,
+    "subrequests": 4
+  }
+}
