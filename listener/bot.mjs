@@ -1,3 +1,8 @@
+/**
+ * Implements the GitHub-hosted Telegram fallback bot, state-changing commands, and deterministic replies.
+ *
+ * Documentation baseline: v2.3.0. Runtime/private data must never be committed to Git.
+ */
 import { recordUnknownQuestion, refreshPublicRequests } from "../shared/feature-requests.mjs";
 import { answerUnknownWithAi } from "../shared/ai-fallback.mjs";
 import fs from "node:fs";
