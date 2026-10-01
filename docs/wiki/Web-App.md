@@ -38,9 +38,10 @@ Web Push for Home Screen web apps requires iOS/iPadOS 16.4 or newer. Notificatio
 The question box supports both free-form text and shortcuts:
 
 - typing **/** opens the command list;
-- continuing to type filters the command list;
-- arrow keys and Enter work on desktop keyboards, while every suggestion can also be tapped;
-- ordinary text such as “next” or “Thursday” can show matching natural-language suggestions.
+- ordinary text produces Google-style full-sentence completions ranked from the typed prefix;
+- partial word prefixes can complete later words, so text such as “what g” or “count thu” can predict a complete supported question;
+- tap a completion on touch devices; desktop keyboards can use arrows/Enter, or Tab/Right Arrow to accept the top completion;
+- autocomplete is local/deterministic and does not send each keystroke to an AI provider.
 
 Read-only shortcuts include `/today`, `/next`, `/teams`, `/count [day]`, `/field [day]`, `/time [day]`, `/version`, and `/help`.
 
@@ -57,6 +58,12 @@ The Settings gear is private by default. A new device must be paired with a temp
 The token is signed with existing private runtime key material and is never written to the repository. After pairing, Settings displays the effective pickup RSVP name and current monitored league teams. Saving changes dispatches the normal encrypted listener/runtime workflow; the public repository never receives plaintext private settings.
 
 Disconnecting from Settings removes the local token from that device. Rotating the runtime signing key also invalidates existing paired-device tokens.
+
+## Wrong-answer feedback
+
+On an owner-paired device, press and hold the displayed answer for about 0.7 seconds to mark it wrong. BallerWatch queues the question/answer as `negative_feedback` for the next privacy-minimized engineering review and shows a small confirmation below the answer.
+
+Unpaired public visitors cannot submit review feedback. If the device is not paired, long-pressing an answer directs the owner to Settings instead of writing a review signal.
 
 ## Next game and notification test
 
