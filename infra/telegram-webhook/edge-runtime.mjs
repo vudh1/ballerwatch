@@ -21,7 +21,10 @@ function localDate(now = new Date()) {
 function seasonCandidates(now = new Date()) {
   const y = Number(localDate(now).slice(0,4));
   const out=[];
-  for(let year=y+1; year>=y-2; year--) {
+  // Edge change detection prefers the current year first so a missing future
+  // season cannot add several network timeouts to every check. The full
+  // GitHub watcher still performs deeper season rollover discovery.
+  for(const year of [y, y + 1, y - 1, y - 2]) {
     for(const name of [...SEASONS].reverse()) out.push(`${name}-${year}`);
   }
   return out;
@@ -171,13 +174,31 @@ export async function fetchPickupSnapshot(endpoint) {
 export async function fetchLeagueSignal(teams, season) {
   const cleaned=(teams||[]).map(cleanName).filter(Boolean);
   if(!cleaned.length) throw new Error("No league teams configured");
-  if(!season) throw new Error("Current RATS season is unavailable");
-  const aggregate=await ratsCall("get-aggregate",{season});
+
+  let seasonId=String(season||"").trim();
+  let aggregate=null;
+  if(seasonId) {
+    try {
+      aggregate=await ratsCall("get-aggregate",{season:seasonId});
+      const complete=
+        aggregate &&
+        Array.isArray(aggregate.teams) &&
+        Array.isArray(aggregate.events) &&
+        cleaned.every(team=>teamMatches(aggregate,team).length===1);
+      if(!complete) aggregate=null;
+    } catch {
+      aggregate=null;
+    }
+  }
+
+  if(!aggregate) {
+    const discovered=await discoverSeason(cleaned,"");
+    seasonId=discovered.season;
+    aggregate=discovered.aggregate;
+  }
+
   if(!aggregate || !Array.isArray(aggregate.teams) || !Array.isArray(aggregate.events)) {
     throw new Error("Unrecognized RATS aggregate schema");
-  }
-  for(const team of cleaned) {
-    if(teamMatches(aggregate,team).length!==1) throw new Error("Configured team missing from current RATS season");
   }
   const names=new Set(cleaned.map(normalizeName));
   const teamsSignal=aggregate.teams
@@ -218,7 +239,7 @@ export async function fetchLeagueSignal(teams, season) {
       a.away_team_name.localeCompare(b.away_team_name)
     );
 
-  return {season,teams:teamsSignal,events:eventsSignal};
+  return {season:seasonId,teams:teamsSignal,events:eventsSignal};
 }
 
 export async function fetchLeagueSnapshot(teams, preferredSeason="") {
