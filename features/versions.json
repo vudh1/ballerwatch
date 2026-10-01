@@ -1,7 +1,19 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "2.3.0",
+  "currentVersion": "2.3.1",
   "releases": [
+    {
+      "version": "2.3.1",
+      "date": "2026-10-01",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Cloudflare empty-KV self-bootstrap",
+      "changes": [
+        "Made Cloudflare league refresh recover from empty or freshly purged KV by bootstrapping the built-in monitored-team defaults and rediscovering the current RATS season.",
+        "Centralized non-secret default league-team configuration so GitHub and Cloudflare use the same bootstrap values.",
+        "Changed GitHub Wiki publishing to wait gracefully for an optional write-capable WIKI_TOKEN instead of failing main when GitHub's normal Actions token cannot initialize the separate wiki repository."
+      ]
+    },
     {
       "version": "2.3.0",
       "date": "2026-10-01",
