@@ -7,9 +7,13 @@ on:
         description: "Base64 Telegram update from webhook"
         required: false
         type: string
+      history_event_b64:
+        description: "Condensed-history event from the Cloudflare fast path"
+        required: false
+        type: string
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ballerwatch-listener
@@ -25,7 +29,7 @@ jobs:
           ref: main
           fetch-depth: 1
 
-      - name: Pull runtime state from Cloudflare KV
+      - name: Pull runtime state from GitHub branch
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -40,10 +44,11 @@ jobs:
           UPSTREAM_ENDPOINT: ${{ secrets.UPSTREAM_ENDPOINT }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           TELEGRAM_UPDATE_B64: ${{ inputs.telegram_update_b64 }}
+          CHAT_HISTORY_EVENT_B64: ${{ inputs.history_event_b64 }}
           TELEGRAM_POLL_TIMEOUT: "3"
         run: node listener/bot.mjs
 
-      - name: Push runtime state to Cloudflare KV
+      - name: Push runtime state to GitHub branch
         if: always()
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
