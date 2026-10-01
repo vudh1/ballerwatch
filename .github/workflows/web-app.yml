@@ -1,0 +1,67 @@
+name: Web app runtime
+
+on:
+  workflow_dispatch:
+    inputs:
+      event_b64:
+        description: "Encrypted Web Push registration event from the Worker"
+        required: false
+        default: ""
+        type: string
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "shared/web-push.mjs"
+      - "shared/web-notifications.mjs"
+      - "shared/runtime-paths.mjs"
+      - ".github/workflows/web-app.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ballerwatch-web-app-runtime
+  cancel-in-progress: false
+
+jobs:
+  runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Pull encrypted web runtime state
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: node shared/runtime-state.mjs pull web
+
+      - name: Ensure Web Push VAPID state
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: node shared/web-push.mjs ensure
+
+      - name: Apply encrypted registration event
+        if: inputs.event_b64 != ''
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          WEB_PUSH_EVENT_B64: ${{ inputs.event_b64 }}
+        run: node shared/web-push.mjs apply-event
+
+      - name: Persist encrypted web runtime state
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: node shared/runtime-state.mjs push web
+
+      - name: Remove local web runtime state
+        if: always()
+        run: |
+          node shared/runtime-state.mjs clean web
+          rm -rf .runtime
