@@ -54,12 +54,19 @@ When the RATS export publishes an end time, BallerWatch uses that value. If RATS
 
 ## External schedules
 
-cron-job.org jobs are expected to exist and stay enabled:
+cron-job.org has only two required enabled jobs:
 - pickup: every 2 minutes;
-- league: every 5 minutes;
-- watchdog: every 10 minutes.
+- league: every 5 minutes.
 
-Pickup and league fallback runs are health-gated to avoid duplicate source work while Cloudflare is healthy.
+The legacy Telegram listener job and the retired external watchdog job must remain disabled. The watchdog/maintenance workflow runs natively in GitHub Actions every 6 hours. Pickup and league fallback runs are health-gated to avoid duplicate source work while Cloudflare is healthy.
+
+## Match weather
+
+Every six hours, the maintenance workflow builds a 14-day weather snapshot for published pickup games with a field/address and monitored RATS matches. Forecasts use Open-Meteo hourly data and report the maximum rain probability overlapping the actual game window, plus temperature and condition.
+
+Venue geocoding uses OpenStreetMap Nominatim only for uncached public venue names/addresses. Results are cached in encrypted runtime state; new requests are spaced at more than one second apart and failed lookups are not retried for seven days. The web UI includes Open-Meteo and OpenStreetMap attribution.
+
+If forecast retrieval fails, the last successful match weather may be retained and marked cached/stale instead of removing the game from the calendar.
 
 ## GitHub Wiki publishing
 
