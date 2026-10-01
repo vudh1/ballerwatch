@@ -13,7 +13,9 @@
         "Added private Calendar pairing so the Apps Script bridge targets the intended Google Calendar rather than blindly using the deployment owner's default calendar.",
         "Pairing discovers a temporary non-sensitive marker across calendars visible to the Apps Script account, stores only the matched calendar ID in Script Properties, and deletes the marker after pairing.",
         "Before switching targets, the bridge cleans BallerWatch-managed events and stale mappings from the previous target/default calendar to avoid orphaned wrong-calendar events.",
-        "Normal Calendar sync now fails closed until a target Calendar has been paired, and no Calendar ID or email is committed or logged."
+        "Normal Calendar sync now fails closed until a target Calendar has been paired, and no Calendar ID or email is committed or logged.",
+        "Moved all unit and smoke test-only code into a dedicated tests/ tree that mirrors source areas, leaving production folders runtime-only.",
+        "Condensed README release notes to a short recent-changes section while keeping complete release history in features/versions.json."
       ]
     },
     {
