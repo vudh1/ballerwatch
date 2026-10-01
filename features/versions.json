@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "2.7.4",
+  "currentVersion": "2.7.5",
   "releases": [
+    {
+      "version": "2.7.5",
+      "date": "2026-10-01",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "RATS transient-source resilience",
+      "telegramAnnouncement": "RATS schedule refresh is now more resilient to temporary source outages while preserving verified Calendar state.",
+      "changes": [
+        "Retry only transient RATS source failures with bounded exponential backoff, while permanent authentication/configuration errors fail immediately.",
+        "When a valid last-good league schedule already exists, retain it during transient RATS outages instead of failing the production watcher or applying unverified Calendar/Telegram changes.",
+        "Added a regression that executes the Apps Script update path and proves an existing tracked Calendar event is updated in place rather than duplicated.",
+        "Corrected current purge documentation to reflect that BallerWatch-managed RATS Calendar events are removed while unrelated Calendar events remain untouched."
+      ]
+    },
     {
       "version": "2.7.4",
       "date": "2026-10-01",

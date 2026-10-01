@@ -1,7 +1,8 @@
-"""Fetch and validate Seattle RATS schedules while preserving the last-good snapshot on failure.
+"""Fetch and validate Seattle RATS schedules with bounded transient recovery.
 
-v2.5.0 adds a smoke-test-only escape hatch for transient source outages; production behavior
-remains fail-closed so reconciliation never accepts unverified league data.
+The watcher retries only transient source failures and may retain an already-validated
+last-good schedule when RATS is temporarily unavailable. Cold starts, auth/configuration
+errors, and schema/integrity failures remain fail-closed.
 """
 import hashlib
 import json
@@ -144,14 +145,22 @@ def edge_signal_aggregate(preferred=None):
 
 
 def call(action, params):
-    for attempt in range(3):
+    """Call the RATS API with bounded retries for transient failures only."""
+    max_attempts = 4
+    for attempt in range(max_attempts):
         try:
-            req = urllib.request.Request(API + action, data=json.dumps(params).encode(),
-                headers={'Content-Type': 'application/json', 'User-Agent': 'rats-league-watcher/1.0'})
+            req = urllib.request.Request(
+                API + action,
+                data=json.dumps(params).encode(),
+                headers={
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'rats-league-watcher/1.0',
+                },
+            )
             with urllib.request.urlopen(req, timeout=30) as response:
                 return json.load(response)
-        except Exception:
-            if attempt == 2:
+        except Exception as error:
+            if not is_transient_source_error(error) or attempt == max_attempts - 1:
                 raise
             time.sleep(2 ** attempt)
 
@@ -272,6 +281,11 @@ def valid_previous_schedule(value):
     )
 
 
+def can_retain_previous_schedule(error, previous):
+    """Return true only for transient source failures with a verified last-good schedule."""
+    return valid_previous_schedule(previous) and is_transient_source_error(error)
+
+
 def main():
     now = datetime.now(TZ).isoformat()
     try:
@@ -356,11 +370,19 @@ def main():
         write_json('schedule.json', payload)
         print('Validated published match counts:', [t['publishedMatchCount'] for t in payload['teams']])
     except Exception as error:
-        allow_transient = os.environ.get('SMOKE_ALLOW_TRANSIENT_SOURCE_FAILURE', '').lower() == 'true'
-        if allow_transient and valid_previous_schedule(previous) and is_transient_source_error(error):
-            print('::warning::RATS source temporarily unavailable; retained last good runtime schedule.')
+        allow_transient = (
+            os.environ.get('SMOKE_ALLOW_TRANSIENT_SOURCE_FAILURE', '').lower() == 'true'
+        )
+        if can_retain_previous_schedule(error, previous):
+            mode = 'smoke' if allow_transient else 'production'
+            print(
+                '::warning::RATS source temporarily unavailable; '
+                f'retained last good runtime schedule ({mode}).'
+            )
             return
-        raise RuntimeError('RATS refresh failed; retained last good KV snapshot') from error
+        raise RuntimeError(
+            'RATS refresh failed; retained last good runtime-state snapshot'
+        ) from error
 
 if __name__ == '__main__':
     main()
