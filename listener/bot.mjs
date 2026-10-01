@@ -1213,7 +1213,13 @@ async function handleMessage(text, settings) {
     return { settings, reply: ai.decision.reply };
   }
 
-  const requestId = recordUnknownQuestion(clean);
+  const requestId = recordUnknownQuestion(clean, "requests", {
+    ...(ai.decision?.action === "feature_request" ? {
+      source: "ai_feature_request",
+      aiCategory: ai.decision.category,
+      aiReason: ai.decision.reason,
+    } : {}),
+  });
   return {
     settings,
     reply: requestId
