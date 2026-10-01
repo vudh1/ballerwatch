@@ -6,7 +6,7 @@ It combines Telegram, Cloudflare Workers, GitHub Actions, cron-job.org, Groq, an
 
 The project is designed to stay inexpensive to operate: the normal architecture uses free service tiers and avoids unnecessary polling or paid AI calls.
 
-**Current version: 1.4.2**
+**Current version: 1.5.0**
 
 ## How BallerWatch works
 
@@ -86,7 +86,7 @@ Telegram is the main user interface.
 
 Messages are received through a **Cloudflare Worker webhook**, so BallerWatch does not need to wait for a once-per-minute polling job before noticing a question.
 
-The Worker immediately shows Telegram's **typing...** indicator and dispatches the request to the GitHub listener.
+The Worker immediately shows Telegram's **typing...** indicator. Common read-only questions are answered directly at the Cloudflare edge from encrypted GitHub state; only state-changing, unsupported, or fallback requests are dispatched to the GitHub listener.
 
 Useful commands include:
 
@@ -108,13 +108,12 @@ Known BallerWatch commands are handled by deterministic code first.
 
 If the listener does not understand a question, it can optionally send the question and a limited read-only BallerWatch context to **Groq** using `openai/gpt-oss-20b`.
 
-The AI fallback:
+AI is used in two bounded layers:
 
-- is used only for otherwise-unknown questions
-- cannot directly change RSVP, Calendar, settings, or repository state
-- has a **2.5-second request timeout**
-- is limited to **50 requests per UTC day**
-- falls back to the feature-request queue if it cannot answer reliably
+- **Cloudflare intent routing** — up to 25 classifications per UTC day, with a 1.2-second timeout, used only when the fast deterministic parser cannot classify a read-only question.
+- **GitHub fallback answering** — up to 25 calls per UTC day, with a 2.5-second timeout, used only after the request reaches the full listener.
+
+AI cannot directly change RSVP, Calendar, settings, or repository state. Facts still come from deterministic BallerWatch state, and unsupported requests fall back to the feature-request queue.
 
 BallerWatch is intentionally designed for **free-tier-only AI use**. There is no paid-AI mode in the repository.
 
@@ -164,7 +163,7 @@ For recoverable watcher failures, it can dispatch the affected GitHub workflow a
 | Service / component | Responsibility |
 | --- | --- |
 | **Telegram Bot API** | User interface, notifications, and bot replies |
-| **Cloudflare Worker** | Instant Telegram webhook receiver and immediate `typing...` state |
+| **Cloudflare Worker** | Instant Telegram webhook receiver, `typing...`, encrypted-state read-only fast path, short conversation context, and AI intent routing |
 | **GitHub repository** | Source code and encrypted persistent state |
 | **GitHub Actions** | Runs listeners, watchers, validation, deployment, and recovery |
 | **cron-job.org** | External scheduler for pickup, league, and watchdog workflows |
@@ -178,7 +177,7 @@ For recoverable watcher failures, it can dispatch the affected GitHub workflow a
 
 | Action | Purpose | Normal trigger |
 | --- | --- | --- |
-| **Telegram listener** | Processes one Telegram webhook update and sends the reply | Cloudflare webhook |
+| **Telegram listener** | Handles state-changing, unsupported, or fallback Telegram requests that the Cloudflare fast path does not answer | Cloudflare webhook escalation |
 | **Pickup watcher** | Refreshes pickup RSVP data and sends pickup notifications | Every 2 minutes |
 | **RATS league watcher** | Refreshes league data and synchronizes changed Calendar matches | Every 5 minutes |
 | **System watchdog** | Checks component, state, validation, and webhook health | Every 10 minutes |
@@ -397,3 +396,26 @@ BallerWatch uses Semantic Versioning:
 - **PATCH** — backward-compatible fix, reliability improvement, privacy improvement, or internal change
 
 The full release history is in `features/versions.json`.
+
+## Fast response path
+
+For common read-only Telegram questions, BallerWatch avoids starting a GitHub Actions runner.
+
+The Cloudflare Worker fetches the already-encrypted BallerWatch state from GitHub, decrypts it only inside the authenticated Worker, caches the snapshot briefly, and sends the answer directly to Telegram.
+
+Examples that can use the fast path include:
+
+- `what game is today?`
+- `what's my next game?`
+- `what's the count for Thursday?`
+- `what field?`
+- `what time?`
+- `what league teams are you monitoring?`
+- `/version`
+- `/help`
+
+Short-lived conversation context lets follow-up questions refer to the most recently discussed pickup date.
+
+Commands that modify state, such as snooze/mute changes, league-team changes, setup changes, manual feature requests, or thumbs-down feedback, continue to use the GitHub listener.
+
+This split keeps fast questions fast while preserving the existing encrypted persistence and deterministic write behavior.
