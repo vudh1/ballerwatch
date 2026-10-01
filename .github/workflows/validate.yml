@@ -50,8 +50,12 @@ jobs:
           node --check infra/telegram-webhook/worker.mjs
           node --check infra/telegram-webhook/edge-runtime.mjs
           node --check infra/telegram-webhook/prepare-config.mjs
+          node --check infra/telegram-webhook/edge-runtime.test.mjs
           node --check infra/disable-external-schedules.mjs
           node --check infra/validate-versions.mjs
+
+      - name: Test Cloudflare edge runtime
+        run: node --test infra/telegram-webhook/edge-runtime.test.mjs
 
       - name: Bundle Cloudflare Worker
         working-directory: infra/telegram-webhook
