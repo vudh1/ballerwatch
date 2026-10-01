@@ -1,7 +1,19 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "2.5.0",
+  "currentVersion": "2.5.1",
   "releases": [
+    {
+      "version": "2.5.1",
+      "date": "2026-10-01",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Optional cron-job.org management API during quota exhaustion",
+      "changes": [
+        "Made the post-merge cron-job.org setup workflow tolerate only temporary management API failures such as HTTP 429/502/503/504 or network timeouts, while authentication errors remain blocking.",
+        "Made Telegram Worker deployment independent of temporary cron-job.org management API availability after the Worker, secrets, webhook, health check, and zero-Cloudflare-Cron verification have succeeded.",
+        "Kept scheduler correctness fail-closed whenever cron-job.org responds: missing, disabled, duplicated, mistargeted, or wrong-cadence jobs still fail verification."
+      ]
+    },
     {
       "version": "2.5.0",
       "date": "2026-10-01",
