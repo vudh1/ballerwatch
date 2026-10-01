@@ -14,6 +14,7 @@ import {
 } from "./edge-runtime.mjs";
 import { classifyIndexedIntent } from "../../shared/intent-index.mjs";
 import { ALL_RUNTIME_FILE_PATHS } from "../../shared/runtime-paths.mjs";
+import { DEFAULT_LEAGUE_TEAMS } from "../../shared/defaults.mjs";
 
 const REPO = "vudh1/ballerwatch";
 const CONTEXT_CACHE_SECONDS = 600;
@@ -688,15 +689,24 @@ async function refreshPickupEdge(env,{dispatch=true,write=true}={}) {
 }
 
 async function refreshLeagueEdge(env,{dispatch=true,write=true}={}) {
-  const bundle=await runtimeLeagueBundle(env);
-  const teams=bundle.teams;
-  if(!teams.length) throw new Error("No monitored league teams available");
-  const seasonId=String(bundle.schedule?.seasonId || bundle.schedule?.season || "").trim();
-  if(!seasonId || !/^(winter|spring|summer|fall)-\d{4}$/i.test(seasonId)) {
-    throw new Error("Current RATS season id is unavailable");
+  let bundle={teams:[],schedule:null,today:null};
+  try {
+    bundle=await runtimeLeagueBundle(env);
+  } catch {
+    // Empty/purged KV is a supported bootstrap state. The edge can discover
+    // the season from the public RATS API and seed defaults without GitHub.
   }
 
+  const teams=Array.isArray(bundle.teams) && bundle.teams.length
+    ? bundle.teams
+    : [...DEFAULT_LEAGUE_TEAMS];
+  const preferredSeason=String(bundle.schedule?.seasonId || bundle.schedule?.season || "").trim();
+  const seasonId=/^(winter|spring|summer|fall)-\d{4}$/i.test(preferredSeason)
+    ? preferredSeason
+    : "";
+
   const signal=await fetchLeagueSignal(teams,seasonId);
+  const resolvedSeasonId=String(signal.season || seasonId);
   await runtimeFilePut(
     env,
     "league/state/edge-signal.json",
@@ -732,7 +742,7 @@ async function refreshLeagueEdge(env,{dispatch=true,write=true}={}) {
   return {
     ok:true,
     changed,
-    seasonId,
+    seasonId:resolvedSeasonId,
     teamCount:teams.length,
     eventCount:signal.events.length,
   };
