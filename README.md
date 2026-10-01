@@ -91,7 +91,7 @@ Use the **same values** currently used by `ttf-watcher` / `rats-league-watcher` 
 
 ## cron-job.org
 
-Create three jobs. Each sends a POST with body:
+Create four jobs. Each sends a POST with body:
 
 ```json
 {"ref":"main"}
@@ -111,6 +111,7 @@ Endpoints:
 - 1 minute — `https://api.github.com/repos/vudh1/ballerwatch/actions/workflows/listener.yml/dispatches`
 - 2 minutes — `https://api.github.com/repos/vudh1/ballerwatch/actions/workflows/pickup.yml/dispatches`
 - 5 minutes — `https://api.github.com/repos/vudh1/ballerwatch/actions/workflows/league.yml/dispatches`
+- 10 minutes — `https://api.github.com/repos/vudh1/ballerwatch/actions/workflows/watchdog.yml/dispatches`
 
 The PAT needs permission to run Actions for this repository.
 
