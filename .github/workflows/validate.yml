@@ -1,0 +1,58 @@
+name: Validate code
+
+on:
+  push:
+    paths:
+      - "listener/**"
+      - "pickup/**"
+      - "league/*.py"
+      - "shared/**"
+      - "watchdog/**"
+      - "manual-test.mjs"
+      - "privacy-audit.mjs"
+      - ".github/workflows/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Validate JavaScript syntax
+        run: |
+          node --check shared/telegram.mjs
+          node --check shared/state-crypto.mjs
+          node --check shared/bot-state.mjs
+          node --check shared/league-teams.mjs
+          node --check shared/league-state.mjs
+          node --check listener/bot.mjs
+          node --check pickup/update.mjs
+          node --check pickup/notify.mjs
+          node --check pickup/selection.mjs
+          node --check watchdog/watchdog.mjs
+          node --check watchdog/watchdog.test.mjs
+          node --check manual-test.mjs
+          node --check privacy-audit.mjs
+
+      - name: Enforce encrypted-at-rest privacy
+        run: node privacy-audit.mjs
+
+      - name: Run watchdog unit tests
+        env:
+          TELEGRAM_BOT_TOKEN: fixture
+          TELEGRAM_CHAT_ID: fixture
+          TRACKER_STATE_KEY: fixture
+        run: node --test watchdog/watchdog.test.mjs
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Run league unit tests
+        working-directory: league
+        run: python -m unittest watcher_test.py calendar_gate_test.py

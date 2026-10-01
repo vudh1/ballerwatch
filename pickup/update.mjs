@@ -1,0 +1,257 @@
+import fs from "node:fs";
+import path from "node:path";
+import { decryptState, encryptState } from "../shared/state-crypto.mjs";
+import { loadBotSettings } from "../shared/bot-state.mjs";
+
+const TIME_ZONE = "America/Los_Angeles";
+const DATES_DIR = ".runtime/pickup/data/dates";
+const RUNTIME_DIR = ".runtime/pickup";
+const INDEX_PATH = ".runtime/pickup/data/index.json";
+const STATUS_PATH = ".runtime/pickup/data/status.json";
+const PRIVATE_RUNTIME_PATH = path.join(RUNTIME_DIR, "events.json");
+const PRIVATE_STATE_PATH = "pickup/state/events.json";
+const FEED_STATE_PATH = "pickup/state/feed.json";
+const SOURCE_HEALTH_STATE_PATH = "pickup/state/source-health.json";
+const settings = loadBotSettings();
+const endpointOverride = String(settings?.pickupEndpointOverride || "").trim();
+const defaultEndpoint = String(process.env.UPSTREAM_ENDPOINT || "").trim();
+const ENDPOINT = endpointOverride || defaultEndpoint;
+const ENDPOINT_SOURCE = endpointOverride ? "encrypted-override" : "secret-default";
+
+if (!ENDPOINT) {
+  throw new Error("No RSVP endpoint is configured (neither encrypted override nor UPSTREAM_ENDPOINT secret).");
+}
+
+async function fetchText(url) {
+  const response = await fetch(url, {
+    redirect: "follow",
+    headers: {
+      "user-agent": "ttf-watcher/1.0",
+      "cache-control": "no-cache",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+
+  return response.text();
+}
+
+function parseJsonp(text, callbackName) {
+  const trimmed = text.trim();
+  const prefix = `${callbackName}(`;
+  if (!trimmed.startsWith(prefix) || !trimmed.endsWith(");")) {
+    throw new Error("Unexpected upstream response");
+  }
+  return JSON.parse(trimmed.slice(prefix.length, -2));
+}
+
+async function callEndpoint(params) {
+  const callbackName = "ttfWatcher";
+  const url = new URL(ENDPOINT);
+  url.searchParams.set("callback", callbackName);
+
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(key, String(value));
+  }
+
+  const payload = parseJsonp(await fetchText(url.toString()), callbackName);
+  if (!payload?.ok) {
+    throw new Error(payload?.error || "Upstream request failed");
+  }
+  return payload;
+}
+
+function readJson(filePath) {
+  try {
+    return JSON.parse(fs.readFileSync(filePath, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function writeIfChanged(filePath, next, stamp = false) {
+  const previous = readJson(filePath);
+
+  const stripStamp = (value) => {
+    if (!value) return null;
+    const clone = structuredClone(value);
+    delete clone.updatedAt;
+    return clone;
+  };
+
+  const prevComparable = stamp ? stripStamp(previous) : previous;
+  const nextComparable = stamp ? stripStamp(next) : next;
+
+  if (JSON.stringify(prevComparable) === JSON.stringify(nextComparable)) {
+    return false;
+  }
+
+  if (stamp) {
+    next.updatedAt = new Date().toISOString();
+  }
+
+  const dir = path.dirname(filePath);
+  if (dir !== ".") {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+
+  fs.writeFileSync(filePath, JSON.stringify(next, null, 2) + "\n");
+  return true;
+}
+
+function writeEncryptedIfChanged(filePath, next) {
+  let previous = null;
+  try {
+    previous = decryptState(JSON.parse(fs.readFileSync(filePath, "utf8")));
+  } catch {}
+  if (JSON.stringify(previous) === JSON.stringify(next)) return false;
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, JSON.stringify(encryptState(next), null, 2) + "\n");
+  return true;
+}
+
+
+function removeStaleDateFiles(validDates) {
+  if (!fs.existsSync(DATES_DIR)) return;
+
+  const keep = new Set(validDates.map((date) => `${date}.json`));
+
+  for (const name of fs.readdirSync(DATES_DIR)) {
+    if (name.endsWith(".json") && !keep.has(name)) {
+      fs.unlinkSync(path.join(DATES_DIR, name));
+    }
+  }
+}
+
+function safePlayer(player) {
+  return {
+    name: String(player?.name || "").trim(),
+    participantCount: Math.max(1, Number(player?.participantCount || 1)),
+    withdrawRequested: Boolean(player?.withdrawRequested),
+  };
+}
+
+async function main() {
+  const datesResult = await callEndpoint({ action: "listPlayDates" });
+
+  const dates = [...new Set(
+    (Array.isArray(datesResult.dates) ? datesResult.dates : [])
+      .map(String)
+      .filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date)),
+  )].sort();
+
+  const detailByDate = new Map(
+    (Array.isArray(datesResult.dateDetails) ? datesResult.dateDetails : [])
+      .map((detail) => [String(detail?.date || ""), detail || {}]),
+  );
+
+  fs.mkdirSync(DATES_DIR, { recursive: true });
+  fs.mkdirSync(RUNTIME_DIR, { recursive: true });
+
+  const privateEvents = {};
+  const publicEvents = {};
+
+  for (const date of dates) {
+    const tallyResult = await callEndpoint({
+      action: "list",
+      playDate: date,
+    });
+
+    const tally = tallyResult.tally || {};
+    const detail = detailByDate.get(date) || {};
+    const players = (Array.isArray(tally.players) ? tally.players : [])
+      .map(safePlayer)
+      .filter((player) => player.name);
+    const waitlist = (Array.isArray(tally.waitlist) ? tally.waitlist : [])
+      .map(safePlayer)
+      .filter((player) => player.name);
+
+    const publicEvent = {
+      ok: true,
+      timezone: TIME_ZONE,
+      date,
+      reserved: Number(tally.totalCount || 0),
+      capacity:
+        detail.capacity == null || detail.capacity === ""
+          ? null
+          : Number(detail.capacity),
+      startTime: String(detail.startTime || ""),
+      endTime: String(detail.endTime || ""),
+    };
+    publicEvents[date] = publicEvent;
+    writeIfChanged(
+      path.join(DATES_DIR, `${date}.json`),
+      publicEvent,
+      true,
+    );
+
+    // Private/transient details are used only during this Actions run.
+    // .runtime is gitignored and never committed.
+    privateEvents[date] = {
+      date,
+      fieldName: String(detail.fieldName || "").trim(),
+      address: String(detail.address || "").trim(),
+      locked: Boolean(tally.locked),
+      waitlistCount: Number(tally.waitlistCount || 0),
+      players,
+      waitlist,
+    };
+  }
+
+  const privatePayload = { events: privateEvents };
+  fs.writeFileSync(
+    PRIVATE_RUNTIME_PATH,
+    JSON.stringify(privatePayload, null, 2) + "\n",
+  );
+  writeEncryptedIfChanged(PRIVATE_STATE_PATH, privatePayload);
+
+  removeStaleDateFiles(dates);
+
+  const index = {
+    ok: true,
+    timezone: TIME_ZONE,
+    dates: dates.map((date) => ({
+      date,
+      path: `dates/${date}.json`,
+    })),
+  };
+
+  writeIfChanged(INDEX_PATH, index);
+  writeIfChanged(STATUS_PATH, {
+    ok: true,
+    timezone: TIME_ZONE,
+    lastSuccessfulCheckAt: new Date().toISOString(),
+  });
+  writeEncryptedIfChanged(FEED_STATE_PATH, {
+    ok: true,
+    timezone: TIME_ZONE,
+    dates: index.dates,
+    events: publicEvents,
+  });
+
+  writeEncryptedIfChanged(SOURCE_HEALTH_STATE_PATH, {
+    ok: true,
+    source: ENDPOINT_SOURCE,
+    checkedAt: new Date().toISOString(),
+  });
+
+  console.log(`Refreshed ${dates.length} encrypted pickup event(s).`);
+}
+
+main().catch((error) => {
+  const safeError = String(error?.message || "RSVP source request failed")
+    .replace(/https?:\/\/\S+/gi, "<endpoint>")
+    .slice(0, 240);
+  try {
+    writeEncryptedIfChanged(SOURCE_HEALTH_STATE_PATH, {
+      ok: false,
+      source: ENDPOINT_SOURCE,
+      checkedAt: new Date().toISOString(),
+      error: safeError,
+    });
+  } catch {}
+  console.error(safeError);
+  process.exit(1);
+});

@@ -1,0 +1,70 @@
+name: Manual smoke test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Validate scripts
+        run: |
+          node --check manual-test.mjs
+          node --check pickup/update.mjs
+          node --check pickup/selection.mjs
+          node --check listener/bot.mjs
+          node --check watchdog/watchdog.mjs
+          python -m unittest discover -s league -p '*_test.py'
+
+      - name: Refresh live pickup source
+        env:
+          UPSTREAM_ENDPOINT: ${{ secrets.UPSTREAM_ENDPOINT }}
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          OWNER_RSVP_NAME: ${{ secrets.OWNER_RSVP_NAME }}
+        run: node pickup/update.mjs
+
+      - name: Prepare league runtime
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        shell: bash
+        run: |
+          TEAM_COUNT="$(node shared/league-teams.mjs list-count)"
+          if [ "$TEAM_COUNT" -gt 0 ]; then
+            node shared/league-teams.mjs prepare
+            node shared/league-state.mjs prepare
+            (cd league && python watcher.py)
+          else
+            echo "No encrypted league teams configured; league live test skipped."
+          fi
+
+      - name: Send Telegram smoke-test summary
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          OWNER_RSVP_NAME: ${{ secrets.OWNER_RSVP_NAME }}
+        run: node manual-test.mjs
+
+      - name: Remove all transient plaintext
+        if: always()
+        run: |
+          rm -rf .runtime
+          rm -f league/teams.json
+          rm -f league/schedule.json league/today.json league/calendar-snapshot.json
+          rm -f league/score-changes.json league/calendar-changes.json league/telegram-update.json

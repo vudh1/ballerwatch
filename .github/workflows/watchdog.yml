@@ -1,0 +1,56 @@
+name: System watchdog
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: ballerwatch-watchdog
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Sync latest state
+        run: git pull --rebase origin main
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Test watchdog recovery logic
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: node --test watchdog/watchdog.test.mjs
+
+      - name: Verify workflows, validation, encryption and state
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: node watchdog/watchdog.mjs
+
+      - name: Persist encrypted watchdog state
+        if: always()
+        run: |
+          if [ -z "$(git status --porcelain -- state/watchdog.json)" ]; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- state/watchdog.json
+          git commit -m "Update watchdog health state"
+          git pull --rebase origin main
+          git push

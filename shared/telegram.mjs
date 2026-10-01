@@ -1,0 +1,47 @@
+const TOKEN = (process.env.TELEGRAM_BOT_TOKEN || "").trim();
+const CHAT_ID = (process.env.TELEGRAM_CHAT_ID || "").trim();
+
+if (!TOKEN) throw new Error("TELEGRAM_BOT_TOKEN is not configured.");
+if (!CHAT_ID) throw new Error("TELEGRAM_CHAT_ID is not configured.");
+
+export function isOwnerChat(chatId) {
+  return String(chatId) === String(CHAT_ID);
+}
+
+export async function getTelegramUpdates(offset = 0, timeoutSeconds = 0) {
+  const url = new URL(`https://api.telegram.org/bot${TOKEN}/getUpdates`);
+  if (offset) url.searchParams.set("offset", String(offset));
+  if (timeoutSeconds > 0) url.searchParams.set("timeout", String(timeoutSeconds));
+  url.searchParams.set("allowed_updates", JSON.stringify(["message"]));
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), (Math.max(0, timeoutSeconds) + 15) * 1000);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || payload.ok !== true) {
+      throw new Error(`Telegram getUpdates failed: ${payload.description || `HTTP ${response.status}`}`);
+    }
+    return Array.isArray(payload.result) ? payload.result : [];
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export async function sendTelegram(message, extra = {}) {
+  const response = await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      chat_id: CHAT_ID,
+      text: message,
+      disable_notification: false,
+      disable_web_page_preview: true,
+      ...extra,
+    }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload.ok !== true) {
+    throw new Error(`Telegram sendMessage failed: ${payload.description || `HTTP ${response.status}`}`);
+  }
+}
