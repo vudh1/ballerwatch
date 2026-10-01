@@ -21,6 +21,7 @@ concurrency:
 
 jobs:
   verify:
+    if: ${{ github.event_name == 'schedule' || inputs.external_fallback == true }}
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
