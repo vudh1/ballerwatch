@@ -11,6 +11,10 @@ on:
       - "manual-test.mjs"
       - "privacy-audit.mjs"
       - "infra/**"
+      - "features/**"
+      - "skills/**"
+      - "AGENTS.md"
+      - "README.md"
       - ".github/workflows/**"
   workflow_dispatch:
 

@@ -82,7 +82,7 @@ Add these repository Actions secrets before cutover:
 
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_CHAT_ID`
-- `TRACKER_STATE_KEY`
+- `TRACKER_STATE_KEY` — optional dedicated state-encryption key; when unset, BallerWatch intentionally falls back to `TELEGRAM_BOT_TOKEN`
 - `OWNER_RSVP_NAME`
 - `UPSTREAM_ENDPOINT`
 - `GOOGLE_CALENDAR_WEBHOOK_URL`
@@ -93,7 +93,15 @@ Add these repository Actions secrets before cutover:
 - `APPS_SCRIPT_ID` — Script ID for the existing Calendar bridge Apps Script project (Project Settings → IDs)
 - `APPS_SCRIPT_DEPLOYMENT_ID` — active versioned web-app deployment ID
 
-Use the **same values** currently used by `ttf-watcher` / `rats-league-watcher` so encrypted state and the Calendar bridge continue working.
+`TRACKER_STATE_KEY` is optional. If the migrated system never had one, leave it unset during cutover so existing encrypted state continues using the same `TELEGRAM_BOT_TOKEN` fallback. Do not introduce a new state key during migration without an explicit key-rotation procedure.
+
+`UPSTREAM_ENDPOINT` is the normal pickup RSVP backend used by the public RSVP frontend, not its admin endpoint. To recover or verify it without hardcoding the live value here, follow `skills/find-upstream-endpoint/SKILL.md`.
+
+Use the **same existing secret values** where applicable so encrypted state and the Calendar bridge continue working.
+
+## Operational runbooks
+
+Repository-maintenance agents should start with `AGENTS.md`. The endpoint recovery procedure lives in `skills/find-upstream-endpoint/SKILL.md`; it explains how to trace the public RSVP frontend to the normal data backend, distinguish it from the admin endpoint, verify the required read actions, and keep the live endpoint out of tracked source.
 
 ## cron-job.org — automated provisioning
 
