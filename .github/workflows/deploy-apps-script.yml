@@ -1,0 +1,76 @@
+name: Deploy Calendar bridge
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "league/google_apps_script/Code.gs"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ballerwatch-calendar-bridge-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Verify required secrets are available
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          CLASP_JSON: ${{ secrets.CLASP_JSON }}
+          APPS_SCRIPT_DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_DEPLOYMENT_ID }}
+          GOOGLE_CALENDAR_WEBHOOK_URL: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_URL }}
+        run: |
+          test -n "$CLASPRC_JSON" || { echo "Missing CLASPRC_JSON secret"; exit 1; }
+          test -n "$CLASP_JSON" || { echo "Missing CLASP_JSON secret"; exit 1; }
+          test -n "$APPS_SCRIPT_DEPLOYMENT_ID" || { echo "Missing APPS_SCRIPT_DEPLOYMENT_ID secret"; exit 1; }
+          test -n "$GOOGLE_CALENDAR_WEBHOOK_URL" || { echo "Missing GOOGLE_CALENDAR_WEBHOOK_URL secret"; exit 1; }
+
+      - name: Install clasp
+        run: npm install --global @google/clasp@3.4.1
+
+      - name: Prepare private Apps Script workspace
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          CLASP_JSON: ${{ secrets.CLASP_JSON }}
+        run: |
+          mkdir -p .runtime/apps-script
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+          printf '%s' "$CLASP_JSON" > .runtime/apps-script/.clasp.json
+          chmod 600 "$HOME/.clasprc.json" .runtime/apps-script/.clasp.json
+
+      - name: Pull existing project and replace Calendar bridge code
+        working-directory: .runtime/apps-script
+        run: |
+          clasp pull
+          cp ../../league/google_apps_script/Code.gs ./Code.gs
+          clasp push --force
+
+      - name: Redeploy existing web app without changing its URL
+        working-directory: .runtime/apps-script
+        env:
+          APPS_SCRIPT_DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_DEPLOYMENT_ID }}
+        run: |
+          clasp create-deployment             --deploymentId "$APPS_SCRIPT_DEPLOYMENT_ID"             --description "BallerWatch ${GITHUB_SHA::7}"
+
+      - name: Verify deployed bridge responds
+        env:
+          GOOGLE_CALENDAR_WEBHOOK_URL: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_URL }}
+        run: |
+          response="$(curl --fail --silent --show-error --location --retry 3 --retry-delay 3 "$GOOGLE_CALENDAR_WEBHOOK_URL")"
+          node -e 'const x=JSON.parse(process.argv[1]); if (x.ok !== true || x.service !== "rats-calendar-bridge") process.exit(1)' "$response"
+          echo "Calendar bridge deployment verified."
+
+      - name: Remove OAuth material
+        if: always()
+        run: rm -rf "$HOME/.clasprc.json" .runtime/apps-script
