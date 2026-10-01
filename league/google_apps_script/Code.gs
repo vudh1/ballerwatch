@@ -27,7 +27,7 @@ function doGet() {
   return json_({
     ok: true,
     service: 'rats-calendar-bridge',
-    version: 4,
+    version: 5,
     calendarPaired: Boolean(props.getProperty(TARGET_CALENDAR_KEY))
   });
 }
@@ -86,10 +86,20 @@ function pairCalendar_(props, marker) {
   const end = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
   const matches = [];
 
+  // Pairing must not depend on Calendar's full-text search index because a
+  // newly created marker may not be searchable immediately. Scan the bounded
+  // 21-day event window directly instead, checking the default Calendar first.
+  const defaultCalendar = CalendarApp.getDefaultCalendar();
+  const calendars = [defaultCalendar];
+  const defaultId = defaultCalendar.getId();
   CalendarApp.getAllCalendars().forEach(calendar => {
+    if (calendar.getId() !== defaultId) calendars.push(calendar);
+  });
+
+  calendars.forEach(calendar => {
     let events = [];
     try {
-      events = calendar.getEvents(start, end, {search: token});
+      events = calendar.getEvents(start, end);
     } catch (_) {
       return;
     }
