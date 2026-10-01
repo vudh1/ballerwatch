@@ -21,6 +21,8 @@ function defaults() {
     lastSetupReminderAt: "",
     lastOwnerNameReminderAt: "",
     lastEndpointReminderAt: "",
+    webPairCodeHash: "",
+    webPairExpiresAt: "",
     recentBotReplies: [],
   };
 }
