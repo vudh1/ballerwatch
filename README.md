@@ -4,10 +4,11 @@ BallerWatch is a small soccer automation system for pickup games and Seattle RAT
 
 It uses Telegram and an installable GitHub Pages web app for questions and alerts, Cloudflare Workers for the webhook/read-only API path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Gemini Flash with Groq fallback for bounded AI assistance, standards-based Web Push for a Telegram-independent notification channel, and Google Calendar for league match sync.
 
-**Current version: 4.1.0**
+**Current version: 4.1.1**
 
 ## Recent changes
 
+- **4.1.1** — Keep Settings and notification bell aligned on one row in the installed mobile app.
 - **4.1.0** — Long-press wrong-answer feedback plus Google-style sentence autocomplete.
 - **4.0.0** — Owner-paired settings plus shared 48-hour review history for paired web Q&A.
 - **3.3.0** — Slash-command/autosuggest Q&A, footer install help, bell-only push controls, and two-hour league fallback windows.
