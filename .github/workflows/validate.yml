@@ -59,7 +59,7 @@ jobs:
 
       - name: Bundle Cloudflare Worker
         working-directory: infra/telegram-webhook
-        run: npx --yes wrangler@4 deploy --dry-run --outdir /tmp/ballerwatch-worker
+        run: npx --yes wrangler@4.145.0 deploy --dry-run --outdir /tmp/ballerwatch-worker
 
       - name: Validate release history
         run: node infra/validate-versions.mjs
