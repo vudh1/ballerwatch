@@ -56,6 +56,14 @@
       "message": "Common read-only questions can now be answered directly at the Cloudflare edge, with short conversation context and AI intent recognition for natural-language questions.",
       "example": "Ask: what's my next game? Then follow with: what field?",
       "enabled": true
+    },
+    {
+      "id": "2026-10-01-cloudflare-first-runtime",
+      "version": "2.0.0",
+      "title": "BallerWatch 2.0",
+      "message": "BallerWatch now runs Cloudflare-first: Telegram fast-path answers and 2/5/10-minute source checks happen at the edge, while GitHub runs only when reconciliation, writes, CI or maintenance are needed.",
+      "example": "Ask: what's my next game? Then follow with: what field?",
+      "enabled": true
     }
   ]
 }
