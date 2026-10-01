@@ -1,7 +1,25 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "4.1.2",
+  "currentVersion": "5.0.0",
   "releases": [
+    {
+      "version": "5.0.0",
+      "date": "2026-10-01",
+      "type": "major",
+      "source": "user-requested",
+      "title": "Two-week match weather dashboard",
+      "telegramAnnouncement": "BallerWatch now has a redesigned dashboard with a 14-day game calendar and match-window rain/weather, while the scheduler uses fewer unnecessary recurring jobs.",
+      "changes": [
+        "Redesigned the PWA into a match-day dashboard with a stronger next-game spotlight, compact app header, cleaner Q&A/search surface, and responsive two-week calendar.",
+        "Added a 14-day calendar covering published pickup games with locations and monitored RATS league matches, with per-day game details and Google Maps directions.",
+        "Added six-hour match weather using Open-Meteo hourly forecasts: condition, average match-window temperature, and maximum rain probability during the actual scheduled game window.",
+        "Added conservative cached venue geocoding through OpenStreetMap Nominatim: only uncached public venues are queried, requests are spaced over one second apart, and failed venue lookups wait seven days before retry.",
+        "Stored weather/geocode runtime data only in encrypted state/weather.json and exposed a public-safe /web/calendar projection without roster or owner-private data.",
+        "Reduced cron-job.org primary schedules to pickup every 2 minutes and league every 5 minutes. The old listener and external watchdog schedules are explicitly retired/disabled.",
+        "Moved system watchdog/maintenance to a native GitHub Actions schedule every six hours and combined that maintenance run with the weather refresh.",
+        "Added Open-Meteo/OpenStreetMap attribution, weather/scheduler regression tests, and a versioned v5 PWA shell."
+      ]
+    },
     {
       "version": "4.1.2",
       "date": "2026-10-01",
