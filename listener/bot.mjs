@@ -1195,8 +1195,18 @@ async function main() {
   settings = await promptForInvalidOwnerName(settings);
   settings = await promptForInvalidEndpoint(settings);
 
-  const pollSeconds = Math.max(0, Math.min(50, Number(process.env.TELEGRAM_POLL_TIMEOUT || 50)));
-  const updates = await getTelegramUpdates(state.lastUpdateId ? state.lastUpdateId + 1 : 0, pollSeconds);
+  const injectedUpdate = String(process.env.TELEGRAM_UPDATE_B64 || "").trim();
+  let updates;
+  if (injectedUpdate) {
+    try {
+      updates = [JSON.parse(Buffer.from(injectedUpdate, "base64").toString("utf8"))];
+    } catch {
+      throw new Error("TELEGRAM_UPDATE_B64 is invalid.");
+    }
+  } else {
+    const pollSeconds = Math.max(0, Math.min(50, Number(process.env.TELEGRAM_POLL_TIMEOUT || 50)));
+    updates = await getTelegramUpdates(state.lastUpdateId ? state.lastUpdateId + 1 : 0, pollSeconds);
+  }
   let lastUpdateId = state.lastUpdateId || 0;
 
   for (const update of updates) {
