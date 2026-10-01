@@ -197,7 +197,7 @@ test("web calendar merges public games with cached match-window weather", () => 
     }],
   };
 
-  const calendar = webCalendarDetails(snapshot, weather, 14);
+  const calendar = webCalendarDetails(snapshot, weather, 14, "2099-10-01");
   assert.equal(calendar.games.length, 1);
   assert.equal(calendar.games[0].id, "pickup:2099-10-08");
   assert.equal(calendar.games[0].weather.rainProbability, 65);
