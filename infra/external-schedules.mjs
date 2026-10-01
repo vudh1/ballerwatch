@@ -1,7 +1,7 @@
 /**
  * Manages cron-job.org primary GitHub schedules and validates their target/cadence posture.
  *
- * Documentation baseline: v2.5.1. Release, deployment, and scheduler-setup flows may tolerate only temporary scheduler-API unavailability; verified bad posture and non-transient errors still fail. Runtime/private data must never be committed to Git.
+ * Documentation baseline: v2.5.2. Primary scheduler sync also disables any legacy Telegram polling schedule when the management API is available. Temporary scheduler-API unavailability remains optional for release/deployment flows; verified bad posture and non-transient errors still fail. Runtime/private data must never be committed to Git.
  */
 const API = "https://api.cron-job.org";
 
@@ -22,6 +22,13 @@ function normalizeMinutes(value) {
 
 function sameNumbers(a, b) {
   return JSON.stringify(normalizeMinutes(a)) === JSON.stringify(normalizeMinutes(b));
+}
+
+function legacyListenerJobs(jobs) {
+  return (Array.isArray(jobs) ? jobs : []).filter((job) =>
+    job?.title === "BallerWatch - Telegram listener" ||
+    String(job?.url || "").includes("/actions/workflows/listener.yml/dispatches")
+  );
 }
 
 function jobMatchesSpec(job, spec, repo) {
@@ -68,10 +75,7 @@ export function analyzeExternalSchedules(jobs, {
     }
   }
 
-  const listenerJobs = list.filter((job) =>
-    job?.title === "BallerWatch - Telegram listener" ||
-    String(job?.url || "").includes("/actions/workflows/listener.yml/dispatches")
-  );
+  const listenerJobs = legacyListenerJobs(list);
   if (listenerJobs.some((job) => job.enabled)) {
     problems.push("BallerWatch - Telegram listener: legacy polling job must stay disabled");
   }
@@ -205,8 +209,7 @@ export async function syncExternalSchedules(mode, {
   if (mode === "disable") {
     const recognized = jobs.filter((job) =>
       EXTERNAL_SCHEDULE_SPECS.some((spec) => jobMatchesSpec(job, spec, repo)) ||
-      job?.title === "BallerWatch - Telegram listener" ||
-      String(job?.url || "").includes("/actions/workflows/listener.yml/dispatches")
+      legacyListenerJobs([job]).length > 0
     );
     for (const job of recognized.filter((job) => job.enabled)) {
       await cronCall(apiKey, `/jobs/${job.jobId}`, {
@@ -222,6 +225,16 @@ export async function syncExternalSchedules(mode, {
   }
 
   if (!githubPat) throw new Error("CRON_GITHUB_PAT is required");
+
+  if (mode === "enable" || mode === "ensure-enabled") {
+    for (const job of legacyListenerJobs(jobs).filter((item) => item.enabled)) {
+      await cronCall(apiKey, `/jobs/${job.jobId}`, {
+        method: "PATCH",
+        body: { job: { enabled: false } },
+      });
+      console.log(`Disabled legacy Telegram polling schedule ${job.jobId}.`);
+    }
+  }
 
   const enabled = mode === "enable" || mode === "ensure-enabled";
   for (const spec of EXTERNAL_SCHEDULE_SPECS) {
