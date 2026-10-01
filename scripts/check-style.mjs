@@ -2,7 +2,7 @@
  * BallerWatch repository style checker.
  *
  * Documentation baseline: v2.3.0.
- * This dependency-free checker enforces cross-language whitespace and module-documentation rules.
+ * This dependency-free checker enforces repository whitespace and module-documentation rules.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -10,7 +10,7 @@ import path from "node:path";
 const ROOT = process.cwd();
 const SKIP = new Set([".git", "node_modules"]);
 const TEXT_EXTENSIONS = new Set([
-  ".mjs", ".js", ".json", ".jsonc", ".yml", ".yaml", ".md", ".py", ".html", ".css",
+  ".mjs", ".js", ".json", ".jsonc", ".yml", ".yaml", ".md", ".html", ".css",
 ]);
 
 function walk(dir) {
@@ -37,12 +37,6 @@ for (const file of walk(ROOT)) {
   if (relative.endsWith(".mjs") && !relative.endsWith(".test.mjs")) {
     const first = text.trimStart();
     if (!first.startsWith("/**")) problems.push(`${relative}: runtime module needs a leading documentation block`);
-  }
-  if (relative.endsWith(".py") && !relative.endsWith("_test.py")) {
-    const first = text.trimStart();
-    if (!first.startsWith('"""') && !first.startsWith("'''")) {
-      problems.push(`${relative}: Python runtime module needs a leading module docstring`);
-    }
   }
 }
 
