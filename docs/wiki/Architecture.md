@@ -42,8 +42,10 @@ Chat condensation remains on Groq and retains the encrypted 48-hour history desi
 
 Scheduler configuration audits are cached for 6 hours in encrypted watchdog state, limiting
 routine management-API reads to 4/day. The watchdog still runs every 10 minutes and checks
-webhook, validation and privacy each time. Cached failures remain failures; release smoke always
-requires a fresh scheduler API check. Source polling cadences remain 2/5/10 minutes.
+webhook, validation and privacy each time. Cached failures remain failures. Release smoke makes
+a fresh scheduler API check when available; temporary management-API failures such as HTTP 429
+are warnings, while any successfully retrieved missing, disabled, duplicated, mistargeted, or
+wrong-cadence scheduler posture still fails. Source polling cadences remain 2/5/10 minutes.
 
 A readable runtime-state branch is authoritative, including missing files after PURGE. Encrypted
 backup recovery applies only when the branch cannot be fetched, never to individual absent files.
