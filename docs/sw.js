@@ -1,9 +1,9 @@
-const CACHE = "ballerwatch-v3-1-shell";
+const CACHE = "ballerwatch-v3-1-1-shell";
 const SHELL = [
   "./",
   "./index.html",
-  "./styles.css",
-  "./app.js",
+  "./styles.css?v=3.1.1",
+  "./app.js?v=3.1.1",
   "./manifest.webmanifest",
   "./icon.svg",
 ];
@@ -27,8 +27,10 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
+  const networkRequest = new Request(event.request, { cache: "no-store" });
+
   event.respondWith(
-    fetch(event.request)
+    fetch(networkRequest)
       .then((response) => {
         const copy = response.clone();
         caches.open(CACHE).then((cache) => cache.put(event.request, copy));
