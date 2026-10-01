@@ -44,6 +44,26 @@ jobs:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
         run: node shared/runtime-state.mjs pull watchdog
 
+      - name: Pull game/weather runtime state
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: node shared/runtime-state.mjs pull weather
+
+      - name: Refresh 14-day match weather
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: node weather/update.mjs
+
+      - name: Persist match weather
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: node shared/runtime-state.mjs push weather
+
       - name: Verify validation, privacy, edge health, and external schedules
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -95,4 +115,5 @@ jobs:
         if: always()
         run: |
           node shared/runtime-state.mjs clean watchdog
+          node shared/runtime-state.mjs clean weather
           rm -rf .runtime
