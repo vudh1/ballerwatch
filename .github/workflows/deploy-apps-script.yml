@@ -27,12 +27,12 @@ jobs:
       - name: Verify required secrets are available
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
-          CLASP_JSON: ${{ secrets.CLASP_JSON }}
+          APPS_SCRIPT_ID: ${{ secrets.APPS_SCRIPT_ID }}
           APPS_SCRIPT_DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_DEPLOYMENT_ID }}
           GOOGLE_CALENDAR_WEBHOOK_URL: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_URL }}
         run: |
           test -n "$CLASPRC_JSON" || { echo "Missing CLASPRC_JSON secret"; exit 1; }
-          test -n "$CLASP_JSON" || { echo "Missing CLASP_JSON secret"; exit 1; }
+          test -n "$APPS_SCRIPT_ID" || { echo "Missing APPS_SCRIPT_ID secret"; exit 1; }
           test -n "$APPS_SCRIPT_DEPLOYMENT_ID" || { echo "Missing APPS_SCRIPT_DEPLOYMENT_ID secret"; exit 1; }
           test -n "$GOOGLE_CALENDAR_WEBHOOK_URL" || { echo "Missing GOOGLE_CALENDAR_WEBHOOK_URL secret"; exit 1; }
 
@@ -42,11 +42,11 @@ jobs:
       - name: Prepare private Apps Script workspace
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
-          CLASP_JSON: ${{ secrets.CLASP_JSON }}
+          APPS_SCRIPT_ID: ${{ secrets.APPS_SCRIPT_ID }}
         run: |
           mkdir -p .runtime/apps-script
           printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
-          printf '%s' "$CLASP_JSON" > .runtime/apps-script/.clasp.json
+          printf '{"scriptId":"%s"}' "$APPS_SCRIPT_ID" > .runtime/apps-script/.clasp.json
           chmod 600 "$HOME/.clasprc.json" .runtime/apps-script/.clasp.json
 
       - name: Pull existing project and replace Calendar bridge code
