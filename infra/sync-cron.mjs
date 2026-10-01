@@ -15,7 +15,6 @@ const allMinutes = (step) =>
     : Array.from({ length: Math.ceil(60 / step) }, (_, i) => i * step).filter((v) => v < 60);
 
 const specs = [
-  { key: "listener", title: "BallerWatch - Telegram listener", workflow: "listener.yml", minutes: allMinutes(1) },
   { key: "pickup", title: "BallerWatch - Pickup watcher", workflow: "pickup.yml", minutes: allMinutes(2) },
   { key: "league", title: "BallerWatch - League watcher", workflow: "league.yml", minutes: allMinutes(5) },
   { key: "watchdog", title: "BallerWatch - System watchdog", workflow: "watchdog.yml", minutes: allMinutes(10) },
@@ -118,7 +117,20 @@ async function main() {
     }
   }
 
-  // Only disable old jobs after all four BallerWatch jobs were created/updated.
+  // Telegram is webhook-driven now. Never recreate the old one-minute poller.
+  for (const job of jobs.filter(
+    (j) =>
+      j.enabled &&
+      (
+        j.title === "BallerWatch - Telegram listener" ||
+        String(j.url || "").includes("/ballerwatch/actions/workflows/listener.yml/dispatches")
+      ),
+  )) {
+    await cron(`/jobs/${job.jobId}`, { method: "PATCH", body: { job: { enabled: false } } });
+    console.log(`Disabled legacy listener cron job ${job.jobId}.`);
+  }
+
+  // Only disable old jobs after all three scheduled BallerWatch jobs were created/updated.
   if (CLEANUP_OLD) {
     for (const job of jobs.filter(
       (j) => isSupersededSoccerJob(j) && !usedIds.has(j.jobId) && j.enabled,
@@ -128,7 +140,7 @@ async function main() {
     }
   }
 
-  console.log("cron-job.org sync complete: 4 BallerWatch jobs are configured.");
+  console.log("cron-job.org sync complete: 3 scheduled BallerWatch jobs are configured; Telegram is webhook-driven.");
 }
 
 await main();
