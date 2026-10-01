@@ -1,7 +1,24 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "4.0.0",
+  "currentVersion": "4.1.0",
   "releases": [
+    {
+      "version": "4.1.0",
+      "date": "2026-10-01",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Wrong-answer feedback and sentence autocomplete",
+      "telegramAnnouncement": "BallerWatch web Q&A now supports full-sentence autocomplete and owner-paired press-and-hold feedback when an answer is wrong.",
+      "changes": [
+        "Added owner-paired press-and-hold feedback on the web answer card; holding for about 0.7 seconds queues the current question/answer as negative_feedback for the next review.",
+        "Kept review feedback protected by the existing owner capability token so anonymous public visitors cannot inject engineering-review signals.",
+        "Expanded Q&A autocomplete into full-sentence predictions ranked from typed prefixes, including partial-word matching and weekday-specific soccer questions.",
+        "Added desktop acceptance shortcuts for the top completion with Tab or Right Arrow while preserving tap and arrow/Enter selection.",
+        "Autocomplete stays local/deterministic and does not call AI providers on each keystroke.",
+        "Clarified that cron-job.org schedules pickup, league, and watchdog only; the GitHub listener remains event-driven for private-bot and owner-paired web events.",
+        "Bumped the PWA shell so installed Home Screen apps refresh to the new behavior."
+      ]
+    },
     {
       "version": "4.0.0",
       "date": "2026-10-01",
