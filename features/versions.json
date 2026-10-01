@@ -1,7 +1,19 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "2.5.4",
+  "currentVersion": "2.5.5",
   "releases": [
+    {
+      "version": "2.5.5",
+      "date": "2026-10-01",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Runtime-only snapshot tree",
+      "changes": [
+        "Restricted runtime-state root snapshots to the canonical generated runtime paths instead of carrying the repository source tree into the snapshot branch.",
+        "Kept the one-parentless-commit retention model and optimistic concurrent-writer protection introduced in 2.5.4.",
+        "Expanded runtime-state regression coverage so PURGE produces an empty root tree and a rebuilt snapshot contains only the expected runtime file."
+      ]
+    },
     {
       "version": "2.5.4",
       "date": "2026-10-01",
