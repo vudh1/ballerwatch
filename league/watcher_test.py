@@ -7,6 +7,7 @@ import unittest
 from unittest.mock import patch
 from watcher import (
     HEADERS,
+    calendar_fingerprint,
     discover_latest_season,
     edge_signal_aggregate,
     is_transient_source_error,
@@ -123,6 +124,16 @@ class ScheduleTests(unittest.TestCase):
         after = normalize('fall-2026', self.aggregate, self.exports)['teams'][0]['matches'][0]
         self.assertEqual(before['key'], after['key'])
         self.assertNotEqual(before['calendarFingerprint'], after['calendarFingerprint'])
+
+    def test_score_changes_do_not_change_calendar_fingerprint(self):
+        game = normalize('fall-2026', self.aggregate, self.exports)['teams'][0]['matches'][0]
+        changed = copy.deepcopy(game)
+        changed['teamScore'] = 3
+        changed['opponentScore'] = 2
+        self.assertEqual(
+            calendar_fingerprint(game),
+            calendar_fingerprint(changed),
+        )
     def test_dst(self):
         self.aggregate['events'][0]['start_date'] = '2026-11-02'
         self.exports['Team Alpha'][1][1] = '2026-11-02'

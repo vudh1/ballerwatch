@@ -1,7 +1,8 @@
 /**
  * Performs deep health, privacy, validation, edge, and external-scheduler checks.
  *
- * v2.5.0: caches encrypted scheduler audits for 6 hours; other checks remain every run. Runtime/private data must never be committed to Git.
+ * v2.5.0: caches encrypted scheduler audits for 6 hours; other checks remain every run.
+ * v2.6.0: health failures are state/log-only; Telegram is reserved for one combined daily version announcement. Runtime/private data must never be committed to Git.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -10,6 +11,7 @@ import { pathToFileURL } from "node:url";
 import { decryptState, encryptState } from "../shared/state-crypto.mjs";
 import { sendTelegram } from "../shared/telegram.mjs";
 import { checkScheduler } from "./scheduler-check.mjs";
+import { planVersionAnnouncement } from "./version-announcement.mjs";
 
 const STATE_PATH = "state/watchdog.json";
 
@@ -192,40 +194,38 @@ export async function runWatchdog() {
     .update(JSON.stringify(problems.map((p) => p.key).sort()))
     .digest("hex");
 
-  if (problems.length) {
-    if (previous.fingerprint !== fingerprint || previous.healthy !== false) {
-      await sendTelegram(
-        [
-          "🚨 BallerWatch watchdog",
-          ...problems.map((p) => `• ${p.message}`),
-        ].join("\n"),
-      );
-    }
-
-    saveState({
-      schedulerAudit,
-      healthy: false,
-      fingerprint,
-      checkedAt: new Date().toISOString(),
-      problemCount: problems.length,
-    });
-    console.log(`Watchdog found ${problems.length} problem(s).`);
-    return { healthy: false, problems };
+  const ledger = readJson("features/versions.json");
+  const announcement = planVersionAnnouncement({
+    ledger,
+    announcementState: previous.versionAnnouncement || {},
+  });
+  let versionAnnouncement = announcement.nextState;
+  if (announcement.message && problems.length === 0) {
+    await sendTelegram(announcement.message);
+    console.log("Sent the combined daily version announcement.");
+  } else if (announcement.message) {
+    versionAnnouncement = previous.versionAnnouncement || {};
+    console.log("Deferred version announcement because the watchdog is unhealthy.");
   }
 
-  if (previous.healthy === false) {
-    await sendTelegram("✅ BallerWatch watchdog: all components recovered and healthy.");
-  }
-
+  const healthy = problems.length === 0;
   saveState({
     schedulerAudit,
-    healthy: true,
+    versionAnnouncement,
+    healthy,
     fingerprint,
     checkedAt: new Date().toISOString(),
-    problemCount: 0,
+    problemCount: problems.length,
   });
-  console.log("All BallerWatch components are healthy.");
-  return { healthy: true, problems: [] };
+
+  if (healthy) {
+    console.log("All BallerWatch components are healthy.");
+  } else {
+    console.log(
+      `Watchdog found ${problems.length} problem(s); Telegram health alerts are disabled by policy.`,
+    );
+  }
+  return { healthy, problems };
 }
 
 const isMain =
@@ -233,11 +233,8 @@ const isMain =
   import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
 
 if (isMain) {
-  runWatchdog().catch(async (error) => {
+  runWatchdog().catch((error) => {
     console.error(error);
-    try {
-      await sendTelegram(`🚨 BallerWatch watchdog itself failed: ${error.message}`);
-    } catch {}
     process.exit(1);
   });
 }

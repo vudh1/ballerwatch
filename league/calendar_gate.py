@@ -15,6 +15,40 @@ STATE = Path("calendar-snapshot.json")
 BOOTSTRAP = Path("calendar-bootstrap.json")
 CHANGES = Path("calendar-changes.json")
 
+CALENDAR_MATCH_FIELDS = (
+    "team",
+    "opponent",
+    "homeAway",
+    "date",
+    "startTime",
+    "endTime",
+    "start",
+    "end",
+    "endEstimated",
+    "timezone",
+    "location",
+    "fieldNotes",
+    "jerseyColor",
+    "opponentJerseyColor",
+    "division",
+    "season",
+    "sourceUrl",
+    "mapUrl",
+    "eventType",
+)
+
+
+def same_calendar_match(previous, current):
+    if not isinstance(previous, dict) or not isinstance(current, dict):
+        return False
+    return {
+        field: previous.get(field)
+        for field in CALENDAR_MATCH_FIELDS
+    } == {
+        field: current.get(field)
+        for field in CALENDAR_MATCH_FIELDS
+    }
+
 
 def normalize_text(value):
     return " ".join(str(value or "").strip().split()).casefold()
@@ -111,6 +145,11 @@ def compare(feed, state, now=None):
             else:
                 pending.append({"type": "new", "key": key, **item})
         elif old.get("fingerprint") != item["fingerprint"]:
+            # v2.6.0 removed scores/internal metadata from the Calendar fingerprint.
+            # Compare the actual schedule fields before announcing a change so
+            # existing snapshots migrate silently and score-only changes stay quiet.
+            if same_calendar_match(old.get("match"), item["match"]):
+                continue
             pending.append({
                 "type": "changed",
                 "key": key,

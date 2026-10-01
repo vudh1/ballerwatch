@@ -14,7 +14,7 @@
       "title": "Telegram-managed encrypted setup",
       "message": "You can now set or change your pickup RSVP/owner name through Telegram, and /setup shows any user information I still need.",
       "example": "/setup",
-      "enabled": true,
+      "enabled": false,
       "version": "1.0.0"
     },
     {
@@ -22,7 +22,7 @@
       "title": "Reliability and privacy upgrades",
       "message": "BallerWatch now has automatic component recovery, a unified manual smoke test, and privacy-redacted storage for unsupported Telegram questions.",
       "example": "Ask /setup or try a new unsupported question.",
-      "enabled": true,
+      "enabled": false,
       "version": "1.0.0"
     },
     {
@@ -31,7 +31,7 @@
       "title": "Versioned BallerWatch releases",
       "message": "BallerWatch now tracks every product change with a SemVer version and release history. Automated ChatGPT changes must bump the version and record what changed.",
       "example": "/version",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "2026-09-30-default-league-teams",
@@ -39,7 +39,7 @@
       "title": "Default league teams",
       "message": "League monitoring now bootstraps Third Touch FC first and PhoSaiGon second on a clean setup; you can still add, remove, or rename monitored teams in Telegram.",
       "example": "what league teams are you monitoring?",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "2026-09-30-manual-purge-protected-main",
@@ -55,7 +55,7 @@
       "title": "Faster Telegram answers",
       "message": "Common read-only questions can now be answered directly at the Cloudflare edge, with short conversation context and AI intent recognition for natural-language questions.",
       "example": "Ask: what's my next game? Then follow with: what field?",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "2026-10-01-cloudflare-first-runtime",
@@ -79,7 +79,7 @@
       "title": "Faster RATS reconciliation",
       "message": "BallerWatch now reconciles RATS changes faster, verifies its cron-job.org emergency fallback jobs, and develops each new release on a tested branch before one squash commit reaches main.",
       "example": "Use /version to confirm BallerWatch 2.2.0.",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "2026-10-01-resilient-failover",
@@ -95,7 +95,9 @@
       "title": "KV-free runtime and short-lived chat review",
       "message": "BallerWatch no longer uses Workers KV. Monitoring now runs through cron-job.org + GitHub, while Telegram keeps its Cloudflare fast path and uses a privacy-minimized 48-hour review history for bugs and feature ideas.",
       "example": "Use /version to confirm BallerWatch 2.4.0.",
-      "enabled": true
+      "enabled": false
     }
-  ]
+  ],
+  "legacy": true,
+  "policy": "Individual feature announcements are disabled; versions.json drives one combined daily release announcement."
 }

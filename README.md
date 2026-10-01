@@ -4,7 +4,21 @@ BallerWatch is a small soccer automation system for pickup games and Seattle RAT
 
 It uses Telegram for questions and alerts, Cloudflare Workers for the webhook/fast reply path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Gemini Flash with Groq fallback for bounded AI assistance, and Google Calendar for league match sync.
 
-**Current version: 2.5.6**
+**Current version: 2.6.0**
+
+## What changed in 2.6.0
+
+2.6.0 makes Telegram intentionally quiet outside soccer updates and direct replies. The bot now sends proactive Telegram messages only for:
+
+- pickup RSVP/capacity notifications from the existing watcher logic;
+- real RATS match-schedule changes;
+- one combined version-change announcement per Pacific day.
+
+Direct replies to your Telegram questions continue normally.
+
+Watchdog failures/recovery, CI/tests, build/deploy activity, commits/PRs, unsolicited setup reminders, endpoint/name reminders, and score-only changes do not send Telegram messages.
+
+If several versions are released before the next allowed daily announcement, BallerWatch combines them into one message. Release announcements use user-facing version summaries from `features/versions.json`; they do not include commit or pull-request details.
 
 ## What changed in 2.5.6
 

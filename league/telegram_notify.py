@@ -67,10 +67,6 @@ def main():
         jersey = match.get("jerseyColor") or "not published"
         opponent_jersey = match.get("opponentJerseyColor") or "not published"
 
-        score = ""
-        if match.get("teamScore") is not None and match.get("opponentScore") is not None:
-            score = f' — score {match["teamScore"]}-{match["opponentScore"]}'
-
         team_name = html.escape(str(match["team"]))
         opponent_name = html.escape(str(match["opponent"]))
         location_text = html.escape(str(location))
@@ -81,7 +77,7 @@ def main():
 
         lines.append(
             f'{verb}: {icon} <b>{team_name}</b> vs {opponent_name} — {when} — {location_text} '
-            f'— jerseys {html.escape(str(jersey))}/{html.escape(str(opponent_jersey))}{score}'
+            f'— jerseys {html.escape(str(jersey))}/{html.escape(str(opponent_jersey))}'
         )
         if location != "location not published":
             lines.append(f'🗺️ {html.escape(str(map_url), quote=True)}')

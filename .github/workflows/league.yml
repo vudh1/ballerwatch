@@ -69,13 +69,6 @@ jobs:
         if: steps.gate.outputs.should_run == 'true'
         run: /usr/bin/time -f 'leagueWatcherSeconds=%e' python3 watcher.py
 
-      - name: Notify Telegram about score changes
-        if: steps.gate.outputs.should_run == 'true'
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python3 telegram_score_notify.py
-
       - name: Compare with applied Calendar snapshot
         if: steps.gate.outputs.should_run == 'true'
         id: calendar_gate

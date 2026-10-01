@@ -1,7 +1,7 @@
 /**
  * Implements the GitHub-hosted Telegram fallback bot, state-changing commands, and deterministic replies.
  *
- * Documentation baseline: v2.5.2. The listener is webhook-input only: Telegram updates and fast-path history events are injected by Cloudflare; empty dispatches never poll Telegram. Runtime/private data must never be committed to Git.
+ * Documentation baseline: v2.6.0. The listener is webhook-input only and sends Telegram messages only as direct replies to owner input; unsolicited setup, health, and release reminders are disabled. Runtime/private data must never be committed to Git.
  */
 import { recordUnknownQuestion, refreshPublicRequests } from "../shared/feature-requests.mjs";
 import { answerUnknownWithAi } from "../shared/ai-fallback.mjs";
@@ -16,7 +16,6 @@ import { loadEncryptedLeagueState } from "../shared/league-state.mjs";
 const TIME_ZONE = "America/Los_Angeles";
 const PICKUP_PRIVATE_STATE = "pickup/state/events.json";
 const PICKUP_FEED_STATE = "pickup/state/feed.json";
-const FEATURE_ANNOUNCEMENTS_PATH = "features/announcements.json";
 const VERSION_HISTORY_PATH = "features/versions.json";
 
 function readJson(path) {
@@ -731,33 +730,6 @@ function handlePickupEndpointCommand(command, settings) {
   }
 }
 
-function loadEndpointHealth() {
-  const raw = readJson("pickup/state/source-health.json");
-  const value = raw ? decryptState(raw) : null;
-  return value && typeof value === "object" ? value : null;
-}
-
-async function promptForInvalidEndpoint(settings) {
-  const health = loadEndpointHealth();
-  if (!health || health.ok !== false) {
-    if (settings.lastEndpointReminderAt) {
-      return { ...settings, lastEndpointReminderAt: "" };
-    }
-    return settings;
-  }
-  const last = Date.parse(settings.lastEndpointReminderAt || "");
-  const due = !Number.isFinite(last) || Date.now() - last >= 24 * 60 * 60 * 1000;
-  if (!due) return settings;
-
-  await sendTelegram([
-    "⚠️ The current RSVP endpoint failed its latest pickup refresh.",
-    `Source: ${health.source === "encrypted-override" ? "encrypted Telegram override" : "default GitHub Secret"}`,
-    "If the endpoint changed, reply: set RSVP endpoint https://...",
-    "I’ll remind you again tomorrow while the source remains unhealthy.",
-  ].join("\n"));
-  return { ...settings, lastEndpointReminderAt: new Date().toISOString() };
-}
-
 function missingSetup(settings) {
   const missing = [];
   if (!effectiveOwnerName(settings)) {
@@ -868,64 +840,6 @@ function ownerNameValidity(settings) {
   };
 }
 
-async function promptForInvalidOwnerName(settings) {
-  const validity = ownerNameValidity(settings);
-  if (validity.status !== "not-found") {
-    if (settings.lastOwnerNameReminderAt) {
-      return { ...settings, lastOwnerNameReminderAt: "" };
-    }
-    return settings;
-  }
-
-  const lastReminder = Date.parse(settings.lastOwnerNameReminderAt || "");
-  const due =
-    !Number.isFinite(lastReminder) ||
-    Date.now() - lastReminder >= 24 * 60 * 60 * 1000;
-  if (!due) return settings;
-
-  await sendTelegram(
-    [
-      "⚠️ Your configured pickup RSVP name was not found in the current RSVP participant/waitlist data.",
-      "If your RSVP display name changed, reply: owner name <your exact RSVP name>",
-      "I’ll remind you again tomorrow if it still does not match.",
-    ].join("\n"),
-  );
-  return { ...settings, lastOwnerNameReminderAt: new Date().toISOString() };
-}
-
-async function promptForMissingSetup(settings) {
-  const missing = missingSetup(settings);
-  if (!missing.length) {
-    if (settings.pendingSetupField || settings.lastSetupReminderAt) {
-      return { ...settings, pendingSetupField: "", lastSetupReminderAt: "" };
-    }
-    return settings;
-  }
-
-  const current = missing.includes(settings.pendingSetupField)
-    ? settings.pendingSetupField
-    : missing[0];
-  const lastReminder = Date.parse(settings.lastSetupReminderAt || "");
-  const reminderDue =
-    settings.pendingSetupField !== current ||
-    !Number.isFinite(lastReminder) ||
-    Date.now() - lastReminder >= 24 * 60 * 60 * 1000;
-
-  if (reminderDue) {
-    await sendTelegram(
-      ["⚙️ BallerWatch setup is incomplete.", setupPrompt(current), "Send /setup to see all missing settings."].join("\n"),
-    );
-  }
-
-  return {
-    ...settings,
-    pendingSetupField: current,
-    lastSetupReminderAt: reminderDue
-      ? new Date().toISOString()
-      : settings.lastSetupReminderAt || "",
-  };
-}
-
 function leagueTeamsReply() {
   const teams = loadLeagueTeams();
   if (!teams.length) return "No league teams are currently configured.";
@@ -1021,53 +935,6 @@ function handleLeagueTeamCommand(command) {
   }
 
   return null;
-}
-
-
-async function announceNewFeatures(settings) {
-  const data = readJson(FEATURE_ANNOUNCEMENTS_PATH);
-  const items = Array.isArray(data?.announcements) ? data.announcements : [];
-  const enabledIds = items
-    .filter((item) => item?.id && item.enabled !== false)
-    .map((item) => String(item.id));
-
-  let announcedIds;
-  if (Array.isArray(settings.announcedFeatureAnnouncementIds)) {
-    announcedIds = new Set(settings.announcedFeatureAnnouncementIds.map(String));
-  } else {
-    // Migration from the old single-last-ID scheme. Treat all announcements
-    // that already existed at migration time as seen so historical releases
-    // are never replayed or rotated.
-    announcedIds = new Set(enabledIds);
-  }
-
-  const item = items.find(
-    (candidate) =>
-      candidate?.id &&
-      candidate.enabled !== false &&
-      !announcedIds.has(String(candidate.id)),
-  );
-
-  const migratedSettings = {
-    ...settings,
-    announcedFeatureAnnouncementIds: [...announcedIds],
-  };
-  delete migratedSettings.lastFeatureAnnouncementId;
-
-  if (!item) return migratedSettings;
-
-  const lines = [
-    `🆕 BallerWatch ${item.version ? `v${item.version}` : "feature"} available`,
-    String(item.message || item.title || "A new bot feature was added."),
-  ];
-  if (item.example) lines.push(`Try: ${item.example}`);
-
-  await sendTelegram(lines.join("\n"));
-  announcedIds.add(String(item.id));
-  return {
-    ...migratedSettings,
-    announcedFeatureAnnouncementIds: [...announcedIds],
-  };
 }
 
 
@@ -1438,11 +1305,8 @@ async function main() {
     return;
   }
 
-  settings = await announceNewFeatures(settings);
-  settings = await promptForMissingSetup(settings);
-  settings = await promptForInvalidOwnerName(settings);
-  settings = await promptForInvalidEndpoint(settings);
-
+  // Unsolicited reminders and release notices are intentionally disabled here.
+  // The listener only replies to the owner's current Telegram input.
   let updates;
   try {
     updates = [JSON.parse(Buffer.from(injectedUpdate, "base64").toString("utf8"))];

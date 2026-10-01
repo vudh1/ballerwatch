@@ -2,7 +2,21 @@
 
 ## Health
 
-The Worker health endpoint reports KV availability and pickup/league heartbeat ages. The deep watchdog also checks validation health, privacy rules, and cron-job.org configuration.
+The Worker health endpoint reports runtime availability and pickup/league heartbeat ages. The deep watchdog also checks validation health, privacy rules, and cron-job.org configuration.
+
+Watchdog problems and recovery are operational signals only. They are written to encrypted runtime state and GitHub logs; they do **not** send Telegram alerts.
+
+## Telegram notification policy
+
+Allowed proactive Telegram messages are limited to:
+
+- pickup RSVP/capacity alerts from the production pickup watcher;
+- real RATS schedule changes;
+- one combined version-change announcement per Pacific day.
+
+The bot may also reply directly to owner questions and commands.
+
+Tests, builds, deploys, commits, pull requests, watchdog failures/recovery, setup reminders, invalid-setting reminders, and score-only changes stay silent on Telegram.
 
 ## Purge
 

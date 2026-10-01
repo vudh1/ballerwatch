@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "2.5.6",
+  "currentVersion": "2.6.0",
   "releases": [
+    {
+      "version": "2.6.0",
+      "date": "2026-10-01",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Quiet Telegram notification policy",
+      "telegramAnnouncement": "Telegram is now quiet by default: only RSVP watcher alerts, direct answers, one combined daily version update, and real league schedule changes are sent.",
+      "changes": [
+        "Restricted proactive Telegram output to RSVP watcher notifications, real league schedule changes, and a single combined version announcement per Pacific day; direct replies to user questions remain unchanged.",
+        "Made watchdog failures, watchdog recovery, CI/testing/build activity, unsolicited setup reminders, invalid-setting reminders, and score-only changes silent on Telegram.",
+        "Combined every not-yet-announced release into one daily version message using user-facing release summaries instead of commit, pull-request, or other engineering details.",
+        "Changed league Calendar fingerprints so score-only changes do not trigger schedule reconciliation or Telegram schedule-update messages.",
+        "Removed the standalone Telegram score notifier."
+      ]
+    },
     {
       "version": "2.5.6",
       "date": "2026-10-01",

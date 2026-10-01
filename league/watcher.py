@@ -28,6 +28,16 @@ def digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
 
 
+def calendar_fingerprint(game):
+    """Fingerprint only fields that materially change the scheduled match."""
+    schedule = {
+        key: value
+        for key, value in game.items()
+        if key not in ('teamScore', 'opponentScore', 'calendarFingerprint')
+    }
+    return digest(schedule)
+
+
 def season_label(season_id):
     name, year = season_id.split('-', 1)
     return f"{name.title()} {year}"
@@ -221,7 +231,7 @@ def normalize(season_id, aggregate, exports):
                 'division': division, 'season': season_label(season_id), 'sourceUrl': SOURCE,
                 'mapUrl': 'https://maps.google.com/?q=' + urllib.parse.quote(event.get('location') or '') if event.get('location') else None,
                 'eventType': row['Event Type']}
-            game['calendarFingerprint'] = digest(game)
+            game['calendarFingerprint'] = calendar_fingerprint(game)
             games.append(game)
         if len(games) != len(export_games):
             raise ValueError('Aggregate/export game count mismatch')
