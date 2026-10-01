@@ -10,7 +10,7 @@ The web app is an alternate read-only surface for BallerWatch and a notification
 
 - shows the next upcoming pickup or RATS game on the main screen with Google Maps directions and native sharing;
 - shows recent pickup, RATS schedule, and version updates from a top-right notification bell instead of occupying the main screen;
-- answers one read-only question at a time using the same deterministic/AI intent path as the Telegram fast path;
+- answers one read-only question at a time with slash-command and natural-question suggestions;
 - can be added to the iPhone Home Screen and opened in standalone app mode;
 - can subscribe the installed app to standards-based Web Push notifications;
 - keeps state-changing commands on Telegram in v3.0.0.
@@ -19,7 +19,7 @@ There is intentionally no chat history in the web UI. Each new question replaces
 
 ## Installed-app navigation
 
-When BallerWatch is opened from the iPhone Home Screen, the install card is removed entirely. The main screen stays focused on Q&A, push controls live in **Settings** at the bottom, and recent notifications open from the bell button in the top-right corner as a modal panel. Browser visits still show the Home Screen installation help.
+When BallerWatch is opened from the iPhone Home Screen, Home Screen installation help is removed entirely. Browser visits keep a compact **Home Screen app** section in the footer. Push enable/disable lives only in the top-right notification bell panel, alongside recent updates and the manual notification test.
 
 ## iPhone installation
 
@@ -29,9 +29,20 @@ On iPhone or iPad:
 2. Tap **Share**.
 3. Choose **Add to Home Screen**.
 4. Open BallerWatch from the Home Screen icon.
-5. Scroll to **Settings** at the bottom, tap **Enable push**, and approve notifications.
+5. Open the notification bell, turn **Push notifications** on, and approve notifications.
 
 Web Push for Home Screen web apps requires iOS/iPadOS 16.4 or newer. Notification permission must be requested in response to a user action, so the app never prompts automatically.
+
+## Question suggestions
+
+The question box supports both free-form text and shortcuts:
+
+- typing **/** opens the command list;
+- continuing to type filters the command list;
+- arrow keys and Enter work on desktop keyboards, while every suggestion can also be tapped;
+- ordinary text such as “next” or “Thursday” can show matching natural-language suggestions.
+
+Read-only shortcuts include `/today`, `/next`, `/teams`, `/count [day]`, `/field [day]`, `/time [day]`, `/version`, and `/help`.
 
 ## Next game and notification test
 
