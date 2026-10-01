@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "currentVersion": "1.2.0",
+  "releases": [
+    {
+      "version": "1.2.0",
+      "date": "2026-09-30",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Versioned release history",
+      "changes": [
+        "Added a SemVer release ledger with current version and chronological change history.",
+        "Telegram feature announcements now include the release version.",
+        "Added /version and version commands to report the current release and latest changes.",
+        "Scheduled ChatGPT maintenance tasks must record a release entry whenever they change the product."
+      ]
+    },
+    {
+      "version": "1.1.0",
+      "date": "2026-09-30",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Automated infrastructure provisioning",
+      "changes": [
+        "Added idempotent cron-job.org API provisioning for listener, pickup, league, and watchdog workflows.",
+        "Added automated Google Apps Script Calendar bridge deployment using the existing deployment ID.",
+        "Hardened privacy checks against committing Apps Script OAuth/config credentials."
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "date": "2026-09-30",
+      "type": "major",
+      "source": "migration-baseline",
+      "title": "BallerWatch consolidated baseline",
+      "changes": [
+        "Consolidated pickup, league, Telegram, Calendar, watchdog, privacy, and feature-builder automation into BallerWatch.",
+        "Kept live soccer data and user configuration encrypted at rest.",
+        "Added watchdog recovery, manual smoke testing, and privacy-redacted feature requests."
+      ]
+    }
+  ]
+}

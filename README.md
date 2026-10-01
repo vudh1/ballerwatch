@@ -37,6 +37,7 @@ Examples:
 - `what game is today?`
 - `what games are today?`
 - `/setup`
+- `/version` — current SemVer release and latest changes
 - `what information do you still need from me?`
 - `what is my owner name?`
 - `owner name <exact RSVP display name>`
@@ -135,6 +136,20 @@ Keep this repository **public** and use standard GitHub-hosted runners. Public-r
 Do not run two Telegram listeners against the same bot token.
 
 1. Add the secrets above.\n2. Run **Configure external cron**; leave cleanup enabled to disable superseded soccer cron jobs after successful sync.\n3. Run **Deploy Calendar bridge** once after adding the clasp secrets.\n4. Run the manual smoke test and verify listener/pickup/league/watchdog activity.\n5. Leave old repositories intact only until the new system is verified, then delete/archive them as desired.
+
+## Versioning and release history
+
+BallerWatch uses Semantic Versioning: `MAJOR.MINOR.PATCH`.
+
+- **MAJOR** — intentional breaking behavior/configuration change
+- **MINOR** — new user-facing capability that remains backward compatible
+- **PATCH** — backward-compatible bug fix, reliability, privacy, source-compatibility, or internal improvement
+
+The canonical ledger is `features/versions.json`. It stores `currentVersion` plus every release's date, bump type, source, title, and change list. `features/announcements.json` references these versions for Telegram announcements.
+
+Any scheduled ChatGPT task that commits a product change must update the ledger in the **same change set**. Feature Builder changes normally bump MINOR; watcher audit fixes normally bump PATCH. A scheduled task must not bump the version when it makes no repository change.
+
+`infra/validate-versions.mjs` enforces valid SemVer, newest-first unique releases, current-version consistency, and valid announcement version references.
 
 ## Self-improving Telegram requests
 

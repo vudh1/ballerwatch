@@ -40,6 +40,10 @@ jobs:
           node --check manual-test.mjs
           node --check privacy-audit.mjs
           node --check infra/sync-cron.mjs
+          node --check infra/validate-versions.mjs
+
+      - name: Validate release history
+        run: node infra/validate-versions.mjs
 
       - name: Enforce encrypted-at-rest privacy
         run: node privacy-audit.mjs
