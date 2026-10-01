@@ -575,17 +575,22 @@ async function refreshPickupEdge(env,{dispatch=true,write=true}={}) {
   const fp=await fingerprint(snapshot);
   const old=await kvTextGet(env,"fingerprint:pickup");
   const changed=old!==fp;
+
+  if(write && (changed || !(await kvJsonGet(env,"snapshot:pickup")))) {
+    await Promise.all([
+      kvJsonPut(env,"snapshot:pickup",snapshot.feed),
+      kvJsonPut(env,"snapshot:pickup-private",snapshot.private),
+    ]);
+  }
+
+  if(changed && dispatch) await dispatchWorkflow(env,"pickup.yml");
+
   if(write) {
-    if(changed || !(await kvJsonGet(env,"snapshot:pickup"))) {
-      await Promise.all([
-        kvJsonPut(env,"snapshot:pickup",snapshot.feed),
-        kvJsonPut(env,"snapshot:pickup-private",snapshot.private),
-        kvTextPut(env,"fingerprint:pickup",fp),
-      ]);
-    }
+    // Advance the fingerprint only after any required reconciliation dispatch
+    // succeeds, so a transient GitHub API failure is retried next edge tick.
+    await kvTextPut(env,"fingerprint:pickup",fp);
     await heartbeat(env,"pickup",changed);
   }
-  if(changed && dispatch) await dispatchWorkflow(env,"pickup.yml");
   return {ok:true,changed,dateCount:snapshot.feed.dates.length};
 }
 
@@ -608,7 +613,6 @@ async function refreshLeagueEdge(env,{dispatch=true,write=true}={}) {
     const githubFingerprint=bundle.schedule ? await fingerprint(bundle.schedule) : "";
     const cachedFingerprint=previous ? await fingerprint(previous) : "";
     const writes=[
-      kvTextPut(env,"fingerprint:league",fp),
       kvJsonPut(env,"snapshot:teams",teams),
     ];
     if(bundle.schedule && githubFingerprint!==cachedFingerprint) {
@@ -616,10 +620,17 @@ async function refreshLeagueEdge(env,{dispatch=true,write=true}={}) {
       writes.push(kvJsonPut(env,"snapshot:today",bundle.today||{games:[]}));
     }
     await Promise.all(writes);
-    await heartbeat(env,"league",changed);
   }
 
   if(changed && dispatch) await dispatchWorkflow(env,"league.yml");
+
+  if(write) {
+    // As with pickup, only acknowledge a source fingerprint after any required
+    // reconciliation dispatch has been accepted.
+    await kvTextPut(env,"fingerprint:league",fp);
+    await heartbeat(env,"league",changed);
+  }
+
   return {
     ok:true,
     changed,
