@@ -1,3 +1,8 @@
+/**
+ * Sends Telegram actions/messages without logging sensitive message content.
+ *
+ * Documentation baseline: v2.3.0. Runtime/private data must never be committed to Git.
+ */
 const TOKEN = (process.env.TELEGRAM_BOT_TOKEN || "").trim();
 const CHAT_ID = (process.env.TELEGRAM_CHAT_ID || "").trim();
 
