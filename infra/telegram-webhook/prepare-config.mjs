@@ -15,8 +15,9 @@ const config={
   name:"ballerwatch-telegram",
   main:"worker.mjs",
   compatibility_date:"2026-09-30",
-  workers_dev:true
+  workers_dev:true,
+  triggers:{ crons:[] }
 };
 
 fs.writeFileSync("wrangler.generated.jsonc",JSON.stringify(config,null,2)+"\n");
-console.log("Generated webhook-only Worker config with no KV binding and no Cloudflare Cron Triggers.");
+console.log("Generated webhook-only Worker config with no KV binding and an explicit empty Cloudflare Cron Trigger list.");

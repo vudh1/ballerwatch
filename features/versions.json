@@ -1,7 +1,18 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "2.4.0",
+  "currentVersion": "2.4.1",
   "releases": [
+    {
+      "version": "2.4.1",
+      "date": "2026-10-01",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Explicit Cloudflare Cron Trigger removal",
+      "changes": [
+        "Fixed the 2.4.0 cutover so Wrangler explicitly publishes triggers.crons=[]; omitting the property leaves previously deployed Cloudflare Cron Triggers in place.",
+        "Added a deployment verification step that reads the Cloudflare Worker schedules API and fails unless the ballerwatch-telegram Worker has zero Cron Triggers after deployment."
+      ]
+    },
     {
       "version": "2.4.0",
       "date": "2026-10-01",

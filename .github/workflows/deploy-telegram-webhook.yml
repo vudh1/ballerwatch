@@ -104,6 +104,18 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx --yes wrangler@4 deploy --config wrangler.generated.jsonc
 
+      - name: Verify Cloudflare cron triggers are removed
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          COUNT="$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/ballerwatch-telegram/schedules" \
+            | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const x=JSON.parse(s);process.stdout.write(String((x.result?.schedules||[]).length))})')"
+          test "$COUNT" = "0" || { echo "::error::Expected zero Cloudflare Cron Triggers, found $COUNT"; exit 1; }
+          echo "Verified zero Cloudflare Cron Triggers."
+
       - name: Discover workers.dev URL and configure Telegram
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

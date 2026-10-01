@@ -4,7 +4,11 @@ BallerWatch is a small soccer automation system for pickup games and Seattle RAT
 
 It uses Telegram for questions and alerts, Cloudflare Workers for the webhook/fast reply path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Groq for bounded AI assistance, and Google Calendar for league match sync.
 
-**Current version: 2.4.0**
+**Current version: 2.4.1**
+
+## What changed in 2.4.1
+
+2.4.1 explicitly publishes an empty Cloudflare Cron Trigger list and verifies after deployment that the Worker has zero scheduled triggers. This fixes a cutover detail where omitting the Wrangler `triggers` field leaves previously deployed Cron Triggers in place.
 
 ## What changed in 2.4.0
 
