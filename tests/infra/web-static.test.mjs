@@ -36,3 +36,11 @@ test("static web app contains no repository secrets or private runtime data", ()
   );
   assert.doesNotMatch(text, /players\s*[:=]|waitlist\s*[:=]/i);
 });
+
+test("GitHub Pages workflow avoids admin-level self-enable permissions", () => {
+  const workflow = fs.readFileSync(".github/workflows/pages.yml", "utf8");
+  assert.doesNotMatch(workflow, /CRON_GITHUB_PAT/);
+  assert.doesNotMatch(workflow, /enablement:\s*true/);
+  assert.match(workflow, /Check GitHub Pages activation/);
+  assert.match(workflow, /Settings → Pages → Build and deployment → Source → GitHub Actions/);
+});
