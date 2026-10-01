@@ -76,4 +76,4 @@ jobs:
 
       - name: Run league unit tests
         working-directory: league
-        run: python -m unittest watcher_test.py calendar_gate_test.py
+        run: python -m unittest watcher_test.py calendar_gate_test.py google_calendar_purge_test.py
