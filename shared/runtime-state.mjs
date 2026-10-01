@@ -2,7 +2,7 @@
  * Transfers encrypted runtime files between GitHub Actions and the dedicated runtime-state branch.
  *
  * Documentation baseline: v2.4.0. The runtime-state branch is durable storage; main stays release-only.
- * A one-time legacy Cloudflare read fallback is retained so existing KV state can migrate safely.
+ * v2.5.0: missing files on a readable branch are authoritative after purge, never cache misses.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -12,26 +12,6 @@ import { restoreFailoverState } from "./failover-state.mjs";
 import { ALL_RUNTIME_FILE_PATHS, runtimePathsFor } from "./runtime-paths.mjs";
 
 const STATE_BRANCH = String(process.env.BALLERWATCH_STATE_BRANCH || "runtime-state").trim();
-const DEFAULT_URL = "https://ballerwatch-telegram.vudhone.workers.dev";
-
-function clean(value) {
-  return String(value || "").trim();
-}
-
-function runtimeUrl() {
-  return clean(process.env.BALLERWATCH_RUNTIME_URL || DEFAULT_URL).replace(/\/$/, "");
-}
-
-function adminSecret() {
-  const token = clean(process.env.TELEGRAM_BOT_TOKEN);
-  const chat = clean(process.env.TELEGRAM_CHAT_ID);
-  if (!token || !chat) throw new Error("Telegram credentials are unavailable for legacy migration.");
-  return crypto
-    .createHash("sha256")
-    .update(`${token}|${chat}|ballerwatch-webhook-v1`)
-    .digest("hex");
-}
-
 function git(args, options = {}) {
   return execFileSync("git", args, {
     encoding: "utf8",
@@ -78,36 +58,23 @@ function readBranchFile(file) {
   }
 }
 
-async function legacyCloudflareGet(paths) {
-  if (!paths.length) return {};
-  const response = await fetch(`${runtimeUrl()}/admin/runtime-files`, {
-    method: "POST",
-    signal: AbortSignal.timeout(20_000),
-    headers: {
-      "content-type": "application/json",
-      "x-ballerwatch-admin": adminSecret(),
-    },
-    body: JSON.stringify({ action: "get", paths }),
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok || payload?.ok !== true) {
-    throw new Error(`Legacy Cloudflare migration read failed (${response.status}).`);
-  }
-  return payload.files || {};
-}
-
 export async function pullRuntimeState(scope) {
   const files = runtimePathsFor(scope);
   const baseline = {};
-  const missing = [];
   let count = 0;
-
+  let branchAvailable = false;
   try {
     fetchStateBranch();
+    branchAvailable = true;
+  } catch {}
+
+  if (branchAvailable) {
+    // A successful branch read is authoritative, including absent files after
+    // PURGE. Recovery caches must never resurrect intentionally deleted state.
     for (const file of files) {
       const raw = readBranchFile(file);
       if (typeof raw !== "string" || !raw) {
-        missing.push(file);
+        fs.rmSync(file, { force: true });
         continue;
       }
       fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -115,35 +82,11 @@ export async function pullRuntimeState(scope) {
       baseline[file] = blobSha(raw.endsWith("\n") ? raw : raw + "\n");
       count += 1;
     }
-  } catch {
-    missing.push(...files);
-  }
-
-  const uniqueMissing = [...new Set(missing)].filter((file) => !baseline[file]);
-  if (uniqueMissing.length) {
-    try {
-      const legacy = await legacyCloudflareGet(uniqueMissing);
-      for (const file of uniqueMissing) {
-        const raw = legacy?.[file];
-        if (typeof raw !== "string" || !raw) continue;
-        fs.mkdirSync(path.dirname(file), { recursive: true });
-        fs.writeFileSync(file, raw.endsWith("\n") ? raw : raw + "\n");
-        baseline[file] = "";
-        count += 1;
-      }
-      if (Object.keys(legacy).length) {
-        console.log(`Recovered ${Object.keys(legacy).length} missing runtime file(s) from legacy Cloudflare KV for migration.`);
-      }
-      const stillMissing = uniqueMissing.filter((file) => !fs.existsSync(file));
-      if (stillMissing.length) {
-        const restored = restoreFailoverState(scope);
-        if (restored) console.warn(`Used encrypted ${scope} Actions-cache backup for remaining runtime state.`);
-      }
-    } catch (error) {
-      const restored = restoreFailoverState(scope);
-      if (!count && !restored) throw error;
-      if (restored) console.warn(`Used encrypted ${scope} Actions-cache backup for missing runtime state.`);
-    }
+  } else {
+    // Recovery applies only when the branch itself cannot be fetched.
+    count = restoreFailoverState(scope);
+    if (!count) throw new Error("Runtime-state branch unavailable and no encrypted backup exists.");
+    console.warn(`Used encrypted ${scope} Actions-cache backup while runtime-state is unavailable.`);
   }
 
   saveBaseline(scope, baseline);

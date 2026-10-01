@@ -1,8 +1,13 @@
-"""Fetch the public API used by the Seattle RATS standings widget."""
+"""Fetch and validate Seattle RATS schedules while preserving the last-good snapshot on failure.
+
+v2.5.0 adds a smoke-test-only escape hatch for transient source outages; production behavior
+remains fail-closed so reconciliation never accepts unverified league data.
+"""
 import hashlib
 import json
 import os
 import time
+import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
@@ -237,6 +242,26 @@ def write_json(path, value):
     path.with_suffix('.tmp').write_text(text)
     path.with_suffix('.tmp').replace(path)
 
+
+def is_transient_source_error(error):
+    current = error
+    while current is not None:
+        if isinstance(current, urllib.error.HTTPError):
+            return current.code in (429, 502, 503, 504)
+        if isinstance(current, (urllib.error.URLError, TimeoutError)):
+            return True
+        current = current.__cause__
+    return False
+
+
+def valid_previous_schedule(value):
+    return (
+        isinstance(value, dict)
+        and value.get('ok') is True
+        and isinstance(value.get('teams'), list)
+    )
+
+
 def main():
     now = datetime.now(TZ).isoformat()
     try:
@@ -321,6 +346,10 @@ def main():
         write_json('schedule.json', payload)
         print('Validated published match counts:', [t['publishedMatchCount'] for t in payload['teams']])
     except Exception as error:
+        allow_transient = os.environ.get('SMOKE_ALLOW_TRANSIENT_SOURCE_FAILURE', '').lower() == 'true'
+        if allow_transient and valid_previous_schedule(previous) and is_transient_source_error(error):
+            print('::warning::RATS source temporarily unavailable; retained last good runtime schedule.')
+            return
         raise RuntimeError('RATS refresh failed; retained last good KV snapshot') from error
 
 if __name__ == '__main__':

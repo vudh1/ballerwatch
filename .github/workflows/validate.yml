@@ -45,6 +45,9 @@ jobs:
       - name: Run JavaScript unit tests
         run: |
           node --test shared/feature-requests.test.mjs
+          node --test shared/ai-provider.test.mjs
+          node --test shared/runtime-state.test.mjs
+          node --test watchdog/scheduler-check.test.mjs
           node --test shared/intent-index.test.mjs
           node --test shared/failover-state.test.mjs
           node --test infra/external-schedules.test.mjs

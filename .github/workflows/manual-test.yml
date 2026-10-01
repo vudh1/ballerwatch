@@ -35,6 +35,12 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Verify read-only AI with synthetic data and no notifications
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: node scripts/ai-smoke.mjs
+
       - name: Pull runtime fixtures from GitHub state branch
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -55,6 +61,7 @@ jobs:
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          SMOKE_ALLOW_TRANSIENT_SOURCE_FAILURE: "true"
         shell: bash
         run: |
           TEAM_COUNT="$(node shared/league-teams.mjs list-count)"
@@ -76,7 +83,7 @@ jobs:
       - name: Verify enabled external failover posture
         env:
           CRON_JOB_ORG_API_KEY: ${{ secrets.CRON_JOB_ORG_API_KEY }}
-        run: node infra/external-schedules.mjs check-enabled
+        run: node infra/external-schedules.mjs check-enabled-optional
 
       - name: Remove all transient runtime data
         if: always()
