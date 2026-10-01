@@ -13,7 +13,7 @@ This repository uses one consistent style across runtime code, workflows, tests,
 
 ## JavaScript / MJS
 
-- ECMAScript modules only.
+- ECMAScript modules only for application/runtime modules. The PWA service worker may remain a classic service worker script for broad browser compatibility.
 - 2-space indentation, semicolons, double quotes.
 - Prefer `const`; use `let` only for reassignment.
 - Prefer `async/await` over promise chains.
@@ -26,7 +26,7 @@ This repository uses one consistent style across runtime code, workflows, tests,
 - All test-only source lives under `tests/`, mirroring the production source area where practical.
 - Production source folders should not contain `*.test.mjs` or smoke-only scripts.
 - Smoke helpers belong in `tests/smoke/`.
-- Tests must remain notification-silent and must not mutate Calendar data.
+- Tests must remain notification-silent: no Telegram or Web Push delivery, and no Calendar mutation.
 
 ## Workflows and configuration
 
