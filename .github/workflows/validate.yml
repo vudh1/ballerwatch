@@ -33,6 +33,7 @@ jobs:
           node --check shared/telegram.mjs
           node --check shared/ai-fallback.mjs
           node --check shared/state-crypto.mjs
+          node --check shared/runtime-state.mjs
           node --check shared/feature-requests.mjs
           node --check shared/bot-state.mjs
           node --check shared/league-teams.mjs
