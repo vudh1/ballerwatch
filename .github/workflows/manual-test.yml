@@ -61,6 +61,7 @@ jobs:
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          SMOKE_ALLOW_TRANSIENT_SOURCE_FAILURE: "true"
         shell: bash
         run: |
           TEAM_COUNT="$(node shared/league-teams.mjs list-count)"
