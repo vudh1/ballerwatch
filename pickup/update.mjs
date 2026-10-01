@@ -1,12 +1,13 @@
 /**
  * Fetches and normalizes pickup source data into the temporary runtime representation.
  *
- * Documentation baseline: v2.3.0. Runtime/private data must never be committed to Git.
+ * Documentation baseline: v2.5.6. A stale public endpoint may be rediscovered from the public RSVP frontend; discovered URLs are never persisted or logged. Runtime/private data must never be committed to Git.
  */
 import fs from "node:fs";
 import path from "node:path";
 import { decryptState, encryptState } from "../shared/state-crypto.mjs";
 import { loadBotSettings } from "../shared/bot-state.mjs";
+import { discoverPublicRsvpEndpoint, shouldRediscoverEndpoint } from "./upstream-endpoint.mjs";
 
 const TIME_ZONE = "America/Los_Angeles";
 const DATES_DIR = ".runtime/pickup/data/dates";
@@ -20,12 +21,12 @@ const SOURCE_HEALTH_STATE_PATH = "pickup/state/source-health.json";
 const settings = loadBotSettings();
 const endpointOverride = String(settings?.pickupEndpointOverride || "").trim();
 const defaultEndpoint = String(process.env.UPSTREAM_ENDPOINT || "").trim();
-const ENDPOINT = endpointOverride || defaultEndpoint;
-const ENDPOINT_SOURCE = endpointOverride ? "encrypted-override" : "secret-default";
-
-if (!ENDPOINT) {
-  throw new Error("No RSVP endpoint is configured (neither encrypted override nor UPSTREAM_ENDPOINT secret).");
-}
+let activeEndpoint = endpointOverride || defaultEndpoint;
+let endpointSource = endpointOverride
+  ? "encrypted-override"
+  : defaultEndpoint
+    ? "secret-default"
+    : "auto-discovered";
 
 async function fetchText(url) {
   const response = await fetch(url, {
@@ -37,7 +38,9 @@ async function fetchText(url) {
   });
 
   if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
+    const error = new Error(`HTTP ${response.status}`);
+    error.status = response.status;
+    throw error;
   }
 
   return response.text();
@@ -52,9 +55,16 @@ function parseJsonp(text, callbackName) {
   return JSON.parse(trimmed.slice(prefix.length, -2));
 }
 
-async function callEndpoint(params) {
+async function ensureEndpoint() {
+  if (activeEndpoint) return activeEndpoint;
+  activeEndpoint = await discoverPublicRsvpEndpoint();
+  endpointSource = "auto-discovered";
+  return activeEndpoint;
+}
+
+async function callEndpointAt(endpoint, params) {
   const callbackName = "ttfWatcher";
-  const url = new URL(ENDPOINT);
+  const url = new URL(endpoint);
   url.searchParams.set("callback", callbackName);
 
   for (const [key, value] of Object.entries(params)) {
@@ -66,6 +76,24 @@ async function callEndpoint(params) {
     throw new Error(payload?.error || "Upstream request failed");
   }
   return payload;
+}
+
+async function callEndpoint(params) {
+  const endpoint = await ensureEndpoint();
+  try {
+    return await callEndpointAt(endpoint, params);
+  } catch (error) {
+    if (!shouldRediscoverEndpoint(error) || endpointSource === "auto-discovered") {
+      throw error;
+    }
+
+    const discovered = await discoverPublicRsvpEndpoint();
+    if (discovered === endpoint) throw error;
+    activeEndpoint = discovered;
+    endpointSource = "auto-discovered";
+    console.warn("Configured RSVP endpoint is retired; using the current public frontend endpoint for this run.");
+    return callEndpointAt(activeEndpoint, params);
+  }
 }
 
 function readJson(filePath) {
@@ -238,7 +266,7 @@ async function main() {
 
   writeEncryptedIfChanged(SOURCE_HEALTH_STATE_PATH, {
     ok: true,
-    source: ENDPOINT_SOURCE,
+    source: endpointSource,
     checkedAt: new Date().toISOString(),
   });
 
@@ -252,7 +280,7 @@ main().catch((error) => {
   try {
     writeEncryptedIfChanged(SOURCE_HEALTH_STATE_PATH, {
       ok: false,
-      source: ENDPOINT_SOURCE,
+      source: endpointSource,
       checkedAt: new Date().toISOString(),
       error: safeError,
     });

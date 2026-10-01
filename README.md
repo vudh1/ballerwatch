@@ -4,7 +4,15 @@ BallerWatch is a small soccer automation system for pickup games and Seattle RAT
 
 It uses Telegram for questions and alerts, Cloudflare Workers for the webhook/fast reply path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Gemini Flash with Groq fallback for bounded AI assistance, and Google Calendar for league match sync.
 
-**Current version: 2.5.5**
+**Current version: 2.5.6**
+
+## What changed in 2.5.6
+
+2.5.6 makes pickup monitoring resilient to a retired RSVP backend deployment. The encrypted override or `UPSTREAM_ENDPOINT` secret remains the primary endpoint. If it is absent or returns HTTP 404/410, BallerWatch rediscovers the normal public Apps Script URL from the RSVP frontend and retries the read.
+
+The rediscovered URL is used only in memory for that run; it is never committed, logged, or written into runtime state. Live notification-silent smoke verified this recovery path against the current RSVP frontend.
+
+Repository cleanup now removes inactive `fix/*` branches as well as stale `release/*` branches.
 
 ## What changed in 2.5.5
 

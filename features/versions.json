@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "2.5.5",
+  "currentVersion": "2.5.6",
   "releases": [
+    {
+      "version": "2.5.6",
+      "date": "2026-10-01",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Self-healing pickup endpoint",
+      "changes": [
+        "Added a privacy-safe recovery path that rediscovers the current public RSVP Apps Script endpoint when the configured endpoint is missing or retired with HTTP 404/410.",
+        "Kept encrypted endpoint overrides and the UPSTREAM_ENDPOINT secret as the primary configuration; discovered endpoint values are never committed, logged, or persisted to runtime state.",
+        "Added endpoint extraction/recovery regression tests and verified the live notification-silent pickup smoke succeeds with the stale configured secret.",
+        "Extended stale-branch cleanup to remove inactive fix/* branches as well as release/* branches."
+      ]
+    },
     {
       "version": "2.5.5",
       "date": "2026-10-01",

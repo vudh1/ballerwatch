@@ -29,8 +29,12 @@ jobs:
         run: |
           set -euo pipefail
           open_heads="$(gh api --paginate "/repos/${GITHUB_REPOSITORY}/pulls?state=open&per_page=100" --jq '.[].head.ref')"
-          git ls-remote --heads origin 'refs/heads/release/*' |
+          {
+            git ls-remote --heads origin 'refs/heads/release/*'
+            git ls-remote --heads origin 'refs/heads/fix/*'
+          } |
             awk '{sub("refs/heads/","",$2); print $2}' |
+            sort -u |
             while IFS= read -r branch; do
               if grep -Fxq "$branch" <<< "$open_heads"; then
                 echo "Keeping active branch: $branch"
