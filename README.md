@@ -10,7 +10,7 @@ It runs in GitHub Actions, sends Telegram updates, keeps Google Calendar in sync
 
 - Checks the pickup RSVP source every **2 minutes**.
 - Checks Seattle RATS schedules every **5 minutes**.
-- Checks Telegram commands every **1 minute**.
+- Receives Telegram commands instantly through a Cloudflare Worker webhook and shows **typing…** before GitHub starts processing the request.
 - Runs a watchdog every **10 minutes** and retries a component when it becomes stale or fails.
 - Sends pickup, waitlist, schedule, score, and setup notifications through Telegram.
 - Syncs changed RATS games to Google Calendar.
@@ -113,6 +113,11 @@ cron-job.org:
 - `CRON_JOB_ORG_API_KEY`
 - `CRON_GITHUB_PAT`
 
+Cloudflare Telegram webhook:
+
+- `CLOUDFLARE_ACCOUNT_ID`
+- `CLOUDFLARE_API_TOKEN` — account-owned API token with Workers product-level **Admin** access for the initial Worker creation. After the Worker exists, this can be reduced to **Editor** access.
+
 Apps Script deployment:
 
 - `CLASPRC_JSON`
@@ -129,11 +134,12 @@ Never commit any of these values.
 
 1. Add the required GitHub Actions secrets.
 2. Optional: create a dedicated Groq Free-tier API key with **no payment method** and add it as `GROQ_API_KEY`. If you skip this, unknown Telegram requests continue directly to the encrypted feature-request queue.
-3. Run **Configure external cron**.
-4. Run **Deploy Calendar bridge**.
-5. Optionally run **Configure repository** once to set the repo description.
-6. Run **Manual smoke test**. Tests do not send Telegram messages.
-7. Confirm listener, pickup, league, watchdog, Telegram, and Calendar behavior during normal scheduled operation.
+3. Add `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`, then run **Deploy Telegram webhook**. This deploys the free Cloudflare Worker, configures Telegram's webhook with a generated secret, health-checks it, and disables the old 1-minute Telegram polling cron.
+4. Run **Configure external cron**. It now configures only pickup, league, and watchdog; Telegram is webhook-driven.
+5. Run **Deploy Calendar bridge**.
+6. Optionally run **Configure repository** once to set the repo description.
+7. Run **Manual smoke test**. Tests do not send Telegram messages.
+8. Confirm listener, pickup, league, watchdog, Telegram, and Calendar behavior during normal scheduled operation.
 
 For pickup endpoint recovery, follow `skills/find-upstream-endpoint/SKILL.md`. Do not put the live endpoint in source code.
 
