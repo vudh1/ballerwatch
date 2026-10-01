@@ -1603,6 +1603,41 @@ export default {
       );
     }
 
+    if (request.method === "POST" && url.pathname === "/web/feedback") {
+      const token = bearerToken(request);
+      if (!(await verifyOwnerToken(env, token))) {
+        return webJson(request, { ok: false, error: "Owner pairing is required." }, { status: 401 });
+      }
+
+      let body;
+      try { body = await request.json(); }
+      catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
+
+      const question = cleanText(body?.question, 600);
+      const reply = cleanText(body?.reply, 1200);
+      if (!question || !reply) {
+        return webJson(
+          request,
+          { ok: false, error: "There is no answer to review." },
+          { status: 400 },
+        );
+      }
+
+      await dispatchWorkflow(env, "listener.yml", {
+        history_event_b64: base64Json({
+          question,
+          reply,
+          hint: "negative_feedback",
+          source: "web-pwa-feedback",
+        }),
+      });
+      return webJson(
+        request,
+        { ok: true, status: "queued-for-review" },
+        { status: 202 },
+      );
+    }
+
     if (request.method === "POST" && url.pathname === "/web/ask") {
       let body;
       try { body = await request.json(); }
