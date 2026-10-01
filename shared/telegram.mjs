@@ -44,6 +44,7 @@ export async function sendTelegram(message, extra = {}) {
   if (!response.ok || payload.ok !== true) {
     throw new Error(`Telegram sendMessage failed: ${payload.description || `HTTP ${response.status}`}`);
   }
+  return payload.result || null;
 }
 
 
