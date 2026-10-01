@@ -4,7 +4,15 @@ BallerWatch is a small soccer automation system for pickup games and Seattle RAT
 
 It uses Telegram for questions and alerts, Cloudflare Workers for the webhook/fast reply path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Gemini Flash with Groq fallback for bounded AI assistance, and Google Calendar for league match sync.
 
-**Current version: 2.7.2**
+**Current version: 2.7.3**
+
+## What changed in 2.7.3
+
+2.7.3 fixes the remaining Calendar-target mismatch. The Apps Script bridge no longer assumes that its deployment owner's default Calendar is the Calendar BallerWatch should update.
+
+A temporary marker on the intended Calendar is used once during deployment. The bridge finds that marker among calendars visible to the Apps Script account, stores the matched Calendar ID privately in Script Properties, removes the marker, cleans BallerWatch-managed events from the previous target/default Calendar, and then uses the paired Calendar for all future sync and purge operations.
+
+The paired Calendar ID/email is never committed or logged, and normal Calendar sync fails closed until pairing has succeeded.
 
 ## What changed in 2.7.2
 
