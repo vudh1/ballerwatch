@@ -74,7 +74,7 @@ jobs:
           GOOGLE_CALENDAR_WEBHOOK_URL: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_URL }}
         run: |
           response="$(curl --fail --silent --show-error --location --retry 3 --retry-delay 3 "$GOOGLE_CALENDAR_WEBHOOK_URL")"
-          node -e 'const x=JSON.parse(process.argv[1]); if (x.ok !== true || x.service !== "rats-calendar-bridge") process.exit(1)' "$response"
+          node -e 'const x=JSON.parse(process.argv[1]); if (x.ok !== true || x.service !== "rats-calendar-bridge" || Number(x.version) < 3) process.exit(1)' "$response"
           echo "Calendar bridge deployment verified."
 
       - name: One-time full reset requested by release commit
