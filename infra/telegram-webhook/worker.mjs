@@ -17,6 +17,21 @@ const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_MODEL = "openai/gpt-oss-20b";
 const TIME_ZONE = "America/Los_Angeles";
 
+const RUNTIME_FILE_PATHS = new Set([
+  "state/listener.json",
+  "state/watchdog.json",
+  "pickup/state/feed.json",
+  "pickup/state/events.json",
+  "pickup/state/notify.json",
+  "pickup/state/source-health.json",
+  "league/state/teams.json",
+  "league/state/schedule.json",
+  "league/state/today.json",
+  "league/state/calendar-snapshot.json",
+  "requests/private.json",
+  "requests/unknown.json",
+]);
+
 function base64Json(value) {
   const bytes = new TextEncoder().encode(JSON.stringify(value));
   let binary = "";
@@ -33,10 +48,40 @@ function b64Bytes(value) {
   return Uint8Array.from(binary, c => c.charCodeAt(0));
 }
 
+function bytesB64(value) {
+  let binary = "";
+  for (const byte of value) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
 async function stateKey(env) {
   const source = cleanText(env.TRACKER_STATE_KEY || env.TELEGRAM_BOT_TOKEN, 5000);
   if (!source) throw new Error("State decryption key is unavailable.");
   return crypto.subtle.digest("SHA-256", new TextEncoder().encode(source));
+}
+
+async function encryptState(value, env) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    await stateKey(env),
+    { name: "AES-GCM" },
+    false,
+    ["encrypt"],
+  );
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encrypted = new Uint8Array(await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv, tagLength: 128 },
+    key,
+    new TextEncoder().encode(JSON.stringify(value)),
+  ));
+  const tag = encrypted.slice(encrypted.length - 16);
+  const data = encrypted.slice(0, encrypted.length - 16);
+  return {
+    v: 1,
+    iv: bytesB64(iv),
+    tag: bytesB64(tag),
+    data: bytesB64(data),
+  };
 }
 
 async function decryptState(payload, env) {
@@ -84,15 +129,124 @@ async function githubFile(env, path) {
   return JSON.parse(text);
 }
 
+function runtimeKey(path) {
+  if (!RUNTIME_FILE_PATHS.has(path)) throw new Error("Runtime-state path is not allowed.");
+  return `file:${path}`;
+}
+
+async function runtimeFileGet(env, path) {
+  if (!env.BALLERWATCH_STATE || !RUNTIME_FILE_PATHS.has(path)) return null;
+  return env.BALLERWATCH_STATE.get(runtimeKey(path));
+}
+
+async function syncDerivedRuntimeFile(env, path, raw) {
+  let parsed;
+  try { parsed = JSON.parse(raw); } catch { return; }
+
+  if (path === "pickup/state/feed.json") {
+    const value = await decryptState(parsed, env);
+    if (value) await kvJsonPut(env, "snapshot:pickup", value);
+  } else if (path === "pickup/state/events.json") {
+    const value = await decryptState(parsed, env);
+    if (value) await kvJsonPut(env, "snapshot:pickup-private", value);
+  } else if (path === "league/state/teams.json") {
+    const value = await decryptState(parsed, env);
+    if (Array.isArray(value?.teams)) await kvJsonPut(env, "snapshot:teams", value.teams);
+  } else if (path === "league/state/schedule.json") {
+    const value = await decryptState(parsed, env);
+    if (value) await kvJsonPut(env, "snapshot:league", value);
+  } else if (path === "league/state/today.json") {
+    const value = await decryptState(parsed, env);
+    if (value) await kvJsonPut(env, "snapshot:today", value);
+  } else if (path === "state/listener.json") {
+    const settings = parsed?.settings ? await decryptState(parsed.settings, env) : null;
+    if (settings) await kvJsonPut(env, "runtime:listener-settings", settings);
+  } else if (path === "requests/unknown.json") {
+    if (parsed?.version === 3 && Array.isArray(parsed?.requests)) {
+      await kvJsonPut(env, "runtime:feature-summary", parsed);
+    }
+  }
+}
+
+async function runtimeFilePut(env, path, raw) {
+  if (!env.BALLERWATCH_STATE) throw new Error("Runtime KV is unavailable.");
+  if (!RUNTIME_FILE_PATHS.has(path)) throw new Error("Runtime-state path is not allowed.");
+  const text = String(raw || "");
+  if (!text || text.length > 500_000) throw new Error("Invalid runtime-state payload.");
+  await env.BALLERWATCH_STATE.put(runtimeKey(path), text);
+  await syncDerivedRuntimeFile(env, path, text);
+}
+
+async function runtimeFilesMigrateFromRepo(env) {
+  let migrated = 0;
+  for (const path of RUNTIME_FILE_PATHS) {
+    try {
+      const value = await githubFile(env, path);
+      const raw = JSON.stringify(value, null, 2) + "\n";
+      await runtimeFilePut(env, path, raw);
+      migrated += 1;
+    } catch {}
+  }
+  return migrated;
+}
+
+async function runtimeSettings(env) {
+  const cached = await kvJsonGet(env, "runtime:listener-settings");
+  if (cached && typeof cached === "object") return cached;
+  const raw = await runtimeFileGet(env, "state/listener.json");
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    const settings = parsed?.settings ? await decryptState(parsed.settings, env) : null;
+    if (settings) {
+      await kvJsonPut(env, "runtime:listener-settings", settings);
+      return settings;
+    }
+  } catch {}
+  return {};
+}
+
+async function rememberFastReplyInRuntime(env, question, reply, messageId, lastDate) {
+  const raw = await runtimeFileGet(env, "state/listener.json");
+  if (!raw) return;
+  try {
+    const parsed = JSON.parse(raw);
+    const settings = (parsed?.settings ? await decryptState(parsed.settings, env) : null) || {};
+    const id = Number(messageId || 0);
+    const recent = Array.isArray(settings.recentBotReplies) ? settings.recentBotReplies : [];
+    const nextSettings = {
+      ...settings,
+      ...(lastDate ? { lastReferencedDate: lastDate } : {}),
+      recentBotReplies: id
+        ? [
+            ...recent.filter(item => Number(item?.messageId) !== id),
+            {
+              messageId: id,
+              question: cleanText(question, 500),
+              reply: String(reply || "").slice(0, 1200),
+              createdAt: new Date().toISOString(),
+            },
+          ].slice(-20)
+        : recent,
+    };
+    const next = {
+      lastUpdateId: Number(parsed?.lastUpdateId || 0),
+      settings: await encryptState(nextSettings, env),
+    };
+    await runtimeFilePut(env, "state/listener.json", JSON.stringify(next, null, 2) + "\n");
+  } catch {}
+}
+
 async function loadSnapshot(env) {
   if (env.BALLERWATCH_STATE) {
-    const [pickup, pickupPrivate, league, today, teams, version] = await Promise.all([
+    const [pickup, pickupPrivate, league, today, teams, version, settings] = await Promise.all([
       kvJsonGet(env, "snapshot:pickup"),
       kvJsonGet(env, "snapshot:pickup-private"),
       kvJsonGet(env, "snapshot:league"),
       kvJsonGet(env, "snapshot:today"),
       kvJsonGet(env, "snapshot:teams"),
       kvTextGet(env, "snapshot:version"),
+      runtimeSettings(env),
     ]);
     if (pickup && league && Array.isArray(teams)) {
       return {
@@ -101,7 +255,7 @@ async function loadSnapshot(env) {
         league,
         today: today || league.today || { games: [] },
         teams,
-        settings: {},
+        settings: settings || {},
         version: version || "unknown",
         loadedAt: new Date().toISOString(),
         source: "cloudflare-kv",
@@ -522,10 +676,32 @@ async function fastReply(env, message) {
     lastBotMessageId:Number(sent?.message_id||0),
     updatedAt:new Date().toISOString(),
   }, env);
+  await rememberFastReplyInRuntime(env, text, reply, sent?.message_id, lastDate);
   return {reply,messageId:Number(sent?.message_id||0),intent};
 }
 
 async function githubLeagueBundle(env) {
+  try {
+    const [teamsRaw,scheduleRaw,todayRaw]=await Promise.all([
+      runtimeFileGet(env,"league/state/teams.json"),
+      runtimeFileGet(env,"league/state/schedule.json"),
+      runtimeFileGet(env,"league/state/today.json"),
+    ]);
+    if (teamsRaw && scheduleRaw) {
+      const [teamsPayload,schedule,today]=await Promise.all([
+        decryptState(JSON.parse(teamsRaw),env),
+        decryptState(JSON.parse(scheduleRaw),env),
+        todayRaw ? decryptState(JSON.parse(todayRaw),env) : null,
+      ]);
+      const teams=Array.isArray(teamsPayload?.teams)
+        ? teamsPayload.teams.map(name=>cleanText(name,200)).filter(Boolean)
+        : [];
+      if(teams.length && schedule) return {teams,schedule,today:today||{games:[]}};
+    }
+  } catch {}
+
+  // Migration fallback: read the old repository state until it has been copied
+  // into KV. This path becomes unused after the runtime-state files are removed.
   try {
     const [teamsEncrypted,scheduleEncrypted,todayEncrypted]=await Promise.all([
       githubFile(env,"league/state/teams.json"),
@@ -542,6 +718,7 @@ async function githubLeagueBundle(env) {
       : [];
     if(teams.length && schedule) return {teams,schedule,today:today||{games:[]}};
   } catch {}
+
   const snap=await loadSnapshot(env).catch(()=>null);
   return {
     teams:Array.isArray(snap?.teams)?snap.teams:[],
@@ -571,7 +748,9 @@ async function dispatchProblemOnce(env,component,error) {
 }
 
 async function refreshPickupEdge(env,{dispatch=true,write=true}={}) {
-  const snapshot=await fetchPickupSnapshot(env.UPSTREAM_ENDPOINT);
+  const settings=await runtimeSettings(env);
+  const endpoint=cleanText(settings?.pickupEndpointOverride || env.UPSTREAM_ENDPOINT, 4000);
+  const snapshot=await fetchPickupSnapshot(endpoint);
   const fp=await fingerprint(snapshot);
   const old=await kvTextGet(env,"fingerprint:pickup");
   const changed=old!==fp;
@@ -694,6 +873,41 @@ export default {
         pickupAgeMinutes:pickup?Math.round(ageMinutes(pickup)*10)/10:null,
         leagueAgeMinutes:league?Math.round(ageMinutes(league)*10)/10:null,
       });
+    }
+    if (request.method === "GET" && url.pathname === "/public/feature-summary") {
+      const summary=await kvJsonGet(env,"runtime:feature-summary");
+      return Response.json(summary || {version:3,requests:[]},{
+        headers:{"cache-control":"public,max-age=60"}
+      });
+    }
+    if (request.method === "POST" && url.pathname === "/admin/runtime-files") {
+      const secret=request.headers.get("x-ballerwatch-admin")||"";
+      if(!secret || secret!==env.TELEGRAM_WEBHOOK_SECRET) return new Response("Unauthorized",{status:401});
+      let body;
+      try { body=await request.json(); } catch { return Response.json({ok:false,error:"Invalid JSON"},{status:400}); }
+
+      if(body?.action==="get") {
+        const paths=Array.isArray(body.paths)?body.paths.filter(path=>RUNTIME_FILE_PATHS.has(path)).slice(0,50):[];
+        const files={};
+        for(const path of paths) files[path]=await runtimeFileGet(env,path);
+        return Response.json({ok:true,files});
+      }
+
+      if(body?.action==="put") {
+        const entries=Object.entries(body?.files && typeof body.files==="object" ? body.files : {})
+          .filter(([path,raw])=>RUNTIME_FILE_PATHS.has(path) && typeof raw==="string")
+          .slice(0,50);
+        for(const [path,raw] of entries) await runtimeFilePut(env,path,raw);
+        return Response.json({ok:true,count:entries.length});
+      }
+
+      return Response.json({ok:false,error:"Unsupported action"},{status:400});
+    }
+    if (request.method === "POST" && url.pathname === "/admin/migrate-repo-state") {
+      const secret=request.headers.get("x-ballerwatch-admin")||"";
+      if(!secret || secret!==env.TELEGRAM_WEBHOOK_SECRET) return new Response("Unauthorized",{status:401});
+      const migrated=await runtimeFilesMigrateFromRepo(env);
+      return Response.json({ok:true,migrated});
     }
     if (request.method === "POST" && url.pathname === "/admin/shadow-refresh") {
       const secret=request.headers.get("x-ballerwatch-admin")||"";
