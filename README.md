@@ -128,6 +128,8 @@ When nothing changed, GitHub does not run.
 
 When the source changes, Cloudflare starts the RATS league workflow. The workflow then performs the full validated schedule retrieval, score-change handling, Calendar comparison, and Google Calendar synchronization.
 
+To keep this reconciliation fast, the watcher tries the last known valid season first instead of probing future seasons on every run, and independent team schedule exports are fetched concurrently. The live release-PR smoke test records `leagueWatcherSeconds` so regressions are visible before merge.
+
 The applied Calendar snapshot is stored in KV, so Calendar is only contacted when a future match materially needs to be created or updated.
 
 ## AI
@@ -200,7 +202,7 @@ That endpoint exposes only fixed categories and counters. It does not expose ori
 | RATS reconciliation | Only when Cloudflare detects change | GitHub Action |
 | Validation | Relevant code/config changes | GitHub Action |
 
-The old cron-job.org BallerWatch schedules remain disabled during healthy operation. If an edge deployment fails before verified activation, the deployment workflow can restore those schedules as a safety fallback.
+cron-job.org keeps three emergency fallback jobs for pickup, league, and watchdog. A healthy deployment ensures those jobs exist with the expected 2/5/10-minute cadences but keeps them disabled. If an edge deployment fails before verified activation, the deployment workflow can enable them as a safety fallback.
 
 ## Privacy model
 
@@ -214,6 +216,7 @@ league/state/
 state/
 requests/private.json
 requests/unknown.json
+league/status.json
 ```
 
 Runtime state is kept in the private `ballerwatch-runtime` Cloudflare KV namespace.
@@ -240,6 +243,9 @@ The deeper GitHub watchdog verifies:
 - KV availability
 - latest code-validation status
 - repository privacy rules
+- cron-job.org fallback-job existence, cadence, target, and enabled/disabled posture
+
+While Cloudflare is healthy, all three cron-job.org fallback jobs must exist and remain disabled. A legacy Telegram polling cron must also remain disabled.
 
 It no longer expects pickup or league GitHub workflows to run on fixed intervals.
 
@@ -354,7 +360,7 @@ The **Validate code** workflow checks:
 - release/version history
 - repository privacy rules
 - feature-request privacy behavior
-- watchdog tests
+- external fallback scheduler tests
 - league tests
 
 Before making repository changes, read:
@@ -363,17 +369,33 @@ Before making repository changes, read:
 - `README.md`
 - `features/versions.json`
 
+## Release branches and main history
+
+Normal changes are developed on a `release/<version>` branch. Implementation can use many commits on that branch, but the version is not bumped until the branch has passed validation and any relevant notification-silent live smoke test.
+
+After tests pass:
+
+1. update `features/versions.json` and any warranted announcement on the release branch;
+2. run final validation;
+3. open/update the PR to `main`;
+4. use squash merge so the complete release becomes **one commit on main**;
+5. delete the release branch.
+
+Repository settings are intended to allow squash merge and auto-merge while still permitting direct main commits for emergencies or explicit maintenance.
+
+This keeps `main` release-oriented: one commit per BallerWatch version.
+
 Important architecture rules:
 
 - do not commit runtime state back into GitHub
 - Cloudflare KV is the runtime-state authority
 - GitHub Actions may materialize state only temporarily
 - Cloudflare Cron Triggers are the normal recurring scheduler
-- cron-job.org is fallback-only
+- cron-job.org is fallback-only; its three fallback jobs should exist but stay disabled while Cloudflare is healthy
 - do not add GitHub `schedule:` polling
 - keep AI bounded and read-only with respect to real-world actions
 - keep live/private soccer data out of source control
-- update `features/versions.json` when product behavior changes
+- use a release branch by default and bump `features/versions.json` only after implementation tests pass
 
 ## Versioning
 
