@@ -1,0 +1,53 @@
+name: Refresh match weather
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "weather/**"
+      - "shared/runtime-paths.mjs"
+      - ".github/workflows/weather-refresh.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ballerwatch-weather-refresh
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Pull game/weather runtime state
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: node shared/runtime-state.mjs pull weather
+
+      - name: Refresh 14-day match weather
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: node weather/update.mjs
+
+      - name: Persist match weather
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: node shared/runtime-state.mjs push weather
+
+      - name: Remove local weather state
+        if: always()
+        run: |
+          node shared/runtime-state.mjs clean weather
+          rm -rf .runtime
