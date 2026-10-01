@@ -1,0 +1,57 @@
+name: Telegram listener
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ballerwatch-listener
+  cancel-in-progress: false
+
+jobs:
+  listen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Sync latest state
+        run: git pull --rebase origin main
+
+      - name: Validate listener
+        run: |
+          node --check shared/telegram.mjs
+          node --check shared/state-crypto.mjs
+          node --check shared/bot-state.mjs
+          node --check listener/bot.mjs
+
+      - name: Listen for Telegram commands
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          OWNER_RSVP_NAME: ${{ secrets.OWNER_RSVP_NAME }}
+          UPSTREAM_ENDPOINT: ${{ secrets.UPSTREAM_ENDPOINT }}
+          TELEGRAM_POLL_TIMEOUT: "35"
+        run: node listener/bot.mjs
+
+      - name: Remove plaintext league team config
+        if: always()
+        run: rm -f league/teams.json
+
+      - name: Persist listener and encrypted league team state
+        run: |
+          if [ -z "$(git status --porcelain -- state/listener.json league requests)" ]; then
+            echo "No listener state changes."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A -- state/listener.json league requests
+          git commit -m "Update Telegram listener state"
+          git pull --rebase origin main
+          git push
