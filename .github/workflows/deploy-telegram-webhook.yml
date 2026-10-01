@@ -143,7 +143,7 @@ jobs:
         env:
           CRON_JOB_ORG_API_KEY: ${{ secrets.CRON_JOB_ORG_API_KEY }}
           CRON_GITHUB_PAT: ${{ secrets.CRON_GITHUB_PAT }}
-        run: node infra/external-schedules.mjs ensure-enabled
+        run: node infra/external-schedules.mjs ensure-enabled-optional
 
       - name: Clean temporary files
         if: always()
