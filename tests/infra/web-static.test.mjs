@@ -262,3 +262,12 @@ test("weather release bootstrap stays notification-silent", () => {
   assert.match(workflow, /node shared\/runtime-state\.mjs push weather/);
   assert.doesNotMatch(workflow, /send-pending|sendMessage|telegram-notify|shared\/telegram/i);
 });
+
+
+test("retired watchdog workflow dispatch skips before runner allocation", () => {
+  const workflow = fs.readFileSync(".github/workflows/watchdog.yml", "utf8");
+  assert.match(
+    workflow,
+    /if: \$\{\{ github\.event_name == 'schedule' \|\| inputs\.external_fallback == true \}\}/,
+  );
+});
