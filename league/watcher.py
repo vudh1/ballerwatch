@@ -1,4 +1,8 @@
-"""Fetch the public API used by the Seattle RATS standings widget."""
+"""Fetch and validate Seattle RATS schedules while preserving the last-good snapshot on failure.
+
+v2.5.0 adds a smoke-test-only escape hatch for transient source outages; production behavior
+remains fail-closed so reconciliation never accepts unverified league data.
+"""
 import hashlib
 import json
 import os
