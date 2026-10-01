@@ -11,7 +11,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
-  <link rel="stylesheet" href="./styles.css?v=3.2.0">
+  <link rel="stylesheet" href="./styles.css?v=3.3.0">
 </head>
 <body>
   <main class="shell">
@@ -19,7 +19,7 @@
       <div>
         <p class="eyebrow">SOCCER WATCHER</p>
         <h1>BallerWatch</h1>
-        <p class="subtitle">Pickup and RATS updates without depending on Telegram.</p>
+        <p class="subtitle">Pickup and RATS game updates, schedules, and alerts in one place.</p>
       </div>
       <div class="hero-actions">
         <button class="bell-button" id="notification-bell" type="button"
@@ -32,14 +32,6 @@
         <div class="status-pill" id="system-status">Connecting…</div>
       </div>
     </header>
-
-    <section class="card install-card" id="install-card">
-      <div>
-        <h2>Home Screen app</h2>
-        <p id="install-copy">Add BallerWatch to your iPhone Home Screen for the app experience and push notifications.</p>
-      </div>
-      <button class="secondary" id="install-help" type="button">How to install</button>
-    </section>
 
     <section class="card next-game-card" id="next-game-card">
       <div class="section-heading">
@@ -68,37 +60,34 @@
       <form id="question-form">
         <label class="sr-only" for="question">Question</label>
         <div class="question-row">
-          <input id="question" name="question" maxlength="600" autocomplete="off"
-            placeholder="What game is today?" required>
+          <div class="question-input-wrap">
+            <input id="question" name="question" maxlength="600" autocomplete="off"
+              placeholder="Ask about games, or type / for commands" role="combobox"
+              aria-autocomplete="list" aria-expanded="false" aria-controls="question-suggestions" required>
+            <div class="question-suggestions" id="question-suggestions" role="listbox" hidden></div>
+          </div>
           <button type="submit">Ask</button>
         </div>
       </form>
       <div class="answer" id="answer" hidden></div>
-      <p class="hint">Read-only questions only. Telegram remains the control surface for commands that change settings.</p>
-    </section>
-
-    <section class="card settings-card" id="settings">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">SETTINGS</p>
-          <h2>Push notifications</h2>
-        </div>
-        <span class="status-dot" id="push-status">Checking…</span>
-      </div>
-      <p class="muted">Backup alerts for public-safe pickup, league, and version updates when Telegram is unavailable.</p>
-      <div class="button-row">
-        <button id="enable-push" type="button">Enable push</button>
-        <button class="secondary" id="disable-push" type="button">Disable</button>
-      </div>
-      <p class="hint" id="push-hint"></p>
+      <p class="hint">Type <strong>/</strong> for commands, or start typing for suggested questions.</p>
     </section>
 
     <footer>
-      <span id="version">BallerWatch</span>
-      <span>•</span>
-      <a href="https://github.com/vudh1/ballerwatch">GitHub</a>
-      <span>•</span>
-      <a href="https://github.com/vudh1/ballerwatch/wiki">Wiki</a>
+      <section class="footer-install" id="install-card">
+        <div>
+          <strong>Home Screen app</strong>
+          <p id="install-copy">Add BallerWatch to your iPhone Home Screen for quick access and notifications.</p>
+        </div>
+        <button class="secondary compact-button" id="install-help" type="button">How to install</button>
+      </section>
+      <div class="footer-links">
+        <span id="version">BallerWatch</span>
+        <span>•</span>
+        <a href="https://github.com/vudh1/ballerwatch">GitHub</a>
+        <span>•</span>
+        <a href="https://github.com/vudh1/ballerwatch/wiki">Wiki</a>
+      </div>
     </footer>
   </main>
 
@@ -144,13 +133,13 @@
         <li>Tap the Share button.</li>
         <li>Choose <strong>Add to Home Screen</strong>.</li>
         <li>Open BallerWatch from the new Home Screen icon.</li>
-        <li>Open <strong>Settings</strong> at the bottom and tap <strong>Enable push</strong>.</li>
+        <li>Open the notification bell and turn <strong>Push notifications</strong> on.</li>
       </ol>
       <p class="muted">iPhone Web Push requires the site to be opened as a Home Screen web app.</p>
       <button>Done</button>
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=3.2.0"></script>
+  <script type="module" src="./app.js?v=3.3.0"></script>
 </body>
 </html>
