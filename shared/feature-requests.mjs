@@ -1,3 +1,8 @@
+/**
+ * Stores private feature-request context and produces only a privacy-safe aggregate summary.
+ *
+ * Documentation baseline: v2.3.0. Runtime/private data must never be committed to Git.
+ */
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
