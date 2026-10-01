@@ -213,6 +213,19 @@ export async function sendWebPushSignals({
   return { sent, stale: staleEndpoints.size, failed };
 }
 
+export async function sendPendingWebPushSignals(options = {}) {
+  if (!fs.existsSync(".runtime/web-push-pending")) {
+    console.log("No new web notification; push signal skipped.");
+    return { sent: 0, stale: 0, failed: 0, skipped: true };
+  }
+  try {
+    const result = await sendWebPushSignals(options);
+    return { ...result, skipped: false };
+  } finally {
+    fs.rmSync(".runtime/web-push-pending", { force: true });
+  }
+}
+
 export function publicWebPushConfig() {
   const state = loadWebPushState();
   return state
@@ -235,7 +248,9 @@ if (isCli) {
     applyEncryptedRegistrationEventB64(process.env.WEB_PUSH_EVENT_B64 || "");
   } else if (command === "send") {
     await sendWebPushSignals();
+  } else if (command === "send-pending") {
+    await sendPendingWebPushSignals();
   } else {
-    throw new Error("Usage: node shared/web-push.mjs ensure|apply-event|send");
+    throw new Error("Usage: node shared/web-push.mjs ensure|apply-event|send|send-pending");
   }
 }
