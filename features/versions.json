@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "1.4.2",
+  "currentVersion": "1.5.0",
   "releases": [
+    {
+      "version": "1.5.0",
+      "date": "2026-09-30",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Cloudflare fast path and AI intent routing",
+      "changes": [
+        "Added a Cloudflare read-only fast path that answers common Telegram questions directly from encrypted GitHub state without starting a GitHub Actions runner.",
+        "Added short-lived conversation context so follow-up questions such as 'what field?', 'what time?' and 'how many?' can refer to the previously discussed pickup date.",
+        "Added Groq intent classification at the edge for natural-language read-only questions while keeping facts and actions deterministic.",
+        "Split the free AI budget into 25 edge classifications and 25 GitHub fallback calls per UTC day.",
+        "Stored private AI feature-request classification metadata for later improvement without publishing request text."
+      ]
+    },
     {
       "version": "1.4.2",
       "date": "2026-09-30",
