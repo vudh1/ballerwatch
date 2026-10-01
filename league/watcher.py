@@ -280,6 +280,11 @@ def valid_previous_schedule(value):
     )
 
 
+def can_retain_previous_schedule(error, previous):
+    """Return true only for transient source failures with a verified last-good schedule."""
+    return valid_previous_schedule(previous) and is_transient_source_error(error)
+
+
 def main():
     now = datetime.now(TZ).isoformat()
     try:
@@ -367,7 +372,7 @@ def main():
         allow_transient = (
             os.environ.get('SMOKE_ALLOW_TRANSIENT_SOURCE_FAILURE', '').lower() == 'true'
         )
-        if valid_previous_schedule(previous) and is_transient_source_error(error):
+        if can_retain_previous_schedule(error, previous):
             mode = 'smoke' if allow_transient else 'production'
             print(
                 '::warning::RATS source temporarily unavailable; '
