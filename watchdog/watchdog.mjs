@@ -199,15 +199,19 @@ export async function runWatchdog() {
     ledger,
     announcementState: previous.versionAnnouncement || {},
   });
-  if (announcement.message) {
+  let versionAnnouncement = announcement.nextState;
+  if (announcement.message && problems.length === 0) {
     await sendTelegram(announcement.message);
     console.log("Sent the combined daily version announcement.");
+  } else if (announcement.message) {
+    versionAnnouncement = previous.versionAnnouncement || {};
+    console.log("Deferred version announcement because the watchdog is unhealthy.");
   }
 
   const healthy = problems.length === 0;
   saveState({
     schedulerAudit,
-    versionAnnouncement: announcement.nextState,
+    versionAnnouncement,
     healthy,
     fingerprint,
     checkedAt: new Date().toISOString(),
