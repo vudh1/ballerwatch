@@ -1,10 +1,12 @@
 name: System watchdog
 
 on:
+  schedule:
+    - cron: "17 */6 * * *"
   workflow_dispatch:
     inputs:
       external_fallback:
-        description: "Set by the enabled cron-job.org scheduler"
+        description: "Optional manual/fallback execution flag"
         required: false
         default: false
         type: boolean
