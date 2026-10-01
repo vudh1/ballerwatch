@@ -10,7 +10,7 @@ on:
         type: boolean
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ballerwatch-league
@@ -46,7 +46,7 @@ jobs:
           restore-keys: |
             ballerwatch-runtime-league-
 
-      - name: Pull runtime state
+      - name: Pull GitHub runtime state
         if: steps.gate.outputs.should_run == 'true'
         working-directory: .
         env:
@@ -109,7 +109,7 @@ jobs:
           node shared/league-state.mjs seal
           rm -f league/teams.json
 
-      - name: Push runtime state
+      - name: Push GitHub runtime state
         if: always() && steps.gate.outputs.should_run == 'true'
         working-directory: .
         env:
