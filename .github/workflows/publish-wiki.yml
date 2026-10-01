@@ -1,0 +1,50 @@
+name: Publish wiki
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "docs/wiki/**"
+      - ".github/workflows/publish-wiki.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ballerwatch-wiki-publish
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Publish docs/wiki to GitHub Wiki
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          WIKI_URL="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git"
+          if ! git clone "$WIKI_URL" /tmp/ballerwatch-wiki; then
+            mkdir -p /tmp/ballerwatch-wiki
+            git -C /tmp/ballerwatch-wiki init
+            git -C /tmp/ballerwatch-wiki remote add origin "$WIKI_URL"
+          fi
+
+          find /tmp/ballerwatch-wiki -maxdepth 1 -name '*.md' -delete
+          cp docs/wiki/*.md /tmp/ballerwatch-wiki/
+          git -C /tmp/ballerwatch-wiki add -A
+
+          if git -C /tmp/ballerwatch-wiki diff --cached --quiet; then
+            echo "Wiki is already current."
+            exit 0
+          fi
+
+          git -C /tmp/ballerwatch-wiki config user.name "github-actions[bot]"
+          git -C /tmp/ballerwatch-wiki config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C /tmp/ballerwatch-wiki commit -m "Sync BallerWatch wiki from main"
+          git -C /tmp/ballerwatch-wiki push origin HEAD:master
