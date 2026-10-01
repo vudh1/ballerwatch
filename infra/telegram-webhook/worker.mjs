@@ -13,6 +13,7 @@ import {
   kvTextPut,
 } from "./edge-runtime.mjs";
 import { classifyIndexedIntent } from "../../shared/intent-index.mjs";
+import { ALL_RUNTIME_FILE_PATHS } from "../../shared/runtime-paths.mjs";
 
 const REPO = "vudh1/ballerwatch";
 const CONTEXT_CACHE_SECONDS = 600;
@@ -22,20 +23,7 @@ const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_MODEL = "openai/gpt-oss-20b";
 const TIME_ZONE = "America/Los_Angeles";
 
-const RUNTIME_FILE_PATHS = new Set([
-  "state/listener.json",
-  "state/watchdog.json",
-  "pickup/state/feed.json",
-  "pickup/state/events.json",
-  "pickup/state/notify.json",
-  "pickup/state/source-health.json",
-  "league/state/teams.json",
-  "league/state/schedule.json",
-  "league/state/today.json",
-  "league/state/calendar-snapshot.json",
-  "requests/private.json",
-  "requests/unknown.json",
-]);
+const RUNTIME_FILE_PATHS = new Set(ALL_RUNTIME_FILE_PATHS);
 
 function base64Json(value) {
   const bytes = new TextEncoder().encode(JSON.stringify(value));
