@@ -25,6 +25,44 @@ function normalizeText(text) {
   return String(text || "").trim().replace(/\s+/g, " ");
 }
 
+
+function parseManualFeatureRequest(text) {
+  const clean = normalizeText(text);
+  let match = clean.match(/^\/?feature(?:\s+request)?\s+(.+)$/i);
+  if (match) return normalizeText(match[1]);
+  match = clean.match(/^(?:add|save|create)\s+(?:a\s+)?feature\s+request\s*[:\-]?\s*(.+)$/i);
+  if (match) return normalizeText(match[1]);
+  return "";
+}
+
+function isThumbsDownFeedback(text) {
+  const clean = normalizeText(text).toLowerCase();
+  return clean === "👎" || clean === "thumbs down" || clean === "thumb down";
+}
+
+function rememberBotReply(settings, question, reply, messageId) {
+  const id = Number(messageId || 0);
+  if (!id || !question || !reply) return settings;
+  const recent = Array.isArray(settings.recentBotReplies) ? settings.recentBotReplies : [];
+  const next = [
+    ...recent.filter((item) => Number(item?.messageId) !== id),
+    {
+      messageId: id,
+      question: normalizeText(question).slice(0, 500),
+      reply: String(reply).slice(0, 1200),
+      createdAt: new Date().toISOString(),
+    },
+  ].slice(-20);
+  return { ...settings, recentBotReplies: next };
+}
+
+function findRememberedReply(settings, messageId) {
+  const id = Number(messageId || 0);
+  if (!id) return null;
+  return (Array.isArray(settings.recentBotReplies) ? settings.recentBotReplies : [])
+    .find((item) => Number(item?.messageId) === id) || null;
+}
+
 function localToday() {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat("en-US", {
@@ -992,6 +1030,17 @@ async function handleMessage(text, settings) {
 
   settings = cleanSnoozes(settings);
 
+  const manualRequest = parseManualFeatureRequest(clean);
+  if (manualRequest) {
+    const requestId = recordUnknownQuestion(manualRequest, "requests", { source: "manual" });
+    return {
+      settings,
+      reply: requestId
+        ? `Saved feature request privately as ${requestId}.`
+        : "I couldn't save that feature request.",
+    };
+  }
+
   if (isVersionIntent(clean)) {
     return { settings, reply: versionReply() };
   }
@@ -1133,6 +1182,8 @@ async function handleMessage(text, settings) {
         "• what league teams are you monitoring?",
         "• /setup",
         "• /version",
+        "• /feature <request>",
+        "• reply 👎 to a bot answer to queue it for review",
         "• what information do you still need from me?",
         "• what is my owner name?",
         "• what is the RSVP endpoint?",
@@ -1189,6 +1240,7 @@ async function main() {
       ? settings.snoozedDates
       : {};
   settings.snoozeUntil = String(settings.snoozeUntil || "");
+  settings.recentBotReplies = Array.isArray(settings.recentBotReplies) ? settings.recentBotReplies : [];
   settings = cleanSnoozes(settings);
   settings = await announceNewFeatures(settings);
   settings = await promptForMissingSetup(settings);
@@ -1222,12 +1274,30 @@ async function main() {
     const message = update?.message;
     if (!message || !isOwnerChat(message.chat?.id)) continue;
 
+    const repliedToId = Number(message.reply_to_message?.message_id || 0);
+    if (isThumbsDownFeedback(message.text) && repliedToId) {
+      const remembered = findRememberedReply(settings, repliedToId);
+      if (remembered) {
+        const requestId = recordUnknownQuestion(remembered.question, "requests", {
+          source: "thumbs_down",
+          rejectedAnswer: remembered.reply,
+        });
+        const feedbackReply = requestId
+          ? `Got it — I saved that answer as incorrect and queued ${requestId} for the next feature cycle.`
+          : "I couldn't save that feedback.";
+        const sent = await sendTelegram(feedbackReply);
+        settings = rememberBotReply(settings, message.text, feedbackReply, sent?.message_id);
+        continue;
+      }
+    }
+
     void sendTyping();
     const result = await handleMessage(message.text, settings);
     settings = result.settings;
 
     if (result.reply) {
-      await sendTelegram(result.reply);
+      const sent = await sendTelegram(result.reply);
+      settings = rememberBotReply(settings, message.text, result.reply, sent?.message_id);
     }
   }
 
