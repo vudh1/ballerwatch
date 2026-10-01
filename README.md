@@ -2,9 +2,17 @@
 
 BallerWatch is a small soccer automation system for pickup games and Seattle RATS league games.
 
-It uses Telegram for questions and alerts, Cloudflare Workers for the webhook/fast reply path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Groq for bounded AI assistance, and Google Calendar for league match sync.
+It uses Telegram for questions and alerts, Cloudflare Workers for the webhook/fast reply path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Gemini Flash with Groq fallback for bounded AI assistance, and Google Calendar for league match sync.
 
-**Current version: 2.4.1**
+**Current version: 2.5.0**
+
+## What changed in 2.5.0
+
+2.5.0 adds Gemini Flash as the preferred bounded natural-language answer path. If Gemini is unavailable, rate-limited, or cannot safely answer, BallerWatch falls back to Groq and then deterministic/non-AI handling where appropriate.
+
+This release also hardens runtime recovery after PURGE: when the `runtime-state` branch is readable, it is authoritative even when a generated file is intentionally absent, so stale recovery caches cannot recreate purged data.
+
+cron-job.org remains the primary 2/5/10-minute scheduler. The watchdog now checks cron-job.org's management API only every six hours (four routine reads per day). Release smoke treats temporary API unavailability such as HTTP 429 as a warning, but still fails when the API responds and the scheduler configuration is actually missing, disabled, duplicated, or misconfigured.
 
 ## What changed in 2.4.1
 
@@ -231,11 +239,11 @@ The repository is public, so the storage boundary is strict:
 
 The state encryption key comes from `TRACKER_STATE_KEY`. Existing compatibility fallback to `TELEGRAM_BOT_TOKEN` remains supported.
 
-## Groq usage
+## AI usage
 
-Groq is optional and free-tier-oriented.
+BallerWatch keeps AI bounded and optional. Deterministic intent matching and action handling remain authoritative.
 
-BallerWatch uses deterministic intent matching first. Groq is used only where natural-language classification or compact review wording improves the result. The code keeps bounded call paths and does not require a paid AI plan.
+For safe natural-language answering, Gemini Flash is tried first. If Gemini is unavailable, rate-limited, or cannot answer, BallerWatch falls back to Groq and then deterministic/non-AI handling where appropriate. Groq remains responsible for privacy-minimized chat condensation. Models receive no action tools.
 
 ## Google Calendar
 
