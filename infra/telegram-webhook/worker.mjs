@@ -1,7 +1,7 @@
 /**
  * Routes Telegram webhooks, edge Q&A, runtime-state APIs, health checks, and scheduled edge work.
  *
- * Updated v2.5.0: deterministic replies with bounded Gemini-first/Groq classification. Runtime/private data must never be committed to Git.
+ * Updated v3.0.0: adds the GitHub Pages PWA read-only API and encrypted Web Push registration path while preserving the Telegram fast path. Runtime/private data must never be committed to Git.
  */
 import {
   fetchPickupSnapshot,
@@ -905,6 +905,197 @@ async function fastReply(env, message) {
   };
 }
 
+
+function webCorsHeaders(request) {
+  const origin = request.headers.get("origin") || "";
+  const allowed =
+    origin === "https://vudh1.github.io" ||
+    origin === "http://localhost" ||
+    origin.startsWith("http://localhost:");
+  return {
+    "access-control-allow-origin": allowed ? origin : "https://vudh1.github.io",
+    "access-control-allow-methods": "GET,POST,OPTIONS",
+    "access-control-allow-headers": "content-type",
+    "access-control-max-age": "86400",
+    vary: "Origin",
+  };
+}
+
+function webJson(request, value, init = {}) {
+  const headers = new Headers(init.headers || {});
+  for (const [key, val] of Object.entries(webCorsHeaders(request))) headers.set(key, val);
+  headers.set("content-type", "application/json; charset=utf-8");
+  headers.set("cache-control", "no-store");
+  return new Response(JSON.stringify(value), { ...init, headers });
+}
+
+export function webSafeSnapshot(snapshot) {
+  const privateEvents = {};
+  for (const [date, event] of Object.entries(snapshot?.pickupPrivate?.events || {})) {
+    privateEvents[date] = {
+      fieldName: cleanText(event?.fieldName, 150),
+      address: cleanText(event?.address, 200),
+      locked: Boolean(event?.locked),
+      players: [],
+      waitlist: [],
+    };
+  }
+  return {
+    pickup: snapshot?.pickup || { dates: [], events: {} },
+    pickupPrivate: { events: privateEvents },
+    league: snapshot?.league || { teams: [] },
+    today: snapshot?.today || { games: [] },
+    teams: Array.isArray(snapshot?.teams) ? snapshot.teams : [],
+    settings: {},
+    ownerName: "",
+    version: snapshot?.version || "unknown",
+  };
+}
+
+async function webAnswer(env, question, context = {}) {
+  const text = cleanText(question, 600);
+  if (!text) return { ok: false, error: "Ask a question first." };
+  if (isStateChanging(text)) {
+    return {
+      ok: false,
+      error: "The web app is read-only in v3.0.0. Use Telegram for state-changing commands.",
+    };
+  }
+
+  let snapshot;
+  try {
+    snapshot = webSafeSnapshot(await loadSnapshot(env));
+  } catch {
+    return { ok: false, error: "BallerWatch data is temporarily unavailable." };
+  }
+
+  const safeContext = {
+    lastDate: cleanText(context?.lastDate, 20),
+  };
+  let intent = directIntent(text);
+  let ai = null;
+  if (!intent) {
+    ai = await classifyWithAi(env, text, snapshot, safeContext);
+    intent = ai?.intent || null;
+  }
+  if (!intent || intent === "github") {
+    return {
+      ok: false,
+      error: "I can answer read-only pickup, game, schedule, team, and version questions here.",
+    };
+  }
+
+  let reply = "";
+  let lastDate = safeContext.lastDate || "";
+  if (intent === "version") reply = `BallerWatch v${snapshot.version}`;
+  else if (intent === "help") {
+    reply = [
+      "You can ask:",
+      "• what game is today?",
+      "• what's my next game?",
+      "• what's the count for Thursday?",
+      "• what field?",
+      "• what time?",
+      "• what league teams are you monitoring?",
+      "• /version",
+    ].join("\n");
+  } else if (intent === "league_teams") {
+    reply = snapshot.teams.length
+      ? `Monitoring ${snapshot.teams.length} league team${snapshot.teams.length === 1 ? "" : "s"}:\n${snapshot.teams.map(x => `• ${x}`).join("\n")}`
+      : "No league teams are currently configured.";
+  } else if (intent === "today_games") {
+    reply = todayGames(snapshot);
+    lastDate = localDate();
+  } else if (intent === "date_games") {
+    const requested = ai?.date || resolveScheduleDate(text, snapshot, safeContext);
+    if (!requested) return { ok: false, error: "I couldn't resolve that game date." };
+    reply = gamesOnDate(snapshot, requested);
+    lastDate = requested;
+  } else if (intent === "next_game") {
+    const next = nextGame(snapshot);
+    reply = next.reply;
+    if (next.date) lastDate = next.date;
+  } else if (intent === "pickup_status") {
+    const requested =
+      ai?.date && availableDates(snapshot).includes(ai.date)
+        ? ai.date
+        : resolveDate(text, snapshot, safeContext);
+    if (!requested) return { ok: false, error: "I couldn't resolve that pickup date." };
+    reply = pickupStatus(snapshot, requested);
+    lastDate = requested;
+  }
+
+  return reply
+    ? { ok: true, reply, intent, lastDate, version: snapshot.version }
+    : { ok: false, error: "No read-only answer is available for that question." };
+}
+
+async function webPushConfig(env) {
+  try {
+    const encrypted = await githubFile(env, "state/web-push.json", "runtime-state");
+    const state = await decryptState(encrypted, env);
+    const key = cleanText(state?.vapid?.applicationServerKey, 300);
+    return {
+      ready: Boolean(key),
+      applicationServerKey: key,
+    };
+  } catch {
+    return { ready: false, applicationServerKey: "" };
+  }
+}
+
+async function webBoard(env, limit = 30) {
+  const paths = [
+    "state/web-board-pickup.json",
+    "state/web-board-league.json",
+    "state/web-board-version.json",
+  ];
+  const entries = [];
+  for (const path of paths) {
+    try {
+      const encrypted = await githubFile(env, path, "runtime-state");
+      const state = await decryptState(encrypted, env);
+      for (const item of state?.entries || []) {
+        entries.push({
+          id: cleanText(item?.id, 120),
+          channel: cleanText(item?.channel, 30),
+          createdAt: cleanText(item?.createdAt, 60),
+          title: cleanText(item?.title, 120),
+          body: cleanText(item?.body, 900),
+          url: cleanText(item?.url, 500) || "https://vudh1.github.io/ballerwatch/",
+          tag: cleanText(item?.tag, 120),
+        });
+      }
+    } catch {}
+  }
+  entries.sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0));
+  return entries.slice(0, Math.max(1, Math.min(Number(limit) || 30, 50)));
+}
+
+export function validWebSubscription(value) {
+  const endpoint = cleanText(value?.endpoint, 5000);
+  if (!endpoint.startsWith("https://")) return null;
+  return {
+    endpoint,
+    expirationTime: value?.expirationTime ?? null,
+    keys: {
+      p256dh: cleanText(value?.keys?.p256dh, 500),
+      auth: cleanText(value?.keys?.auth, 500),
+    },
+  };
+}
+
+async function dispatchWebRegistration(env, action, subscription) {
+  const encrypted = await encryptState({
+    action,
+    subscription,
+    createdAt: new Date().toISOString(),
+  }, env);
+  await dispatchWorkflow(env, "web-app.yml", {
+    event_b64: base64Json(encrypted),
+  });
+}
+
 async function runtimeLeagueBundle(env) {
   try {
     const [teamsRaw,scheduleRaw,todayRaw]=await Promise.all([
@@ -1091,6 +1282,48 @@ export default {
         kv:false,
       });
     }
+    if (request.method === "OPTIONS" && url.pathname.startsWith("/web/")) {
+      return new Response(null, { status: 204, headers: webCorsHeaders(request) });
+    }
+    if (request.method === "GET" && url.pathname === "/web/config") {
+      const [push, snapshot] = await Promise.all([
+        webPushConfig(env),
+        loadSnapshot(env).catch(() => null),
+      ]);
+      return webJson(request, {
+        ok: true,
+        version: String(snapshot?.version || "unknown"),
+        push,
+        appUrl: "https://vudh1.github.io/ballerwatch/",
+      });
+    }
+    if (request.method === "GET" && url.pathname === "/web/board") {
+      const entries = await webBoard(env, url.searchParams.get("limit") || 30);
+      return webJson(request, { ok: true, entries });
+    }
+    if (request.method === "POST" && url.pathname === "/web/ask") {
+      let body;
+      try { body = await request.json(); }
+      catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
+      const answer = await webAnswer(env, body?.question, body?.context || {});
+      return webJson(request, answer, { status: answer.ok ? 200 : 400 });
+    }
+    if (
+      request.method === "POST" &&
+      (url.pathname === "/web/push/subscribe" || url.pathname === "/web/push/unsubscribe")
+    ) {
+      let body;
+      try { body = await request.json(); }
+      catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
+      const subscription = validWebSubscription(body?.subscription);
+      if (!subscription) {
+        return webJson(request, { ok: false, error: "Invalid Web Push subscription." }, { status: 400 });
+      }
+      const action = url.pathname.endsWith("/unsubscribe") ? "unsubscribe" : "subscribe";
+      await dispatchWebRegistration(env, action, subscription);
+      return webJson(request, { ok: true, action, persistence: "queued" }, { status: 202 });
+    }
+
     if (request.method === "GET" && url.pathname === "/public/feature-summary") {
       let summary=null;
       try { summary=await githubFile(env,"requests/unknown.json","runtime-state"); } catch {}

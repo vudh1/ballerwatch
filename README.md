@@ -2,31 +2,31 @@
 
 BallerWatch is a small soccer automation system for pickup games and Seattle RATS league games.
 
-It uses Telegram for questions and alerts, Cloudflare Workers for the webhook/fast reply path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Gemini Flash with Groq fallback for bounded AI assistance, and Google Calendar for league match sync.
+It uses Telegram and an installable GitHub Pages web app for questions and alerts, Cloudflare Workers for the webhook/read-only API path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Gemini Flash with Groq fallback for bounded AI assistance, standards-based Web Push for a Telegram-independent notification channel, and Google Calendar for league match sync.
 
-**Current version: 2.8.1**
+**Current version: 3.0.0**
 
 ## Recent changes
 
+- **3.0.0** — Installable web app and Web Push fallback.
 - **2.8.1** — Automatic GitHub Wiki synchronization.
 - **2.8.0** — Unified Node.js runtime.
 - **2.7.5** — RATS transient-source resilience.
-- **2.7.4** — Index-independent Calendar pairing.
 
 Full release history and Telegram announcement text live in `features/versions.json`.
 
 ## Architecture
 
 ```text
-Telegram
-   |
-   v
-Cloudflare Worker
-   |-- common read-only question --> GitHub runtime-state snapshot
-   |                                + short Workers Cache
-   |                                --> Telegram reply
-   |
-   '-- state-changing/unsupported --> GitHub listener Action
+Telegram -------------------+
+                            |
+GitHub Pages PWA -----------+--> Cloudflare Worker
+                                 |-- read-only Q&A / board
+                                 |-- encrypted push registration
+                                 '-- Telegram webhook
+                                           |
+                                           v
+                                  GitHub runtime-state
 
 cron-job.org
    |-- every 2 min  --> Pickup watcher
@@ -36,14 +36,17 @@ cron-job.org
                          v
                     GitHub Actions
                          |
-                         +--> runtime-state branch
+                         +--> encrypted runtime-state
                          +--> Telegram alerts
+                         +--> Web Push signals
                          '--> Google Calendar when needed
 ```
 
 Cloudflare has **no Workers KV binding** and **no Cloudflare Cron Triggers** in the production configuration.
 
-## Telegram behavior
+## User interfaces
+
+### Telegram
 
 Telegram sends updates to the Cloudflare webhook.
 
@@ -71,6 +74,24 @@ snooze for 30 minutes
 don't watch 10/8
 add league team <name>
 ```
+
+
+### iPhone / web app
+
+The v3 PWA is published at:
+
+`https://vudh1.github.io/ballerwatch/`
+
+It provides:
+
+- an installable Home Screen app shell;
+- a recent notification board;
+- one-question/one-answer read-only Q&A with no persistent web chat history;
+- Web Push subscription controls for pickup, real RATS schedule-change, and version notifications.
+
+On iPhone, open the site in Safari, choose **Share → Add to Home Screen**, open the installed BallerWatch app, then tap **Enable push**.
+
+State-changing commands remain on Telegram in v3.0.0. The public web surface deliberately strips RSVP participant names, waitlist names, owner-specific status, secrets, and private settings.
 
 ## 48-hour Telegram review history
 
@@ -109,9 +130,10 @@ The workflow:
 1. loads encrypted runtime state from `runtime-state`;
 2. reads the current RSVP source;
 3. compares with prior state;
-4. sends Telegram notifications only when the production rules require them;
-5. writes only changed encrypted state back to `runtime-state`;
-6. removes local runtime files.
+4. records a public-safe web-board entry and attempts Telegram delivery only when the production rules require a notification;
+5. signals subscribed web apps through Web Push without depending on Telegram delivery;
+6. writes only changed encrypted state back to `runtime-state`;
+7. removes local runtime files.
 
 The GitHub workflow remains responsible for the mature notification rules.
 
@@ -126,9 +148,10 @@ The workflow:
 3. retrieves independent team schedules concurrently with bounded retries for transient source failures;
 4. retains a previously validated last-good schedule when RATS is temporarily unavailable;
 5. compares schedules and scores;
-6. sends league notifications when appropriate;
-7. updates Google Calendar only when the applied Calendar snapshot differs;
-8. persists changed encrypted state.
+6. records the public-safe web fallback and attempts Telegram delivery for real schedule changes;
+7. signals subscribed web apps through Web Push when a new allowed notification exists;
+8. updates Google Calendar only when the applied Calendar snapshot differs;
+9. persists changed encrypted state.
 
 This avoids unnecessary Calendar calls when nothing changed.
 
@@ -162,6 +185,7 @@ Private files remain encrypted before being written there, including:
 - listener settings/state
 - pickup snapshots and notification state
 - league teams/schedule/today/Calendar reconciliation state
+- encrypted Web Push VAPID keys/subscriptions and notification-board state
 - watchdog state
 - explicit private feature-request archive
 - 48-hour condensed Telegram history
@@ -187,6 +211,9 @@ Runtime pushes retry on branch races so overlapping watcher/listener runs do not
 | System watchdog | Every 10 minutes | cron-job.org → GitHub Action |
 | Telegram webhook | Event-driven | Cloudflare Worker |
 | Fast Telegram read-only reply | Event-driven | Cloudflare Worker |
+| PWA read-only Q&A / board | Event-driven | GitHub Pages → Cloudflare Worker |
+| Web Push registration | User-driven | PWA → Worker → GitHub Action |
+| Web Push delivery | Only for allowed new notifications | GitHub Action → browser push service |
 | State-changing Telegram command | Event-driven | GitHub listener |
 | Calendar sync | Only when league snapshot requires it | GitHub Action |
 
@@ -194,13 +221,15 @@ There is no GitHub `schedule:` cron and no Cloudflare Cron Trigger.
 
 ## Cloudflare outage behavior
 
-Cloudflare is still the Telegram webhook endpoint, so a total Cloudflare outage temporarily prevents new inbound Telegram commands and fast replies.
+Cloudflare is the Telegram webhook and PWA read-only API endpoint, so a total Cloudflare outage temporarily prevents new inbound Telegram commands, fast replies, live PWA Q&A, and notification-board refreshes.
 
-Core monitoring continues independently:
+Core monitoring and subscribed-device signaling continue independently:
 
 - cron-job.org still dispatches pickup/league/watchdog;
 - GitHub Actions can still retrieve soccer sources;
-- GitHub can still send watcher notifications directly to Telegram;
+- GitHub can still attempt Telegram delivery;
+- GitHub Actions can send Web Push signals directly to registered browser push endpoints;
+- if the PWA cannot fetch the latest board entry during a push, its service worker shows a generic BallerWatch update;
 - league Calendar reconciliation can continue;
 - runtime state remains on GitHub rather than Cloudflare.
 
@@ -218,6 +247,8 @@ The repository is public, so the storage boundary is strict:
 - private runtime payloads on `runtime-state` are AES-256-GCM encrypted;
 - plaintext runtime data exists only temporarily inside a Worker invocation or GitHub runner;
 - raw Telegram conversation text is not persisted as chat history;
+- Web Push subscriptions and VAPID private material stay encrypted on `runtime-state`;
+- web-visible board/Q&A data excludes roster names, waitlist names, and owner-specific status;
 - chat review output is sanitized before it becomes readable;
 - `privacy-audit.mjs` prevents runtime paths from being tracked on `main`.
 
@@ -227,7 +258,7 @@ The state encryption key comes from `TRACKER_STATE_KEY`. Existing compatibility 
 
 BallerWatch keeps AI bounded and optional. Deterministic intent matching and action handling remain authoritative.
 
-For safe natural-language answering, Gemini Flash is tried first. If Gemini is unavailable, rate-limited, or cannot answer, BallerWatch falls back to Groq and then deterministic/non-AI handling where appropriate. Groq remains responsible for privacy-minimized chat condensation. Models receive no action tools.
+For safe natural-language answering, Gemini Flash is tried first when deterministic handling does not resolve the request. If Gemini is unavailable, rate-limited, or cannot answer, BallerWatch falls back to Groq and then deterministic/non-AI handling where appropriate. The PWA reuses this bounded read-only classification path after private roster/owner data is stripped. Groq remains responsible for privacy-minimized Telegram chat condensation. Models receive no action tools.
 
 ## Google Calendar
 
@@ -250,6 +281,7 @@ The action removes generated files from the `runtime-state` branch, including:
 - notification/watchdog state
 - listener settings
 - custom monitored-team state
+- encrypted Web Push subscriptions/VAPID state and notification boards
 - 48-hour chat history/review
 - explicit private feature-request runtime data
 
@@ -271,13 +303,15 @@ The next watcher runs rebuild current source state and built-in defaults.
 | **RATS league watcher** | Refresh league schedules/scores and reconcile Calendar |
 | **Telegram listener** | Handle state-changing or unsupported Telegram commands |
 | **System watchdog** | Validate service/scheduler health |
-| **Deploy Telegram webhook** | Deploy the webhook-only Cloudflare Worker |
+| **Deploy Telegram webhook** | Deploy the Telegram + PWA read-only Cloudflare Worker |
 | **Deploy Calendar bridge** | Deploy and verify the Apps Script Calendar bridge |
 | **Validate code** | Style, syntax, tests, privacy audit |
 | **Manual smoke test** | Notification-silent live-source verification |
 | **Purge current data** | Factory-reset generated runtime state |
 | **Configure external cron** | Create/repair the 2/5/10-minute cron-job.org schedules |
-| **Publish wiki** | Mirror `docs/wiki/` into the GitHub Wiki when configured |
+| **Web app runtime** | Initialize/update encrypted Web Push subscription state |
+| **Deploy GitHub Pages app** | Publish the installable PWA from `docs/` |
+| **Publish wiki** | Mirror `docs/wiki/` into the GitHub Wiki |
 | **Cleanup merged release branches** | Remove stale `release/*` and `fix/*` branches |
 
 ## Required secrets
@@ -314,6 +348,10 @@ A Workers KV namespace is **not required** in 2.4.0.
 - `GOOGLE_CALENDAR_WEBHOOK_URL`
 - `GOOGLE_CALENDAR_WEBHOOK_SECRET`
 
+### Web Push
+
+No new repository secret is required. The Web app runtime workflow generates the VAPID key pair when needed and stores both the private VAPID material and device subscriptions inside AES-GCM-encrypted `runtime-state`.
+
 ### Wiki publishing
 
 The GitHub Wiki is mirrored automatically from `docs/wiki/` using the workflow-scoped `GITHUB_TOKEN`; no extra Wiki token is required.
@@ -339,9 +377,9 @@ Do not send Telegram messages from tests.
 
 BallerWatch should remain:
 
-- fast for normal Telegram questions;
+- fast for normal Telegram and PWA read-only questions;
 - inexpensive to operate;
-- resilient when one infrastructure provider is unavailable;
+- resilient when one infrastructure provider or Telegram is unavailable;
 - conservative about private data;
 - simple enough to maintain and onboard;
 - release-oriented on `main`;

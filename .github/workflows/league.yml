@@ -112,6 +112,23 @@ jobs:
           BALLERWATCH_ALLOW_OFFLINE: ${{ inputs.external_fallback }}
         run: node shared/runtime-state.mjs push league
 
+      - name: Signal installed web app
+        if: steps.gate.outputs.should_run == 'true'
+        working-directory: .
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: node shared/web-push.mjs send-pending
+
+      - name: Persist Web Push subscription cleanup
+        if: always() && steps.gate.outputs.should_run == 'true'
+        working-directory: .
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          BALLERWATCH_ALLOW_OFFLINE: ${{ inputs.external_fallback }}
+        run: node shared/runtime-state.mjs push league
+
       - name: Build encrypted failover backup
         if: always() && steps.gate.outputs.should_run == 'true'
         working-directory: .

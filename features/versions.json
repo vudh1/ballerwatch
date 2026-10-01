@@ -1,7 +1,23 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "2.8.1",
+  "currentVersion": "3.0.0",
   "releases": [
+    {
+      "version": "3.0.0",
+      "date": "2026-10-01",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "iPhone web app and Web Push fallback",
+      "telegramAnnouncement": "BallerWatch now has an installable iPhone web app with a notification board, read-only Q&A, and Web Push fallback when Telegram is unavailable.",
+      "changes": [
+        "Added an installable GitHub Pages PWA at vudh1.github.io/ballerwatch with an iPhone Home Screen experience, offline app shell, dedicated touch icon, notification board, and one-question/one-answer read-only Q&A.",
+        "Added standards-based Web Push without a new database or notification provider: VAPID keys and browser subscriptions are generated/managed by GitHub Actions and stored AES-GCM encrypted on runtime-state.",
+        "Added Cloudflare Worker endpoints for public-safe web configuration, board reads, read-only Q&A, and encrypted subscribe/unsubscribe registration while keeping state-changing commands on Telegram.",
+        "Extended the existing pickup, real RATS schedule-change, and daily version notification allowlist to a Telegram-independent Web Push channel; Telegram delivery failure no longer prevents the public-safe fallback from being recorded and signaled.",
+        "Kept Workers KV absent, Cloudflare Cron Triggers disabled, cron-job.org as the 2/5/10-minute scheduler, and the single-parentless runtime-state snapshot model unchanged.",
+        "Added privacy regression coverage proving the public web path strips RSVP/waitlist names, owner settings, secrets, and private push material."
+      ]
+    },
     {
       "version": "2.8.1",
       "date": "2026-10-01",

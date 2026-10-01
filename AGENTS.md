@@ -10,8 +10,11 @@ Always read the current `README.md`, this file, and `features/versions.json` fro
 - `state/chat-history.json` retains only Groq-condensed conversation records for up to 48 hours and is encrypted.
 - `state/chat-review.json` is the only readable chat-derived review artifact. It may contain only privacy-minimized engineering signals: timestamp, `bug_candidate|feature_candidate|negative_feedback`, short sanitized summary, and short sanitized reason. Never include names, IDs, tokens, URLs, addresses, raw questions, raw replies, or quotes.
 - Explicit `/feature <request>` remains a deliberate feature-request path. Ordinary unanswered questions and thumbs-down feedback belong in the 48-hour chat review flow instead of automatically becoming feature requests.
-- Cloudflare Workers hosts the Telegram webhook and read-only fast path. **Workers KV is not part of the production runtime and Cloudflare Cron Triggers must stay disabled.**
+- Cloudflare Workers hosts the Telegram webhook plus the read-only Telegram/PWA API. **Workers KV is not part of the production runtime and Cloudflare Cron Triggers must stay disabled.**
 - The fast path reads encrypted state from the `runtime-state` branch and uses the Workers Cache API only as a short-lived best-effort cache.
+- The GitHub Pages PWA at `vudh1.github.io/ballerwatch` is read-only in v3.0.0. State-changing commands remain on Telegram.
+- Web Push VAPID keys and subscriptions live only in encrypted `state/web-push.json` on `runtime-state`; never commit a VAPID private key or push endpoint to `main`.
+- Web notification-board entries exposed to the public Pages origin must be public-safe: never include RSVP names, waitlist names, owner-specific status, tokens, IDs, or private settings.
 - cron-job.org is the primary recurring scheduler and dispatches the GitHub pickup, league, and watchdog workflows at their 2/5/10-minute cadences.
 - GitHub Actions pulls state from `runtime-state`, performs reconciliation/notifications/Calendar work, pushes only changed state back, then removes local runtime files.
 - Encrypted GitHub Actions cache backups remain a secondary recovery source.
@@ -37,9 +40,9 @@ Direct commits to `main` remain permitted for emergencies or explicit user-direc
 
 The resulting `main` history should remain release-oriented: one commit per BallerWatch version.
 
-## Telegram notification policy
+## Notification policy
 
-Proactive Telegram output is allowlisted. Production may send only:
+Proactive Telegram and Web Push output share the same allowlist. Production may send only:
 
 - pickup RSVP/capacity notifications from the established pickup watcher logic;
 - real RATS match-schedule changes;
@@ -47,13 +50,13 @@ Proactive Telegram output is allowlisted. Production may send only:
 
 Direct replies to owner Telegram input are also allowed.
 
-Do not send Telegram messages for watchdog failures/recovery, tests, smoke runs, builds, deploys, commits, pull requests, score-only changes, setup reminders, invalid-setting reminders, or other engineering/health events.
+Do not send Telegram messages or Web Push signals for watchdog failures/recovery, tests, smoke runs, builds, deploys, commits, pull requests, score-only changes, setup reminders, invalid-setting reminders, or other engineering/health events.
 
 Version announcements are derived from `features/versions.json`, combine every pending version into one message, use only user-facing release summaries, and are limited to one message per Pacific calendar day. `features/announcements.json` is legacy and must not drive Telegram sends.
 
 ## Testing
 
-Tests, audits, smoke tests, and temporary verification runs must **not send Telegram messages**.
+Tests, audits, smoke tests, and temporary verification runs must **not send Telegram messages or Web Push signals**.
 
 Use the notification-silent Manual smoke test for live-source verification. Do not add production notifications to PR tests.
 
@@ -95,11 +98,12 @@ Read `STYLE_GUIDE.md` before editing code.
 
 ## Purge semantics
 
-`PURGE` is a full BallerWatch factory reset. It first deletes BallerWatch-managed RATS Calendar events through the authenticated Calendar bridge, then deletes generated runtime files from the `runtime-state` branch, including custom league-team state, listener settings, notification/watchdog state, Calendar reconciliation snapshots, and the 48-hour chat history/review. The next runs rebuild defaults, current source snapshots, and future Calendar match events. It does not delete source code, secrets, or unrelated Google Calendar events.
+`PURGE` is a full BallerWatch factory reset. It first deletes BallerWatch-managed RATS Calendar events through the authenticated Calendar bridge, then deletes generated runtime files from the `runtime-state` branch, including custom league-team state, listener settings, notification/watchdog state, Web Push subscriptions/board state, Calendar reconciliation snapshots, and the 48-hour chat history/review. The next runs rebuild defaults, current source snapshots, and future Calendar match events. It does not delete source code, secrets, or unrelated Google Calendar events.
 
 ## Cloudflare and storage failure behavior
 
-- If Cloudflare is unavailable, inbound Telegram webhook/fast-path questions are temporarily unavailable, but cron-job.org continues the 2/5/10-minute GitHub monitoring workflows.
+- If Cloudflare is unavailable, inbound Telegram webhook/fast-path questions and live PWA Q&A/board reads are temporarily unavailable, but cron-job.org continues the 2/5/10-minute GitHub monitoring workflows.
+- Existing Web Push subscriptions are signaled directly from GitHub Actions to browser push services, so notification fallback does not depend on Telegram and does not require Cloudflare at send time.
 - GitHub production watcher workflows do not depend on Workers KV.
 - If the `runtime-state` branch cannot be read, workflows may restore the encrypted last-known Actions-cache backup.
 - The Worker may fall back to dispatching the GitHub listener if a direct runtime-state history write fails.

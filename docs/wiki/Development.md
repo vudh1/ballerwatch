@@ -10,10 +10,11 @@ Read `AGENTS.md`, `README.md`, `STYLE_GUIDE.md`, and `features/versions.json` be
 - RATS reconciliation: `league/`
 - Shared state/crypto/intent helpers: `shared/`
 - Operations helpers: `infra/`
+- GitHub Pages PWA: `docs/index.html`, `docs/app.js`, `docs/sw.js`
 - Workflows: `.github/workflows/`
 
 Use the repository style rules. Prefer small pure modules for parsing, normalization, routing, and formatting, with side effects kept at the edges.
 
 BallerWatch runtime and tests use Node.js 22 with ECMAScript modules. No Python runtime or Python setup is required by GitHub Actions.
 
-Tests must not send Telegram messages or mutate Calendar.
+Tests must not send Telegram messages, Web Push signals, or mutate Calendar.

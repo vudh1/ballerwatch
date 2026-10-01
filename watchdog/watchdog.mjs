@@ -10,6 +10,7 @@ import crypto from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { decryptState, encryptState } from "../shared/state-crypto.mjs";
 import { sendTelegram } from "../shared/telegram.mjs";
+import { appendWebNotification } from "../shared/web-notifications.mjs";
 import { checkScheduler } from "./scheduler-check.mjs";
 import { planVersionAnnouncement } from "./version-announcement.mjs";
 
@@ -201,8 +202,19 @@ export async function runWatchdog() {
   });
   let versionAnnouncement = announcement.nextState;
   if (announcement.message && problems.length === 0) {
-    await sendTelegram(announcement.message);
-    console.log("Sent the combined daily version announcement.");
+    appendWebNotification("version", {
+      title: "BallerWatch updated",
+      body: announcement.message,
+      tag: `ballerwatch-version-${ledger?.currentVersion || "update"}`,
+    });
+    try {
+      await sendTelegram(announcement.message);
+      console.log("Recorded the combined daily version announcement for Telegram + web.");
+    } catch (error) {
+      console.warn(
+        `Telegram version delivery failed; web fallback remains available: ${error?.message || error}`,
+      );
+    }
   } else if (announcement.message) {
     versionAnnouncement = previous.versionAnnouncement || {};
     console.log("Deferred version announcement because the watchdog is unhealthy.");

@@ -8,6 +8,7 @@ import crypto from "node:crypto";
 import { sendTelegram } from "../shared/telegram.mjs";
 import { loadBotSettings } from "../shared/bot-state.mjs";
 import { decryptState, encryptState } from "../shared/state-crypto.mjs";
+import { appendWebNotification } from "../shared/web-notifications.mjs";
 import { parseTime, selectPrimaryEvent, weekStart } from "./selection.mjs";
 
 const TIME_ZONE = "America/Los_Angeles";
@@ -21,6 +22,29 @@ const STATE_SECRET = (process.env.TRACKER_STATE_KEY || process.env.TELEGRAM_BOT_
 
 if (!STATE_SECRET) {
   throw new Error("A private tracker state key is not available.");
+}
+
+async function deliverPickupNotification({
+  telegramText,
+  webText,
+  title = "Pickup update",
+  tag = "ballerwatch-pickup",
+}) {
+  appendWebNotification("pickup", {
+    title,
+    body: webText,
+    tag,
+  });
+
+  try {
+    await sendTelegram(telegramText);
+    return true;
+  } catch (error) {
+    console.warn(
+      `Telegram pickup delivery failed; web fallback remains available: ${error?.message || error}`,
+    );
+    return false;
+  }
 }
 
 function readJson(filePath) {
@@ -199,7 +223,12 @@ async function processNewDates(state, now, settings) {
     const eventTime = timeLine(event);
     if (eventTime) lines.push(eventTime);
 
-    await sendTelegram(lines.join("\n"));
+    await deliverPickupNotification({
+      telegramText: lines.join("\n"),
+      webText: lines.join("\n"),
+      title: "New pickup date",
+      tag: `pickup-new-${date}`,
+    });
   }
 
   return { ...state, knownDates: currentDates };
@@ -588,7 +617,36 @@ async function main() {
     }
   }
 
-  await sendTelegram(lines.filter(Boolean).join("\n"));
+  const webLines = [];
+  if (urgentCapacity) {
+    webLines.push(
+      `🚨 ONLY ${remaining} ${remaining === 1 ? "SPOT" : "SPOTS"} LEFT`,
+    );
+  } else if (isFull) {
+    webLines.push("⛔ RSVP FULL");
+  }
+  if (selectionChanged) {
+    webLines.push(`🔄 Primary watch switched to ${formatDate(event.date)}`);
+  }
+  webLines.push(
+    `${reserved}/${capacityText} reserved - ${formatDate(event.date)}`,
+    ...locationLines(snapshot),
+    timeLine(event),
+  );
+  if (changed && sameEventAsPrevious) {
+    webLines.push("RSVP list or match details changed.");
+  }
+
+  const telegramSent = await deliverPickupNotification({
+    telegramText: lines.filter(Boolean).join("\n"),
+    webText: webLines.filter(Boolean).join("\n"),
+    title: urgentCapacity
+      ? `Pickup: ${remaining} ${remaining === 1 ? "spot" : "spots"} left`
+      : isFull
+        ? "Pickup RSVP full"
+        : "Pickup update",
+    tag: `pickup-${event.date}`,
+  });
 
   writeState({
     ...nextState,
@@ -605,9 +663,9 @@ async function main() {
         : "hourly",
   });
 
-  // Never log Telegram message content: workflow logs are public.
+  // Never log notification message content: workflow logs are public.
   console.log(
-    `Telegram notification sent (${
+    `${telegramSent ? "Telegram + web" : "Web fallback"} notification recorded (${
       ownerStatusChanged
         ? "owner status change"
         : changed

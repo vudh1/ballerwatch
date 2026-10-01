@@ -1,6 +1,6 @@
 # Architecture
 
-BallerWatch separates the fast Telegram path from durable watcher state.
+BallerWatch separates fast Telegram/PWA read paths from durable watcher state.
 
 ## Telegram listener boundary
 
@@ -10,13 +10,13 @@ Cloudflare is the only Telegram webhook receiver. GitHub listener runs accept in
 
 Telegram sends webhook updates to the Cloudflare Worker. Common read-only questions are answered there from a short-lived Workers Cache backed by encrypted files on the GitHub `runtime-state` branch.
 
-State-changing or unsupported requests are dispatched to the GitHub listener workflow.
+The GitHub Pages PWA uses the same Worker for public-safe read-only Q&A, notification-board reads, and encrypted Web Push registration. State-changing requests remain on Telegram and are dispatched to the GitHub listener workflow when required.
 
 ## Notification boundary
 
-Telegram has a narrow allowlist. Proactive sends come only from the pickup watcher, real league schedule changes, and the once-per-Pacific-day combined version announcement. Direct replies are sent only in response to owner input.
+Telegram and Web Push share a narrow proactive allowlist. Sends come only from the pickup watcher, real league schedule changes, and the once-per-Pacific-day combined version announcement. Direct Telegram replies are sent only in response to owner input.
 
-Watchdog health/recovery, CI/tests, builds/deploys, commits/PRs, setup reminders, invalid-setting reminders, and score-only changes never generate Telegram messages.
+Web-visible notifications are public-safe and exclude roster names, waitlist names, and owner-specific status. Watchdog health/recovery, CI/tests, builds/deploys, commits/PRs, setup reminders, invalid-setting reminders, and score-only changes never generate Telegram or Web Push messages.
 
 The version announcer runs alongside the watchdog schedule but is independent of watchdog health alerts. It reads `features/versions.json`, combines every pending release into one user-facing message, and defers rather than sends when the watchdog itself is unhealthy.
 
@@ -36,7 +36,7 @@ GitHub Actions runtime code is dependency-free Node.js 22 / ECMAScript modules. 
 
 ## Durable state
 
-The `runtime-state` branch is the durable runtime store. Private state is AES-GCM encrypted before it is written. Workflows materialize state temporarily, persist only changed files, and clean local runtime paths afterward.
+The `runtime-state` branch is the durable runtime store. Private state is AES-GCM encrypted before it is written. This includes Web Push VAPID private material, browser subscriptions, and web notification-board files. Workflows materialize state temporarily, persist only changed files, and clean local runtime paths afterward.
 
 GitHub Actions cache keeps encrypted last-known backups for recovery.
 

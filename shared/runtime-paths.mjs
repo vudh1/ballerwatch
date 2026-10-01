@@ -16,6 +16,7 @@ export const RUNTIME_SCOPES = Object.freeze({
     "league/state/today.json",
     "requests/private.json",
     "requests/unknown.json",
+    "state/web-push.json",
   ]),
   pickup: Object.freeze([
     "state/listener.json",
@@ -23,6 +24,8 @@ export const RUNTIME_SCOPES = Object.freeze({
     "pickup/state/events.json",
     "pickup/state/notify.json",
     "pickup/state/source-health.json",
+    "state/web-push.json",
+    "state/web-board-pickup.json",
   ]),
   league: Object.freeze([
     "league/state/teams.json",
@@ -30,9 +33,19 @@ export const RUNTIME_SCOPES = Object.freeze({
     "league/state/today.json",
     "league/state/calendar-snapshot.json",
     "league/state/edge-signal.json",
+    "state/web-push.json",
+    "state/web-board-league.json",
   ]),
   watchdog: Object.freeze([
     "state/watchdog.json",
+    "state/web-push.json",
+    "state/web-board-version.json",
+  ]),
+  web: Object.freeze([
+    "state/web-push.json",
+    "state/web-board-pickup.json",
+    "state/web-board-league.json",
+    "state/web-board-version.json",
   ]),
 });
 
