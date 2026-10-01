@@ -128,10 +128,17 @@ function applyUpdate_(calendar, props, item) {
   return {ok: true, key: item.key, action: action};
 }
 
+function isAlreadyDeletedEventError_(err) {
+  const message = String(err && err.message || err || '').toLowerCase();
+  return message.indexOf('does not exist') !== -1 ||
+    message.indexOf('already been deleted') !== -1;
+}
+
 function purgeManagedEvents_(calendar, props) {
   const deletedIds = {};
   const errors = [];
   let deleted = 0;
+  let stale = 0;
   let clearedProperties = 0;
   const properties = props.getProperties();
 
@@ -146,7 +153,11 @@ function purgeManagedEvents_(calendar, props) {
         deleted += 1;
       }
     } catch (err) {
-      errors.push('tracked event delete failed: ' + String(err && err.message || err));
+      if (isAlreadyDeletedEventError_(err)) {
+        stale += 1;
+      } else {
+        errors.push('tracked event delete failed: ' + String(err && err.message || err));
+      }
     } finally {
       props.deleteProperty(key);
       clearedProperties += 1;
@@ -182,7 +193,11 @@ function purgeManagedEvents_(calendar, props) {
         deletedIds[eventId] = true;
         deleted += 1;
       } catch (err) {
-        errors.push('legacy event delete failed: ' + String(err && err.message || err));
+        if (isAlreadyDeletedEventError_(err)) {
+          stale += 1;
+        } else {
+          errors.push('legacy event delete failed: ' + String(err && err.message || err));
+        }
       }
     });
   }
@@ -191,6 +206,7 @@ function purgeManagedEvents_(calendar, props) {
     ok: errors.length === 0,
     action: 'purge',
     deleted: deleted,
+    stale: stale,
     clearedProperties: clearedProperties,
     errorCount: errors.length,
     error: errors.length ? errors[0] : ''
