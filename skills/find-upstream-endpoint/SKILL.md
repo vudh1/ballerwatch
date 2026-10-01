@@ -40,3 +40,9 @@ After changing the secret, run the pickup/manual smoke workflow and confirm the 
 ## If the upstream site changes
 
 Do not guess a replacement endpoint. Trace the current frontend request path again. If the constant name changes, follow the code from the public RSVP date/list request to its actual network URL. Update this runbook only if the discovery procedure itself changes; never update it with the live endpoint value.
+
+## Runtime self-recovery
+
+The pickup watcher normally uses the encrypted Telegram override or `UPSTREAM_ENDPOINT` secret. If that configured endpoint is absent or has been retired with HTTP 404/410, the watcher may temporarily rediscover the normal public `APPS_SCRIPT_URL` from the upstream frontend source and retry the read.
+
+The discovered URL must never be logged, committed, or written to runtime state. A successful recovery keeps monitoring alive, but the repository secret should still be repaired when convenient so discovery remains a fallback rather than the normal path.
