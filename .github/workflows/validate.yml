@@ -13,6 +13,7 @@ on:
       - "infra/**"
       - "features/**"
       - "skills/**"
+      - "tests/**"
       - ".editorconfig"
       - "STYLE_GUIDE.md"
       - "AGENTS.md"
@@ -43,19 +44,11 @@ jobs:
           done < <(find . -name '*.mjs' -not -path './node_modules/*' -print0)
 
       - name: Run JavaScript unit tests
+        shell: bash
         run: |
-          node --test shared/feature-requests.test.mjs
-          node --test shared/ai-provider.test.mjs
-          node --test shared/runtime-state.test.mjs
-          node --test watchdog/scheduler-check.test.mjs
-          node --test watchdog/version-announcement.test.mjs
-          node --test shared/intent-index.test.mjs
-          node --test pickup/upstream-endpoint.test.mjs
-          node --test shared/failover-state.test.mjs
-          node --test infra/external-schedules.test.mjs
-          node --test infra/fallback-gate.test.mjs
-          node --test infra/telegram-webhook/edge-runtime.test.mjs
-          node --test infra/telegram-webhook/worker-query.test.mjs
+          while IFS= read -r -d '' file; do
+            node --test "$file"
+          done < <(find tests -name '*.test.mjs' -print0 | sort -z)
 
       - name: Bundle Cloudflare Worker
         working-directory: infra/telegram-webhook
@@ -80,5 +73,6 @@ jobs:
         run: python -m compileall -q league
 
       - name: Run league unit tests
-        working-directory: league
-        run: python -m unittest watcher_test.py calendar_gate_test.py google_calendar_purge_test.py google_calendar_pair_test.py
+        env:
+          PYTHONPATH: league
+        run: python -m unittest discover -s tests/league -p '*_test.py'
