@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "5.0.0",
+  "currentVersion": "5.0.1",
   "releases": [
+    {
+      "version": "5.0.1",
+      "date": "2026-10-01",
+      "type": "patch",
+      "source": "implementation-refinement",
+      "title": "Weather bootstrap and exact forecast window",
+      "telegramAnnouncement": "BallerWatch weather now requests exactly the 14 days shown in the calendar and refreshes once automatically after weather-related releases.",
+      "changes": [
+        "Reduced Open-Meteo forecast_days from 16 to exactly 14 so the weather request matches the UI horizon and avoids unnecessary forecast volume.",
+        "Added a notification-silent Refresh match weather workflow that runs once after weather/runtime-path releases and remains manually dispatchable.",
+        "Kept recurring weather refresh inside the six-hour maintenance workflow; the bootstrap workflow adds no new recurring schedule."
+      ]
+    },
     {
       "version": "5.0.0",
       "date": "2026-10-01",
