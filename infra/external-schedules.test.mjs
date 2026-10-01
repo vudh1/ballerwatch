@@ -42,3 +42,28 @@ test("enabled state can still be ignored when only structure matters", () => {
   const problems = analyzeExternalSchedules(jobs, { expectEnabled: null });
   assert.deepEqual(problems, []);
 });
+
+test("multiple enabled jobs are reported as duplicate dispatchers", () => {
+  const jobs = EXTERNAL_SCHEDULE_SPECS.map((spec) => job(spec));
+  jobs.push({
+    ...job(EXTERNAL_SCHEDULE_SPECS[0]),
+    title: "BallerWatch - Pickup watcher duplicate",
+  });
+
+  const problems = analyzeExternalSchedules(jobs, { expectEnabled: true });
+  assert.equal(
+    problems.some((x) => x.includes("Pickup watcher") && x.includes("duplicate enabled")),
+    true,
+  );
+});
+
+test("disabled duplicate jobs do not make the primary schedule unhealthy", () => {
+  const jobs = EXTERNAL_SCHEDULE_SPECS.map((spec) => job(spec));
+  jobs.push({
+    ...job(EXTERNAL_SCHEDULE_SPECS[0], false),
+    title: "BallerWatch - Pickup watcher duplicate",
+  });
+
+  const problems = analyzeExternalSchedules(jobs, { expectEnabled: true });
+  assert.deepEqual(problems, []);
+});
