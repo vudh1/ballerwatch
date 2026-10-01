@@ -88,6 +88,8 @@ export function recordUnknownQuestion(question, directory = "requests", metadata
     request.lastSeenAt = now;
     if (metadata?.source) request.source = String(metadata.source).slice(0, 50);
     if (metadata?.rejectedAnswer) request.rejectedAnswer = String(metadata.rejectedAnswer).slice(0, 1200);
+    if (metadata?.aiCategory) request.aiCategory = String(metadata.aiCategory).slice(0, 50);
+    if (metadata?.aiReason) request.aiReason = String(metadata.aiReason).slice(0, 500);
     if (request.status === "implemented") request.status = "reopened";
   } else {
     request = {
@@ -99,6 +101,8 @@ export function recordUnknownQuestion(question, directory = "requests", metadata
       lastSeenAt: now,
       ...(metadata?.source ? { source: String(metadata.source).slice(0, 50) } : {}),
       ...(metadata?.rejectedAnswer ? { rejectedAnswer: String(metadata.rejectedAnswer).slice(0, 1200) } : {}),
+      ...(metadata?.aiCategory ? { aiCategory: String(metadata.aiCategory).slice(0, 50) } : {}),
+      ...(metadata?.aiReason ? { aiReason: String(metadata.aiReason).slice(0, 500) } : {}),
     };
     data.requests.push(request);
   }
