@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "2.7.2",
+  "currentVersion": "2.7.3",
   "releases": [
+    {
+      "version": "2.7.3",
+      "date": "2026-10-01",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Pair Calendar bridge to intended target",
+      "telegramAnnouncement": "Calendar sync is now privately paired to the intended Google Calendar instead of relying on the Apps Script owner's default calendar.",
+      "changes": [
+        "Added private Calendar pairing so the Apps Script bridge targets the intended Google Calendar rather than blindly using the deployment owner's default calendar.",
+        "Pairing discovers a temporary non-sensitive marker across calendars visible to the Apps Script account, stores only the matched calendar ID in Script Properties, and deletes the marker after pairing.",
+        "Before switching targets, the bridge cleans BallerWatch-managed events and stale mappings from the previous target/default calendar to avoid orphaned wrong-calendar events.",
+        "Normal Calendar sync now fails closed until a target Calendar has been paired, and no Calendar ID or email is committed or logged."
+      ]
+    },
     {
       "version": "2.7.2",
       "date": "2026-10-01",
