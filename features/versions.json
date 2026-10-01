@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "2.1.0",
+  "currentVersion": "2.2.0",
   "releases": [
+    {
+      "version": "2.2.0",
+      "date": "2026-10-01",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Release-oriented repo and faster league reconciliation",
+      "changes": [
+        "Cleaned obsolete runtime and scheduler files after the Cloudflare KV migration, including the legacy league status artifact and superseded cron management helpers.",
+        "Reduced RATS reconciliation latency by trying the last known valid season first, fetching independent team schedule exports concurrently, and removing unnecessary Node/Python setup steps from the production league workflow.",
+        "Added cron-job.org fallback verification: pickup, league and watchdog fallback jobs must exist with their expected 2/5/10-minute cadences, correct workflow targets, and remain disabled while Cloudflare is healthy.",
+        "Unified cron-job.org fallback creation, verification, enable and disable behavior in one tested module.",
+        "Adopted release branches with notification-silent PR smoke tests and squash-only merges so future main history is one commit per released version.",
+        "Serialized release-PR live smoke tests to avoid duplicate upstream traffic and added league watcher timing output for performance regression tracking."
+      ]
+    },
     {
       "version": "2.1.0",
       "date": "2026-10-01",
