@@ -8,7 +8,9 @@ The web app is a public-safe BallerWatch surface with an optional owner-paired s
 
 ## What the web app does
 
-- shows the next upcoming pickup or RATS game on the main screen with Google Maps directions and native sharing;
+- uses a redesigned dashboard with a next-game spotlight, Google Maps directions, and native sharing;
+- shows a compact 14-day calendar for published pickup games and monitored RATS matches;
+- shows match-window weather (condition, temperature, and maximum rain probability during the game window), refreshed about every six hours;
 - shows recent pickup, RATS schedule, and version updates from a top-right notification bell instead of occupying the main screen;
 - answers one read-only question at a time with slash-command and natural-question suggestions;
 - can be added to the iPhone Home Screen and opened in standalone app mode;
@@ -65,6 +67,14 @@ On an owner-paired device, press and hold the displayed answer for about 0.7 sec
 
 Unpaired public visitors cannot submit review feedback. If the device is not paired, long-pressing an answer directs the owner to Settings instead of writing a review signal.
 
+## Two-week calendar and weather
+
+The dashboard displays the next 14 Pacific-calendar days. Game dates are highlighted and can be selected to see one or more games, time/location, pickup capacity when available, jersey color, Directions, and weather.
+
+Weather is computed from the actual scheduled game window rather than a generic daily forecast. BallerWatch uses the maximum hourly precipitation probability that overlaps the match, plus an average match-window temperature and compact condition. The encrypted weather snapshot refreshes every six hours.
+
+Recurring venues use cached coordinates. Only new public field names/addresses are geocoded. The app credits **Open-Meteo** for forecast data and **OpenStreetMap contributors** for geocoding data.
+
 ## Next game and notification test
 
 The main screen loads the same earliest-upcoming pickup/RATS selection used by the Telegram fast path. The card exposes only public-safe game details and provides:
@@ -116,6 +126,7 @@ Push subscriptions and VAPID private keys remain encrypted on `runtime-state`.
 The Worker endpoints used by the PWA are:
 
 - `GET /web/config`
+- `GET /web/calendar`
 - `GET /web/next-game`
 - `GET /web/board`
 - `POST /web/ask`
