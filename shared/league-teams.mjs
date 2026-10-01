@@ -4,6 +4,7 @@ import { decryptState, encryptState } from "./state-crypto.mjs";
 
 export const LEAGUE_TEAM_STATE_PATH = "league/state/teams.json";
 export const LEAGUE_TEAM_RUNTIME_PATH = "league/teams.json";
+export const DEFAULT_LEAGUE_TEAMS = ["Third Touch FC", "PhoSaiGon"];
 
 export function normalizeLeagueTeamName(name) {
   let value = String(name || "").trim().replace(/\s+/g, " ");
@@ -49,7 +50,12 @@ export function loadLeagueTeams() {
   } catch {}
 
   // One-time migration path from the old plaintext config.
-  return loadLegacyLeagueTeams();
+  const legacy = loadLegacyLeagueTeams();
+  if (legacy.length) return legacy;
+
+  // Fresh installs bootstrap these defaults in priority order. Once encrypted
+  // state exists, Telegram add/remove/rename commands remain authoritative.
+  return [...DEFAULT_LEAGUE_TEAMS];
 }
 
 export function saveLeagueTeams(teams) {
