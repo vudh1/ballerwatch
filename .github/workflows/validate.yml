@@ -46,13 +46,11 @@ jobs:
           node --check watchdog/watchdog.test.mjs
           node --check manual-test.mjs
           node --check privacy-audit.mjs
-          node --check infra/sync-cron.mjs
-          node --check infra/disable-listener-cron.mjs
+          node --check infra/external-schedules.mjs
           node --check infra/telegram-webhook/worker.mjs
           node --check infra/telegram-webhook/edge-runtime.mjs
           node --check infra/telegram-webhook/prepare-config.mjs
           node --check infra/telegram-webhook/edge-runtime.test.mjs
-          node --check infra/disable-external-schedules.mjs
           node --check infra/validate-versions.mjs
 
       - name: Test Cloudflare edge runtime
