@@ -31,6 +31,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          TELEGRAM_WEBHOOK_HEALTH_URL: https://ballerwatch-telegram.vudhone.workers.dev/health
         run: node watchdog/watchdog.mjs
 
       - name: Persist encrypted watchdog state
