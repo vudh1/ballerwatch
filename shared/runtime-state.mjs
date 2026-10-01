@@ -1,3 +1,8 @@
+/**
+ * Transfers scoped runtime files between GitHub Actions and the private Cloudflare runtime store.
+ *
+ * Documentation baseline: v2.3.0. Runtime/private data must never be committed to Git.
+ */
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
