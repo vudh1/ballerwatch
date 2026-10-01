@@ -13,7 +13,7 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   const html = fs.readFileSync("docs/index.html", "utf8");
   assert.match(html, /manifest\.webmanifest/);
   assert.match(html, /apple-touch-icon\.png/);
-  assert.match(html, /Enable push/);
+  assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
   assert.match(html, /styles\.css\?v=3\.3\.0/);
