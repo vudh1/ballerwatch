@@ -4,7 +4,15 @@ BallerWatch is a small soccer automation system for pickup games and Seattle RAT
 
 It uses Telegram for questions and alerts, Cloudflare Workers for the webhook/fast reply path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Gemini Flash with Groq fallback for bounded AI assistance, and Google Calendar for league match sync.
 
-**Current version: 2.5.2**
+**Current version: 2.5.3**
+
+## What changed in 2.5.3
+
+2.5.3 uses the privacy-minimized 48-hour chat review as an engineering feedback loop. Repeated failures around schedule wording are now covered by deterministic routing and regression tests instead of relying on the model to guess.
+
+The bot now understands common variations such as today's schedule, games on a specific date, pickup-game details, and next/recommended-game questions. Date-specific answers can combine pickup and RATS league data, and the bounded Gemini/Groq fallback now receives upcoming league schedule context when deterministic routing does not match.
+
+This is deliberate "learning" without automatic model retraining: reviewed patterns become tested routing/examples while raw Telegram conversations remain private and short-lived.
 
 ## What changed in 2.5.2
 
