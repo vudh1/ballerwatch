@@ -59,7 +59,7 @@ jobs:
 
       - name: Bundle Cloudflare Worker
         working-directory: infra/telegram-webhook
-        run: npx --yes wrangler@4 deploy --dry-run --outdir /tmp/ballerwatch-worker
+        run: npx --yes wrangler@4.145.0 deploy --dry-run --outdir /tmp/ballerwatch-worker
 
       - name: Validate release history
         run: node infra/validate-versions.mjs
@@ -71,9 +71,14 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Validate Apps Script syntax
+        run: |
+          cp league/google_apps_script/Code.gs /tmp/ballerwatch-calendar-bridge.mjs
+          node --check /tmp/ballerwatch-calendar-bridge.mjs
+
       - name: Compile Python modules
         run: python -m compileall -q league
 
       - name: Run league unit tests
         working-directory: league
-        run: python -m unittest watcher_test.py calendar_gate_test.py
+        run: python -m unittest watcher_test.py calendar_gate_test.py google_calendar_purge_test.py

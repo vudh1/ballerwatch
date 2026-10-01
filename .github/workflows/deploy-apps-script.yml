@@ -8,7 +8,7 @@ on:
       - "league/google_apps_script/Code.gs"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ballerwatch-calendar-bridge-deploy
@@ -76,6 +76,18 @@ jobs:
           response="$(curl --fail --silent --show-error --location --retry 3 --retry-delay 3 "$GOOGLE_CALENDAR_WEBHOOK_URL")"
           node -e 'const x=JSON.parse(process.argv[1]); if (x.ok !== true || x.service !== "rats-calendar-bridge") process.exit(1)' "$response"
           echo "Calendar bridge deployment verified."
+
+      - name: One-time full reset requested by release commit
+        if: github.event_name == 'push' && contains(github.event.head_commit.message, '[purge-all]')
+        env:
+          GOOGLE_CALENDAR_WEBHOOK_URL: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_URL }}
+          GOOGLE_CALENDAR_WEBHOOK_SECRET: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_SECRET }}
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python3 league/google_calendar_purge.py
+          node shared/runtime-state.mjs purge
 
       - name: Remove OAuth material
         if: always()

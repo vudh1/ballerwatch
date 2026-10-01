@@ -22,7 +22,7 @@ function authorizeCalendar() {
 }
 
 function doGet() {
-  return json_({ok: true, service: 'rats-calendar-bridge', version: 2});
+  return json_({ok: true, service: 'rats-calendar-bridge', version: 3});
 }
 
 function doPost(e) {
@@ -32,12 +32,17 @@ function doPost(e) {
     if (!expected || body.secret !== expected) {
       return json_({ok: false, error: 'unauthorized'});
     }
+    const calendar = CalendarApp.getDefaultCalendar();
+    const props = PropertiesService.getScriptProperties();
+
+    if (body.action === 'purge') {
+      return json_(purgeManagedEvents_(calendar, props));
+    }
+
     if (body.schemaVersion !== 1 || !Array.isArray(body.updates)) {
       return json_({ok: false, error: 'invalid payload'});
     }
 
-    const calendar = CalendarApp.getDefaultCalendar();
-    const props = PropertiesService.getScriptProperties();
     const results = body.updates.map(item => applyUpdate_(calendar, props, item));
     return json_({ok: results.every(r => r.ok), results: results});
   } catch (err) {
@@ -121,6 +126,52 @@ function applyUpdate_(calendar, props, item) {
   }
 
   return {ok: true, key: item.key, action: action};
+}
+
+function purgeManagedEvents_(calendar, props) {
+  const deletedIds = {};
+  let deleted = 0;
+  let clearedProperties = 0;
+  const properties = props.getProperties();
+
+  Object.keys(properties).forEach(key => {
+    if (key.indexOf(TRACK_PREFIX) !== 0) return;
+    const eventId = properties[key];
+    let event = null;
+    try {
+      event = calendar.getEventById(eventId);
+    } catch (_) {}
+    if (event) {
+      event.deleteEvent();
+      deletedIds[eventId] = true;
+      deleted += 1;
+    }
+    props.deleteProperty(key);
+    clearedProperties += 1;
+  });
+
+  // Safety net for legacy events whose Script Property mapping was lost.
+  // Only events carrying BallerWatch's explicit tracking marker are eligible.
+  const now = new Date();
+  const start = new Date(now.getFullYear() - 5, 0, 1);
+  const end = new Date(now.getFullYear() + 6, 0, 1);
+  const candidates = calendar.getEvents(start, end, {search: 'RATS tracking key:'});
+  candidates.forEach(event => {
+    const description = String(event.getDescription() || '');
+    if (description.indexOf('RATS tracking key:') === -1) return;
+    const eventId = event.getId();
+    if (deletedIds[eventId]) return;
+    event.deleteEvent();
+    deletedIds[eventId] = true;
+    deleted += 1;
+  });
+
+  return {
+    ok: true,
+    action: 'purge',
+    deleted: deleted,
+    clearedProperties: clearedProperties
+  };
 }
 
 function narrowCandidates_(calendar, match) {

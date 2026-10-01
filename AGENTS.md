@@ -93,7 +93,7 @@ Read `STYLE_GUIDE.md` before editing code.
 
 ## Purge semantics
 
-`PURGE` is a full runtime factory reset. It deletes generated runtime files from the `runtime-state` branch, including custom league-team state, listener settings, notification/watchdog state, Calendar reconciliation snapshots, and the 48-hour chat history/review. The next runs rebuild defaults and current source snapshots. It does not delete source code, secrets, or Google Calendar events.
+`PURGE` is a full BallerWatch factory reset. It first deletes BallerWatch-managed RATS Calendar events through the authenticated Calendar bridge, then deletes generated runtime files from the `runtime-state` branch, including custom league-team state, listener settings, notification/watchdog state, Calendar reconciliation snapshots, and the 48-hour chat history/review. The next runs rebuild defaults, current source snapshots, and future Calendar match events. It does not delete source code, secrets, or unrelated Google Calendar events.
 
 ## Cloudflare and storage failure behavior
 

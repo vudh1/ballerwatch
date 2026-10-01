@@ -26,12 +26,19 @@ jobs:
           ref: main
           fetch-depth: 1
 
+      - name: Purge BallerWatch Calendar events
+        env:
+          GOOGLE_CALENDAR_WEBHOOK_URL: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_URL }}
+          GOOGLE_CALENDAR_WEBHOOK_SECRET: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_SECRET }}
+        run: python3 league/google_calendar_purge.py
+
       - name: Purge GitHub runtime-state branch
         run: node shared/runtime-state.mjs purge
 
       - name: Show purge scope
         run: |
+          echo "Deleted BallerWatch-managed RATS events from the Calendar bridge."
           echo "Deleted generated runtime files from the runtime-state branch, including pickup/league snapshots, Calendar reconciliation state, watchdog state, chat review history, listener settings, and custom league-team state."
           echo "League teams bootstrap from the built-in defaults on the next league run."
-          echo "Source code, repository/Worker secrets, and Google Calendar events are not deleted."
-          echo "The primary GitHub watcher schedules rebuild current soccer snapshots automatically."
+          echo "Source code, repository/Worker secrets, and unrelated Google Calendar events are not deleted."
+          echo "The primary GitHub watcher schedules rebuild current soccer snapshots and Calendar events automatically."

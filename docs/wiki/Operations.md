@@ -20,7 +20,25 @@ Tests, builds, deploys, commits, pull requests, watchdog failures/recovery, setu
 
 ## Purge
 
-**Purge current data** removes generated/runtime state, including league-team runtime configuration, so defaults are rebuilt from source configuration. It does not delete source code, GitHub secrets, or Google Calendar events.
+**Purge current data** performs a full BallerWatch reset:
+
+1. the authenticated Calendar bridge deletes only BallerWatch-managed RATS events;
+2. `runtime-state` generated files are cleared;
+3. the normal pickup/league/watchdog schedules rebuild fresh state;
+4. the next league reconciliation recreates current future Calendar matches.
+
+The Calendar purge uses private bridge mappings first and the explicit `RATS tracking key:` event-description marker as a legacy safety net. Source code, GitHub/Worker secrets, and unrelated Calendar events are never deleted.
+
+## Active GitHub workflows
+
+Twelve workflows remain after the 2.7.0 audit:
+
+- production: pickup, league, listener, watchdog;
+- deployment/configuration: Telegram Worker, Calendar bridge, cron-job.org;
+- quality: Validate code, Manual smoke test;
+- operations: Purge current data, Publish wiki, Cleanup merged release branches.
+
+The old one-time repository-configuration workflow and redundant failover-cache seeding workflow were removed.
 
 ## External schedules
 
