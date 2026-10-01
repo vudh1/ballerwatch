@@ -1,0 +1,124 @@
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+const DEFAULT_MODEL = "openai/gpt-oss-20b";
+export const DAILY_AI_LIMIT = 50;
+export const AI_TIMEOUT_MS = 2500;
+
+function cleanText(value, max = 1000) {
+  return String(value || "").trim().replace(/\s+/g, " ").slice(0, max);
+}
+
+function todayUtc() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export function aiBudget(settings = {}) {
+  const day = todayUtc();
+  const storedDay = String(settings.aiUsageDate || "");
+  const used = storedDay === day ? Math.max(0, Number(settings.aiUsageCount || 0)) : 0;
+  return { day, used, remaining: Math.max(0, DAILY_AI_LIMIT - used) };
+}
+
+export function aiConfigured() {
+  return Boolean(
+    cleanText(process.env.GROQ_API_KEY) &&
+    String(process.env.GROQ_FREE_TIER_ONLY || "").toLowerCase() === "true"
+  );
+}
+
+function parseDecision(text) {
+  const raw = String(text || "").trim();
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    try { parsed = JSON.parse(match[0]); } catch { return null; }
+  }
+
+  if (parsed?.action === "answer") {
+    const reply = cleanText(parsed.reply, 1200);
+    return reply ? { action: "answer", reply } : null;
+  }
+  if (parsed?.action === "feature_request") {
+    return {
+      action: "feature_request",
+      reason: cleanText(parsed.reason, 500) || "The available BallerWatch data is insufficient.",
+    };
+  }
+  return null;
+}
+
+export async function answerUnknownWithAi(question, context, settings = {}) {
+  if (!aiConfigured()) {
+    return { decision: null, settings, reason: "ai_not_configured" };
+  }
+
+  const budget = aiBudget(settings);
+  if (budget.remaining <= 0) {
+    return { decision: null, settings, reason: "daily_limit_reached" };
+  }
+
+  const nextSettings = {
+    ...settings,
+    aiUsageDate: budget.day,
+    aiUsageCount: budget.used + 1,
+  };
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(GROQ_URL, {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        "content-type": "application/json",
+        "authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: process.env.GROQ_MODEL || DEFAULT_MODEL,
+        temperature: 0.1,
+        max_completion_tokens: 300,
+        messages: [
+          {
+            role: "system",
+            content: [
+              "You are BallerWatch's read-only fallback assistant.",
+              "Answer only from the supplied BallerWatch context and ordinary reasoning.",
+              "Never claim to perform an action, change state, book anything, modify calendars, RSVP, send messages, or access information not present in context.",
+              "If the request needs unavailable information, a new capability, external lookup, or an unsupported action, return feature_request.",
+              "Be concise.",
+              'Return JSON only: {"action":"answer","reply":"..."} or {"action":"feature_request","reason":"..."}.',
+            ].join(" "),
+          },
+          {
+            role: "user",
+            content: `Question: ${cleanText(question, 600)}\n\nBallerWatch context:\n${cleanText(context, 6000)}`,
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      return { decision: null, settings: nextSettings, reason: `http_${response.status}` };
+    }
+
+    const payload = await response.json().catch(() => null);
+    const text = payload?.choices?.[0]?.message?.content;
+    const decision = parseDecision(text);
+    return {
+      decision,
+      settings: nextSettings,
+      reason: decision ? "ok" : "invalid_response",
+    };
+  } catch (error) {
+    return {
+      decision: null,
+      settings: nextSettings,
+      reason: error?.name === "AbortError" ? "timeout" : "request_failed",
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
