@@ -4,10 +4,11 @@ BallerWatch is a small soccer automation system for pickup games and Seattle RAT
 
 It uses Telegram and an installable GitHub Pages web app for questions and alerts, Cloudflare Workers for the webhook/read-only API path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Gemini Flash with Groq fallback for bounded AI assistance, standards-based Web Push for a Telegram-independent notification channel, and Google Calendar for league match sync.
 
-**Current version: 3.1.2**
+**Current version: 3.2.0**
 
 ## Recent changes
 
+- **3.2.0** — Next-game card with Directions/Share plus a closed-app notification test.
 - **3.1.2** — Push notification on/off switch inside the notification bell panel.
 - **3.1.1** — Force installed PWA clients to refresh release assets.
 - **3.1.0** — Home Screen-aware app layout with bell notifications and bottom push settings.
@@ -89,9 +90,11 @@ The v3 PWA is published at:
 It provides:
 
 - an installable Home Screen app shell;
-- a recent notification board;
+- a next-game card with Google Maps directions and native share;
+- a recent notification panel behind the top-right bell;
 - one-question/one-answer read-only Q&A with no persistent web chat history;
-- Web Push subscription controls for pickup, real RATS schedule-change, and version notifications.
+- Web Push subscription controls for pickup, real RATS schedule-change, and version notifications;
+- a manual local notification test for confirming iPhone notification display while the app is closed.
 
 On iPhone, open the site in Safari, choose **Share → Add to Home Screen**, open the installed BallerWatch app, then tap **Enable push**.
 
