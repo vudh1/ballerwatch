@@ -2,7 +2,7 @@
   "id": "/ballerwatch/",
   "name": "BallerWatch",
   "short_name": "BallerWatch",
-  "description": "Pickup and RATS soccer watcher with Telegram-independent notifications.",
+  "description": "Pickup and RATS soccer schedules, game details, and alerts.",
   "start_url": "/ballerwatch/",
   "scope": "/ballerwatch/",
   "display": "standalone",
