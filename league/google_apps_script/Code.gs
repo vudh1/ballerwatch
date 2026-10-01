@@ -8,12 +8,13 @@
  * In Project Settings -> Script Properties add:
  *   WEBHOOK_SECRET = the same random secret stored in GitHub.
  *
- * This script uses the default calendar and stores the private RATS key ->
- * Calendar event ID mapping in Script Properties.
+ * The target calendar is paired privately and stored only in Script Properties.
+ * RATS key -> Calendar event ID mappings also remain private there.
  */
 
 const TZ = 'America/Los_Angeles';
 const TRACK_PREFIX = 'rats_event_';
+const TARGET_CALENDAR_KEY = 'rats_target_calendar_id';
 
 function authorizeCalendar() {
   // Run once from the Apps Script editor to grant Calendar access.
@@ -22,7 +23,13 @@ function authorizeCalendar() {
 }
 
 function doGet() {
-  return json_({ok: true, service: 'rats-calendar-bridge', version: 3});
+  const props = PropertiesService.getScriptProperties();
+  return json_({
+    ok: true,
+    service: 'rats-calendar-bridge',
+    version: 4,
+    calendarPaired: Boolean(props.getProperty(TARGET_CALENDAR_KEY))
+  });
 }
 
 function doPost(e) {
@@ -32,8 +39,16 @@ function doPost(e) {
     if (!expected || body.secret !== expected) {
       return json_({ok: false, error: 'unauthorized'});
     }
-    const calendar = CalendarApp.getDefaultCalendar();
     const props = PropertiesService.getScriptProperties();
+
+    if (body.action === 'pair-calendar') {
+      return json_(pairCalendar_(props, body.marker));
+    }
+
+    const calendar = targetCalendar_(props);
+    if (!calendar) {
+      return json_({ok: false, error: 'calendar target is not paired'});
+    }
 
     if (body.action === 'purge') {
       return json_(purgeManagedEvents_(calendar, props));
@@ -48,6 +63,91 @@ function doPost(e) {
   } catch (err) {
     return json_({ok: false, error: String(err && err.message || err)});
   }
+}
+
+function targetCalendar_(props) {
+  const calendarId = String(props.getProperty(TARGET_CALENDAR_KEY) || '').trim();
+  if (!calendarId) return null;
+  try {
+    return CalendarApp.getCalendarById(calendarId);
+  } catch (_) {
+    return null;
+  }
+}
+
+function pairCalendar_(props, marker) {
+  const token = String(marker || '').trim();
+  if (!/^bw-pair-[a-z0-9-]{6,64}$/i.test(token)) {
+    return {ok: false, action: 'pair-calendar', error: 'invalid pairing marker'};
+  }
+
+  const now = new Date();
+  const start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const end = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+  const matches = [];
+
+  CalendarApp.getAllCalendars().forEach(calendar => {
+    let events = [];
+    try {
+      events = calendar.getEvents(start, end, {search: token});
+    } catch (_) {
+      return;
+    }
+    events.forEach(event => {
+      const title = String(event.getTitle() || '');
+      const description = String(event.getDescription() || '');
+      if (title.indexOf(token) !== -1 || description.indexOf(token) !== -1) {
+        matches.push({calendar: calendar, event: event});
+      }
+    });
+  });
+
+  if (matches.length === 0) {
+    return {
+      ok: false,
+      action: 'pair-calendar',
+      error: 'target calendar marker is not visible to the Apps Script account'
+    };
+  }
+  if (matches.length !== 1) {
+    return {
+      ok: false,
+      action: 'pair-calendar',
+      error: 'target calendar marker is ambiguous'
+    };
+  }
+
+  // Before switching targets, remove any BallerWatch events created in the
+  // previous paired/default calendar. This prevents orphaned wrong-calendar events.
+  const previousCalendar = targetCalendar_(props) || CalendarApp.getDefaultCalendar();
+  const previousCleanup = purgeManagedEvents_(previousCalendar, props);
+  if (!previousCleanup.ok) {
+    return {
+      ok: false,
+      action: 'pair-calendar',
+      error: previousCleanup.error || 'previous calendar cleanup failed'
+    };
+  }
+
+  const match = matches[0];
+  props.setProperty(TARGET_CALENDAR_KEY, match.calendar.getId());
+
+  let markerDeleted = true;
+  try {
+    match.event.deleteEvent();
+  } catch (err) {
+    markerDeleted = isAlreadyDeletedEventError_(err);
+  }
+
+  return {
+    ok: markerDeleted,
+    action: 'pair-calendar',
+    paired: true,
+    markerDeleted: markerDeleted,
+    previousDeleted: previousCleanup.deleted || 0,
+    previousStale: previousCleanup.stale || 0,
+    error: markerDeleted ? '' : 'paired calendar but marker cleanup failed'
+  };
 }
 
 function applyUpdate_(calendar, props, item) {

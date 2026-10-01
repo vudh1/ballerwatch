@@ -4,116 +4,16 @@ BallerWatch is a small soccer automation system for pickup games and Seattle RAT
 
 It uses Telegram for questions and alerts, Cloudflare Workers for the webhook/fast reply path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Gemini Flash with Groq fallback for bounded AI assistance, and Google Calendar for league match sync.
 
-**Current version: 2.7.2**
+**Current version: 2.7.3**
 
-## What changed in 2.7.2
+## Recent changes
 
-2.7.2 fixes a real Calendar reset edge case discovered during the live purge test. Apps Script can retain a private tracking mapping after the underlying Calendar event has already been deleted. Those mappings are now treated as stale cleanup: the mapping is removed and PURGE continues.
+- **2.7.3** — Pair Calendar bridge to intended target.
+- **2.7.2** — Stale Calendar mapping cleanup.
+- **2.7.1** — Calendar purge reliability fix.
+- **2.7.0** — Full reset and workflow cleanup.
 
-Actual Calendar permission/API failures still fail the reset instead of being hidden.
-
-## What changed in 2.7.1
-
-2.7.1 hardens the full Calendar reset introduced in 2.7.0. Purging continues past stale/inaccessible tracked event IDs, scans legacy marker-tagged events in bounded yearly windows, and reports a safe bridge error if anything still cannot be removed.
-
-The Calendar deployment workflow now verifies that the live bridge is version 3 or newer before allowing a full reset.
-
-## What changed in 2.7.0
-
-2.7.0 makes **Purge current data** a true BallerWatch factory reset. It now removes BallerWatch-managed RATS match events from the Calendar bridge before clearing generated runtime state. Unrelated Calendar events are not touched.
-
-The Calendar bridge tracks its own event IDs privately and also uses the explicit `RATS tracking key:` description marker as a safety net for older BallerWatch events whose private mapping may be missing.
-
-The repository workflow audit also removed two obsolete workflows:
-
-- `Configure repository` — one-time repository administration that is no longer part of normal operations.
-- `Seed failover cache` — redundant because pickup, league, and watchdog already refresh their encrypted failover cache on every production run.
-
-Twelve active workflows remain for production monitoring, Telegram/Calendar deployment, validation/smoke, cron configuration, purge, wiki sync, and branch cleanup.
-
-## What changed in 2.6.0
-
-2.6.0 makes Telegram intentionally quiet outside soccer updates and direct replies. The bot now sends proactive Telegram messages only for:
-
-- pickup RSVP/capacity notifications from the existing watcher logic;
-- real RATS match-schedule changes;
-- one combined version-change announcement per Pacific day.
-
-Direct replies to your Telegram questions continue normally.
-
-Watchdog failures/recovery, CI/tests, build/deploy activity, commits/PRs, unsolicited setup reminders, endpoint/name reminders, and score-only changes do not send Telegram messages.
-
-If several versions are released before the next allowed daily announcement, BallerWatch combines them into one message. Release announcements use user-facing version summaries from `features/versions.json`; they do not include commit or pull-request details.
-
-## What changed in 2.5.6
-
-2.5.6 makes pickup monitoring resilient to a retired RSVP backend deployment. The encrypted override or `UPSTREAM_ENDPOINT` secret remains the primary endpoint. If it is absent or returns HTTP 404/410, BallerWatch rediscovers the normal public Apps Script URL from the RSVP frontend and retries the read.
-
-The rediscovered URL is used only in memory for that run; it is never committed, logged, or written into runtime state. Live notification-silent smoke verified this recovery path against the current RSVP frontend.
-
-Repository cleanup now removes inactive `fix/*` branches as well as stale `release/*` branches.
-
-## What changed in 2.5.5
-
-2.5.5 tightens the single-snapshot runtime model: the `runtime-state` branch now contains only the canonical generated runtime files. Repository source, workflows, documentation, and release files are excluded from runtime snapshots.
-
-PURGE therefore produces an empty parentless snapshot, and subsequent watcher/listener writes rebuild only current encrypted runtime state while retaining the one-commit branch history.
-
-## What changed in 2.5.4
-
-2.5.4 keeps `runtime-state` as a current snapshot instead of an accumulating history. Every successful runtime write now publishes a new parentless root commit containing the complete current encrypted state, so older runtime commits are no longer reachable from the branch.
-
-Writes still use an optimistic lease and retry against the latest snapshot so pickup, league, listener, and watchdog updates do not intentionally overwrite a newer concurrent state. PURGE also produces a single root snapshot.
-
-A repository cleanup workflow removes stale `release/*` branches after they no longer have an open pull request.
-
-## What changed in 2.5.3
-
-2.5.3 uses the privacy-minimized 48-hour chat review as an engineering feedback loop. Repeated failures around schedule wording are now covered by deterministic routing and regression tests instead of relying on the model to guess.
-
-The bot now understands common variations such as today's schedule, games on a specific date, pickup-game details, and next/recommended-game questions. Date-specific answers can combine pickup and RATS league data, and the bounded Gemini/Groq fallback now receives upcoming league schedule context when deterministic routing does not match.
-
-This is deliberate "learning" without automatic model retraining: reviewed patterns become tested routing/examples while raw Telegram conversations remain private and short-lived.
-
-## What changed in 2.5.2
-
-2.5.2 enforces the webhook-only Telegram architecture. The GitHub listener no longer falls back to Telegram `getUpdates` when a workflow dispatch has no Telegram update payload.
-
-Cloudflare fast-path history-only dispatches are handled directly, and empty listener dispatches safely do nothing. When cron-job.org management API access is available, scheduler synchronization also disables any legacy Telegram polling schedule.
-
-## What changed in 2.5.1
-
-2.5.1 extends the temporary cron-job.org API-outage policy to post-merge operations. If the cron-job.org management API is temporarily unavailable or quota-limited, scheduler setup and Telegram Worker deployment emit warnings instead of failing after the core deployment has already succeeded.
-
-Authentication failures still fail. When cron-job.org can be queried, missing, disabled, duplicated, mistargeted, or wrong-cadence scheduler jobs also still fail verification.
-
-## What changed in 2.5.0
-
-2.5.0 adds Gemini Flash as the preferred bounded natural-language answer path. If Gemini is unavailable, rate-limited, or cannot safely answer, BallerWatch falls back to Groq and then deterministic/non-AI handling where appropriate.
-
-This release also hardens runtime recovery after PURGE: when the `runtime-state` branch is readable, it is authoritative even when a generated file is intentionally absent, so stale recovery caches cannot recreate purged data.
-
-cron-job.org remains the primary 2/5/10-minute scheduler. The watchdog now checks cron-job.org's management API only every six hours (four routine reads per day). Release smoke treats temporary API unavailability such as HTTP 429 as a warning, but still fails when the API responds and the scheduler configuration is actually missing, disabled, duplicated, or misconfigured.
-
-The notification-silent smoke test also preserves a valid last-good league snapshot when the RATS source itself is temporarily unavailable (for example HTTP 503). Parser/schema errors, authentication failures, and invalid stored state still fail the test.
-
-## What changed in 2.4.1
-
-2.4.1 explicitly publishes an empty Cloudflare Cron Trigger list and verifies after deployment that the Worker has zero scheduled triggers. This fixes a cutover detail where omitting the Wrangler `triggers` field leaves previously deployed Cron Triggers in place.
-
-## What changed in 2.4.0
-
-BallerWatch no longer uses Cloudflare Workers KV as its runtime database. This removes the daily KV request-limit risk that appeared when frequent 2/5/10-minute checks and Telegram reads were all using KV.
-
-The new design is:
-
-- **Cloudflare Worker:** Telegram webhook and fast read-only answers.
-- **Workers Cache API:** short-lived best-effort cache for fast replies and context. No Workers KV calls.
-- **cron-job.org:** primary scheduler.
-- **GitHub Actions:** pickup, league, listener fallback, watchdog, Calendar sync, deployments, tests.
-- **`runtime-state` branch:** durable generated state, separate from release history on `main`.
-- **GitHub Actions cache:** encrypted last-known backup if runtime-state cannot be read.
-- **Groq:** bounded natural-language routing and short privacy-minimized chat review summaries.
+Full release history and Telegram announcement text live in `features/versions.json`.
 
 ## Architecture
 
@@ -369,11 +269,13 @@ The next watcher runs rebuild current source state and built-in defaults.
 | **Telegram listener** | Handle state-changing or unsupported Telegram commands |
 | **System watchdog** | Validate service/scheduler health |
 | **Deploy Telegram webhook** | Deploy the webhook-only Cloudflare Worker |
+| **Deploy Calendar bridge** | Deploy and verify the Apps Script Calendar bridge |
 | **Validate code** | Style, syntax, tests, privacy audit |
 | **Manual smoke test** | Notification-silent live-source verification |
 | **Purge current data** | Factory-reset generated runtime state |
 | **Configure external cron** | Create/repair the 2/5/10-minute cron-job.org schedules |
 | **Publish wiki** | Mirror `docs/wiki/` into the GitHub Wiki when configured |
+| **Cleanup merged release branches** | Remove stale `release/*` and `fix/*` branches |
 
 ## Required secrets
 
@@ -423,6 +325,8 @@ Read these before making changes:
 - `docs/wiki/`
 
 Normal releases use `release/<version>`, run validation and the notification-silent smoke test, then squash merge to `main`.
+
+All test-only code lives under `tests/`, mirroring the source areas. Production folders should contain runtime code only.
 
 Do not send Telegram messages from tests.
 

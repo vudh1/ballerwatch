@@ -29,6 +29,13 @@ This repository uses one consistent style across runtime code, workflows, tests,
 - Network/storage code should be isolated from normalization/business rules when practical.
 - Public modules start with a descriptive module docstring and use `unittest` for existing test suites.
 
+## Tests
+
+- All test-only source lives under `tests/`, mirroring the production source area where practical.
+- Production source folders should not contain `*.test.mjs`, `*_test.py`, or smoke-only scripts.
+- Smoke helpers belong in `tests/smoke/`.
+- Tests must remain notification-silent and must not mutate Calendar data.
+
 ## Workflows and configuration
 
 - YAML uses 2-space indentation.

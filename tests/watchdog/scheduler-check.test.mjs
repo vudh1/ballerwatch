@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { checkScheduler, SCHEDULER_AUDIT_MS } from "./scheduler-check.mjs";
-import { EXTERNAL_SCHEDULE_SPECS } from "../infra/external-schedules.mjs";
+import { checkScheduler, SCHEDULER_AUDIT_MS } from "../../watchdog/scheduler-check.mjs";
+import { EXTERNAL_SCHEDULE_SPECS } from "../../infra/external-schedules.mjs";
 
 const now = Date.parse("2026-10-01T00:00:00Z");
 const jobs = EXTERNAL_SCHEDULE_SPECS.map(spec => ({ title: spec.title, enabled: true, schedule: { minutes: spec.minutes }, url: `https://api.github.com/repos/vudh1/ballerwatch/actions/workflows/${spec.workflow}/dispatches` }));

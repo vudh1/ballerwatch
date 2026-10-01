@@ -57,6 +57,8 @@ Tests, audits, smoke tests, and temporary verification runs must **not send Tele
 
 Use the notification-silent Manual smoke test for live-source verification. Do not add production notifications to PR tests.
 
+All test-only source files live under `tests/`, mirroring the production source area where practical. Do not place `*.test.mjs`, `*_test.py`, or smoke-only scripts beside runtime modules.
+
 For RATS changes, preserve the fast path that tries the last known season before broader discovery and fetches independent team schedule exports concurrently.
 
 When testing runtime persistence, use encrypted fixtures or the real `runtime-state` branch through the supported runtime-state helper. Never put decrypted runtime files in an artifact or commit.

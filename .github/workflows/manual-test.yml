@@ -11,6 +11,7 @@ on:
       - "shared/**"
       - "watchdog/**"
       - "infra/**"
+      - "tests/**"
       - ".github/workflows/**"
 
 permissions:
@@ -39,7 +40,7 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-        run: node scripts/ai-smoke.mjs
+        run: node tests/smoke/ai-smoke.mjs
 
       - name: Pull runtime fixtures from GitHub state branch
         env:
@@ -78,7 +79,7 @@ jobs:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           OWNER_RSVP_NAME: ${{ secrets.OWNER_RSVP_NAME }}
-        run: node manual-test.mjs
+        run: node tests/smoke/manual-smoke.mjs
 
       - name: Verify enabled external failover posture
         env:

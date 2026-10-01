@@ -5,7 +5,7 @@ import {
   analyzeExternalSchedules,
   syncExternalSchedulesOptional,
   verifyExternalSchedules,
-} from "./external-schedules.mjs";
+} from "../../infra/external-schedules.mjs";
 
 function job(spec, enabled = true) {
   return {

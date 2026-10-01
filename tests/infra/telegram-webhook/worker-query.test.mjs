@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { gamesOnDate, nextGame, resolveScheduleDate } from "./worker.mjs";
+import { gamesOnDate, nextGame, resolveScheduleDate } from "../../../infra/telegram-webhook/worker.mjs";
 
 function snapshot() {
   return {

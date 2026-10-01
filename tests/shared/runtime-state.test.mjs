@@ -4,9 +4,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { pullRuntimeState, purgeRuntimeState, pushRuntimeState, snapshotPushArgs } from "./runtime-state.mjs";
-import { encryptState } from "./state-crypto.mjs";
-import { saveFailoverState } from "./failover-state.mjs";
+import { pullRuntimeState, purgeRuntimeState, pushRuntimeState, snapshotPushArgs } from "../../shared/runtime-state.mjs";
+import { encryptState } from "../../shared/state-crypto.mjs";
+import { saveFailoverState } from "../../shared/failover-state.mjs";
 
 test("snapshot pushes use an optimistic force-with-lease", () => {
   assert.deepEqual(
