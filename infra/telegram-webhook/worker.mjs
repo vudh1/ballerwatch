@@ -1075,9 +1075,13 @@ function webCalendarGameId(kind, value) {
   return `${kind}:${cleanText(value, 300)}`;
 }
 
-export function webCalendarDetails(snapshot, weatherState = {}, days = 14) {
+export function webCalendarDetails(
+  snapshot,
+  weatherState = {},
+  days = 14,
+  startDate = localDate(),
+) {
   const safe = webSafeSnapshot(snapshot);
-  const startDate = localDate();
   const endDate = addDays(startDate, Math.max(1, Number(days) || 14) - 1);
   const weatherById = new Map(
     (Array.isArray(weatherState?.games) ? weatherState.games : [])
