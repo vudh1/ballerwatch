@@ -1,4 +1,4 @@
-const CACHE = "ballerwatch-v3-shell";
+const CACHE = "ballerwatch-v3-1-shell";
 const SHELL = [
   "./",
   "./index.html",
