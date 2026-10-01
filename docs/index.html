@@ -21,31 +21,24 @@
         <h1>BallerWatch</h1>
         <p class="subtitle">Pickup and RATS updates without depending on Telegram.</p>
       </div>
-      <div class="status-pill" id="system-status">Connecting…</div>
+      <div class="hero-actions">
+        <button class="bell-button" id="notification-bell" type="button"
+          aria-label="Open notifications" aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>
+          </svg>
+          <span class="notification-badge" id="notification-badge" hidden>0</span>
+        </button>
+        <div class="status-pill" id="system-status">Connecting…</div>
+      </div>
     </header>
 
     <section class="card install-card" id="install-card">
       <div>
         <h2>Home Screen app</h2>
-        <p id="install-copy">Add BallerWatch to your iPhone Home Screen, then enable push notifications.</p>
+        <p id="install-copy">Add BallerWatch to your iPhone Home Screen for the app experience and push notifications.</p>
       </div>
-      <button class="secondary" id="install-help">How to install</button>
-    </section>
-
-    <section class="card push-card">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">BACKUP ALERTS</p>
-          <h2>Push notifications</h2>
-        </div>
-        <span class="status-dot" id="push-status">Checking…</span>
-      </div>
-      <p class="muted">Receives the same public-safe pickup, league, and version alerts even if Telegram is unavailable.</p>
-      <div class="button-row">
-        <button id="enable-push">Enable push</button>
-        <button class="secondary" id="disable-push">Disable</button>
-      </div>
-      <p class="hint" id="push-hint"></p>
+      <button class="secondary" id="install-help" type="button">How to install</button>
     </section>
 
     <section class="card">
@@ -64,20 +57,23 @@
         </div>
       </form>
       <div class="answer" id="answer" hidden></div>
-      <p class="hint">Read-only questions only in v3.0.0. Telegram remains the control surface for commands that change settings.</p>
+      <p class="hint">Read-only questions only. Telegram remains the control surface for commands that change settings.</p>
     </section>
 
-    <section class="card">
+    <section class="card settings-card" id="settings">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">NOTIFICATION BOARD</p>
-          <h2>Recent updates</h2>
+          <p class="eyebrow">SETTINGS</p>
+          <h2>Push notifications</h2>
         </div>
-        <button class="icon-button" id="refresh-board" aria-label="Refresh notifications">↻</button>
+        <span class="status-dot" id="push-status">Checking…</span>
       </div>
-      <div id="board" class="board">
-        <p class="muted">Loading updates…</p>
+      <p class="muted">Backup alerts for public-safe pickup, league, and version updates when Telegram is unavailable.</p>
+      <div class="button-row">
+        <button id="enable-push" type="button">Enable push</button>
+        <button class="secondary" id="disable-push" type="button">Disable</button>
       </div>
+      <p class="hint" id="push-hint"></p>
     </section>
 
     <footer>
@@ -89,6 +85,24 @@
     </footer>
   </main>
 
+  <dialog id="notification-dialog" class="notification-dialog">
+    <div class="dialog-shell">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">NOTIFICATIONS</p>
+          <h2>Recent updates</h2>
+        </div>
+        <div class="dialog-actions">
+          <button class="icon-button" id="refresh-board" type="button" aria-label="Refresh notifications">↻</button>
+          <button class="icon-button" id="close-notifications" type="button" aria-label="Close notifications">×</button>
+        </div>
+      </div>
+      <div id="board" class="board">
+        <p class="muted">Loading updates…</p>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="install-dialog">
     <form method="dialog">
       <h2>Install on iPhone</h2>
@@ -97,7 +111,7 @@
         <li>Tap the Share button.</li>
         <li>Choose <strong>Add to Home Screen</strong>.</li>
         <li>Open BallerWatch from the new Home Screen icon.</li>
-        <li>Tap <strong>Enable push</strong> inside the installed app.</li>
+        <li>Open <strong>Settings</strong> at the bottom and tap <strong>Enable push</strong>.</li>
       </ol>
       <p class="muted">iPhone Web Push requires the site to be opened as a Home Screen web app.</p>
       <button>Done</button>
