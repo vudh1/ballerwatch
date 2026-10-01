@@ -9,7 +9,6 @@ import {
 } from "./edge-runtime.mjs";
 
 const REPO = "vudh1/ballerwatch";
-const RAW_CACHE_SECONDS = 20;
 const CONTEXT_CACHE_SECONDS = 600;
 const EDGE_AI_DAILY_LIMIT = 25;
 const EDGE_AI_TIMEOUT_MS = 1200;
@@ -177,19 +176,6 @@ async function runtimeFilePut(env, path, raw) {
   await syncDerivedRuntimeFile(env, path, text);
 }
 
-async function runtimeFilesMigrateFromRepo(env) {
-  let migrated = 0;
-  for (const path of RUNTIME_FILE_PATHS) {
-    try {
-      const value = await githubFile(env, path);
-      const raw = JSON.stringify(value, null, 2) + "\n";
-      await runtimeFilePut(env, path, raw);
-      migrated += 1;
-    } catch {}
-  }
-  return migrated;
-}
-
 async function runtimeSettings(env) {
   const cached = await kvJsonGet(env, "runtime:listener-settings");
   if (cached && typeof cached === "object") return cached;
@@ -238,75 +224,30 @@ async function rememberFastReplyInRuntime(env, question, reply, messageId, lastD
 }
 
 async function loadSnapshot(env) {
-  if (env.BALLERWATCH_STATE) {
-    const [pickup, pickupPrivate, league, today, teams, version, settings] = await Promise.all([
-      kvJsonGet(env, "snapshot:pickup"),
-      kvJsonGet(env, "snapshot:pickup-private"),
-      kvJsonGet(env, "snapshot:league"),
-      kvJsonGet(env, "snapshot:today"),
-      kvJsonGet(env, "snapshot:teams"),
-      kvTextGet(env, "snapshot:version"),
-      runtimeSettings(env),
-    ]);
-    if (pickup && league && Array.isArray(teams)) {
-      return {
-        pickup,
-        pickupPrivate: pickupPrivate || { events: {} },
-        league,
-        today: today || league.today || { games: [] },
-        teams,
-        settings: settings || {},
-        version: version || "unknown",
-        loadedAt: new Date().toISOString(),
-        source: "cloudflare-kv",
-      };
-    }
+  if (!env.BALLERWATCH_STATE) throw new Error("Runtime KV is unavailable.");
+  const [pickup, pickupPrivate, league, today, teams, version, settings] = await Promise.all([
+    kvJsonGet(env, "snapshot:pickup"),
+    kvJsonGet(env, "snapshot:pickup-private"),
+    kvJsonGet(env, "snapshot:league"),
+    kvJsonGet(env, "snapshot:today"),
+    kvJsonGet(env, "snapshot:teams"),
+    kvTextGet(env, "snapshot:version"),
+    runtimeSettings(env),
+  ]);
+  if (!pickup || !league || !Array.isArray(teams)) {
+    throw new Error("Cloudflare KV soccer snapshot is incomplete.");
   }
-
-  const cache = caches.default;
-  const key = new Request("https://ballerwatch.internal/cache/snapshot");
-  const cached = await cache.match(key);
-  if (cached) return cached.json();
-
-  const [feedEnc, eventsEnc, leagueEnc, todayEnc, teamsEnc, listenerRaw, versions] = await Promise.all([
-    githubFile(env, "pickup/state/feed.json"),
-    githubFile(env, "pickup/state/events.json"),
-    githubFile(env, "league/state/schedule.json"),
-    githubFile(env, "league/state/today.json"),
-    githubFile(env, "league/state/teams.json"),
-    githubFile(env, "state/listener.json"),
-    githubFile(env, "features/versions.json"),
-  ]);
-
-  const [pickup, pickupPrivate, league, today, teamsPayload, settings] = await Promise.all([
-    decryptState(feedEnc, env),
-    decryptState(eventsEnc, env),
-    decryptState(leagueEnc, env),
-    decryptState(todayEnc, env),
-    decryptState(teamsEnc, env),
-    decryptState(listenerRaw.settings, env),
-  ]);
-
-  if (!pickup || !league || !teamsPayload) throw new Error("Encrypted BallerWatch state could not be decrypted.");
-
-  const snapshot = {
+  return {
     pickup,
-    pickupPrivate,
+    pickupPrivate: pickupPrivate || { events: {} },
     league,
-    today,
-    teams: Array.isArray(teamsPayload.teams) ? teamsPayload.teams : [],
+    today: today || league.today || { games: [] },
+    teams,
     settings: settings || {},
-    version: String(versions?.currentVersion || "unknown"),
+    version: version || "unknown",
     loadedAt: new Date().toISOString(),
+    source: "cloudflare-kv",
   };
-
-  await cache.put(
-    key,
-    new Response(JSON.stringify(snapshot), {
-      headers: { "cache-control": `public,max-age=${RAW_CACHE_SECONDS}` },
-    }),
-  );
-  return snapshot;
 }
 
 async function telegram(env, method, body) {
@@ -680,7 +621,7 @@ async function fastReply(env, message) {
   return {reply,messageId:Number(sent?.message_id||0),intent};
 }
 
-async function githubLeagueBundle(env) {
+async function runtimeLeagueBundle(env) {
   try {
     const [teamsRaw,scheduleRaw,todayRaw]=await Promise.all([
       runtimeFileGet(env,"league/state/teams.json"),
@@ -700,26 +641,7 @@ async function githubLeagueBundle(env) {
     }
   } catch {}
 
-  // Migration fallback: read the old repository state until it has been copied
-  // into KV. This path becomes unused after the runtime-state files are removed.
-  try {
-    const [teamsEncrypted,scheduleEncrypted,todayEncrypted]=await Promise.all([
-      githubFile(env,"league/state/teams.json"),
-      githubFile(env,"league/state/schedule.json"),
-      githubFile(env,"league/state/today.json"),
-    ]);
-    const [teamsPayload,schedule,today]=await Promise.all([
-      decryptState(teamsEncrypted,env),
-      decryptState(scheduleEncrypted,env),
-      decryptState(todayEncrypted,env),
-    ]);
-    const teams=Array.isArray(teamsPayload?.teams)
-      ? teamsPayload.teams.map(name=>cleanText(name,200)).filter(Boolean)
-      : [];
-    if(teams.length && schedule) return {teams,schedule,today:today||{games:[]}};
-  } catch {}
-
-  const snap=await loadSnapshot(env).catch(()=>null);
+  const snap=await loadSnapshot(env);
   return {
     teams:Array.isArray(snap?.teams)?snap.teams:[],
     schedule:snap?.league||null,
@@ -774,7 +696,7 @@ async function refreshPickupEdge(env,{dispatch=true,write=true}={}) {
 }
 
 async function refreshLeagueEdge(env,{dispatch=true,write=true}={}) {
-  const bundle=await githubLeagueBundle(env);
+  const bundle=await runtimeLeagueBundle(env);
   const teams=bundle.teams;
   if(!teams.length) throw new Error("No monitored league teams available");
   const seasonId=String(bundle.schedule?.seasonId || bundle.schedule?.season || "").trim();
@@ -902,12 +824,6 @@ export default {
       }
 
       return Response.json({ok:false,error:"Unsupported action"},{status:400});
-    }
-    if (request.method === "POST" && url.pathname === "/admin/migrate-repo-state") {
-      const secret=request.headers.get("x-ballerwatch-admin")||"";
-      if(!secret || secret!==env.TELEGRAM_WEBHOOK_SECRET) return new Response("Unauthorized",{status:401});
-      const migrated=await runtimeFilesMigrateFromRepo(env);
-      return Response.json({ok:true,migrated});
     }
     if (request.method === "POST" && url.pathname === "/admin/purge-runtime") {
       const secret=request.headers.get("x-ballerwatch-admin")||"";
