@@ -4,7 +4,13 @@ BallerWatch is a small soccer automation system for pickup games and Seattle RAT
 
 It uses Telegram for questions and alerts, Cloudflare Workers for the webhook/fast reply path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Gemini Flash with Groq fallback for bounded AI assistance, and Google Calendar for league match sync.
 
-**Current version: 2.7.1**
+**Current version: 2.7.2**
+
+## What changed in 2.7.2
+
+2.7.2 fixes a real Calendar reset edge case discovered during the live purge test. Apps Script can retain a private tracking mapping after the underlying Calendar event has already been deleted. Those mappings are now treated as stale cleanup: the mapping is removed and PURGE continues.
+
+Actual Calendar permission/API failures still fail the reset instead of being hidden.
 
 ## What changed in 2.7.1
 

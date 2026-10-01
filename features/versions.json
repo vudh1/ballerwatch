@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "2.7.1",
+  "currentVersion": "2.7.2",
   "releases": [
+    {
+      "version": "2.7.2",
+      "date": "2026-10-01",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Stale Calendar mapping cleanup",
+      "telegramAnnouncement": "Calendar purge now treats mappings to already-deleted events as harmless stale state instead of failing the full reset.",
+      "changes": [
+        "Changed Calendar PURGE so Script Property mappings to events that no longer exist or were already deleted are cleared as stale state rather than treated as fatal errors.",
+        "Kept all other Calendar deletion, permission, API, and marker-scan errors fail-closed.",
+        "Added stale-mapping counts to purge logs and regression coverage for the reporting path."
+      ]
+    },
     {
       "version": "2.7.1",
       "date": "2026-10-01",
