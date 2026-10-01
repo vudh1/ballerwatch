@@ -253,3 +253,12 @@ test("cron-job.org is reserved for pickup and league while watchdog is retired",
   assert.ok(primaryBlock);
   assert.doesNotMatch(primaryBlock[1], /System watchdog/);
 });
+
+
+test("weather release bootstrap stays notification-silent", () => {
+  const workflow = fs.readFileSync(".github/workflows/weather-refresh.yml", "utf8");
+  assert.match(workflow, /push:[\s\S]*weather\/\*\*/);
+  assert.match(workflow, /node weather\/update\.mjs/);
+  assert.match(workflow, /node shared\/runtime-state\.mjs push weather/);
+  assert.doesNotMatch(workflow, /send-pending|sendMessage|telegram-notify|shared\/telegram/i);
+});

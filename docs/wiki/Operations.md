@@ -68,6 +68,8 @@ Venue geocoding uses OpenStreetMap Nominatim only for uncached public venue name
 
 If forecast retrieval fails, the last successful match weather may be retained and marked cached/stale instead of removing the game from the calendar.
 
+Weather-related releases also trigger a one-time notification-silent **Refresh match weather** workflow so a newly deployed calendar does not have to wait for the next six-hour maintenance boundary. This is a push/bootstrap trigger, not another recurring schedule.
+
 ## GitHub Wiki publishing
 
 The canonical pages live in `docs/wiki/`. The **Publish wiki** workflow mirrors those Markdown pages into the repository's GitHub Wiki using the workflow-scoped `GITHUB_TOKEN` with `contents: write`. No separate Wiki token is required. Changes under `docs/wiki/` on `main` trigger a sync automatically.
