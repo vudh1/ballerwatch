@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "2.6.0",
+  "currentVersion": "2.7.0",
   "releases": [
+    {
+      "version": "2.7.0",
+      "date": "2026-10-01",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Full reset and workflow cleanup",
+      "telegramAnnouncement": "Full reset now clears BallerWatch-managed RATS Calendar events as well as runtime state, and obsolete maintenance workflows were removed.",
+      "changes": [
+        "Expanded PURGE so it deletes only BallerWatch-managed RATS Calendar events through the authenticated Apps Script bridge before clearing runtime-state.",
+        "Added a safe Calendar purge action that removes tracked event IDs and marker-tagged legacy BallerWatch events without touching unrelated Calendar events.",
+        "Removed the obsolete Configure repository and Seed failover cache workflows; production watchers already maintain failover caches and repository configuration is no longer a recurring operation.",
+        "Added Calendar bridge syntax validation and Calendar purge client tests.",
+        "Added a one-time release reset hook so this release can deploy the new Calendar bridge, purge Calendar/runtime state, and let the normal 2/5/10-minute production watchers rebuild from scratch."
+      ]
+    },
     {
       "version": "2.6.0",
       "date": "2026-10-01",
