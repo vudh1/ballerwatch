@@ -13,7 +13,7 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 3
     defaults:
       run:
         working-directory: league
@@ -22,10 +22,6 @@ jobs:
         with:
           ref: main
           fetch-depth: 1
-
-      - uses: actions/setup-node@v5
-        with:
-          node-version: "22"
 
       - name: Pull runtime state from Cloudflare KV
         working-directory: .
@@ -43,24 +39,20 @@ jobs:
           node shared/league-teams.mjs prepare
           node shared/league-state.mjs prepare
 
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
       - name: Fetch and validate league schedules
-        run: python watcher.py
+        run: /usr/bin/time -f 'leagueWatcherSeconds=%e' python3 watcher.py
 
       - name: Notify Telegram about score changes
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python telegram_score_notify.py
+        run: python3 telegram_score_notify.py
 
       - name: Compare with applied Calendar snapshot
         id: calendar_gate
         shell: bash
         run: |
-          python calendar_gate.py | tee /tmp/calendar-gate.txt
+          python3 calendar_gate.py | tee /tmp/calendar-gate.txt
           grep '^needsCalendar=' /tmp/calendar-gate.txt >> "$GITHUB_OUTPUT"
           grep '^pendingCount=' /tmp/calendar-gate.txt >> "$GITHUB_OUTPUT"
 
@@ -69,14 +61,14 @@ jobs:
         env:
           GOOGLE_CALENDAR_WEBHOOK_URL: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_URL }}
           GOOGLE_CALENDAR_WEBHOOK_SECRET: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_SECRET }}
-        run: python google_calendar_sync.py
+        run: python3 google_calendar_sync.py
 
       - name: Notify Telegram about successful schedule update
         if: steps.calendar_gate.outputs.needsCalendar == 'true'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python telegram_notify.py
+        run: python3 telegram_notify.py
 
       - name: Seal league runtime state
         if: always()
