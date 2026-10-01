@@ -12,19 +12,22 @@ test("private request text never enters the public projection", () => {
     { question: "Contact Example Person audit@example.invalid 202-555-0142 at 123 Example Street", count: 2, id: "private-id", firstSeenAt: "private-time", extra: "private" },
     { question: "game at https://example.invalid/private?token=secret on 2026-10-01", count: 3 },
   ]);
-  assert.deepEqual(summary, { version: 2, requests: [{ category: "schedule", count: 3 }, { category: "other", count: 2 }] });
+  assert.deepEqual(summary, { version: 3, requests: [
+    { category: "schedule", count: 3, manual: 0, thumbsDown: 0 },
+    { category: "other", count: 2, manual: 0, thumbsDown: 0 },
+  ] });
   assert.equal(isPublicRequestSummary(summary), true);
 });
 
 test("audit rejects free text, metadata, arbitrary categories and malformed counts", () => {
-  const good = { version: 2, requests: [{ category: "other", count: 1 }] };
+  const good = { version: 3, requests: [{ category: "other", count: 1, manual: 0, thumbsDown: 0 }] };
   for (const bad of [
     { ...good, timestamp: "private" },
     { version: 1, requests: [] },
-    { version: 2, requests: [{ category: "other", count: 1, question: "private" }] },
-    { version: 2, requests: [{ category: "private@example.invalid", count: 1 }] },
-    { version: 2, requests: [{ category: "other", count: "private" }] },
-    { version: 2, requests: [{ category: "other", count: -1 }] },
+    { version: 3, requests: [{ category: "other", count: 1, manual: 0, thumbsDown: 0, question: "private" }] },
+    { version: 3, requests: [{ category: "private@example.invalid", count: 1, manual: 0, thumbsDown: 0 }] },
+    { version: 3, requests: [{ category: "other", count: "private", manual: 0, thumbsDown: 0 }] },
+    { version: 3, requests: [{ category: "other", count: -1, manual: 0, thumbsDown: 0 }] },
     { version: 2, requests: [...good.requests, ...good.requests] },
   ]) assert.equal(isPublicRequestSummary(bad), false);
 });
@@ -45,7 +48,7 @@ test("encrypted persistence preserves originals, deduplicates, migrates public d
     fs.writeFileSync(path.join(directory, "unknown.json"), JSON.stringify({ version: 1, requests: [{ question }] }));
     refreshPublicRequests(directory);
     const publicText = fs.readFileSync(path.join(directory, "unknown.json"), "utf8");
-    assert.deepEqual(JSON.parse(publicText), { version: 2, requests: [{ category: "other", count: 2 }] });
+    assert.deepEqual(JSON.parse(publicText), { version: 3, requests: [{ category: "other", count: 2, manual: 0, thumbsDown: 0 }] });
     process.env.TRACKER_STATE_KEY = "wrong-test-key";
     assert.throws(() => recordUnknownQuestion("another request", directory), /Unable to decrypt/);
     assert.throws(() => refreshPublicRequests(directory), /Unable to decrypt/);
