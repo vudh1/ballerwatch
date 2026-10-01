@@ -63,3 +63,9 @@ The 48-hour chat review is an engineering feedback loop, not online model traini
 
 Common factual soccer questions should prefer deterministic runtime-state answers. Gemini Flash is the first bounded fallback for unfamiliar read-only wording, with Groq next; neither model receives action tools.
 
+## Runtime-state history retention
+
+`runtime-state` is a snapshot branch, not an audit log. Each successful state write constructs the complete current encrypted tree as a parentless commit and updates the branch only if the expected previous head is still current. A concurrent writer causes a retry against the newer snapshot.
+
+This keeps one reachable commit on `runtime-state` while preserving the existing encrypted-file boundaries and concurrent pickup/league/listener/watchdog updates. PURGE uses the same snapshot mechanism.
+
