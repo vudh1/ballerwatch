@@ -44,6 +44,18 @@ jobs:
             test -n "${!name}" || { echo "::error::Missing $name"; exit 1; }
           done
 
+      - name: Migrate and verify GitHub runtime-state branch
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          for scope in listener pickup league watchdog; do
+            node shared/runtime-state.mjs pull "$scope"
+            node shared/runtime-state.mjs push "$scope"
+            node shared/runtime-state.mjs clean "$scope"
+          done
+
+
       - name: Prepare Cloudflare runtime config
         working-directory: infra/telegram-webhook
         env:
@@ -109,17 +121,6 @@ jobs:
           echo "Verifying webhook-only Worker health..."
           curl --max-time 15 --fail-with-body --silent --show-error "https://ballerwatch-telegram.$SUBDOMAIN.workers.dev/health"
           echo
-
-      - name: Migrate and verify GitHub runtime-state branch
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          for scope in listener pickup league watchdog; do
-            node shared/runtime-state.mjs pull "$scope"
-            node shared/runtime-state.mjs push "$scope"
-            node shared/runtime-state.mjs clean "$scope"
-          done
 
       - name: Ensure primary GitHub schedules stay enabled
         env:
