@@ -1,7 +1,23 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "2.2.0",
+  "currentVersion": "2.3.0",
   "releases": [
+    {
+      "version": "2.3.0",
+      "date": "2026-10-01",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Resilient failover and onboarding foundation",
+      "changes": [
+        "Standardized repository code style and module-level documentation, added a dependency-free style checker, expanded CI coverage, and added long-form onboarding/operations documentation under docs/wiki.",
+        "Kept all three cron-job.org failover jobs enabled at their 2/5/10-minute cadences while adding a Cloudflare heartbeat gate so pickup and league fallback runs skip duplicate source work when the edge is healthy.",
+        "Added encrypted GitHub Actions cache backups of last-known pickup, league, and watchdog runtime state so GitHub fallback can continue when the Worker runtime-state API is unavailable.",
+        "Changed PURGE into a full Cloudflare KV runtime factory reset, including custom league-team state; built-in default teams bootstrap again on the next league run.",
+        "Added a deterministic intent/tag index before Groq to reduce AI calls and edge latency for common natural-language questions.",
+        "Centralized runtime path definitions and persisted the fresh Cloudflare RATS change signal so full league reconciliation can skip a duplicate aggregate API request after edge-triggered changes.",
+        "Added a GitHub Wiki publishing workflow and documented architecture, failover, development, operations, release process, and data/privacy boundaries."
+      ]
+    },
     {
       "version": "2.2.0",
       "date": "2026-10-01",
