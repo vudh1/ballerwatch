@@ -12,12 +12,6 @@ const RECOVERY_COOLDOWN_MINUTES = 10;
 
 export const WORKFLOWS = [
   {
-    file: "listener.yml",
-    label: "Telegram listener",
-    maxAgeMinutes: 4,
-    activeGraceMinutes: 4,
-  },
-  {
     file: "pickup.yml",
     label: "Pickup watcher",
     maxAgeMinutes: 7,
@@ -204,6 +198,29 @@ async function dispatchRecovery(spec) {
   );
 }
 
+async function telegramWebhookProblem() {
+  const url = String(process.env.TELEGRAM_WEBHOOK_HEALTH_URL || "").trim();
+  if (!url) return null;
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || payload?.ok !== true || payload?.service !== "ballerwatch-telegram-webhook") {
+      return {
+        key: "telegram-webhook:unhealthy",
+        message: "Telegram webhook: health check failed",
+        recoverable: false,
+      };
+    }
+    return null;
+  } catch {
+    return {
+      key: "telegram-webhook:unreachable",
+      message: "Telegram webhook: health endpoint is unreachable",
+      recoverable: false,
+    };
+  }
+}
+
 async function validationProblem() {
   const data = await github("/actions/workflows/validate.yml/runs?per_page=5");
   const runs = Array.isArray(data.workflow_runs) ? data.workflow_runs : [];
@@ -357,6 +374,9 @@ export async function runWatchdog() {
       }
     }
   }
+
+  const webhook = await telegramWebhookProblem();
+  if (webhook) problems.push(webhook);
 
   const validation = await validationProblem();
   if (validation) problems.push(validation);

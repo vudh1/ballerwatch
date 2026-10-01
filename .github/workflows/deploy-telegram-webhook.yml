@@ -1,0 +1,97 @@
+name: Deploy Telegram webhook
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "infra/telegram-webhook/**"
+      - "infra/disable-listener-cron.mjs"
+      - ".github/workflows/deploy-telegram-webhook.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Verify required secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          CRON_GITHUB_PAT: ${{ secrets.CRON_GITHUB_PAT }}
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          OWNER_RSVP_NAME: ${{ secrets.OWNER_RSVP_NAME }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          CRON_JOB_ORG_API_KEY: ${{ secrets.CRON_JOB_ORG_API_KEY }}
+        run: |
+          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID CRON_GITHUB_PAT CRON_JOB_ORG_API_KEY; do
+            test -n "${!name}" || { echo "::error::Missing $name"; exit 1; }
+          done
+
+      - name: Deploy Worker shell
+        working-directory: infra/telegram-webhook
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 deploy
+
+      - name: Upload Worker secrets
+        working-directory: infra/telegram-webhook
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          CRON_GITHUB_PAT: ${{ secrets.CRON_GITHUB_PAT }}
+        run: |
+          WEBHOOK_SECRET="$(openssl rand -hex 24)"
+          printf '%s' "$WEBHOOK_SECRET" > /tmp/telegram-webhook-secret
+          node -e 'process.stdout.write(JSON.stringify({
+            TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+            TELEGRAM_CHAT_ID: process.env.TELEGRAM_CHAT_ID,
+            GITHUB_DISPATCH_TOKEN: process.env.CRON_GITHUB_PAT,
+            TELEGRAM_WEBHOOK_SECRET: require("fs").readFileSync("/tmp/telegram-webhook-secret","utf8"),
+            ...(process.env.TRACKER_STATE_KEY ? { TRACKER_STATE_KEY: process.env.TRACKER_STATE_KEY } : {}),
+            ...(process.env.OWNER_RSVP_NAME ? { OWNER_RSVP_NAME: process.env.OWNER_RSVP_NAME } : {}),
+            ...(process.env.GROQ_API_KEY ? { GROQ_API_KEY: process.env.GROQ_API_KEY } : {})
+          }))' | npx --yes wrangler@4 secret bulk
+
+      - name: Redeploy with secret bindings
+        working-directory: infra/telegram-webhook
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 deploy
+
+      - name: Discover workers.dev URL and configure Telegram
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          SUBDOMAIN="$(curl --fail --silent             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain"             | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.parse(s).result.subdomain))')"
+          WEBHOOK_URL="https://ballerwatch-telegram.$SUBDOMAIN.workers.dev/telegram"
+          SECRET="$(cat /tmp/telegram-webhook-secret)"
+          curl --fail --silent --show-error             -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook"             -H "content-type: application/json"             -d "$(node -e 'process.stdout.write(JSON.stringify({url:process.argv[1],secret_token:process.argv[2],allowed_updates:["message"],drop_pending_updates:false}))' "$WEBHOOK_URL" "$SECRET")"
+          echo
+          curl --fail --silent --show-error "https://ballerwatch-telegram.$SUBDOMAIN.workers.dev/health"
+          echo
+          echo "Telegram webhook: $WEBHOOK_URL"
+
+      - name: Disable old one-minute listener cron
+        env:
+          CRON_JOB_ORG_API_KEY: ${{ secrets.CRON_JOB_ORG_API_KEY }}
+        run: node infra/disable-listener-cron.mjs
+
+      - name: Clean temporary secret
+        if: always()
+        run: rm -f /tmp/telegram-webhook-secret

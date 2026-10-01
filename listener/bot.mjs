@@ -1,6 +1,7 @@
 import { recordUnknownQuestion, refreshPublicRequests } from "../shared/feature-requests.mjs";
+import { answerUnknownWithAi } from "../shared/ai-fallback.mjs";
 import fs from "node:fs";
-import { getTelegramUpdates, isOwnerChat, sendTelegram } from "../shared/telegram.mjs";
+import { getTelegramUpdates, isOwnerChat, sendTelegram, sendTyping } from "../shared/telegram.mjs";
 import { loadBotState, saveBotState } from "../shared/bot-state.mjs";
 import { decryptState } from "../shared/state-crypto.mjs";
 import { ensureEncryptedLeagueTeams, loadLeagueTeams, normalizeLeagueTeamName, saveLeagueTeams } from "../shared/league-teams.mjs";
@@ -22,6 +23,44 @@ function readJson(path) {
 
 function normalizeText(text) {
   return String(text || "").trim().replace(/\s+/g, " ");
+}
+
+
+function parseManualFeatureRequest(text) {
+  const clean = normalizeText(text);
+  let match = clean.match(/^\/?feature(?:\s+request)?\s+(.+)$/i);
+  if (match) return normalizeText(match[1]);
+  match = clean.match(/^(?:add|save|create)\s+(?:a\s+)?feature\s+request\s*[:\-]?\s*(.+)$/i);
+  if (match) return normalizeText(match[1]);
+  return "";
+}
+
+function isThumbsDownFeedback(text) {
+  const clean = normalizeText(text).toLowerCase();
+  return clean === "👎" || clean === "thumbs down" || clean === "thumb down";
+}
+
+function rememberBotReply(settings, question, reply, messageId) {
+  const id = Number(messageId || 0);
+  if (!id || !question || !reply) return settings;
+  const recent = Array.isArray(settings.recentBotReplies) ? settings.recentBotReplies : [];
+  const next = [
+    ...recent.filter((item) => Number(item?.messageId) !== id),
+    {
+      messageId: id,
+      question: normalizeText(question).slice(0, 500),
+      reply: String(reply).slice(0, 1200),
+      createdAt: new Date().toISOString(),
+    },
+  ].slice(-20);
+  return { ...settings, recentBotReplies: next };
+}
+
+function findRememberedReply(settings, messageId) {
+  const id = Number(messageId || 0);
+  if (!id) return null;
+  return (Array.isArray(settings.recentBotReplies) ? settings.recentBotReplies : [])
+    .find((item) => Number(item?.messageId) === id) || null;
 }
 
 function localToday() {
@@ -954,6 +993,32 @@ function versionReply() {
   return lines.join("\n");
 }
 
+function buildAiContext(settings) {
+  const pickupFeed = loadPickupFeed();
+  const ratsToday = loadRatsToday();
+  const teams = loadLeagueTeams();
+  const payload = {
+    localDate: localToday(),
+    pickup: pickupFeed
+      ? {
+          dates: Array.isArray(pickupFeed.dates) ? pickupFeed.dates.slice(0, 8) : [],
+          events: pickupFeed.events || {},
+        }
+      : null,
+    ratsToday: ratsToday || null,
+    leagueTeams: teams,
+    settings: {
+      mutedDates: settings.mutedDates || [],
+      snoozeUntil: settings.snoozeUntil || "",
+      snoozedDates: settings.snoozedDates || {},
+      lastReferencedDate: settings.lastReferencedDate || "",
+      ownerNameConfigured: Boolean(effectiveOwnerName(settings)),
+      pickupEndpointConfigured: Boolean(effectivePickupEndpoint(settings)),
+    },
+  };
+  return JSON.stringify(payload);
+}
+
 function isVersionIntent(text) {
   return /^\/?version(?:@[a-z0-9_]+)?$/i.test(normalizeText(text)) ||
     /\bwhat(?:'s| is) (?:the )?(?:bot |ballerwatch )?version\b/i.test(normalizeText(text));
@@ -964,6 +1029,17 @@ async function handleMessage(text, settings) {
   if (!clean) return { settings, reply: "" };
 
   settings = cleanSnoozes(settings);
+
+  const manualRequest = parseManualFeatureRequest(clean);
+  if (manualRequest) {
+    const requestId = recordUnknownQuestion(manualRequest, "requests", { source: "manual" });
+    return {
+      settings,
+      reply: requestId
+        ? `Saved feature request privately as ${requestId}.`
+        : "I couldn't save that feature request.",
+    };
+  }
 
   if (isVersionIntent(clean)) {
     return { settings, reply: versionReply() };
@@ -1106,6 +1182,8 @@ async function handleMessage(text, settings) {
         "• what league teams are you monitoring?",
         "• /setup",
         "• /version",
+        "• /feature <request>",
+        "• reply 👎 to a bot answer to queue it for review",
         "• what information do you still need from me?",
         "• what is my owner name?",
         "• what is the RSVP endpoint?",
@@ -1128,12 +1206,25 @@ async function handleMessage(text, settings) {
     };
   }
 
-  const requestId = recordUnknownQuestion(clean);
+  const ai = await answerUnknownWithAi(clean, buildAiContext(settings), settings);
+  settings = ai.settings;
+
+  if (ai.decision?.action === "answer") {
+    return { settings, reply: ai.decision.reply };
+  }
+
+  const requestId = recordUnknownQuestion(clean, "requests", {
+    ...(ai.decision?.action === "feature_request" ? {
+      source: "ai_feature_request",
+      aiCategory: ai.decision.category,
+      aiReason: ai.decision.reason,
+    } : {}),
+  });
   return {
     settings,
     reply: requestId
-      ? `I don't know how to answer that yet. I saved your request privately as ${requestId}.`
-      : "I don't know how to answer that yet.",
+      ? `I couldn't answer that reliably yet. I saved your request privately as ${requestId} for the next feature cycle.`
+      : "I couldn't answer that reliably yet.",
   };
 }
 
@@ -1155,29 +1246,64 @@ async function main() {
       ? settings.snoozedDates
       : {};
   settings.snoozeUntil = String(settings.snoozeUntil || "");
+  settings.recentBotReplies = Array.isArray(settings.recentBotReplies) ? settings.recentBotReplies : [];
   settings = cleanSnoozes(settings);
   settings = await announceNewFeatures(settings);
   settings = await promptForMissingSetup(settings);
   settings = await promptForInvalidOwnerName(settings);
   settings = await promptForInvalidEndpoint(settings);
 
-  const pollSeconds = Math.max(0, Math.min(50, Number(process.env.TELEGRAM_POLL_TIMEOUT || 50)));
-  const updates = await getTelegramUpdates(state.lastUpdateId ? state.lastUpdateId + 1 : 0, pollSeconds);
+  const injectedUpdate = String(process.env.TELEGRAM_UPDATE_B64 || "").trim();
+  let updates;
+  if (injectedUpdate) {
+    try {
+      updates = [JSON.parse(Buffer.from(injectedUpdate, "base64").toString("utf8"))];
+    } catch {
+      throw new Error("TELEGRAM_UPDATE_B64 is invalid.");
+    }
+  } else {
+    const pollSeconds = Math.max(0, Math.min(50, Number(process.env.TELEGRAM_POLL_TIMEOUT || 50)));
+    updates = await getTelegramUpdates(state.lastUpdateId ? state.lastUpdateId + 1 : 0, pollSeconds);
+  }
   let lastUpdateId = state.lastUpdateId || 0;
 
   for (const update of updates) {
-    if (Number(update?.update_id) > lastUpdateId) {
-      lastUpdateId = Number(update.update_id);
+    const updateId = Number(update?.update_id || 0);
+    if (injectedUpdate && updateId > 0 && updateId <= lastUpdateId) {
+      console.log(`Skipping duplicate Telegram update ${updateId}.`);
+      continue;
+    }
+    if (updateId > lastUpdateId) {
+      lastUpdateId = updateId;
     }
 
     const message = update?.message;
     if (!message || !isOwnerChat(message.chat?.id)) continue;
 
+    const repliedToId = Number(message.reply_to_message?.message_id || 0);
+    if (isThumbsDownFeedback(message.text) && repliedToId) {
+      const remembered = findRememberedReply(settings, repliedToId);
+      if (remembered) {
+        const requestId = recordUnknownQuestion(remembered.question, "requests", {
+          source: "thumbs_down",
+          rejectedAnswer: remembered.reply,
+        });
+        const feedbackReply = requestId
+          ? `Got it — I saved that answer as incorrect and queued ${requestId} for the next feature cycle.`
+          : "I couldn't save that feedback.";
+        const sent = await sendTelegram(feedbackReply);
+        settings = rememberBotReply(settings, message.text, feedbackReply, sent?.message_id);
+        continue;
+      }
+    }
+
+    void sendTyping();
     const result = await handleMessage(message.text, settings);
     settings = result.settings;
 
     if (result.reply) {
-      await sendTelegram(result.reply);
+      const sent = await sendTelegram(result.reply);
+      settings = rememberBotReply(settings, message.text, result.reply, sent?.message_id);
     }
   }
 

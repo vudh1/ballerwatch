@@ -44,4 +44,24 @@ export async function sendTelegram(message, extra = {}) {
   if (!response.ok || payload.ok !== true) {
     throw new Error(`Telegram sendMessage failed: ${payload.description || `HTTP ${response.status}`}`);
   }
+  return payload.result || null;
+}
+
+
+export async function sendTyping() {
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${TOKEN}/sendChatAction`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        chat_id: CHAT_ID,
+        action: "typing",
+      }),
+    });
+    if (!response.ok) {
+      console.warn(`Telegram typing indicator failed: HTTP ${response.status}`);
+    }
+  } catch (error) {
+    console.warn(`Telegram typing indicator failed: ${error?.message || error}`);
+  }
 }

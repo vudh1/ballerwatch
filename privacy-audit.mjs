@@ -84,7 +84,7 @@ if (listener?.settings && !isEncryptedEnvelope(listener.settings)) {
 
 const unknown = readJson("requests/unknown.json");
 if (!isPublicRequestSummary(unknown)) {
-  fail("requests/unknown.json must contain only version 2 fixed categories and counts");
+  fail("requests/unknown.json must contain only version 3 fixed categories, counts, and feedback counters");
 }
 
 if (process.exitCode) process.exit(process.exitCode);

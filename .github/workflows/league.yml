@@ -13,43 +13,32 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 4
     defaults:
       run:
         working-directory: league
     steps:
       - uses: actions/checkout@v5
         with:
-          fetch-depth: 0
-
-      - name: Sync latest state
-        working-directory: .
-        run: git pull --rebase origin main
+          ref: main
+          fetch-depth: 1
 
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
 
-      - name: Prepare encrypted league team config
+      - name: Prepare encrypted league state
         working-directory: .
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-        run: node shared/league-teams.mjs prepare
-
-      - name: Prepare encrypted league runtime state
-        working-directory: .
-        env:
-          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-        run: node shared/league-state.mjs prepare
+        run: |
+          node shared/league-teams.mjs prepare
+          node shared/league-state.mjs prepare
 
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-
-      - name: Test normalization
-        run: python -m unittest watcher_test.py
 
       - name: Fetch and validate league schedules
         run: python watcher.py
@@ -82,22 +71,15 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python telegram_notify.py
 
-      - name: Calendar unchanged
-        if: steps.calendar_gate.outputs.needsCalendar != 'true'
-        run: echo "No material future-match changes; Google Calendar was not called."
-
       - name: Seal league runtime state
         if: always()
         working-directory: .
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-        run: node shared/league-state.mjs seal
-
-      - name: Remove plaintext league team config
-        if: always()
-        working-directory: .
-        run: rm -f league/teams.json
+        run: |
+          node shared/league-state.mjs seal
+          rm -f league/teams.json
 
       - name: Persist encrypted league state
         if: always()
@@ -113,7 +95,7 @@ jobs:
           git commit -m "Refresh RATS league state"
           STATE_COMMIT="$(git rev-parse HEAD)"
           for attempt in 1 2 3 4; do
-            git fetch origin main
+            git fetch --depth=1 origin main
             git reset --hard origin/main
             if ! git cherry-pick -X theirs "$STATE_COMMIT"; then
               git cherry-pick --abort || true
@@ -121,7 +103,7 @@ jobs:
               sleep $((attempt * 2))
               continue
             fi
-            if git push; then
+            if git push origin HEAD:main; then
               exit 0
             fi
             echo "Push raced with another workflow; retrying ($attempt/4)."

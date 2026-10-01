@@ -2,6 +2,11 @@ name: Telegram listener
 
 on:
   workflow_dispatch:
+    inputs:
+      telegram_update_b64:
+        description: "Base64 Telegram update from webhook"
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -13,21 +18,12 @@ concurrency:
 jobs:
   listen:
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 1
     steps:
       - uses: actions/checkout@v5
         with:
-          fetch-depth: 0
-
-      - name: Sync latest state
-        run: git pull --rebase origin main
-
-      - name: Validate listener
-        run: |
-          node --check shared/telegram.mjs
-          node --check shared/state-crypto.mjs
-          node --check shared/bot-state.mjs
-          node --check listener/bot.mjs
+          ref: main
+          fetch-depth: 1
 
       - name: Listen for Telegram commands
         env:
@@ -36,41 +32,61 @@ jobs:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
           OWNER_RSVP_NAME: ${{ secrets.OWNER_RSVP_NAME }}
           UPSTREAM_ENDPOINT: ${{ secrets.UPSTREAM_ENDPOINT }}
-          TELEGRAM_POLL_TIMEOUT: "35"
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          TELEGRAM_UPDATE_B64: ${{ inputs.telegram_update_b64 }}
+          # This workflow is dispatched every minute. A long poll only keeps
+          # the runner alive; a short poll lets the next run pick up anything
+          # that arrives later in the minute.
+          TELEGRAM_POLL_TIMEOUT: "3"
         run: node listener/bot.mjs
 
       - name: Remove plaintext league team config
         if: always()
         run: rm -f league/teams.json
 
+      - name: Detect generated changes
+        id: changes
+        shell: bash
+        run: |
+          if [ -n "$(git status --porcelain -- state/listener.json league requests)" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No listener state changes."
+          fi
+
       - name: Verify public state before committing
+        if: steps.changes.outputs.changed == 'true'
         run: node privacy-audit.mjs
 
       - name: Persist listener and encrypted league team state
+        if: steps.changes.outputs.changed == 'true'
+        shell: bash
         run: |
-          if [ -z "$(git status --porcelain -- state/listener.json league requests)" ]; then
-            echo "No listener state changes."
-            exit 0
-          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A -- state/listener.json league requests
           git commit -m "Update Telegram listener state"
           STATE_COMMIT="$(git rev-parse HEAD)"
+
           for attempt in 1 2 3 4; do
-            git fetch origin main
+            git fetch --depth=1 origin main
             git reset --hard origin/main
+
             if ! git cherry-pick -X theirs "$STATE_COMMIT"; then
               git cherry-pick --abort || true
               echo "Could not replay generated state; retrying ($attempt/4)."
               sleep $((attempt * 2))
               continue
             fi
-            if git push; then
+
+            if git push origin HEAD:main; then
               exit 0
             fi
+
             echo "Push raced with another workflow; retrying ($attempt/4)."
             sleep $((attempt * 2))
           done
+
           echo "Failed to persist state after 4 push attempts."
           exit 1
