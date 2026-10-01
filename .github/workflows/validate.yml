@@ -33,6 +33,7 @@ jobs:
       - name: Validate JavaScript syntax
         run: |
           node --check shared/telegram.mjs
+          node --check shared/ai-fallback.mjs
           node --check shared/state-crypto.mjs
           node --check shared/feature-requests.mjs
           node --check shared/bot-state.mjs
