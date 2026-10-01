@@ -538,7 +538,7 @@ async function githubLeagueBundle(env) {
       decryptState(todayEncrypted,env),
     ]);
     const teams=Array.isArray(teamsPayload?.teams)
-      ? teamsPayload.teams.map(cleanText).filter(Boolean)
+      ? teamsPayload.teams.map(name=>cleanText(name,200)).filter(Boolean)
       : [];
     if(teams.length && schedule) return {teams,schedule,today:today||{games:[]}};
   } catch {}
