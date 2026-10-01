@@ -12,7 +12,7 @@ Always read the current `README.md`, this file, and `features/versions.json` fro
 - Explicit `/feature <request>` remains a deliberate feature-request path. Ordinary unanswered questions and thumbs-down feedback belong in the 48-hour chat review flow instead of automatically becoming feature requests.
 - Cloudflare Workers hosts the Telegram webhook plus the read-only Telegram/PWA API. **Workers KV is not part of the production runtime and Cloudflare Cron Triggers must stay disabled.**
 - The fast path reads encrypted state from the `runtime-state` branch and uses the Workers Cache API only as a short-lived best-effort cache.
-- The GitHub Pages PWA at `vudh1.github.io/ballerwatch` is read-only in v3.0.0. State-changing commands remain on Telegram.
+- The GitHub Pages PWA at `vudh1.github.io/ballerwatch` is read-only in v3.x. State-changing commands remain on Telegram.
 - Web Push VAPID keys and subscriptions live only in encrypted `state/web-push.json` on `runtime-state`; never commit a VAPID private key or push endpoint to `main`.
 - Web notification-board entries exposed to the public Pages origin must be public-safe: never include RSVP names, waitlist names, owner-specific status, tokens, IDs, or private settings.
 - cron-job.org is the primary recurring scheduler and dispatches the GitHub pickup, league, and watchdog workflows at their 2/5/10-minute cadences.

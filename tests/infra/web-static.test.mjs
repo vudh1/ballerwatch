@@ -8,9 +8,11 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.equal(manifest.scope, "/ballerwatch/");
   assert.equal(manifest.display, "standalone");
   assert.ok(Array.isArray(manifest.icons) && manifest.icons.length > 0);
+  assert.equal(fs.existsSync("docs/apple-touch-icon.png"), true);
 
   const html = fs.readFileSync("docs/index.html", "utf8");
   assert.match(html, /manifest\.webmanifest/);
+  assert.match(html, /apple-touch-icon\.png/);
   assert.match(html, /Enable push/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");

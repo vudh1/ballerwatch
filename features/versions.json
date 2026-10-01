@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "3.0.0",
+  "currentVersion": "3.0.1",
   "releases": [
+    {
+      "version": "3.0.1",
+      "date": "2026-10-01",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Automatic Pages enablement and push-reset recovery",
+      "telegramAnnouncement": "The BallerWatch web app deployment now enables GitHub Pages automatically and Web Push recovers cleanly after a factory reset.",
+      "changes": [
+        "Changed the GitHub Pages deployment to self-enable Pages using the existing CRON_GITHUB_PAT when no Pages site has been configured yet, avoiding a manual Settings step when the token has sufficient permission.",
+        "Added deployment verification for the live Cloudflare PWA API surface in addition to the existing Telegram webhook/health verification.",
+        "Changed PURGE to recreate a fresh empty encrypted VAPID identity immediately after clearing subscriptions and board state so the PWA can be re-enabled without another deployment.",
+        "Made the installed PWA detect a rotated VAPID application key, discard its stale browser subscription, and guide the user to enable push again."
+      ]
+    },
     {
       "version": "3.0.0",
       "date": "2026-10-01",

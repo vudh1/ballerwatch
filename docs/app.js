@@ -36,6 +36,21 @@ function urlBase64ToUint8Array(value) {
   return Uint8Array.from([...raw].map((char) => char.charCodeAt(0)));
 }
 
+function arrayBufferToBase64Url(value) {
+  const bytes = new Uint8Array(value || new ArrayBuffer(0));
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function subscriptionMatchesConfig(subscription) {
+  const expected = config?.push?.applicationServerKey || "";
+  const actual = subscription?.options?.applicationServerKey
+    ? arrayBufferToBase64Url(subscription.options.applicationServerKey)
+    : "";
+  return Boolean(expected && actual && expected === actual);
+}
+
 async function api(path, options = {}) {
   const response = await fetch(API + path, {
     cache: "no-store",
@@ -126,7 +141,12 @@ async function updatePushStatus() {
     els.pushHint.textContent = "This browser does not expose Web Push.";
     return;
   }
-  const subscription = await currentSubscription().catch(() => null);
+  let subscription = await currentSubscription().catch(() => null);
+  if (subscription && config?.push?.applicationServerKey && !subscriptionMatchesConfig(subscription)) {
+    await subscription.unsubscribe().catch(() => false);
+    subscription = null;
+    els.pushHint.textContent = "Push identity was reset. Tap Enable push to subscribe again.";
+  }
   if (subscription) {
     els.pushStatus.textContent = "Enabled";
     els.pushStatus.style.color = "#86efac";
@@ -160,6 +180,10 @@ async function enablePush() {
 
     const registration = await navigator.serviceWorker.ready;
     let subscription = await registration.pushManager.getSubscription();
+    if (subscription && !subscriptionMatchesConfig(subscription)) {
+      await subscription.unsubscribe();
+      subscription = null;
+    }
     if (!subscription) {
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
