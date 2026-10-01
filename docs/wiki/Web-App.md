@@ -98,3 +98,8 @@ Web Push follows the same proactive allowlist as Telegram:
 - one combined version announcement per Pacific calendar day.
 
 Tests, builds, deployments, watchdog failures/recovery, score-only changes, and other engineering events never send Web Push.
+
+
+## Release refresh behavior
+
+Static JavaScript and CSS URLs carry the current patch version, the service worker is registered with `updateViaCache: "none"`, and same-origin network reads bypass the browser HTTP cache before updating the offline shell. When a new worker takes control, the installed app reloads once automatically. This prevents an iPhone Home Screen installation from remaining on an older BallerWatch interface after a Pages deployment.
