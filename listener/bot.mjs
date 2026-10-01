@@ -7,6 +7,7 @@ import { recordUnknownQuestion, refreshPublicRequests } from "../shared/feature-
 import { answerUnknownWithAi } from "../shared/ai-fallback.mjs";
 import { findChatExchange, recordChatExchange } from "../shared/chat-history.mjs";
 import fs from "node:fs";
+import crypto from "node:crypto";
 import { isOwnerChat, sendTelegram, sendTyping } from "../shared/telegram.mjs";
 import { loadBotState, saveBotState } from "../shared/bot-state.mjs";
 import { decryptState } from "../shared/state-crypto.mjs";
@@ -30,6 +31,53 @@ function normalizeText(text) {
   return String(text || "").trim().replace(/\s+/g, " ");
 }
 
+function hashWebPairCode(code) {
+  return crypto.createHash("sha256").update(String(code || "")).digest("hex");
+}
+
+function handleWebPairCommand(text, settings) {
+  if (!/^\/?webpair$/i.test(normalizeText(text))) return null;
+  const code = String(crypto.randomInt(100000, 1000000));
+  return {
+    settings: {
+      ...settings,
+      webPairCodeHash: hashWebPairCode(code),
+      webPairExpiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+    },
+    reply: [
+      `Owner pairing code: ${code}`,
+      "Expires in 10 minutes.",
+      "Enter it in BallerWatch Settings on the device you want to authorize.",
+    ].join("\n"),
+  };
+}
+
+function applyWebSettingsEvent(event, settings) {
+  const ownerRsvpName = normalizeText(event?.ownerName || "").slice(0, 120);
+  const teams = [...new Set(
+    (Array.isArray(event?.teams) ? event.teams : [])
+      .map(normalizeLeagueTeamName)
+      .filter(Boolean)
+      .map((name) => name.slice(0, 120)),
+  )];
+  if (!teams.length || teams.length > 20) {
+    throw new Error("Web settings must include 1-20 monitored league teams.");
+  }
+  saveLeagueTeams(teams);
+  return {
+    ...settings,
+    ownerRsvpName,
+    lastOwnerNameReminderAt: "",
+    pendingSetupField:
+      settings?.pendingSetupField === "ownerRsvpName"
+        ? ""
+        : settings?.pendingSetupField || "",
+  };
+}
+
+function historySource(event) {
+  return event?.source === "web-pwa-owner" ? "web-pwa-owner" : "cloudflare-fast-path";
+}
 
 function parseManualFeatureRequest(text) {
   const clean = normalizeText(text);
@@ -1047,6 +1095,9 @@ async function handleMessage(text, settings) {
 
   settings = cleanSnoozes(settings);
 
+  const webPair = handleWebPairCommand(clean, settings);
+  if (webPair) return webPair;
+
   const manualRequest = parseManualFeatureRequest(clean);
   if (manualRequest) {
     const requestId = recordUnknownQuestion(manualRequest, "requests", { source: "manual" });
@@ -1265,7 +1316,8 @@ async function handleMessage(text, settings) {
 async function main() {
   const injectedUpdate = String(process.env.TELEGRAM_UPDATE_B64 || "").trim();
   const historyEventB64 = String(process.env.CHAT_HISTORY_EVENT_B64 || "").trim();
-  if (!injectedUpdate && !historyEventB64) {
+  const webSettingsEventB64 = String(process.env.WEB_SETTINGS_EVENT_B64 || "").trim();
+  if (!injectedUpdate && !historyEventB64 && !webSettingsEventB64) {
     console.log("No webhook listener payload supplied; webhook-only listener has nothing to process.");
     return;
   }
@@ -1290,13 +1342,21 @@ async function main() {
   settings.recentBotReplies = Array.isArray(settings.recentBotReplies) ? settings.recentBotReplies : [];
   settings = cleanSnoozes(settings);
 
+  if (webSettingsEventB64 && !injectedUpdate && !historyEventB64) {
+    const event = JSON.parse(Buffer.from(webSettingsEventB64, "base64").toString("utf8"));
+    settings = applyWebSettingsEvent(event, settings);
+    saveBotState(state.lastUpdateId || 0, settings);
+    console.log("Applied authenticated web owner settings.");
+    return;
+  }
+
   if (historyEventB64 && !injectedUpdate) {
     const event = JSON.parse(Buffer.from(historyEventB64, "base64").toString("utf8"));
     await recordChatExchange({
       question: event.question,
       reply: event.reply,
       hint: event.hint || "",
-      source: "cloudflare-fast-path",
+      source: historySource(event),
     });
     settings = rememberBotReply(settings, event.question, event.reply, event.messageId);
     if (event.lastDate) settings.lastReferencedDate = String(event.lastDate);
@@ -1371,7 +1431,7 @@ async function main() {
       question: event.question,
       reply: event.reply,
       hint: event.hint || "",
-      source: "cloudflare-fast-path",
+      source: historySource(event),
     });
     settings = rememberBotReply(settings, event.question, event.reply, event.messageId);
     if (event.lastDate) settings.lastReferencedDate = String(event.lastDate);
