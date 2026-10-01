@@ -4,18 +4,22 @@ on:
   push:
     paths:
       - "listener/**"
-      - "pickup/*.mjs"
-      - "league/*.py"
+      - "pickup/**"
+      - "league/**"
       - "shared/**"
       - "watchdog/**"
-      - "manual-test.mjs"
-      - "privacy-audit.mjs"
+      - "scripts/**"
+      - "docs/**"
       - "infra/**"
       - "features/**"
       - "skills/**"
+      - ".editorconfig"
+      - "STYLE_GUIDE.md"
       - "AGENTS.md"
       - "README.md"
       - ".github/workflows/**"
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -24,37 +28,28 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 4
     steps:
       - uses: actions/checkout@v5
 
-      - name: Validate JavaScript syntax
-        run: |
-          node --check shared/telegram.mjs
-          node --check shared/ai-fallback.mjs
-          node --check shared/state-crypto.mjs
-          node --check shared/runtime-state.mjs
-          node --check shared/feature-requests.mjs
-          node --check shared/bot-state.mjs
-          node --check shared/league-teams.mjs
-          node --check shared/league-state.mjs
-          node --check listener/bot.mjs
-          node --check pickup/update.mjs
-          node --check pickup/notify.mjs
-          node --check pickup/selection.mjs
-          node --check watchdog/watchdog.mjs
-          node --check infra/external-schedules.test.mjs
-          node --check manual-test.mjs
-          node --check privacy-audit.mjs
-          node --check infra/external-schedules.mjs
-          node --check infra/telegram-webhook/worker.mjs
-          node --check infra/telegram-webhook/edge-runtime.mjs
-          node --check infra/telegram-webhook/prepare-config.mjs
-          node --check infra/telegram-webhook/edge-runtime.test.mjs
-          node --check infra/validate-versions.mjs
+      - name: Enforce repository code style
+        run: node scripts/check-style.mjs
 
-      - name: Test Cloudflare edge runtime
-        run: node --test infra/telegram-webhook/edge-runtime.test.mjs
+      - name: Validate JavaScript syntax
+        shell: bash
+        run: |
+          while IFS= read -r -d '' file; do
+            node --check "$file"
+          done < <(find . -name '*.mjs' -not -path './node_modules/*' -print0)
+
+      - name: Run JavaScript unit tests
+        run: |
+          node --test shared/feature-requests.test.mjs
+          node --test shared/intent-index.test.mjs
+          node --test shared/failover-state.test.mjs
+          node --test infra/external-schedules.test.mjs
+          node --test infra/fallback-gate.test.mjs
+          node --test infra/telegram-webhook/edge-runtime.test.mjs
 
       - name: Bundle Cloudflare Worker
         working-directory: infra/telegram-webhook
@@ -63,18 +58,15 @@ jobs:
       - name: Validate release history
         run: node infra/validate-versions.mjs
 
-      - name: Enforce encrypted-at-rest privacy
+      - name: Enforce public-repository privacy
         run: node privacy-audit.mjs
-
-      - name: Run request privacy regression tests
-        run: node --test shared/feature-requests.test.mjs
-
-      - name: Test external fallback scheduler rules
-        run: node --test infra/external-schedules.test.mjs
 
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+
+      - name: Compile Python modules
+        run: python -m compileall -q league
 
       - name: Run league unit tests
         working-directory: league
