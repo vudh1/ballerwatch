@@ -36,8 +36,14 @@ jobs:
           test -n "$APPS_SCRIPT_DEPLOYMENT_ID" || { echo "Missing APPS_SCRIPT_DEPLOYMENT_ID secret"; exit 1; }
           test -n "$GOOGLE_CALENDAR_WEBHOOK_URL" || { echo "Missing GOOGLE_CALENDAR_WEBHOOK_URL secret"; exit 1; }
 
+      - name: Cache npm downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-clasp-3.4.1
+
       - name: Install clasp
-        run: npm install --global @google/clasp@3.4.1
+        run: npm install --global @google/clasp@3.4.1 --prefer-offline --no-audit --no-fund
 
       - name: Prepare private Apps Script workspace
         env:
