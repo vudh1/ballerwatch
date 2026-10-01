@@ -1,9 +1,9 @@
-const CACHE = "ballerwatch-v3-3-0-shell";
+const CACHE = "ballerwatch-v4-0-0-shell";
 const SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=3.3.0",
-  "./app.js?v=3.3.0",
+  "./styles.css?v=4.0.0",
+  "./app.js?v=4.0.0",
   "./manifest.webmanifest",
   "./icon.svg",
 ];
@@ -50,8 +50,8 @@ self.addEventListener("message", (event) => {
   event.waitUntil(new Promise((resolve) => {
     setTimeout(async () => {
       try {
-        await self.registration.showNotification("BallerWatch test", {
-          body: "Notifications can appear while the Home Screen app is closed.",
+        await self.registration.showNotification("BallerWatch", {
+          body: "Test notification.",
           icon: "./icon.svg",
           badge: "./icon.svg",
           tag: "ballerwatch-local-test",
