@@ -116,6 +116,7 @@ async function compactWithGroq(question, reply, hint = "") {
 export async function recordChatExchange({
   question,
   reply,
+  messageId = 0,
   hint = "",
   source = "telegram",
 } = {}) {
@@ -128,6 +129,7 @@ export async function recordChatExchange({
   const entry = {
     createdAt: new Date().toISOString(),
     source: cleanText(source, 40) || "telegram",
+    ...(Number(messageId) > 0 ? { messageId: Number(messageId) } : {}),
     kind: compact?.kind || fallbackKind,
     summary: compact?.summary || "Conversation retained for encrypted review; AI compaction was unavailable.",
     reason: compact?.reason || "",
@@ -139,6 +141,14 @@ export async function recordChatExchange({
   fs.writeFileSync(HISTORY_PATH, JSON.stringify(encryptState(data), null, 2) + "\n");
   fs.writeFileSync(REVIEW_PATH, JSON.stringify(safeReview(data.entries), null, 2) + "\n");
   return entry;
+}
+
+export function findChatExchange(messageId) {
+  const id = Number(messageId || 0);
+  if (!id) return null;
+  const data = loadHistory();
+  return prune(data.entries || [])
+    .find((entry) => Number(entry?.messageId || 0) === id) || null;
 }
 
 export function refreshChatReview() {
