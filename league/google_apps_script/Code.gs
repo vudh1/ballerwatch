@@ -204,7 +204,7 @@ function applyUpdate_(calendar, props, item) {
     'Map: ' + value_(match.mapUrl),
     'RATS tracking key: ' + item.key,
     match.endEstimated
-      ? 'End time: estimated one-hour duration; RATS did not publish an end time.'
+      ? 'End time: estimated two-hour duration; RATS did not publish an end time.'
       : 'End time: published by RATS.'
   ].join('\n');
 
