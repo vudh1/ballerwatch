@@ -1,7 +1,7 @@
 /**
  * Encrypted GitHub Actions-cache backup for last-known runtime files.
  *
- * Documentation baseline: v2.3.0. Cache payloads are encrypted before storage and never enter Git.
+ * Documentation baseline: v2.4.0. Cache payloads are encrypted before storage and never enter Git.
  */
 import fs from "node:fs";
 import path from "node:path";
