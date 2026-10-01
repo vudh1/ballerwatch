@@ -1,7 +1,7 @@
 /**
- * Manages cron-job.org external failover schedules and validates their target/cadence posture.
+ * Manages cron-job.org primary GitHub schedules and validates their target/cadence posture.
  *
- * Documentation baseline: v2.3.0. Runtime/private data must never be committed to Git.
+ * Documentation baseline: v2.4.0. Runtime/private data must never be committed to Git.
  */
 const API = "https://api.cron-job.org";
 
@@ -43,11 +43,11 @@ export function analyzeExternalSchedules(jobs, {
   for (const spec of EXTERNAL_SCHEDULE_SPECS) {
     const matches = list.filter((job) => jobMatchesSpec(job, spec, repo));
     if (!matches.length) {
-      if (requireAll) problems.push(`${spec.title}: fallback job is missing`);
+      if (requireAll) problems.push(`${spec.title}: scheduled job is missing`);
       continue;
     }
     if (matches.length > 1) {
-      problems.push(`${spec.title}: duplicate fallback jobs exist`);
+      problems.push(`${spec.title}: duplicate scheduled jobs exist`);
     }
 
     const job = matches[0];
@@ -59,12 +59,12 @@ export function analyzeExternalSchedules(jobs, {
 
     const minutes = job?.schedule?.minutes;
     if (Array.isArray(minutes) && !sameNumbers(minutes, spec.minutes)) {
-      problems.push(`${spec.title}: fallback cadence is not the expected ${spec.minutes.length}-run/hour schedule`);
+      problems.push(`${spec.title}: schedule cadence is not the expected ${spec.minutes.length}-run/hour schedule`);
     }
 
     const expectedUrl = `/repos/${repo}/actions/workflows/${spec.workflow}/dispatches`;
     if (job?.url && !String(job.url).includes(expectedUrl)) {
-      problems.push(`${spec.title}: fallback target is not ${spec.workflow}`);
+      problems.push(`${spec.title}: schedule target is not ${spec.workflow}`);
     }
   }
 
@@ -136,7 +136,7 @@ function desiredJob(spec, { repo, branch, githubPat, enabled }) {
         "X-GitHub-Api-Version": "2022-11-28",
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ ref: branch, inputs: { external_fallback: "true" } }),
+      body: JSON.stringify({ ref: branch }),
     },
   };
 }
@@ -165,7 +165,7 @@ export async function syncExternalSchedules(mode, {
         method: "PATCH",
         body: { job: { enabled: false } },
       });
-      console.log(`Disabled external fallback ${job.jobId} (${job.title || "untitled"}).`);
+      console.log(`Disabled external schedule ${job.jobId} (${job.title || "untitled"}).`);
     }
     if (!recognized.some((job) => job.enabled)) {
       console.log("No enabled BallerWatch external schedules found.");
@@ -184,13 +184,13 @@ export async function syncExternalSchedules(mode, {
         method: "PATCH",
         body: { job: next },
       });
-      console.log(`${enabled ? "Enabled" : "Prepared disabled"} fallback ${spec.title} (${existing.jobId}).`);
+      console.log(`${enabled ? "Enabled" : "Prepared disabled"} schedule ${spec.title} (${existing.jobId}).`);
     } else {
       const created = await cronCall(apiKey, "/jobs", {
         method: "PUT",
         body: { job: next },
       });
-      console.log(`Created ${enabled ? "enabled" : "disabled"} fallback ${spec.title} (${created.jobId || "new"}).`);
+      console.log(`Created ${enabled ? "enabled" : "disabled"} schedule ${spec.title} (${created.jobId || "new"}).`);
       await new Promise((resolve) => setTimeout(resolve, 1100));
     }
   }
@@ -212,7 +212,7 @@ if (isCli) {
       process.exitCode = 1;
     } else {
       console.log(
-        `All three cron-job.org fallback jobs exist, have the expected cadence, and are ${expectEnabled ? "enabled" : "disabled"}.`,
+        `All three cron-job.org scheduled jobs exist, have the expected cadence, and are ${expectEnabled ? "enabled" : "disabled"}.`,
       );
     }
   } else {
