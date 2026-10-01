@@ -226,6 +226,21 @@ textarea {
   color: #dbeafe;
   background: rgba(14, 165, 233, 0.09);
   border: 1px solid rgba(56, 189, 248, 0.18);
+  touch-action: pan-y;
+}
+
+.answer-feedback-status {
+  margin: 0.38rem 0 0;
+  color: #64748b;
+  font-size: 0.7rem;
+}
+
+.answer-feedback-pending {
+  border-color: rgba(251, 191, 36, 0.38);
+}
+
+.answer-feedback-sent {
+  border-color: rgba(52, 211, 153, 0.34);
 }
 
 .board {
