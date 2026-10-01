@@ -48,6 +48,24 @@ class CalendarPurgeTests(unittest.TestCase):
         self.assertEqual(result["deleted"], 3)
         self.assertIn("calendarDeleted=3", stdout.getvalue())
 
+    @patch.dict(
+        os.environ,
+        {
+            "GOOGLE_CALENDAR_WEBHOOK_URL": "https://example.invalid/calendar",
+            "GOOGLE_CALENDAR_WEBHOOK_SECRET": "secret",
+        },
+        clear=False,
+    )
+    @patch("google_calendar_purge.urllib.request.urlopen")
+    def test_purge_surfaces_bridge_error(self, urlopen):
+        urlopen.return_value = FakeResponse({
+            "ok": False,
+            "action": "purge",
+            "error": "legacy marker scan failed",
+        })
+        with self.assertRaisesRegex(RuntimeError, "legacy marker scan failed"):
+            google_calendar_purge.purge_calendar_events()
+
     @patch.dict(os.environ, {}, clear=True)
     def test_purge_requires_bridge_configuration(self):
         with self.assertRaises(RuntimeError):

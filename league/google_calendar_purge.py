@@ -35,7 +35,8 @@ def purge_calendar_events():
         result = json.loads(raw) if raw else {}
 
     if not result.get("ok") or result.get("action") != "purge":
-        raise RuntimeError("Apps Script Calendar bridge rejected or failed the purge")
+        detail = str(result.get("error") or "unknown bridge error").strip()
+        raise RuntimeError(f"Apps Script Calendar purge failed: {detail}")
 
     deleted = int(result.get("deleted") or 0)
     cleared = int(result.get("clearedProperties") or 0)

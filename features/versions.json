@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "2.7.0",
+  "currentVersion": "2.7.1",
   "releases": [
+    {
+      "version": "2.7.1",
+      "date": "2026-10-01",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Calendar purge reliability fix",
+      "telegramAnnouncement": "Calendar reset is now more resilient and verifies the deployed bridge version before deleting BallerWatch-managed match events.",
+      "changes": [
+        "Hardened Calendar purge so one stale or inaccessible event cannot abort deletion of all other BallerWatch-managed events.",
+        "Changed the legacy marker safety scan to bounded yearly Calendar queries and added safe bridge error reporting for operational debugging.",
+        "Required the live Apps Script Calendar bridge to report version 3 or newer before a full reset can run.",
+        "Added regression coverage for surfaced Calendar purge errors."
+      ]
+    },
     {
       "version": "2.7.0",
       "date": "2026-10-01",
