@@ -70,3 +70,9 @@ test("existing tracked Calendar event is updated instead of duplicated", () => {
   assert.ok(calls.some(([name, value]) => name === "setLocation" && value === "Updated Field"));
   assert.equal(stored.get("rats_event_v2:test"), "event-1");
 });
+
+
+test("estimated league end description uses two-hour duration", () => {
+  assert.match(source, /estimated two-hour duration/);
+  assert.doesNotMatch(source, /estimated one-hour duration/);
+});
