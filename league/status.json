@@ -1,7 +1,8 @@
 {
-  "ok": true,
+  "ok": false,
   "lastSuccessfulCheckAt": "2026-09-30T22:10:26.545141-07:00",
-  "lastAttemptAt": "2026-09-30T22:10:26.545141-07:00",
+  "lastAttemptAt": "2026-09-30T22:15:29.072236-07:00",
   "contentHash": "1b4dc97f4ed9e31b312c46dc6bdf5b6a58d54cf075eb996c5ad780aec1928459",
-  "githubRunId": "36818501579"
+  "githubRunId": "36818501579",
+  "error": "Source validation or retrieval failed; last good schedule retained."
 }
