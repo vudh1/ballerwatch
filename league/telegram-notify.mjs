@@ -6,6 +6,7 @@
  */
 import fs from "node:fs";
 import { pathToFileURL } from "node:url";
+import { appendWebNotification } from "../shared/web-notifications.mjs";
 
 const TZ = "America/Los_Angeles";
 const UPDATE = "telegram-update.json";
@@ -51,6 +52,22 @@ export function escapeHtml(value, quote = true) {
   return text;
 }
 
+export function buildWebText(updates) {
+  const lines = [];
+  for (const item of updates) {
+    const match = item.match;
+    const verb = item.action === "created" ? "Added" : "Updated";
+    const location = match.location || "location not published";
+    const jersey = match.jerseyColor || "not published";
+    const opponentJersey = match.opponentJerseyColor || "not published";
+    lines.push(
+      `${verb}: ${jerseyIcon(jersey)} ${match.team} vs ${match.opponent} — ` +
+      `${formatTime(match.start)} — ${location} — jerseys ${jersey}/${opponentJersey}`,
+    );
+  }
+  return lines.join("\n");
+}
+
 export function buildTelegramText(updates) {
   const lines = ["RATS schedule updated"];
   for (const item of updates) {
@@ -88,32 +105,44 @@ export async function notifyTelegram({ fetchImpl = globalThis.fetch } = {}) {
     return false;
   }
 
+  appendWebNotification("league", {
+    title: "RATS schedule updated",
+    body: buildWebText(updates),
+    tag: `rats-${updates[0]?.match?.date || "schedule"}`,
+  });
+
   const token = String(process.env.TELEGRAM_BOT_TOKEN || "").trim();
   const chatId = String(process.env.TELEGRAM_CHAT_ID || "").trim();
   if (!token || !chatId) {
-    throw new Error("TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is missing");
+    console.warn("Telegram credentials are unavailable; web fallback notification was recorded.");
+    return true;
   }
 
-  const body = new URLSearchParams({
-    chat_id: chatId,
-    text: buildTelegramText(updates),
-    disable_web_page_preview: "true",
-    parse_mode: "HTML",
-  });
-  const response = await fetchImpl(
-    `https://api.telegram.org/bot${token}/sendMessage`,
-    {
-      method: "POST",
-      headers: {"Content-Type": "application/x-www-form-urlencoded"},
-      body,
-      signal: AbortSignal.timeout(30_000),
-    },
-  );
-  if (!response.ok) throw new Error(`Telegram send HTTP ${response.status}`);
-  const result = await response.json();
-  if (!result.ok) throw new Error("Telegram send failed");
-
-  console.log(`Telegram notified for ${updates.length} schedule update(s).`);
+  try {
+    const body = new URLSearchParams({
+      chat_id: chatId,
+      text: buildTelegramText(updates),
+      disable_web_page_preview: "true",
+      parse_mode: "HTML",
+    });
+    const response = await fetchImpl(
+      `https://api.telegram.org/bot${token}/sendMessage`,
+      {
+        method: "POST",
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body,
+        signal: AbortSignal.timeout(30_000),
+      },
+    );
+    if (!response.ok) throw new Error(`Telegram send HTTP ${response.status}`);
+    const result = await response.json();
+    if (!result.ok) throw new Error("Telegram send failed");
+    console.log(`Telegram + web notification recorded for ${updates.length} schedule update(s).`);
+  } catch (error) {
+    console.warn(
+      `Telegram league delivery failed; web fallback remains available: ${error?.message || error}`,
+    );
+  }
   return true;
 }
 
