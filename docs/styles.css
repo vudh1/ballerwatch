@@ -13,6 +13,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 
 body {
   margin: 0;
@@ -57,6 +58,12 @@ button.secondary {
   padding: 1.5rem 0 1rem;
 }
 
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
 h1 { font-size: clamp(2rem, 8vw, 3.25rem); margin: 0.15rem 0 0; letter-spacing: -0.045em; }
 h2 { margin: 0; font-size: 1.1rem; }
 p { line-height: 1.5; }
@@ -73,6 +80,45 @@ p { line-height: 1.5; }
   background: rgba(51, 65, 85, 0.72);
   border: 1px solid var(--border);
   color: #cbd5e1;
+}
+
+.bell-button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 2.55rem;
+  height: 2.55rem;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: #e2e8f0;
+  background: rgba(51, 65, 85, 0.72);
+}
+
+.bell-button svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -0.3rem;
+  right: -0.25rem;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  padding: 0 0.28rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  color: #fff;
+  background: #ef4444;
+  border: 2px solid #020617;
 }
 
 .card {
@@ -93,6 +139,8 @@ p { line-height: 1.5; }
 }
 
 .install-card p { margin: 0.35rem 0 0; color: var(--muted); }
+
+.settings-card { margin-top: 1.3rem; }
 
 .section-heading {
   display: flex;
@@ -133,7 +181,14 @@ input:focus { border-color: rgba(56, 189, 248, 0.8); box-shadow: 0 0 0 3px rgba(
   border: 1px solid rgba(56, 189, 248, 0.18);
 }
 
-.board { display: grid; gap: 0.7rem; margin-top: 0.8rem; }
+.board {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 0.9rem;
+  max-height: min(62vh, 34rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 
 .notice {
   padding: 0.85rem;
@@ -147,6 +202,7 @@ input:focus { border-color: rgba(56, 189, 248, 0.8); box-shadow: 0 0 0 3px rgba(
 .notice time { display: block; margin-top: 0.55rem; color: #64748b; font-size: 0.75rem; }
 
 .icon-button { padding: 0.45rem 0.7rem; color: #e2e8f0; background: rgba(51, 65, 85, 0.7); }
+.dialog-actions { display: flex; gap: 0.45rem; }
 
 footer {
   display: flex;
@@ -167,8 +223,17 @@ dialog {
   color: #f8fafc;
   background: #0f172a;
 }
+
 dialog::backdrop { background: rgba(2, 6, 23, 0.78); }
 dialog li { margin: 0.55rem 0; }
+
+.notification-dialog {
+  width: min(94vw, 620px);
+  max-height: 82vh;
+  padding: 0;
+}
+
+.dialog-shell { padding: 1rem; }
 
 .sr-only {
   position: absolute;
@@ -179,7 +244,8 @@ dialog li { margin: 0.55rem 0; }
 }
 
 @media (max-width: 560px) {
-  .hero { align-items: center; }
+  .hero { align-items: flex-start; }
+  .hero-actions { flex-direction: column; align-items: flex-end; }
   .install-card { align-items: flex-start; flex-direction: column; }
   .question-row { grid-template-columns: 1fr; }
   .question-row button { width: 100%; }
