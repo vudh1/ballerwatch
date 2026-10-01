@@ -1,3 +1,8 @@
+/**
+ * Manages cron-job.org external failover schedules and validates their target/cadence posture.
+ *
+ * Documentation baseline: v2.3.0. Runtime/private data must never be committed to Git.
+ */
 const API = "https://api.cron-job.org";
 
 const allMinutes = (step) =>
