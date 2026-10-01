@@ -53,6 +53,18 @@ function handleWebPairCommand(text, settings) {
 }
 
 function applyWebSettingsEvent(event, settings) {
+  if (event?.action === "consume-pair-code") {
+    const expectedHash = normalizeText(event?.pairCodeHash || "");
+    if (!expectedHash || expectedHash !== normalizeText(settings?.webPairCodeHash || "")) {
+      throw new Error("Web pairing code no longer matches current listener state.");
+    }
+    return {
+      ...settings,
+      webPairCodeHash: "",
+      webPairExpiresAt: "",
+    };
+  }
+
   const ownerRsvpName = normalizeText(event?.ownerName || "").slice(0, 120);
   const teams = [...new Set(
     (Array.isArray(event?.teams) ? event.teams : [])
