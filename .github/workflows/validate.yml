@@ -41,7 +41,7 @@ jobs:
         run: |
           while IFS= read -r -d '' file; do
             node --check "$file"
-          done < <(find . -name '*.mjs' -not -path './node_modules/*' -print0)
+          done < <(find . \( -name '*.mjs' -o -name '*.js' \) -not -path './node_modules/*' -print0)
 
       - name: Run JavaScript unit tests
         shell: bash
