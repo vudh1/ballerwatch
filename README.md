@@ -4,7 +4,20 @@ BallerWatch is a small soccer automation system for pickup games and Seattle RAT
 
 It uses Telegram for questions and alerts, Cloudflare Workers for the webhook/fast reply path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Gemini Flash with Groq fallback for bounded AI assistance, and Google Calendar for league match sync.
 
-**Current version: 2.6.0**
+**Current version: 2.7.0**
+
+## What changed in 2.7.0
+
+2.7.0 makes **Purge current data** a true BallerWatch factory reset. It now removes BallerWatch-managed RATS match events from the Calendar bridge before clearing generated runtime state. Unrelated Calendar events are not touched.
+
+The Calendar bridge tracks its own event IDs privately and also uses the explicit `RATS tracking key:` description marker as a safety net for older BallerWatch events whose private mapping may be missing.
+
+The repository workflow audit also removed two obsolete workflows:
+
+- `Configure repository` — one-time repository administration that is no longer part of normal operations.
+- `Seed failover cache` — redundant because pickup, league, and watchdog already refresh their encrypted failover cache on every production run.
+
+Twelve active workflows remain for production monitoring, Telegram/Calendar deployment, validation/smoke, cron configuration, purge, wiki sync, and branch cleanup.
 
 ## What changed in 2.6.0
 
