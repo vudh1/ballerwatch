@@ -1,5 +1,5 @@
 /**
- * Stores a privacy-minimized, 48-hour Telegram conversation history for automated review.
+ * Stores a privacy-minimized, 48-hour owner conversation history for automated review.
  *
  * Documentation baseline: v2.4.0. Full exchange text is never persisted; Groq rewrites each
  * exchange into a short technical summary before the encrypted history is written.
@@ -74,7 +74,7 @@ async function compactWithGroq(question, reply, hint = "") {
           {
             role: "system",
             content: [
-              "Summarize one BallerWatch Telegram exchange for engineering review.",
+              "Summarize one BallerWatch owner exchange for engineering review.",
               "Remove names, IDs, tokens, URLs, exact addresses, and other personal details.",
               "Do not quote the user.",
               "Classify as normal, bug_candidate, feature_candidate, or negative_feedback.",

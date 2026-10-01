@@ -10,7 +10,7 @@ Private runtime payloads are AES-GCM encrypted before storage, including listene
 
 ## 48-hour chat history
 
-`state/chat-history.json` stores only Groq-condensed conversation records and is encrypted. Records are retained for at most 48 hours.
+`state/chat-history.json` stores only Groq-condensed owner conversation records and is encrypted. Records are retained for at most 48 hours. Private-bot exchanges and Q&A from an owner-paired PWA share this pipeline; anonymous public-web Q&A is not retained.
 
 `state/chat-review.json` is intentionally readable so a scheduled ChatGPT maintenance task can inspect it. It may contain only privacy-minimized engineering signals:
 
@@ -25,11 +25,17 @@ It must not contain raw questions/replies, names, IDs, tokens, URLs, exact addre
 
 The GitHub Pages PWA is public, so its API projection is intentionally narrower than the private Telegram bot.
 
-The PWA may expose published soccer facts such as pickup count/capacity, date/time, field/location, RATS team/opponent/jerseys, and BallerWatch release summaries.
+The anonymous PWA may expose published soccer facts such as pickup count/capacity, date/time, field/location, RATS team/opponent/jerseys, and BallerWatch release summaries.
 
 It must not expose RSVP participant names, waitlist names, owner-specific RSVP status, push endpoints/keys, tokens, Calendar IDs, private settings, or encrypted runtime payloads.
 
 The Cloudflare Worker strips pickup roster and owner-specific state before answering PWA questions. Notification-board files remain encrypted at rest and only their public-safe projection is returned.
+
+### Paired owner settings
+
+Private owner settings are never exposed to anonymous visitors. A paired device uses a locally stored, signed capability token to access only the owner-settings endpoints. The pairing code is stored only as a hash inside encrypted listener settings, expires after 10 minutes, and is consumed after successful use.
+
+The authenticated settings surface may return/update the effective pickup RSVP name and monitored league-team list. Updates are persisted through encrypted runtime state. Pairing tokens are not committed to Git and contain no owner name, team names, or repository secrets.
 
 ## Web Push privacy
 

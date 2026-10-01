@@ -6,6 +6,19 @@ const els = {
   board: document.querySelector("#board"),
   refresh: document.querySelector("#refresh-board"),
   notificationBell: document.querySelector("#notification-bell"),
+  settingsButton: document.querySelector("#settings-button"),
+  settingsDialog: document.querySelector("#settings-dialog"),
+  closeSettings: document.querySelector("#close-settings"),
+  settingsPairView: document.querySelector("#settings-pair-view"),
+  settingsOwnerView: document.querySelector("#settings-owner-view"),
+  ownerPairForm: document.querySelector("#owner-pair-form"),
+  ownerPairCode: document.querySelector("#owner-pair-code"),
+  ownerPairStatus: document.querySelector("#owner-pair-status"),
+  ownerSettingsForm: document.querySelector("#owner-settings-form"),
+  ownerName: document.querySelector("#owner-name"),
+  ownerTeams: document.querySelector("#owner-teams"),
+  ownerSettingsStatus: document.querySelector("#owner-settings-status"),
+  ownerDisconnect: document.querySelector("#owner-disconnect"),
   notificationBadge: document.querySelector("#notification-badge"),
   notificationDialog: document.querySelector("#notification-dialog"),
   closeNotifications: document.querySelector("#close-notifications"),
@@ -34,6 +47,8 @@ const els = {
 let config = null;
 let currentNextGame = null;
 let activeSuggestionIndex = -1;
+
+const OWNER_TOKEN_KEY = "ballerwatch-owner-token";
 
 const COMMAND_SUGGESTIONS = [
   { value: "/today", label: "/today", description: "Today's games" },
@@ -170,6 +185,15 @@ function subscriptionMatchesConfig(subscription) {
   return Boolean(expected && actual && expected === actual);
 }
 
+function ownerToken() {
+  return localStorage.getItem(OWNER_TOKEN_KEY) || "";
+}
+
+function ownerHeaders() {
+  const token = ownerToken();
+  return token ? { authorization: `Bearer ${token}` } : {};
+}
+
 async function api(path, options = {}) {
   const response = await fetch(API + path, {
     cache: "no-store",
@@ -181,9 +205,112 @@ async function api(path, options = {}) {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload.ok === false) {
-    throw new Error(payload.error || `Request failed (HTTP ${response.status})`);
+    const error = new Error(payload.error || `Request failed (HTTP ${response.status})`);
+    error.status = response.status;
+    throw error;
   }
   return payload;
+}
+
+function showPairSettings(message = "") {
+  els.settingsPairView.hidden = false;
+  els.settingsOwnerView.hidden = true;
+  els.ownerPairStatus.textContent = message;
+}
+
+function showOwnerSettings(settings) {
+  els.settingsPairView.hidden = true;
+  els.settingsOwnerView.hidden = false;
+  els.ownerName.value = settings?.ownerName || "";
+  els.ownerTeams.value = Array.isArray(settings?.teams) ? settings.teams.join("\n") : "";
+}
+
+async function loadOwnerSettings() {
+  if (!ownerToken()) {
+    showPairSettings();
+    return;
+  }
+
+  els.ownerSettingsStatus.textContent = "Loading…";
+  try {
+    const payload = await api("/web/owner/settings", {
+      headers: ownerHeaders(),
+    });
+    showOwnerSettings(payload.settings || {});
+    els.ownerSettingsStatus.textContent = "";
+  } catch (error) {
+    if (error.status === 401) {
+      localStorage.removeItem(OWNER_TOKEN_KEY);
+      showPairSettings("Pair this device again to edit owner settings.");
+      return;
+    }
+    showOwnerSettings({});
+    els.ownerSettingsStatus.textContent = error.message;
+  }
+}
+
+async function openSettings() {
+  els.settingsDialog.showModal();
+  await loadOwnerSettings();
+}
+
+async function pairOwnerDevice(event) {
+  event.preventDefault();
+  const code = els.ownerPairCode.value.trim();
+  const button = els.ownerPairForm.querySelector("button");
+  button.disabled = true;
+  els.ownerPairStatus.textContent = "Pairing…";
+  try {
+    const payload = await api("/web/owner/pair", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    });
+    localStorage.setItem(OWNER_TOKEN_KEY, payload.token);
+    els.ownerPairCode.value = "";
+    await loadOwnerSettings();
+  } catch (error) {
+    els.ownerPairStatus.textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function saveOwnerSettings(event) {
+  event.preventDefault();
+  const button = els.ownerSettingsForm.querySelector("button");
+  const teams = els.ownerTeams.value
+    .split(/\r?\n/)
+    .map((value) => value.trim())
+    .filter(Boolean);
+  button.disabled = true;
+  els.ownerSettingsStatus.textContent = "Saving…";
+  try {
+    const payload = await api("/web/owner/settings", {
+      method: "POST",
+      headers: ownerHeaders(),
+      body: JSON.stringify({
+        ownerName: els.ownerName.value.trim(),
+        teams,
+      }),
+    });
+    showOwnerSettings(payload.settings || { ownerName: els.ownerName.value.trim(), teams });
+    els.ownerSettingsStatus.textContent =
+      "Saved. Monitoring updates on the next league refresh.";
+  } catch (error) {
+    if (error.status === 401) {
+      localStorage.removeItem(OWNER_TOKEN_KEY);
+      showPairSettings("Pair this device again to edit owner settings.");
+    } else {
+      els.ownerSettingsStatus.textContent = error.message;
+    }
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function disconnectOwnerDevice() {
+  localStorage.removeItem(OWNER_TOKEN_KEY);
+  showPairSettings("This device is disconnected from private settings.");
 }
 
 async function registerServiceWorker() {
@@ -196,7 +323,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=3.3.0", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=4.0.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -361,8 +488,7 @@ async function scheduleTestNotification() {
       type: "ballerwatch:test-notification",
       delayMs: 5_000,
     });
-    els.testNotificationStatus.textContent =
-      "Scheduled — close BallerWatch now. The test alert should appear in about 5 seconds.";
+    els.testNotificationStatus.textContent = "Test scheduled.";
   } catch (error) {
     els.testNotificationStatus.textContent = error.message;
   } finally {
@@ -526,6 +652,7 @@ els.form.addEventListener("submit", async (event) => {
   try {
     const payload = await api("/web/ask", {
       method: "POST",
+      headers: ownerHeaders(),
       body: JSON.stringify({
         question,
         context: { lastDate: sessionStorage.getItem("ballerwatch-last-date") || "" },
@@ -541,6 +668,11 @@ els.form.addEventListener("submit", async (event) => {
 });
 
 els.notificationBell.addEventListener("click", openNotifications);
+els.settingsButton.addEventListener("click", openSettings);
+els.closeSettings.addEventListener("click", () => els.settingsDialog.close());
+els.ownerPairForm.addEventListener("submit", pairOwnerDevice);
+els.ownerSettingsForm.addEventListener("submit", saveOwnerSettings);
+els.ownerDisconnect.addEventListener("click", disconnectOwnerDevice);
 els.nextGameShare.addEventListener("click", shareNextGame);
 els.testNotification.addEventListener("click", scheduleTestNotification);
 els.closeNotifications.addEventListener("click", () => els.notificationDialog.close());

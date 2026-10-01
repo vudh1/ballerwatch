@@ -16,13 +16,13 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=3\.3\.0/);
-  assert.match(html, /app\.js\?v=3\.3\.0/);
+  assert.match(html, /styles\.css\?v=4\.0\.0/);
+  assert.match(html, /app\.js\?v=4\.0\.0/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v3-3-0-shell/);
+  assert.match(sw, /ballerwatch-v4-0-0-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -63,7 +63,7 @@ test("Home Screen install card is removed in standalone mode and notifications u
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=3\.3\.0/);
+  assert.match(app, /sw\.js\?v=4\.0\.0/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -107,7 +107,7 @@ test("notification test is local and service-worker driven", () => {
   assert.match(app, /ballerwatch:test-notification/);
   assert.match(app, /delayMs:\s*5_000/);
   assert.match(sw, /self\.addEventListener\("message"/);
-  assert.match(sw, /BallerWatch test/);
+  assert.match(sw, /Test notification/);
   assert.match(sw, /showNotification/);
 });
 
@@ -139,4 +139,32 @@ test("app-facing copy does not mention Telegram", () => {
   const manifest = fs.readFileSync("docs/manifest.webmanifest", "utf8");
   assert.doesNotMatch(html, /Telegram/i);
   assert.doesNotMatch(manifest, /Telegram/i);
+});
+
+
+test("owner settings use a paired gear surface and paired Q&A auth", () => {
+  const html = fs.readFileSync("docs/index.html", "utf8");
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  const worker = fs.readFileSync("infra/telegram-webhook/worker.mjs", "utf8");
+  const listener = fs.readFileSync("listener/bot.mjs", "utf8");
+  assert.match(html, /id="settings-button"/);
+  assert.match(html, /id="settings-dialog"/);
+  assert.match(html, /id="owner-pair-form"/);
+  assert.match(html, /id="owner-name"/);
+  assert.match(html, /id="owner-teams"/);
+  assert.match(app, /ballerwatch-owner-token/);
+  assert.match(app, /\/web\/owner\/pair/);
+  assert.match(app, /\/web\/owner\/settings/);
+  assert.match(app, /headers: ownerHeaders\(\)/);
+  assert.match(worker, /source: "web-pwa-owner"/);
+  assert.match(listener, /\/\?webpair/);
+  assert.match(listener, /webPairCodeHash/);
+});
+
+test("notification test control is deliberately subtle", () => {
+  const html = fs.readFileSync("docs/index.html", "utf8");
+  const css = fs.readFileSync("docs/styles.css", "utf8");
+  assert.match(html, /class="subtle-action" id="test-notification"/);
+  assert.match(css, /\.subtle-action/);
+  assert.doesNotMatch(html, /secondary" id="test-notification"/);
 });

@@ -1,7 +1,7 @@
 /**
  * Routes Telegram webhooks, edge Q&A, runtime-state APIs, health checks, and scheduled edge work.
  *
- * Updated v3.3.0: adds web command shortcuts and two-hour league display windows while preserving the read-only privacy boundary, Telegram fast path, and encrypted Web Push registration flow.
+ * Updated v4.0.0: adds owner-paired web settings and owner-only web Q&A review history while preserving public-safe anonymous reads and encrypted runtime state.
  */
 import {
   fetchPickupSnapshot,
@@ -34,6 +34,78 @@ function base64Json(value) {
 
 function cleanText(value, max = 1200) {
   return String(value || "").trim().replace(/\s+/g, " ").slice(0, max);
+}
+
+function bytesB64Url(value) {
+  return bytesB64(value).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function b64UrlBytes(value) {
+  const raw = String(value || "").replace(/-/g, "+").replace(/_/g, "/");
+  const padded = raw + "=".repeat((4 - (raw.length % 4)) % 4);
+  return b64Bytes(padded);
+}
+
+async function sha256Hex(value) {
+  const digest = new Uint8Array(
+    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(value || ""))),
+  );
+  return [...digest].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function ownerSigningKey(env) {
+  const secret = cleanText(env.TRACKER_STATE_KEY || env.TELEGRAM_WEBHOOK_SECRET, 5000);
+  if (!secret) throw new Error("Owner pairing key is unavailable.");
+  return crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign", "verify"],
+  );
+}
+
+export async function issueOwnerToken(env) {
+  const payload = {
+    v: 1,
+    exp: Date.now() + 90 * 24 * 60 * 60 * 1000,
+    nonce: bytesB64Url(crypto.getRandomValues(new Uint8Array(18))),
+  };
+  const encoded = bytesB64Url(new TextEncoder().encode(JSON.stringify(payload)));
+  const signature = new Uint8Array(
+    await crypto.subtle.sign(
+      "HMAC",
+      await ownerSigningKey(env),
+      new TextEncoder().encode(encoded),
+    ),
+  );
+  return {
+    token: `${encoded}.${bytesB64Url(signature)}`,
+    expiresAt: new Date(payload.exp).toISOString(),
+  };
+}
+
+export async function verifyOwnerToken(env, token) {
+  const [encoded, signatureText, extra] = String(token || "").split(".");
+  if (!encoded || !signatureText || extra) return false;
+  try {
+    const valid = await crypto.subtle.verify(
+      "HMAC",
+      await ownerSigningKey(env),
+      b64UrlBytes(signatureText),
+      new TextEncoder().encode(encoded),
+    );
+    if (!valid) return false;
+    const payload = JSON.parse(new TextDecoder().decode(b64UrlBytes(encoded)));
+    return payload?.v === 1 && Number(payload.exp) > Date.now();
+  } catch {
+    return false;
+  }
+}
+
+function bearerToken(request) {
+  const match = String(request.headers.get("authorization") || "").match(/^Bearer\s+(.+)$/i);
+  return match ? match[1].trim() : "";
 }
 
 function b64Bytes(value) {
@@ -172,6 +244,85 @@ async function githubStatePut(env, path, value, sha, message) {
   if (!response.ok) throw new Error(`GitHub history write failed: ${path} HTTP ${response.status}`);
 }
 
+async function ownerSettingsRecord(env) {
+  const [listenerRecord, teamsRecord] = await Promise.all([
+    githubStateRecord(env, "state/listener.json"),
+    githubStateRecord(env, "league/state/teams.json"),
+  ]);
+  const settings = listenerRecord.value?.settings
+    ? await decryptState(listenerRecord.value.settings, env)
+    : {};
+  const teamsPayload = teamsRecord.value
+    ? await decryptState(teamsRecord.value, env)
+    : null;
+  const teams = Array.isArray(teamsPayload?.teams)
+    ? teamsPayload.teams.map((name) => cleanText(name, 120)).filter(Boolean)
+    : [];
+  return {
+    listenerRecord,
+    settings: settings && typeof settings === "object" ? settings : {},
+    teams,
+  };
+}
+
+async function pairOwnerDevice(env, code) {
+  const normalized = cleanText(code, 12);
+  if (!/^\d{6}$/.test(normalized)) return null;
+  const { listenerRecord, settings } = await ownerSettingsRecord(env);
+  const expiresAt = Date.parse(String(settings.webPairExpiresAt || ""));
+  if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) return null;
+  const expected = cleanText(settings.webPairCodeHash, 128);
+  if (!expected || expected !== await sha256Hex(normalized)) return null;
+
+  const paired = await issueOwnerToken(env);
+  const nextListener = {
+    ...(listenerRecord.value || {}),
+    lastUpdateId: Number(listenerRecord.value?.lastUpdateId || 0),
+    settings: await encryptState(
+      {
+        ...settings,
+        webPairCodeHash: "",
+        webPairExpiresAt: "",
+      },
+      env,
+    ),
+  };
+  await githubStatePut(
+    env,
+    "state/listener.json",
+    nextListener,
+    listenerRecord.sha,
+    "runtime(listener): consume web owner pairing code",
+  );
+  return paired;
+}
+
+async function ownerSettingsView(env) {
+  const { settings, teams } = await ownerSettingsRecord(env);
+  return {
+    ownerName: cleanText(settings.ownerRsvpName || env.OWNER_RSVP_NAME || "", 120),
+    teams,
+  };
+}
+
+export function normalizeOwnerSettingsInput(body) {
+  const ownerName = cleanText(body?.ownerName, 120);
+  const teams = [];
+  const seen = new Set();
+  for (const raw of Array.isArray(body?.teams) ? body.teams : []) {
+    const name = cleanText(raw, 120);
+    if (!name) continue;
+    const key = name.toLocaleLowerCase("en-US");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    teams.push(name);
+  }
+  if (!teams.length || teams.length > 20) {
+    throw new Error("Add between 1 and 20 monitored league teams.");
+  }
+  return { ownerName, teams };
+}
+
 async function compactHistoryWithAi(env, question, reply) {
   if (!env.GROQ_API_KEY || !(await edgeAiBudgetTake(env))) return null;
   const controller = new AbortController();
@@ -192,7 +343,7 @@ async function compactHistoryWithAi(env, question, reply) {
           {
             role: "system",
             content: [
-              "Summarize one BallerWatch Telegram exchange for engineering review.",
+              "Summarize one BallerWatch exchange for engineering review.",
               "Remove names, IDs, tokens, URLs, exact addresses, and personal details.",
               "Do not quote the user.",
               "Classify as normal, bug_candidate, feature_candidate, or negative_feedback.",
@@ -238,7 +389,7 @@ async function persistFastChatHistory(env, event) {
   const compact = await compactHistoryWithAi(env, event.question, event.reply);
   const entry = {
     createdAt: new Date().toISOString(),
-    source: "cloudflare-fast-path",
+    source: cleanText(event.source, 40) || "cloudflare-fast-path",
     ...(Number(event.messageId) > 0 ? { messageId: Number(event.messageId) } : {}),
     kind: compact?.kind || "normal",
     summary: compact?.summary || `Fast-path ${cleanText(event.intent,60) || "read-only"} question answered.`,
@@ -919,7 +1070,7 @@ function webCorsHeaders(request) {
   return {
     "access-control-allow-origin": allowed ? origin : "https://vudh1.github.io",
     "access-control-allow-methods": "GET,POST,OPTIONS",
-    "access-control-allow-headers": "content-type",
+    "access-control-allow-headers": "content-type, authorization",
     "access-control-max-age": "86400",
     vary: "Origin",
   };
@@ -1405,11 +1556,76 @@ export default {
       }
     }
 
+    if (request.method === "POST" && url.pathname === "/web/owner/pair") {
+      let body;
+      try { body = await request.json(); }
+      catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
+      const paired = await pairOwnerDevice(env, body?.code);
+      if (!paired) {
+        return webJson(
+          request,
+          { ok: false, error: "Pairing code is invalid or expired." },
+          { status: 401 },
+        );
+      }
+      return webJson(request, { ok: true, ...paired });
+    }
+
+    if (
+      (request.method === "GET" || request.method === "POST") &&
+      url.pathname === "/web/owner/settings"
+    ) {
+      const token = bearerToken(request);
+      if (!(await verifyOwnerToken(env, token))) {
+        return webJson(request, { ok: false, error: "Owner pairing is required." }, { status: 401 });
+      }
+
+      if (request.method === "GET") {
+        return webJson(request, { ok: true, settings: await ownerSettingsView(env) });
+      }
+
+      let body;
+      try { body = await request.json(); }
+      catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
+
+      let settings;
+      try { settings = normalizeOwnerSettingsInput(body); }
+      catch (error) {
+        return webJson(request, { ok: false, error: cleanText(error?.message, 200) }, { status: 400 });
+      }
+      await dispatchWorkflow(env, "listener.yml", {
+        web_settings_event_b64: base64Json(settings),
+      });
+      return webJson(
+        request,
+        { ok: true, settings, persistence: "queued" },
+        { status: 202 },
+      );
+    }
+
     if (request.method === "POST" && url.pathname === "/web/ask") {
       let body;
       try { body = await request.json(); }
       catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
       const answer = await webAnswer(env, body?.question, body?.context || {});
+      const token = bearerToken(request);
+      if (await verifyOwnerToken(env, token)) {
+        const history = {
+          question: cleanText(body?.question, 600),
+          reply: cleanText(answer?.reply || answer?.error, 1200),
+          source: "web-pwa-owner",
+          intent: "web",
+        };
+        if (history.question && history.reply) {
+          ctx.waitUntil(
+            persistFastChatHistory(env, history).catch(() =>
+              dispatchWorkflow(env, "listener.yml", {
+                history_event_b64: base64Json(history),
+              }),
+            ),
+          );
+        }
+      }
       return webJson(request, answer, { status: answer.ok ? 200 : 400 });
     }
     if (

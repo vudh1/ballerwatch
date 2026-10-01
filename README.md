@@ -4,10 +4,11 @@ BallerWatch is a small soccer automation system for pickup games and Seattle RAT
 
 It uses Telegram and an installable GitHub Pages web app for questions and alerts, Cloudflare Workers for the webhook/read-only API path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Gemini Flash with Groq fallback for bounded AI assistance, standards-based Web Push for a Telegram-independent notification channel, and Google Calendar for league match sync.
 
-**Current version: 3.3.0**
+**Current version: 4.0.0**
 
 ## Recent changes
 
+- **4.0.0** — Owner-paired settings plus shared 48-hour review history for paired web Q&A.
 - **3.3.0** — Slash-command/autosuggest Q&A, footer install help, bell-only push controls, and two-hour league fallback windows.
 - **3.2.0** — Next-game card with Directions/Share plus a closed-app notification test.
 - **3.1.2** — Push notification on/off switch inside the notification bell panel.
@@ -27,7 +28,8 @@ Full release history and Telegram announcement text live in `features/versions.j
 Telegram -------------------+
                             |
 GitHub Pages PWA -----------+--> Cloudflare Worker
-                                 |-- read-only Q&A / board
+                                 |-- public-safe Q&A / board
+                                 |-- owner-paired settings
                                  |-- encrypted push registration
                                  '-- Telegram webhook
                                            |
@@ -93,21 +95,21 @@ It provides:
 - an installable Home Screen app shell;
 - a next-game card with Google Maps directions and native share;
 - a recent notification panel behind the top-right bell;
-- one-question/one-answer read-only Q&A with slash-command and natural-language autosuggestions, with no persistent web chat history;
+- one-question/one-answer Q&A with slash-command and natural-language autosuggestions; paired-owner questions join the same privacy-minimized 48-hour review history while anonymous web questions are not retained;
 - Web Push controls inside the notification bell for pickup, real RATS schedule-change, and version notifications;
 - a manual local notification test for confirming iPhone notification display while the app is closed.
 
-On iPhone, open the site in Safari, choose **Share → Add to Home Screen**, open the installed BallerWatch app, then tap **Enable push**.
+On iPhone, open the site in Safari, choose **Share → Add to Home Screen**, open the installed BallerWatch app, then use the notification bell to turn Push notifications on.
 
-State-changing commands remain on Telegram in v3.0.0. The public web surface deliberately strips RSVP participant names, waitlist names, owner-specific status, secrets, and private settings.
+The anonymous public web surface remains read-only and deliberately strips RSVP participant names, waitlist names, owner-specific status, secrets, and private settings. An owner-paired device can view/change only the pickup RSVP name and monitored league teams through the Settings gear.
 
-## 48-hour Telegram review history
+## 48-hour owner review history
 
 BallerWatch no longer automatically turns every unanswered question into a feature request.
 
 Instead:
 
-1. a Telegram exchange is shortened and privacy-cleaned with Groq;
+1. an owner exchange from the private bot or an owner-paired PWA is shortened and privacy-cleaned with Groq;
 2. the condensed record is stored for at most **48 hours**;
 3. the detailed condensed history is AES-GCM encrypted in `state/chat-history.json` on the `runtime-state` branch;
 4. only actionable, sanitized signals are copied to `state/chat-review.json`.
@@ -219,7 +221,8 @@ Runtime pushes retry on branch races so overlapping watcher/listener runs do not
 | System watchdog | Every 10 minutes | cron-job.org → GitHub Action |
 | Telegram webhook | Event-driven | Cloudflare Worker |
 | Fast Telegram read-only reply | Event-driven | Cloudflare Worker |
-| PWA read-only Q&A / board | Event-driven | GitHub Pages → Cloudflare Worker |
+| PWA public-safe Q&A / board | Event-driven | GitHub Pages → Cloudflare Worker |
+| PWA owner settings | User-driven, paired device only | GitHub Pages → Worker → GitHub listener |
 | Web Push registration | User-driven | PWA → Worker → GitHub Action |
 | Web Push delivery | Only for allowed new notifications | GitHub Action → browser push service |
 | State-changing Telegram command | Event-driven | GitHub listener |

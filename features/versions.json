@@ -1,7 +1,24 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "3.3.0",
+  "currentVersion": "4.0.0",
   "releases": [
+    {
+      "version": "4.0.0",
+      "date": "2026-10-01",
+      "type": "major",
+      "source": "user-requested",
+      "title": "Owner-paired web settings and shared review history",
+      "telegramAnnouncement": "BallerWatch web settings can now be securely paired to an owner device, and paired web Q&A joins the same privacy-minimized 48-hour review loop.",
+      "changes": [
+        "Added a top-right Settings gear with owner pairing, current pickup RSVP name, current monitored league teams, and encrypted settings updates.",
+        "Added a six-digit /webpair owner code flow. Pair codes are hashed in encrypted listener settings, expire after 10 minutes, and are consumed after successful pairing.",
+        "Paired devices receive a signed 90-day owner capability token stored only in local browser storage; anonymous web access remains read-only and cannot retrieve private owner settings.",
+        "Paired web Q&A now uses the same privacy-minimized 48-hour encrypted review-history pipeline as private bot conversations, including bug_candidate and feature_candidate classification. Anonymous web Q&A is not retained.",
+        "Owner settings writes are narrowly scoped to pickup RSVP name and monitored league teams and are dispatched through the existing encrypted listener/runtime-state workflow.",
+        "Reduced the notification test UI to a subtle text action and shortened the local test-notification content.",
+        "Updated architecture, privacy, web-app, and onboarding documentation for the v4 owner-pairing boundary."
+      ]
+    },
     {
       "version": "3.3.0",
       "date": "2026-10-01",
