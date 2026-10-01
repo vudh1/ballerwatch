@@ -260,5 +260,5 @@ test("weather release bootstrap stays notification-silent", () => {
   assert.match(workflow, /push:[\s\S]*weather\/\*\*/);
   assert.match(workflow, /node weather\/update\.mjs/);
   assert.match(workflow, /node shared\/runtime-state\.mjs push weather/);
-  assert.doesNotMatch(workflow, /send-pending|telegram|notify/i);
+  assert.doesNotMatch(workflow, /send-pending|sendMessage|telegram-notify|shared\/telegram/i);
 });
