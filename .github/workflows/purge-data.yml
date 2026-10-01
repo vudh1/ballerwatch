@@ -9,7 +9,7 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ballerwatch-data-purge
@@ -26,21 +26,12 @@ jobs:
           ref: main
           fetch-depth: 1
 
-      - name: Purge Cloudflare runtime data
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        shell: bash
-        run: |
-          SECRET="$(node -e 'const c=require("crypto");const s=process.env.TELEGRAM_BOT_TOKEN+"|"+process.env.TELEGRAM_CHAT_ID+"|ballerwatch-webhook-v1";process.stdout.write(c.createHash("sha256").update(s).digest("hex"))')"
-          curl --max-time 30 --fail-with-body --silent --show-error \
-            -X POST "https://ballerwatch-telegram.vudhone.workers.dev/admin/purge-runtime" \
-            -H "x-ballerwatch-admin: $SECRET"
-          echo
+      - name: Purge GitHub runtime-state branch
+        run: node shared/runtime-state.mjs purge
 
       - name: Show purge scope
         run: |
-          echo "Deleted all keys from private Cloudflare KV, including pickup/league snapshots, Calendar reconciliation state, watchdog state, feature requests, contexts, AI budgets, listener runtime settings, and custom league-team state."
-          echo "League teams therefore bootstrap from the built-in defaults on the next league run."
-          echo "Source code, GitHub/Worker secrets, and Google Calendar events are not deleted."
-          echo "Cloudflare edge checks rebuild current soccer snapshots automatically."
+          echo "Deleted generated runtime files from the runtime-state branch, including pickup/league snapshots, Calendar reconciliation state, watchdog state, chat review history, listener settings, and custom league-team state."
+          echo "League teams bootstrap from the built-in defaults on the next league run."
+          echo "Source code, repository/Worker secrets, and Google Calendar events are not deleted."
+          echo "The primary GitHub watcher schedules rebuild current soccer snapshots automatically."
