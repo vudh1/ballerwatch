@@ -1,7 +1,7 @@
 /**
  * Manages cron-job.org primary GitHub schedules and validates their target/cadence posture.
  *
- * Documentation baseline: v2.4.0. Runtime/private data must never be committed to Git.
+ * Documentation baseline: v2.5.0. Release smoke may tolerate only temporary scheduler-API unavailability; a verified bad scheduler posture still fails. Runtime/private data must never be committed to Git.
  */
 const API = "https://api.cron-job.org";
 
@@ -105,6 +105,39 @@ export async function listExternalSchedules(apiKey = process.env.CRON_JOB_ORG_AP
   return Array.isArray(data.jobs) ? data.jobs : [];
 }
 
+export function isTemporarySchedulerApiError(error) {
+  const message = String(error?.message || error || "");
+  return /\b429\b|\b50[234]\b|fetch failed|timed? ?out|timeout|ECONN|ENET|EAI_AGAIN/i.test(message);
+}
+
+export async function verifyExternalSchedules({
+  apiKey = process.env.CRON_JOB_ORG_API_KEY || "",
+  repo = process.env.GITHUB_REPOSITORY || "vudh1/ballerwatch",
+  expectEnabled = true,
+  optionalUnavailable = false,
+  list = listExternalSchedules,
+} = {}) {
+  let jobs;
+  try {
+    jobs = await list(apiKey);
+  } catch (error) {
+    if (optionalUnavailable && isTemporarySchedulerApiError(error)) {
+      return {
+        available: false,
+        problems: [],
+        warning: `cron-job.org scheduler verification temporarily unavailable: ${error.message}`,
+      };
+    }
+    throw error;
+  }
+
+  return {
+    available: true,
+    problems: analyzeExternalSchedules(jobs, { repo, expectEnabled, requireAll: true }),
+    warning: null,
+  };
+}
+
 function desiredJob(spec, { repo, branch, githubPat, enabled }) {
   return {
     enabled,
@@ -201,16 +234,16 @@ export async function syncExternalSchedules(mode, {
 const isCli = process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href;
 if (isCli) {
   const mode = process.argv[2] || "";
-  if (mode === "check-enabled" || mode === "check-disabled") {
-    const jobs = await listExternalSchedules();
-    const expectEnabled = mode === "check-enabled";
-    const problems = analyzeExternalSchedules(jobs, {
-      repo: process.env.GITHUB_REPOSITORY || "vudh1/ballerwatch",
+  if (["check-enabled", "check-enabled-optional", "check-disabled"].includes(mode)) {
+    const expectEnabled = mode !== "check-disabled";
+    const result = await verifyExternalSchedules({
       expectEnabled,
-      requireAll: true,
+      optionalUnavailable: mode === "check-enabled-optional",
     });
-    if (problems.length) {
-      for (const problem of problems) console.error(problem);
+    if (!result.available) {
+      console.warn(`::warning::${result.warning}`);
+    } else if (result.problems.length) {
+      for (const problem of result.problems) console.error(problem);
       process.exitCode = 1;
     } else {
       console.log(
