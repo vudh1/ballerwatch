@@ -11,7 +11,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
-  <link rel="stylesheet" href="./styles.css?v=3.3.0">
+  <link rel="stylesheet" href="./styles.css?v=4.0.0">
 </head>
 <body>
   <main class="shell">
@@ -22,7 +22,14 @@
         <p class="subtitle">Pickup and RATS game updates, schedules, and alerts in one place.</p>
       </div>
       <div class="hero-actions">
-        <button class="bell-button" id="notification-bell" type="button"
+        <button class="utility-button" id="settings-button" type="button"
+          aria-label="Open settings" aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/>
+            <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.09a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3v-4h.04A1.7 1.7 0 0 0 4.6 8.94a1.7 1.7 0 0 0-.34-1.88L4.2 7l2.83-2.83.06.06a1.7 1.7 0 0 0 1.88.34A1.7 1.7 0 0 0 10 3.01V3h4v.01a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06L19.8 7l-.06.06a1.7 1.7 0 0 0-.34 1.88 1.7 1.7 0 0 0 1.56 1.03H21v4h-.04A1.7 1.7 0 0 0 19.4 15Z"/>
+          </svg>
+        </button>
+        <button class="bell-button utility-button" id="notification-bell" type="button"
           aria-label="Open notifications" aria-haspopup="dialog">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>
@@ -116,12 +123,53 @@
         </label>
       </div>
       <div class="notification-test-row">
-        <button class="secondary" id="test-notification" type="button">Test notification</button>
-        <span class="hint" id="test-notification-status">Schedules a local phone alert.</span>
+        <button class="subtle-action" id="test-notification" type="button">Send test</button>
+        <span class="hint" id="test-notification-status"></span>
       </div>
       <div id="board" class="board">
         <p class="muted">Loading updates…</p>
       </div>
+    </div>
+  </dialog>
+
+  <dialog id="settings-dialog" class="settings-dialog">
+    <div class="dialog-shell">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">SETTINGS</p>
+          <h2>Owner settings</h2>
+        </div>
+        <button class="icon-button" id="close-settings" type="button" aria-label="Close settings">×</button>
+      </div>
+
+      <section id="settings-pair-view">
+        <p class="muted">Pair this device once to view and change your private BallerWatch settings.</p>
+        <form id="owner-pair-form" class="settings-form">
+          <label for="owner-pair-code">Owner pairing code</label>
+          <input id="owner-pair-code" inputmode="numeric" autocomplete="one-time-code"
+            maxlength="6" pattern="[0-9]{6}" placeholder="6-digit code" required>
+          <button type="submit">Pair device</button>
+        </form>
+        <p class="hint" id="owner-pair-status"></p>
+      </section>
+
+      <section id="settings-owner-view" hidden>
+        <form id="owner-settings-form" class="settings-form">
+          <label for="owner-name">Pickup RSVP name</label>
+          <input id="owner-name" maxlength="120" autocomplete="name"
+            placeholder="Your RSVP display name">
+
+          <label for="owner-teams">League teams to monitor</label>
+          <textarea id="owner-teams" rows="5" maxlength="1200"
+            placeholder="One team per line" required></textarea>
+          <p class="hint">One team per line. Changes take effect on the next league refresh.</p>
+
+          <button type="submit">Save changes</button>
+        </form>
+        <p class="hint" id="owner-settings-status"></p>
+        <p class="privacy-note">Questions from this paired device use the same privacy-minimized 48-hour engineering review history.</p>
+        <button class="subtle-action" id="owner-disconnect" type="button">Disconnect this device</button>
+      </section>
     </div>
   </dialog>
 
@@ -140,6 +188,6 @@
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=3.3.0"></script>
+  <script type="module" src="./app.js?v=4.0.0"></script>
 </body>
 </html>
