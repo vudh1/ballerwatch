@@ -5,7 +5,7 @@ import {
   analyzeExternalSchedules,
 } from "./external-schedules.mjs";
 
-function job(spec, enabled = false) {
+function job(spec, enabled = true) {
   return {
     title: spec.title,
     enabled,
@@ -14,9 +14,9 @@ function job(spec, enabled = false) {
   };
 }
 
-test("healthy fallback posture has three disabled jobs", () => {
+test("healthy fallback posture has three enabled jobs", () => {
   const problems = analyzeExternalSchedules(EXTERNAL_SCHEDULE_SPECS.map((spec) => job(spec)), {
-    expectEnabled: false,
+    expectEnabled: true,
   });
   assert.deepEqual(problems, []);
 });
@@ -28,13 +28,16 @@ test("missing fallback job is reported", () => {
   assert.equal(problems.some((x) => x.includes("System watchdog") && x.includes("missing")), true);
 });
 
-test("enabled fallback is reported while edge is healthy", () => {
-  const jobs = EXTERNAL_SCHEDULE_SPECS.map((spec, i) => job(spec, i === 0));
-  const problems = analyzeExternalSchedules(jobs, { expectEnabled: false });
-  assert.equal(problems.some((x) => x.includes("Pickup watcher") && x.includes("expected disabled")), true);
+test("disabled fallback is reported", () => {
+  const jobs = EXTERNAL_SCHEDULE_SPECS.map((spec, i) => job(spec, i !== 0));
+  const problems = analyzeExternalSchedules(jobs, { expectEnabled: true });
+  assert.equal(
+    problems.some((x) => x.includes("Pickup watcher") && x.includes("expected enabled")),
+    true,
+  );
 });
 
-test("enabled state can be ignored while edge is unhealthy", () => {
+test("enabled state can still be ignored when only structure matters", () => {
   const jobs = EXTERNAL_SCHEDULE_SPECS.map((spec) => job(spec, true));
   const problems = analyzeExternalSchedules(jobs, { expectEnabled: null });
   assert.deepEqual(problems, []);
