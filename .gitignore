@@ -18,3 +18,7 @@ league/score-changes.json
 
 # Original unsupported Telegram questions are encrypted when persisted.
 # requests/private.json is intentionally tracked only as an encrypted envelope.
+
+# Never commit external-service OAuth/config credentials.
+.clasp.json
+.clasprc.json
