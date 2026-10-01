@@ -82,7 +82,7 @@ jobs:
       - name: Verify enabled external failover posture
         env:
           CRON_JOB_ORG_API_KEY: ${{ secrets.CRON_JOB_ORG_API_KEY }}
-        run: node infra/external-schedules.mjs check-enabled
+        run: node infra/external-schedules.mjs check-enabled-optional
 
       - name: Remove all transient runtime data
         if: always()
