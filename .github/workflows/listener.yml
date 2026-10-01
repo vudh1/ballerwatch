@@ -9,7 +9,7 @@ on:
         type: string
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ballerwatch-listener
@@ -25,6 +25,12 @@ jobs:
           ref: main
           fetch-depth: 1
 
+      - name: Pull runtime state from Cloudflare KV
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: node shared/runtime-state.mjs pull listener
+
       - name: Listen for Telegram commands
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -34,59 +40,18 @@ jobs:
           UPSTREAM_ENDPOINT: ${{ secrets.UPSTREAM_ENDPOINT }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           TELEGRAM_UPDATE_B64: ${{ inputs.telegram_update_b64 }}
-          # This workflow is dispatched every minute. A long poll only keeps
-          # the runner alive; a short poll lets the next run pick up anything
-          # that arrives later in the minute.
           TELEGRAM_POLL_TIMEOUT: "3"
         run: node listener/bot.mjs
 
-      - name: Remove plaintext league team config
+      - name: Push runtime state to Cloudflare KV
         if: always()
-        run: rm -f league/teams.json
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: node shared/runtime-state.mjs push listener
 
-      - name: Detect generated changes
-        id: changes
-        shell: bash
+      - name: Remove local runtime state
+        if: always()
         run: |
-          if [ -n "$(git status --porcelain -- state/listener.json league requests)" ]; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "No listener state changes."
-          fi
-
-      - name: Verify public state before committing
-        if: steps.changes.outputs.changed == 'true'
-        run: node privacy-audit.mjs
-
-      - name: Persist listener and encrypted league team state
-        if: steps.changes.outputs.changed == 'true'
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A -- state/listener.json league requests
-          git commit -m "Update Telegram listener state"
-          STATE_COMMIT="$(git rev-parse HEAD)"
-
-          for attempt in 1 2 3 4; do
-            git fetch --depth=1 origin main
-            git reset --hard origin/main
-
-            if ! git cherry-pick -X theirs "$STATE_COMMIT"; then
-              git cherry-pick --abort || true
-              echo "Could not replay generated state; retrying ($attempt/4)."
-              sleep $((attempt * 2))
-              continue
-            fi
-
-            if git push origin HEAD:main; then
-              exit 0
-            fi
-
-            echo "Push raced with another workflow; retrying ($attempt/4)."
-            sleep $((attempt * 2))
-          done
-
-          echo "Failed to persist state after 4 push attempts."
-          exit 1
+          node shared/runtime-state.mjs clean listener
+          rm -f league/teams.json
