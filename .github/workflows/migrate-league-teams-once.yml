@@ -1,0 +1,46 @@
+name: One-time encrypted league team migration
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/migrate-league-teams-once.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Sync latest state
+        run: git pull --rebase origin main
+
+      - name: Fetch legacy team config transiently and encrypt it
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          curl --fail --silent --show-error --location \
+            https://raw.githubusercontent.com/vudh1/rats-league-watcher/main/teams.json \
+            --output league/teams.json
+          node shared/league-teams.mjs migrate
+          test "$(node shared/league-teams.mjs list-count)" -gt 0
+          rm -f league/teams.json
+          node privacy-audit.mjs
+
+      - name: Persist encrypted team config only
+        run: |
+          test ! -f league/teams.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- league/state/teams.json
+          git diff --cached --quiet && { echo "Encrypted team config already current."; exit 0; }
+          git commit -m "Migrate encrypted league team configuration"
+          git pull --rebase origin main
+          git push
