@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
-  actions: write
+  contents: read
+  actions: read
 
 concurrency:
   group: ballerwatch-watchdog
@@ -25,7 +25,13 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Verify workflows, validation, encryption and state
+      - name: Pull watchdog state from Cloudflare KV
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: node shared/runtime-state.mjs pull watchdog
+
+      - name: Verify validation, privacy and edge health
         env:
           GITHUB_TOKEN: ${{ github.token }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -34,31 +40,13 @@ jobs:
           TELEGRAM_WEBHOOK_HEALTH_URL: https://ballerwatch-telegram.vudhone.workers.dev/health
         run: node watchdog/watchdog.mjs
 
-      - name: Persist encrypted watchdog state
+      - name: Push watchdog state to Cloudflare KV
         if: always()
-        run: |
-          if [ -z "$(git status --porcelain -- state/watchdog.json)" ]; then
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- state/watchdog.json
-          git commit -m "Update watchdog health state"
-          STATE_COMMIT="$(git rev-parse HEAD)"
-          for attempt in 1 2 3 4; do
-            git fetch --depth=1 origin main
-            git reset --hard origin/main
-            if ! git cherry-pick -X theirs "$STATE_COMMIT"; then
-              git cherry-pick --abort || true
-              echo "Could not replay generated state; retrying ($attempt/4)."
-              sleep $((attempt * 2))
-              continue
-            fi
-            if git push origin HEAD:main; then
-              exit 0
-            fi
-            echo "Push raced with another workflow; retrying ($attempt/4)."
-            sleep $((attempt * 2))
-          done
-          echo "Failed to persist state after 4 push attempts."
-          exit 1
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: node shared/runtime-state.mjs push watchdog
+
+      - name: Remove local watchdog state
+        if: always()
+        run: node shared/runtime-state.mjs clean watchdog
