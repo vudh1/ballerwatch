@@ -1535,11 +1535,76 @@ export default {
       }
     }
 
+    if (request.method === "POST" && url.pathname === "/web/owner/pair") {
+      let body;
+      try { body = await request.json(); }
+      catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
+      const paired = await pairOwnerDevice(env, body?.code);
+      if (!paired) {
+        return webJson(
+          request,
+          { ok: false, error: "Pairing code is invalid or expired." },
+          { status: 401 },
+        );
+      }
+      return webJson(request, { ok: true, ...paired });
+    }
+
+    if (
+      (request.method === "GET" || request.method === "POST") &&
+      url.pathname === "/web/owner/settings"
+    ) {
+      const token = bearerToken(request);
+      if (!(await verifyOwnerToken(env, token))) {
+        return webJson(request, { ok: false, error: "Owner pairing is required." }, { status: 401 });
+      }
+
+      if (request.method === "GET") {
+        return webJson(request, { ok: true, settings: await ownerSettingsView(env) });
+      }
+
+      let body;
+      try { body = await request.json(); }
+      catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
+
+      let settings;
+      try { settings = normalizeOwnerSettingsInput(body); }
+      catch (error) {
+        return webJson(request, { ok: false, error: cleanText(error?.message, 200) }, { status: 400 });
+      }
+      await dispatchWorkflow(env, "listener.yml", {
+        web_settings_event_b64: base64Json(settings),
+      });
+      return webJson(
+        request,
+        { ok: true, settings, persistence: "queued" },
+        { status: 202 },
+      );
+    }
+
     if (request.method === "POST" && url.pathname === "/web/ask") {
       let body;
       try { body = await request.json(); }
       catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
       const answer = await webAnswer(env, body?.question, body?.context || {});
+      const token = bearerToken(request);
+      if (await verifyOwnerToken(env, token)) {
+        const history = {
+          question: cleanText(body?.question, 600),
+          reply: cleanText(answer?.reply || answer?.error, 1200),
+          source: "web-pwa-owner",
+          intent: "web",
+        };
+        if (history.question && history.reply) {
+          ctx.waitUntil(
+            persistFastChatHistory(env, history).catch(() =>
+              dispatchWorkflow(env, "listener.yml", {
+                history_event_b64: base64Json(history),
+              }),
+            ),
+          );
+        }
+      }
       return webJson(request, answer, { status: answer.ok ? 200 : 400 });
     }
     if (
