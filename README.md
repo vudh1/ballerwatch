@@ -89,7 +89,7 @@ Add these repository Actions secrets before cutover:
 - `CRON_JOB_ORG_API_KEY` — cron-job.org Settings → API key
 - `CRON_GITHUB_PAT` — fine-grained GitHub token restricted to this repo with Actions read/write
 - `CLASPRC_JSON` — OAuth credentials produced by `clasp login`; treat as highly sensitive
-- `CLASP_JSON` — `.clasp.json` for the existing Calendar bridge Apps Script project
+- `APPS_SCRIPT_ID` — Script ID for the existing Calendar bridge Apps Script project (Project Settings → IDs)
 - `APPS_SCRIPT_DEPLOYMENT_ID` — active versioned web-app deployment ID
 
 Use the **same values** currently used by `ttf-watcher` / `rats-league-watcher` so encrypted state and the Calendar bridge continue working.
@@ -114,7 +114,7 @@ Provisioning is idempotent: rerunning the workflow updates existing BallerWatch 
 The Calendar bridge can also be deployed from GitHub. Add these Actions secrets:
 
 - `CLASPRC_JSON` — contents of the OAuth credential file created by `clasp login`
-- `CLASP_JSON` — contents of the existing Calendar bridge project's `.clasp.json`
+- `APPS_SCRIPT_ID` — Script ID of the existing Calendar bridge project (Project Settings → IDs)
 - `APPS_SCRIPT_DEPLOYMENT_ID` — the existing active web-app deployment ID
 - existing `GOOGLE_CALENDAR_WEBHOOK_URL` — used to verify the deployed bridge
 
