@@ -21,9 +21,21 @@ const els = {
   installCard: document.querySelector("#install-card"),
   installHelp: document.querySelector("#install-help"),
   installDialog: document.querySelector("#install-dialog"),
+  nextGameCard: document.querySelector("#next-game-card"),
+  nextGameTitle: document.querySelector("#next-game-title"),
+  nextGameType: document.querySelector("#next-game-type"),
+  nextGameMeta: document.querySelector("#next-game-meta"),
+  nextGameLocation: document.querySelector("#next-game-location"),
+  nextGameActions: document.querySelector("#next-game-actions"),
+  nextGameDirections: document.querySelector("#next-game-directions"),
+  nextGameShare: document.querySelector("#next-game-share"),
+  nextGameHint: document.querySelector("#next-game-hint"),
+  testNotification: document.querySelector("#test-notification"),
+  testNotificationStatus: document.querySelector("#test-notification-status"),
 };
 
 let config = null;
+let currentNextGame = null;
 
 function standalone() {
   return window.matchMedia("(display-mode: standalone)").matches ||
@@ -88,7 +100,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=3.1.2", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=3.2.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -149,6 +161,116 @@ function renderBoard(entries) {
 
     article.append(title, body, time);
     els.board.append(article);
+  }
+}
+
+function googleMapsUrl(query) {
+  if (!query) return "";
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
+function renderNextGame(game) {
+  currentNextGame = game || null;
+
+  if (!game) {
+    els.nextGameTitle.textContent = "No upcoming game";
+    els.nextGameType.textContent = "None";
+    els.nextGameMeta.textContent = "No pickup or RATS game is currently published.";
+    els.nextGameLocation.textContent = "";
+    els.nextGameActions.hidden = true;
+    els.nextGameHint.textContent = "";
+    return;
+  }
+
+  els.nextGameTitle.textContent = game.title || "Upcoming game";
+  els.nextGameType.textContent = game.kind === "pickup" ? "Pickup" : "League";
+  els.nextGameMeta.textContent = [game.dateLabel, game.time].filter(Boolean).join(" • ");
+
+  const locationParts = [];
+  if (game.location) locationParts.push(game.location);
+  if (game.address && game.address !== game.location) locationParts.push(game.address);
+  if (game.jerseyColor) locationParts.push(`${game.jerseyColor} jersey`);
+  els.nextGameLocation.textContent = locationParts.join(" • ");
+
+  const directions = googleMapsUrl(game.mapsQuery);
+  if (directions) {
+    els.nextGameDirections.href = directions;
+    els.nextGameDirections.hidden = false;
+  } else {
+    els.nextGameDirections.hidden = true;
+  }
+
+  els.nextGameActions.hidden = false;
+  els.nextGameHint.textContent = "";
+}
+
+async function loadNextGame() {
+  try {
+    const payload = await api("/web/next-game");
+    renderNextGame(payload.game || null);
+  } catch (error) {
+    els.nextGameTitle.textContent = "Next game unavailable";
+    els.nextGameType.textContent = "Offline";
+    els.nextGameMeta.textContent = "";
+    els.nextGameLocation.textContent = "";
+    els.nextGameActions.hidden = true;
+    els.nextGameHint.textContent = error.message;
+  }
+}
+
+async function shareNextGame() {
+  if (!currentNextGame) return;
+  const maps = googleMapsUrl(currentNextGame.mapsQuery);
+  const text = currentNextGame.shareText || currentNextGame.title || "BallerWatch game";
+  try {
+    if (navigator.share) {
+      await navigator.share({
+        title: "BallerWatch next game",
+        text,
+        ...(maps ? { url: maps } : {}),
+      });
+      els.nextGameHint.textContent = "Shared.";
+      return;
+    }
+    await navigator.clipboard.writeText([text, maps].filter(Boolean).join("\n"));
+    els.nextGameHint.textContent = "Game details copied.";
+  } catch (error) {
+    if (error?.name !== "AbortError") {
+      els.nextGameHint.textContent = "Unable to share from this device.";
+    }
+  }
+}
+
+async function scheduleTestNotification() {
+  els.testNotification.disabled = true;
+  try {
+    if (!("Notification" in window) || !("serviceWorker" in navigator)) {
+      throw new Error("Notifications are not supported on this device.");
+    }
+    if (ios() && !standalone()) {
+      els.installDialog.showModal();
+      throw new Error("Open BallerWatch from its Home Screen icon first.");
+    }
+
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      throw new Error("Notification permission was not granted.");
+    }
+
+    const registration = await navigator.serviceWorker.ready;
+    const worker = registration.active || registration.waiting || registration.installing;
+    if (!worker) throw new Error("Notification service worker is not ready.");
+
+    worker.postMessage({
+      type: "ballerwatch:test-notification",
+      delayMs: 5_000,
+    });
+    els.testNotificationStatus.textContent =
+      "Scheduled — close BallerWatch now. The test alert should appear in about 5 seconds.";
+  } catch (error) {
+    els.testNotificationStatus.textContent = error.message;
+  } finally {
+    els.testNotification.disabled = false;
   }
 }
 
@@ -314,6 +436,8 @@ els.form.addEventListener("submit", async (event) => {
 });
 
 els.notificationBell.addEventListener("click", openNotifications);
+els.nextGameShare.addEventListener("click", shareNextGame);
+els.testNotification.addEventListener("click", scheduleTestNotification);
 els.closeNotifications.addEventListener("click", () => els.notificationDialog.close());
 els.refresh.addEventListener("click", loadBoard);
 els.enablePush.addEventListener("click", enablePush);
@@ -335,5 +459,5 @@ window.addEventListener("offline", () => { els.system.textContent = "Offline"; }
 
 applyInstallState();
 await registerServiceWorker().catch(() => null);
-await Promise.all([loadConfig(), loadBoard()]);
+await Promise.all([loadConfig(), loadBoard(), loadNextGame()]);
 await updatePushStatus();
