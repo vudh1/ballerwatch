@@ -12,22 +12,22 @@ function job(spec, enabled = true) {
     title: spec.title,
     enabled,
     url: `https://api.github.com/repos/vudh1/ballerwatch/actions/workflows/${spec.workflow}/dispatches`,
-    schedule: { minutes: spec.minutes },
+    schedule: { minutes: spec.minutes, hours: spec.hours || [-1] },
   };
 }
 
-test("healthy fallback posture has three enabled jobs", () => {
+test("healthy scheduler posture has two enabled primary jobs", () => {
   const problems = analyzeExternalSchedules(EXTERNAL_SCHEDULE_SPECS.map((spec) => job(spec)), {
     expectEnabled: true,
   });
   assert.deepEqual(problems, []);
 });
 
-test("missing fallback job is reported", () => {
-  const problems = analyzeExternalSchedules(EXTERNAL_SCHEDULE_SPECS.slice(0, 2).map((spec) => job(spec)), {
-    expectEnabled: false,
+test("missing primary scheduler job is reported", () => {
+  const problems = analyzeExternalSchedules(EXTERNAL_SCHEDULE_SPECS.slice(0, 1).map((spec) => job(spec)), {
+    expectEnabled: true,
   });
-  assert.equal(problems.some((x) => x.includes("System watchdog") && x.includes("missing")), true);
+  assert.equal(problems.some((x) => x.includes("League watcher") && x.includes("missing")), true);
 });
 
 test("disabled fallback is reported", () => {
@@ -106,4 +106,18 @@ test("optional scheduler synchronization still fails on auth errors", async () =
     ),
     /401/,
   );
+});
+
+
+test("retired external watchdog is reported when enabled", () => {
+  const jobs = [
+    ...EXTERNAL_SCHEDULE_SPECS.map((spec) => job(spec, true)),
+    {
+      title: "BallerWatch - System watchdog",
+      enabled: true,
+      url: "https://api.github.com/repos/vudh1/ballerwatch/actions/workflows/watchdog.yml/dispatches",
+    },
+  ];
+  const problems = analyzeExternalSchedules(jobs, { expectEnabled: true });
+  assert.ok(problems.some((problem) => problem.includes("retired cron-job.org schedule")));
 });
