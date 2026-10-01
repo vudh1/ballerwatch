@@ -144,12 +144,12 @@ async function validationProblem() {
   return null;
 }
 
-async function externalCronProblems(edgeHealthy) {
+async function externalCronProblems() {
   try {
     const jobs = await listExternalSchedules();
     const messages = analyzeExternalSchedules(jobs, {
       repo: process.env.GITHUB_REPOSITORY || "vudh1/ballerwatch",
-      expectEnabled: edgeHealthy ? false : null,
+      expectEnabled: true,
       requireAll: true,
     });
     return messages.map((message, index) => ({
@@ -202,7 +202,7 @@ export async function runWatchdog() {
   const validation = await validationProblem();
   if (validation) problems.push(validation);
 
-  problems.push(...await externalCronProblems(edge.healthy));
+  problems.push(...await externalCronProblems());
   problems.push(...sensitivePlaintextProblems());
 
   const fingerprint = crypto
