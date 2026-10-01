@@ -62,5 +62,10 @@ export function appendWebNotification(channel, entry, { now = new Date() } = {})
     file,
     JSON.stringify(encryptState({ version: 1, entries }), null, 2) + "\n",
   );
+  fs.mkdirSync(".runtime", { recursive: true });
+  fs.writeFileSync(
+    ".runtime/web-push-pending",
+    JSON.stringify({ channel, id: nextEntry.id, createdAt: nextEntry.createdAt }) + "\n",
+  );
   return nextEntry;
 }
