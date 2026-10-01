@@ -19,10 +19,9 @@ export function aiBudget(settings = {}) {
 }
 
 export function aiConfigured() {
-  return Boolean(
-    cleanText(process.env.GROQ_API_KEY) &&
-    String(process.env.GROQ_FREE_TIER_ONLY || "").toLowerCase() === "true"
-  );
+  // BallerWatch is intentionally free-tier-only. A Groq API key enables the
+  // fallback, but the repository never supports opting into paid AI usage.
+  return Boolean(cleanText(process.env.GROQ_API_KEY));
 }
 
 function parseDecision(text) {
