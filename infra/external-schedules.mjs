@@ -193,5 +193,21 @@ export async function syncExternalSchedules(mode, {
 
 const isCli = process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href;
 if (isCli) {
-  await syncExternalSchedules(process.argv[2] || "");
+  const mode = process.argv[2] || "";
+  if (mode === "check-disabled") {
+    const jobs = await listExternalSchedules();
+    const problems = analyzeExternalSchedules(jobs, {
+      repo: process.env.GITHUB_REPOSITORY || "vudh1/ballerwatch",
+      expectEnabled: false,
+      requireAll: true,
+    });
+    if (problems.length) {
+      for (const problem of problems) console.error(problem);
+      process.exitCode = 1;
+    } else {
+      console.log("All three cron-job.org fallback jobs exist, have the expected cadence, and are disabled.");
+    }
+  } else {
+    await syncExternalSchedules(mode);
+  }
 }
