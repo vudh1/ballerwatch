@@ -58,7 +58,7 @@ cron-job.org has only two required enabled jobs:
 - pickup: every 2 minutes;
 - league: every 5 minutes.
 
-The legacy Telegram listener job and the retired external watchdog job must remain disabled. The watchdog/maintenance workflow runs natively in GitHub Actions every 6 hours. Pickup and league fallback runs are health-gated to avoid duplicate source work while Cloudflare is healthy.
+The legacy Telegram listener job and the retired external watchdog job must remain disabled. The watchdog/maintenance workflow runs natively in GitHub Actions every 6 hours. As a fail-safe, a lingering retired external watchdog dispatch with default inputs is rejected at the job level and skips before allocating a runner; explicit manual/fallback runs require `external_fallback=true`. Pickup and league fallback runs are health-gated to avoid duplicate source work while Cloudflare is healthy.
 
 ## Match weather
 
