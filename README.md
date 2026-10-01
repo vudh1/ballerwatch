@@ -4,7 +4,13 @@ BallerWatch is a small soccer automation system for pickup games and Seattle RAT
 
 It uses Telegram for questions and alerts, Cloudflare Workers for the webhook/fast reply path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Gemini Flash with Groq fallback for bounded AI assistance, and Google Calendar for league match sync.
 
-**Current version: 2.5.0**
+**Current version: 2.5.1**
+
+## What changed in 2.5.1
+
+2.5.1 extends the temporary cron-job.org API-outage policy to post-merge operations. If the cron-job.org management API is temporarily unavailable or quota-limited, scheduler setup and Telegram Worker deployment emit warnings instead of failing after the core deployment has already succeeded.
+
+Authentication failures still fail. When cron-job.org can be queried, missing, disabled, duplicated, mistargeted, or wrong-cadence scheduler jobs also still fail verification.
 
 ## What changed in 2.5.0
 
