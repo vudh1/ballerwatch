@@ -2,6 +2,8 @@ import fs from "node:fs";
 import { execFileSync } from "node:child_process";
 
 const FORBIDDEN_TRACKED = new Set([
+  ".clasp.json",
+  ".clasprc.json",
   "league/teams.json",
   "league/schedule.json",
   "league/today.json",

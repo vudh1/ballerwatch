@@ -6,7 +6,7 @@ One public, zero-cost soccer automation repo with three independently scheduled 
 2. **Pickup watcher** — refresh every **2 minutes**
 3. **RATS league watcher** — refresh every **5 minutes**
 
-There is intentionally **no GitHub Actions `schedule:` cron**. All recurring runs are started by cron-job.org through `workflow_dispatch`.
+There is intentionally **no GitHub Actions `schedule:` cron**. All recurring runs are started by cron-job.org through `workflow_dispatch`. The cron-job.org configuration itself is now managed idempotently by `.github/workflows/setup-cron.yml`.
 
 ## Architecture
 
@@ -86,34 +86,45 @@ Add these repository Actions secrets before cutover:
 - `UPSTREAM_ENDPOINT`
 - `GOOGLE_CALENDAR_WEBHOOK_URL`
 - `GOOGLE_CALENDAR_WEBHOOK_SECRET`
+- `CRON_JOB_ORG_API_KEY` — cron-job.org Settings → API key
+- `CRON_GITHUB_PAT` — fine-grained GitHub token restricted to this repo with Actions read/write
+- `CLASPRC_JSON` — OAuth credentials produced by `clasp login`; treat as highly sensitive
+- `APPS_SCRIPT_ID` — Script ID for the existing Calendar bridge Apps Script project (Project Settings → IDs)
+- `APPS_SCRIPT_DEPLOYMENT_ID` — active versioned web-app deployment ID
 
 Use the **same values** currently used by `ttf-watcher` / `rats-league-watcher` so encrypted state and the Calendar bridge continue working.
 
-## cron-job.org
+## cron-job.org — automated provisioning
 
-Create four jobs. Each sends a POST with body:
+Do **not** create the four jobs manually. Add `CRON_JOB_ORG_API_KEY` and `CRON_GITHUB_PAT` as repository Actions secrets, then run **Configure external cron** from GitHub Actions.
 
-```json
-{"ref":"main"}
-```
+`infra/sync-cron.mjs` uses the cron-job.org REST API to create or update exactly these BallerWatch jobs:
 
-and headers:
+- listener — every 1 minute
+- pickup — every 2 minutes
+- league — every 5 minutes
+- watchdog — every 10 minutes
 
-```text
-Accept: application/vnd.github+json
-Authorization: Bearer <GITHUB_PAT>
-X-GitHub-Api-Version: 2022-11-28
-Content-Type: application/json
-```
+Each job POSTs `{"ref":"main"}` to the corresponding GitHub `workflow_dispatch` endpoint. The GitHub PAT is sent to cron-job.org only as the private Authorization header required for those future dispatches; it is never committed or printed. Saved cron responses are disabled.
 
-Endpoints:
+Provisioning is idempotent: rerunning the workflow updates existing BallerWatch jobs rather than duplicating them. By default it also disables enabled cron jobs that still target `ballerbaywatch`, `ttf-watcher`, or `rats-league-watcher`, but only after all four BallerWatch jobs have been synced.
 
-- 1 minute — `https://api.github.com/repos/vudh1/ballerwatch/actions/workflows/listener.yml/dispatches`
-- 2 minutes — `https://api.github.com/repos/vudh1/ballerwatch/actions/workflows/pickup.yml/dispatches`
-- 5 minutes — `https://api.github.com/repos/vudh1/ballerwatch/actions/workflows/league.yml/dispatches`
-- 10 minutes — `https://api.github.com/repos/vudh1/ballerwatch/actions/workflows/watchdog.yml/dispatches`
+## Google Apps Script — automated deployment
 
-The PAT needs permission to run Actions for this repository.
+The Calendar bridge can also be deployed from GitHub. Add these Actions secrets:
+
+- `CLASPRC_JSON` — contents of the OAuth credential file created by `clasp login`
+- `APPS_SCRIPT_ID` — Script ID of the existing Calendar bridge project (Project Settings → IDs)
+- `APPS_SCRIPT_DEPLOYMENT_ID` — the existing active web-app deployment ID
+- existing `GOOGLE_CALENDAR_WEBHOOK_URL` — used to verify the deployed bridge
+
+Then run **Deploy Calendar bridge** once. Future changes to `league/google_apps_script/Code.gs` deploy automatically.
+
+The deployment workflow first pulls the existing Apps Script project so its manifest and any other project files are preserved, overwrites only `Code.gs` from this repository, pushes the project, and updates the existing versioned deployment. Updating the existing deployment preserves its webhook URL.
+
+The existing Apps Script Script Property `WEBHOOK_SECRET` remains private inside Apps Script and must already match `GOOGLE_CALENDAR_WEBHOOK_SECRET`. The workflow does not copy that secret into source code.
+
+Before using CI deployment, enable the Apps Script API for the Google account and allow Apps Script API access to projects. Service accounts are intentionally not used because the Apps Script API does not support them.
 
 ## Cost
 
@@ -123,11 +134,7 @@ Keep this repository **public** and use standard GitHub-hosted runners. Public-r
 
 Do not run two Telegram listeners against the same bot token.
 
-1. Add the secrets above.
-2. Create and test the three cron-job.org jobs.
-3. Stop the old cron-job.org jobs for `ttf-watcher` and `rats-league-watcher`.
-4. Leave the old repositories intact temporarily as rollback copies.
-5. After the new system is stable, archive the old repositories if desired.
+1. Add the secrets above.\n2. Run **Configure external cron**; leave cleanup enabled to disable superseded soccer cron jobs after successful sync.\n3. Run **Deploy Calendar bridge** once after adding the clasp secrets.\n4. Run the manual smoke test and verify listener/pickup/league/watchdog activity.\n5. Leave old repositories intact only until the new system is verified, then delete/archive them as desired.
 
 ## Self-improving Telegram requests
 
