@@ -8,7 +8,11 @@ on:
         required: false
         type: string
       history_event_b64:
-        description: "Condensed-history event from the Cloudflare fast path"
+        description: "Condensed-history event from an authenticated fast path"
+        required: false
+        type: string
+      web_settings_event_b64:
+        description: "Authenticated owner settings update from the web app"
         required: false
         type: string
 
@@ -46,6 +50,7 @@ jobs:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           TELEGRAM_UPDATE_B64: ${{ inputs.telegram_update_b64 }}
           CHAT_HISTORY_EVENT_B64: ${{ inputs.history_event_b64 }}
+          WEB_SETTINGS_EVENT_B64: ${{ inputs.web_settings_event_b64 }}
         run: node listener/bot.mjs
 
       - name: Push runtime state to GitHub branch
