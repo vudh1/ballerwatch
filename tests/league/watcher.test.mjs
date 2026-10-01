@@ -124,7 +124,7 @@ test("normalization preserves counts, colors, tracking keys, and Pacific time", 
   assert.equal(game.jerseyColor, "Black");
   assert.equal(game.opponentJerseyColor, "White");
   assert.equal(game.start, "2026-10-05T19:15:00-07:00");
-  assert.equal(game.end, "2026-10-05T20:15:00-07:00");
+  assert.equal(game.end, "2026-10-05T21:15:00-07:00");
   assert.equal(game.endEstimated, true);
   assert.equal(game.key, "v2:26c0505cec80b23df5c52d7e");
 });
