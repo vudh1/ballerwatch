@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "3.1.0",
+  "currentVersion": "3.1.1",
   "releases": [
+    {
+      "version": "3.1.1",
+      "date": "2026-10-01",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Reliable installed-app refresh",
+      "telegramAnnouncement": "BallerWatch Home Screen installs now refresh new web-app releases more aggressively instead of staying on stale cached assets.",
+      "changes": [
+        "Versioned the deployed CSS, JavaScript, and service-worker URLs so each PWA release has cache-distinct static assets.",
+        "Registered the service worker with updateViaCache disabled, explicitly checks for updates, and reloads once when a new worker takes control.",
+        "Changed same-origin service-worker network requests to bypass stale HTTP cache before updating the offline shell.",
+        "Added regression coverage for versioned assets, forced service-worker refresh, controller-change reload, and no-store fetch behavior."
+      ]
+    },
     {
       "version": "3.1.0",
       "date": "2026-10-01",
