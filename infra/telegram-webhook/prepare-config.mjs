@@ -1,3 +1,8 @@
+/**
+ * Builds deployment-time Cloudflare Worker configuration without exposing secret values.
+ *
+ * Documentation baseline: v2.3.0. Runtime/private data must never be committed to Git.
+ */
 import fs from "node:fs";
 
 const token=process.env.CLOUDFLARE_API_TOKEN||"";
