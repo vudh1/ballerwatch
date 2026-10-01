@@ -46,7 +46,6 @@ jobs:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           TELEGRAM_UPDATE_B64: ${{ inputs.telegram_update_b64 }}
           CHAT_HISTORY_EVENT_B64: ${{ inputs.history_event_b64 }}
-          TELEGRAM_POLL_TIMEOUT: "3"
         run: node listener/bot.mjs
 
       - name: Push runtime state to GitHub branch
