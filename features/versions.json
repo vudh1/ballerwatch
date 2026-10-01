@@ -1,7 +1,19 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "1.4.1",
+  "currentVersion": "1.4.2",
   "releases": [
+    {
+      "version": "1.4.2",
+      "date": "2026-09-30",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Private feature requests",
+      "changes": [
+        "Replaced public request text, IDs and timestamps with an allowlisted category/count summary; original requests remain encrypted.",
+        "Added request privacy regression tests, strict public-summary schema validation and a listener audit before state commits.",
+        "Preserved encrypted request archives on decryption failure and documented dedicated-key migration requirements."
+      ]
+    },
     {
       "version": "1.4.1",
       "date": "2026-09-30",

@@ -42,7 +42,7 @@ jobs:
             league/calendar-bootstrap.json \
             state/watchdog.json \
             requests/private.json
-          printf '{\n  "version": 1,\n  "requests": []\n}\n' > requests/unknown.json
+          printf '{\n  "version": 2,\n  "requests": []\n}\n' > requests/unknown.json
 
       - name: Show purge scope
         run: |

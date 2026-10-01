@@ -4,7 +4,7 @@ BallerWatch is a small soccer automation system for **pickup games** and **Seatt
 
 It runs in GitHub Actions, sends Telegram updates, keeps Google Calendar in sync, and stores private soccer data encrypted.
 
-**Current version: 1.4.1**
+**Current version: 1.4.2**
 
 ## What it does
 
@@ -77,7 +77,15 @@ This is a public repository, so private runtime information is never intentional
 
 Pickup and league state is encrypted with AES-256-GCM. Plaintext is allowed only temporarily inside a GitHub Actions runner and is removed before state is committed.
 
-`TRACKER_STATE_KEY` is optional. If it is not set, the existing `TELEGRAM_BOT_TOKEN` is used as the encryption-key source. Do not add a new state key to an existing installation without a planned key rotation.
+Unsupported Telegram questions are stored only in encrypted `requests/private.json`. Public `requests/unknown.json` contains only fixed categories and aggregate counts—no text, request IDs, or timestamps. Commit times and changing counts still reveal activity. Existing public summaries remain in Git history; this change does not rewrite history.
+
+Feature builders may use public categories to prioritize general improvements. Exact requests require authorized access to the encrypted archive in a private runtime; never publish decrypted text or guess the original request from a category.
+
+For new installations, set `TRACKER_STATE_KEY` to a dedicated cryptographically random value of at least 32 bytes, stored only as a GitHub Actions secret. Never use a human-chosen password.
+
+For existing installations, `TRACKER_STATE_KEY` is optional for compatibility. If it is not set, the existing `TELEGRAM_BOT_TOKEN` is used as the encryption-key source. Do not simply add or replace this secret: existing ciphertext would become unreadable. A migration must pause all state-writing workflows, decrypt and re-encrypt every protected file (including listener settings and watchdog state) using the old and new keys in a private runtime, verify the results, update the secret and ciphertext together while writers are paused, then resume. Keep the old key securely until rollback is no longer needed. Key rotation does not remove historical ciphertext from Git.
+
+The GitHub connector used for repository maintenance cannot manage Actions secrets. Dedicated-key rotation must be completed through an authorized secrets-management path; this release does not change the active encryption key.
 
 ## Required secrets
 
@@ -150,7 +158,14 @@ BallerWatch uses Semantic Versioning:
 
 The full history is in `features/versions.json`.
 
-### Latest — v1.4.1
+### Latest — v1.4.2
+
+- Public feature requests now expose only fixed categories and counts.
+- Original request text, IDs, and timestamps remain encrypted.
+- Privacy checks reject extra public fields and run before listener state is committed.
+- Regression tests cover personal details and prevent overwriting an archive when decryption fails.
+
+### Previous — v1.4.1
 
 - Direct commits to `main` are allowed again; PR-only repository protection is no longer part of BallerWatch setup.
 - Manual smoke testing is notification-silent and does not send Telegram messages.

@@ -43,6 +43,9 @@ jobs:
         if: always()
         run: rm -f league/teams.json
 
+      - name: Verify public state before committing
+        run: node privacy-audit.mjs
+
       - name: Persist listener and encrypted league team state
         run: |
           if [ -z "$(git status --porcelain -- state/listener.json league requests)" ]; then

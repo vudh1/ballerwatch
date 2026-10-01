@@ -1,3 +1,4 @@
+import { isPublicRequestSummary } from "./shared/feature-requests.mjs";
 import fs from "node:fs";
 import { execFileSync } from "node:child_process";
 
@@ -82,10 +83,8 @@ if (listener?.settings && !isEncryptedEnvelope(listener.settings)) {
 }
 
 const unknown = readJson("requests/unknown.json");
-for (const request of unknown?.requests || []) {
-  if (request.originalQuestion || request.original || request.rawQuestion) {
-    fail("requests/unknown.json contains an original/raw question field");
-  }
+if (!isPublicRequestSummary(unknown)) {
+  fail("requests/unknown.json must contain only version 2 fixed categories and counts");
 }
 
 if (process.exitCode) process.exit(process.exitCode);
