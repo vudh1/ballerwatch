@@ -1,7 +1,7 @@
 /**
  * Performs deep health, privacy, validation, edge, and external-scheduler checks.
  *
- * Documentation baseline: v2.3.0. Runtime/private data must never be committed to Git.
+ * Documentation baseline: v2.4.0. Runtime/private data must never be committed to Git.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -81,12 +81,16 @@ async function telegramWebhookHealth() {
       };
     }
 
+    if (payload?.storage === "github-runtime-state") {
+      return { healthy: true, problem: null };
+    }
+
     if (payload?.kv !== true) {
       return {
         healthy: false,
         problem: {
-          key: "edge-runtime:kv",
-          message: "Cloudflare runtime: KV binding is unavailable",
+          key: "edge-runtime:storage",
+          message: "Cloudflare webhook: runtime storage is unavailable",
         },
       };
     }
