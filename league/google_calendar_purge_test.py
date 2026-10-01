@@ -36,6 +36,7 @@ class CalendarPurgeTests(unittest.TestCase):
             "ok": True,
             "action": "purge",
             "deleted": 3,
+            "stale": 1,
             "clearedProperties": 4,
         })
         with patch("sys.stdout", new_callable=io.StringIO) as stdout:
@@ -47,6 +48,7 @@ class CalendarPurgeTests(unittest.TestCase):
         self.assertEqual(body["secret"], "secret")
         self.assertEqual(result["deleted"], 3)
         self.assertIn("calendarDeleted=3", stdout.getvalue())
+        self.assertIn("calendarStaleMappingsCleared=1", stdout.getvalue())
 
     @patch.dict(
         os.environ,
