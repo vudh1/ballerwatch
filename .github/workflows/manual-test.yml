@@ -1,10 +1,6 @@
 name: Manual smoke test
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/manual-test.yml"
   workflow_dispatch:
 
 permissions:
