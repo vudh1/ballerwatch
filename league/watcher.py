@@ -1,0 +1,282 @@
+"""Fetch the public API used by the Seattle RATS standings widget."""
+import hashlib
+import json
+import os
+import time
+import urllib.request
+from datetime import datetime, timedelta
+from pathlib import Path
+from zoneinfo import ZoneInfo
+
+SEASONS = ('winter', 'spring', 'summer', 'fall')
+SOURCE = 'https://seattlerats.org/standings'
+API = 'https://service.rats.team.op-dev.io/'
+TZ = ZoneInfo('America/Los_Angeles')
+TEAM_CONFIG = Path('teams.json')
+HEADERS = ['Event Type', 'Start Date', 'Start Time', 'End Date', 'End Time',
+           'Timezone ID', 'Home or Away', 'Opponent/Event Title', 'Location Name',
+           'Shirt Color', 'Opponent Shirt Color', 'Allow RSVPs', 'Send Reminders', 'Notes/Comments']
+
+def digest(value):
+    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+
+
+def season_label(season_id):
+    name, year = season_id.split('-', 1)
+    return f"{name.title()} {year}"
+
+
+def season_candidates(now=None):
+    now = now or datetime.now(TZ)
+    # Probe newest plausible seasons first. Include next year so the watcher can
+    # roll forward as soon as RATS publishes the next season for both teams.
+    candidates = []
+    for year in range(now.year + 1, now.year - 2, -1):
+        for name in reversed(SEASONS):
+            candidates.append(f"{name}-{year}")
+    return candidates
+
+
+def normalize_team_name(name):
+    return ' '.join(str(name).strip().split()).casefold()
+
+
+def configured_teams():
+    data = json.loads(TEAM_CONFIG.read_text())
+    teams = data.get('teams')
+    if not isinstance(teams, list) or not teams or any(not isinstance(name, str) or not name.strip() for name in teams):
+        raise ValueError('teams.json must contain a non-empty teams array of names')
+    cleaned = [' '.join(name.strip().split()) for name in teams]
+    normalized = [normalize_team_name(name) for name in cleaned]
+    if len(set(normalized)) != len(normalized):
+        raise ValueError('teams.json contains duplicate team names after normalization')
+    return cleaned
+
+
+def team_matches(aggregate, team_name):
+    return [
+        t for t in aggregate.get('teams', [])
+        if normalize_team_name(t.get('name', '')) == normalize_team_name(team_name)
+    ]
+
+
+def event_score(event, side):
+    explicit = [
+        f'{side}_score', f'{side}Score',
+        f'{side}_goals', f'{side}Goals',
+        f'score_{side}', f'goals_{side}',
+    ]
+    for key in explicit:
+        if key in event and event[key] not in (None, ''):
+            return event[key]
+
+    nested = event.get('score')
+    if isinstance(nested, dict):
+        for key in (side, f'{side}_score', f'{side}Score'):
+            if key in nested and nested[key] not in (None, ''):
+                return nested[key]
+
+    for key, value in event.items():
+        normalized = ''.join(ch.lower() for ch in str(key) if ch.isalnum())
+        if side in normalized and ('score' in normalized or 'goal' in normalized) and value not in (None, ''):
+            if isinstance(value, (str, int, float)) and not isinstance(value, bool):
+                return value
+    return None
+
+
+def discover_latest_season():
+    last_error = None
+    for season_id in season_candidates():
+        try:
+            aggregate = call('get-aggregate', {'season': season_id})
+        except Exception as error:
+            last_error = error
+            continue
+        if not isinstance(aggregate, dict):
+            continue
+        matched = [team_matches(aggregate, name) for name in configured_teams()]
+        if all(len(items) == 1 for items in matched):
+            return season_id, aggregate
+    raise ValueError('No recent RATS season contains all configured teams') from last_error
+
+def call(action, params):
+    for attempt in range(3):
+        try:
+            req = urllib.request.Request(API + action, data=json.dumps(params).encode(),
+                headers={'Content-Type': 'application/json', 'User-Agent': 'rats-league-watcher/1.0'})
+            with urllib.request.urlopen(req, timeout=30) as response:
+                return json.load(response)
+        except Exception:
+            if attempt == 2:
+                raise
+            time.sleep(2 ** attempt)
+
+def normalize(season_id, aggregate, exports):
+    if not isinstance(aggregate, dict) or not isinstance(aggregate.get('teams'), list) or not isinstance(aggregate.get('events'), list):
+        raise ValueError('Unrecognized aggregate schema')
+    result = []
+    for team_name in configured_teams():
+        matches = team_matches(aggregate, team_name)
+        if len(matches) != 1:
+            raise ValueError('Configured team missing or ambiguous')
+        team = matches[0]
+        published_team_name = team.get('name') or team_name
+        table = exports[team_name]
+        if not isinstance(table, list) or not table or table[0] != HEADERS:
+            raise ValueError('Unrecognized team export schema')
+        export_games = [dict(zip(HEADERS, row)) for row in table[1:] if isinstance(row, list) and len(row) == len(HEADERS) and row[0].lower() != 'bye']
+        if any(not isinstance(row, list) or len(row) != len(HEADERS) for row in table[1:]):
+            raise ValueError('Malformed team export row')
+        games = []
+        for event in aggregate['events']:
+            if not isinstance(event, dict):
+                raise ValueError('Malformed event')
+            event_home = event.get('home_team_name') or ''
+            event_away = event.get('away_team_name') or ''
+            if normalize_team_name(published_team_name) not in [normalize_team_name(event_home), normalize_team_name(event_away)]:
+                continue
+            home = normalize_team_name(event_home) == normalize_team_name(published_team_name)
+            opponent = event.get('away_team_name' if home else 'home_team_name')
+            date, clock = event.get('start_date'), event.get('start_time')
+            if not opponent or not date:
+                raise ValueError('Missing match identity/date')
+            day = datetime.strptime(date, '%Y-%m-%d')
+            season_year = int(season_id.rsplit('-', 1)[1])
+            if day.year not in (season_year, season_year + 1):
+                raise ValueError('Unexpected match year for selected season')
+            rows = [r for r in export_games if r['Start Date'] == date and r['Opponent/Event Title'] == opponent and r['Home or Away'].lower() == ('home' if home else 'away')]
+            if len(rows) != 1:
+                raise ValueError('Aggregate/export match identity mismatch')
+            row = rows[0]
+            if clock != row['Start Time'] or (event.get('location') or '') != row['Location Name'] or (event.get('notes') or '') != row['Notes/Comments']:
+                raise ValueError('Source changed during fetch; retry next refresh')
+            division = f"{team.get('day')} {team.get('gender')} D-{team.get('division')}"
+            division_teams = {t['name']: t for t in aggregate['teams'] if
+                f"{t.get('day')} {t.get('gender')} D-{t.get('division')}" == division}
+            home_color = event.get('home_color')
+            if home_color == event.get('away_color'):
+                home_color = division_teams.get(event['home_team_name'], {}).get('color_alt') or home_color
+            own_color = home_color if home else event.get('away_color')
+            other_color = event.get('away_color') if home else home_color
+            start = datetime.fromisoformat(date + 'T' + clock).replace(tzinfo=TZ) if clock else None
+            published_end = row['End Time'] or None
+            end_date = row['End Date'] or date
+            if published_end and start:
+                end = datetime.fromisoformat(end_date + 'T' + published_end).replace(tzinfo=TZ)
+                if end <= start:
+                    raise ValueError('Invalid published end time')
+            else:
+                end = start + timedelta(hours=1) if start else None
+            home_score = event_score(event, 'home')
+            away_score = event_score(event, 'away')
+            team_score = home_score if home else away_score
+            opponent_score = away_score if home else home_score
+            source_id = event.get('id') or event.get('event_id') or None
+            identity = f"{season_id}|{division}|{normalize_team_name(published_team_name)}|{opponent}|{'home' if home else 'away'}|{date}"
+            game = {'key': str(source_id) if source_id else digest(identity)[:24],
+                'sourceMatchId': str(source_id) if source_id else None,
+                'identityBasis': 'source-id' if source_id else 'team-opponent-side-date',
+                'team': published_team_name, 'opponent': opponent, 'homeAway': 'home' if home else 'away',
+                'date': date, 'startTime': clock or None, 'endTime': published_end,
+                'start': start.isoformat() if start else None, 'end': end.isoformat() if end else None,
+                'endEstimated': not bool(published_end), 'timezone': str(TZ),
+                'location': event.get('location') or None, 'fieldNotes': event.get('notes') or None,
+                'jerseyColor': own_color or None, 'opponentJerseyColor': other_color or None,
+                'teamScore': team_score, 'opponentScore': opponent_score,
+                'division': division, 'season': season_label(season_id), 'sourceUrl': SOURCE,
+                'mapUrl': 'https://maps.google.com/?q=' + urllib.parse.quote(event.get('location') or '') if event.get('location') else None,
+                'eventType': row['Event Type']}
+            game['calendarFingerprint'] = digest(game)
+            games.append(game)
+        if len(games) != len(export_games):
+            raise ValueError('Aggregate/export game count mismatch')
+        if len({g['key'] for g in games}) != len(games):
+            raise ValueError('Ambiguous duplicate match identities')
+        games.sort(key=lambda g: (g['date'], g['startTime'] or '', g['key']))
+        result.append({'name': published_team_name, 'day': team.get('day'), 'division': division,
+            'publishedMatchCount': len(games), 'regularSeasonDiscoveryComplete': len(games) >= 10,
+            'matches': games})
+    return {'schemaVersion': 1, 'ok': True, 'season': season_label(season_id), 'seasonId': season_id,
+            'timezone': str(TZ), 'sourceUrl': SOURCE, 'teams': result}
+
+def write_json(path, value):
+    text = json.dumps(value, indent=2, ensure_ascii=False) + '\n'
+    path = Path(path)
+    if path.exists() and path.read_text() == text:
+        return
+    path.with_suffix('.tmp').write_text(text)
+    path.with_suffix('.tmp').replace(path)
+
+def main():
+    now = datetime.now(TZ).isoformat()
+    try:
+        season_id, aggregate = discover_latest_season()
+        exports = {}
+        for team_name in configured_teams():
+            team = next(iter(team_matches(aggregate, team_name)), None)
+            if not team or not team.get('schedule_key'):
+                raise ValueError('Team schedule key missing')
+            exports[team_name] = call('get-schedule', {'season': season_id, 'key': team['schedule_key']})
+        payload = normalize(season_id, aggregate, exports)
+        previous = json.loads(Path('schedule.json').read_text()) if Path('schedule.json').exists() else None
+
+        score_updates = []
+        if previous and previous.get('seasonId') == payload.get('seasonId'):
+            old_matches = {
+                match['key']: match
+                for team in previous.get('teams', [])
+                for match in team.get('matches', [])
+            }
+            for team in payload.get('teams', []):
+                for match in team.get('matches', []):
+                    old = old_matches.get(match['key'])
+                    if not old:
+                        continue
+                    # Do not backfill historical scores merely because this code
+                    # was first deployed. Notify only after the fields existed.
+                    if 'teamScore' not in old and 'opponentScore' not in old:
+                        continue
+                    before = (old.get('teamScore'), old.get('opponentScore'))
+                    after = (match.get('teamScore'), match.get('opponentScore'))
+                    if before != after and after != (None, None):
+                        score_updates.append({
+                            'match': match,
+                            'previousTeamScore': before[0],
+                            'previousOpponentScore': before[1],
+                        })
+        write_json('score-changes.json', {'updates': score_updates})
+        if previous and previous.get('seasonId') == payload.get('seasonId'):
+            counts = {t['name']: t['publishedMatchCount'] for t in previous['teams']}
+            if any(t['publishedMatchCount'] < counts.get(t['name'], 0) for t in payload['teams']):
+                raise ValueError('Published match count shrank; preserve last good snapshot for review')
+        payload['contentHash'] = digest(payload)
+        payload['updatedAt'] = now
+        today_date = datetime.fromisoformat(now).date().isoformat()
+        today_games = [
+            match
+            for team in payload.get('teams', [])
+            for match in team.get('matches', [])
+            if match.get('date') == today_date
+        ]
+        write_json('today.json', {
+            'schemaVersion': 1,
+            'ok': True,
+            'date': today_date,
+            'timezone': str(TZ),
+            'season': payload.get('season'),
+            'seasonId': payload.get('seasonId'),
+            'games': today_games,
+            'updatedAt': now,
+        })
+        write_json('schedule.json', payload)
+        write_json('status.json', {'ok': True, 'lastSuccessfulCheckAt': now, 'lastAttemptAt': now,
+            'contentHash': payload['contentHash'], 'githubRunId': os.environ.get('GITHUB_RUN_ID')})
+        print('Validated published match counts:', [t['publishedMatchCount'] for t in payload['teams']])
+    except Exception as error:
+        old = json.loads(Path('status.json').read_text()) if Path('status.json').exists() else {}
+        write_json('status.json', {**old, 'ok': False, 'lastAttemptAt': now,
+            'error': 'Source validation or retrieval failed; last good schedule retained.'})
+        raise RuntimeError('RATS refresh failed; retained last good schedule') from error
+
+if __name__ == '__main__':
+    main()
