@@ -99,6 +99,10 @@ Add these repository Actions secrets before cutover:
 
 Use the **same existing secret values** where applicable so encrypted state and the Calendar bridge continue working.
 
+## Operational runbooks
+
+Repository-maintenance agents should start with `AGENTS.md`. The endpoint recovery procedure lives in `skills/find-upstream-endpoint/SKILL.md`; it explains how to trace the public RSVP frontend to the normal data backend, distinguish it from the admin endpoint, verify the required read actions, and keep the live endpoint out of tracked source.
+
 ## cron-job.org — automated provisioning
 
 Do **not** create the four jobs manually. Add `CRON_JOB_ORG_API_KEY` and `CRON_GITHUB_PAT` as repository Actions secrets, then run **Configure external cron** from GitHub Actions.
