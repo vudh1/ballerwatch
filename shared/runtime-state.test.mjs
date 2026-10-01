@@ -37,6 +37,7 @@ test("purged branch boots clean without restoring encrypted stale backup or call
   run(["checkout", "-b", "runtime-state"]);
   fs.mkdirSync("state", { recursive: true });
   fs.writeFileSync("state/watchdog.json", JSON.stringify(encryptState({ synthetic: true })) + "\n");
+  fs.writeFileSync("README.md", "synthetic source fixture\n");
   run(["add", "."]); run(["commit", "-m", "encrypted fixture"]); run(["push", "origin", "runtime-state"]);
   saveFailoverState("watchdog");
   t.mock.method(globalThis, "fetch", () => { assert.fail("No Cloudflare or Telegram calls allowed"); });
@@ -45,6 +46,7 @@ test("purged branch boots clean without restoring encrypted stale backup or call
   run(["fetch", "--quiet", "origin", "runtime-state"]);
   assert.equal(run(["rev-list", "--count", "FETCH_HEAD"]).toString().trim(), "1");
   assert.doesNotMatch(run(["cat-file", "-p", "FETCH_HEAD"]).toString(), /^parent /m);
+  assert.equal(run(["ls-tree", "-r", "--name-only", "FETCH_HEAD"]).toString().trim(), "");
 
   assert.equal(await pullRuntimeState("watchdog"), 0);
   assert.equal(fs.existsSync("state/watchdog.json"), false);
@@ -56,4 +58,8 @@ test("purged branch boots clean without restoring encrypted stale backup or call
   run(["fetch", "--quiet", "origin", "runtime-state"]);
   assert.equal(run(["rev-list", "--count", "FETCH_HEAD"]).toString().trim(), "1");
   assert.doesNotMatch(run(["cat-file", "-p", "FETCH_HEAD"]).toString(), /^parent /m);
+  assert.equal(
+    run(["ls-tree", "-r", "--name-only", "FETCH_HEAD"]).toString().trim(),
+    "state/watchdog.json",
+  );
 });
