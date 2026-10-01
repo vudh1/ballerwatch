@@ -32,6 +32,14 @@
       "message": "BallerWatch now tracks every product change with a SemVer version and release history. Automated ChatGPT changes must bump the version and record what changed.",
       "example": "/version",
       "enabled": true
+    },
+    {
+      "id": "2026-09-30-default-league-teams",
+      "version": "1.3.0",
+      "title": "Default league teams",
+      "message": "League monitoring now bootstraps Third Touch FC first and PhoSaiGon second on a clean setup; you can still add, remove, or rename monitored teams in Telegram.",
+      "example": "what league teams are you monitoring?",
+      "enabled": true
     }
   ]
 }

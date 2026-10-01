@@ -1,7 +1,19 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "1.2.5",
+  "currentVersion": "1.3.0",
   "releases": [
+    {
+      "version": "1.3.0",
+      "date": "2026-09-30",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Default league team bootstrap",
+      "changes": [
+        "Added Third Touch FC and PhoSaiGon as built-in league defaults in that priority order for clean/fresh state.",
+        "Encrypted Telegram-managed league team state remains authoritative after bootstrap, so teams can still be added, removed, or renamed.",
+        "Purged previously retrieved pickup and league match snapshots before clean-bootstrap end-to-end testing."
+      ]
+    },
     {
       "version": "1.2.5",
       "date": "2026-09-30",
