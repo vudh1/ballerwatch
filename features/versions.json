@@ -13,7 +13,8 @@
         "Preserved the KV-free 2.4 architecture: Cloudflare remains webhook plus read-only fast path, cron-job.org remains the 2/5/10-minute scheduler, and encrypted durable runtime state remains on the runtime-state branch.",
         "Hardened PURGE and clean bootstrap behavior so an available runtime-state branch is authoritative and deleted files cannot be resurrected from legacy Cloudflare or stale Actions-cache backups.",
         "Reduced recurring cron-job.org management API verification to four reads per day while keeping the watchdog itself at 10-minute cadence.",
-        "Made temporary cron-job.org management API unavailability such as HTTP 429 non-blocking for release smoke, while authenticated scheduler misconfiguration, missing jobs, disabled jobs, or wrong cadences still fail verification."
+        "Made temporary cron-job.org management API unavailability such as HTTP 429 non-blocking for release smoke, while authenticated scheduler misconfiguration, missing jobs, disabled jobs, or wrong cadences still fail verification.",
+        "Made notification-silent release smoke tolerate only transient RATS source outages when a valid last-good schedule is already present; schema, auth, configuration, and invalid-state failures still block the release."
       ]
     },
     {
