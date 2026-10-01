@@ -12,6 +12,7 @@ SEASONS = ('winter', 'spring', 'summer', 'fall')
 SOURCE = 'https://seattlerats.org/standings'
 API = 'https://service.rats.team.op-dev.io/'
 TZ = ZoneInfo('America/Los_Angeles')
+CALENDAR_TRACKING_KEY_VERSION = 'v2'
 TEAM_CONFIG = Path('teams.json')
 HEADERS = ['Event Type', 'Start Date', 'Start Time', 'End Date', 'End Time',
            'Timezone ID', 'Home or Away', 'Opponent/Event Title', 'Location Name',
@@ -173,7 +174,8 @@ def normalize(season_id, aggregate, exports):
             opponent_score = away_score if home else home_score
             source_id = event.get('id') or event.get('event_id') or None
             identity = f"{season_id}|{division}|{normalize_team_name(published_team_name)}|{opponent}|{'home' if home else 'away'}|{date}"
-            game = {'key': str(source_id) if source_id else digest(identity)[:24],
+            raw_key = str(source_id) if source_id else digest(identity)[:24]
+            game = {'key': f'{CALENDAR_TRACKING_KEY_VERSION}:{raw_key}',
                 'sourceMatchId': str(source_id) if source_id else None,
                 'identityBasis': 'source-id' if source_id else 'team-opponent-side-date',
                 'team': published_team_name, 'opponent': opponent, 'homeAway': 'home' if home else 'away',
