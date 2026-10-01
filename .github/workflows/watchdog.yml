@@ -61,6 +61,20 @@ jobs:
           BALLERWATCH_ALLOW_OFFLINE: ${{ inputs.external_fallback }}
         run: node shared/runtime-state.mjs push watchdog
 
+      - name: Signal installed web app
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: node shared/web-push.mjs send-pending
+
+      - name: Persist Web Push subscription cleanup
+        if: always()
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          BALLERWATCH_ALLOW_OFFLINE: ${{ inputs.external_fallback }}
+        run: node shared/runtime-state.mjs push watchdog
+
       - name: Build encrypted watchdog failover backup
         if: always()
         env:
