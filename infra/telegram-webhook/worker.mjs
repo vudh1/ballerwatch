@@ -12,6 +12,7 @@ import {
   kvTextGet,
   kvTextPut,
 } from "./edge-runtime.mjs";
+import { classifyIndexedIntent } from "../../shared/intent-index.mjs";
 
 const REPO = "vudh1/ballerwatch";
 const CONTEXT_CACHE_SECONDS = 600;
@@ -466,16 +467,14 @@ function nextGame(snapshot) {
 }
 
 function directIntent(text) {
-  const clean=cleanText(text,600);
-  const lower=clean.toLowerCase();
-  if (/^\/?version\b/.test(lower) || /what(?:'s| is).*(?:version)/.test(lower)) return "version";
+  const clean = cleanText(text, 600);
+  const lower = clean.toLowerCase();
+
+  // Slash commands stay exact. Natural-language routing then uses the shared
+  // static index so common phrasing avoids a network round-trip to Groq.
+  if (/^\/?version\b/.test(lower)) return "version";
   if (/^\/?help\b/.test(lower)) return "help";
-  if (/league teams?|teams?.*(?:monitor|watch)|(?:monitoring|watching).*teams?/.test(lower)) return "league_teams";
-  if (/today'?s? games?|games? today|game today|do we have.*game.*today/.test(lower)) return "today_games";
-  if (/next (?:soccer )?game|next match|when.*next.*game/.test(lower)) return "next_game";
-  if (/\b(count|how many|spots?|rsvp|reserved|capacity|availability|status)\b/.test(lower)) return "pickup_status";
-  if (/^(where|what field|which field|what time|when|how many|how many spots)\??$/.test(lower)) return "pickup_status";
-  return null;
+  return classifyIndexedIntent(clean);
 }
 
 function isStateChanging(text) {
