@@ -2,10 +2,6 @@ name: RATS league watcher
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/league.yml"
 
 permissions:
   contents: write
