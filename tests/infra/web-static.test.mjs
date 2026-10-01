@@ -16,13 +16,13 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=4\.0\.0/);
-  assert.match(html, /app\.js\?v=4\.0\.0/);
+  assert.match(html, /styles\.css\?v=4\.1\.0/);
+  assert.match(html, /app\.js\?v=4\.1\.0/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v4-0-0-shell/);
+  assert.match(sw, /ballerwatch-v4-1-0-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -63,7 +63,7 @@ test("Home Screen install card is removed in standalone mode and notifications u
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=4\.0\.0/);
+  assert.match(app, /sw\.js\?v=4\.1\.0/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -128,7 +128,7 @@ test("question box supports slash commands and autosuggestions", () => {
   assert.match(html, /aria-autocomplete="list"/);
   assert.match(html, /type \/ for commands/);
   assert.match(app, /COMMAND_SUGGESTIONS/);
-  assert.match(app, /QUESTION_SUGGESTIONS/);
+  assert.match(app, /QUESTION_COMPLETIONS/);
   assert.match(app, /ArrowDown/);
   assert.match(app, /ArrowUp/);
   assert.match(app, /activeSuggestionIndex/);
@@ -167,4 +167,32 @@ test("notification test control is deliberately subtle", () => {
   assert.match(html, /class="subtle-action" id="test-notification"/);
   assert.match(css, /\.subtle-action/);
   assert.doesNotMatch(html, /secondary" id="test-notification"/);
+});
+
+
+test("answer supports owner-only long-press wrong-answer feedback", () => {
+  const html = fs.readFileSync("docs/index.html", "utf8");
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  const worker = fs.readFileSync("infra/telegram-webhook/worker.mjs", "utf8");
+  const listener = fs.readFileSync("listener/bot.mjs", "utf8");
+
+  assert.match(html, /id="answer-feedback-status"/);
+  assert.match(app, /setTimeout\(\(\) => \{[\s\S]*reportWrongAnswer\(\)[\s\S]*\}, 700\)/);
+  assert.match(app, /\/web\/feedback/);
+  assert.match(app, /headers: ownerHeaders\(\)/);
+  assert.match(app, /negative_feedback|Marked wrong/);
+  assert.match(worker, /url\.pathname === "\/web\/feedback"/);
+  assert.match(worker, /hint: "negative_feedback"/);
+  assert.match(listener, /web-pwa-feedback/);
+});
+
+test("question autocomplete predicts full sentences from typed prefixes", () => {
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  assert.match(app, /QUESTION_COMPLETIONS/);
+  assert.match(app, /sentenceCompletionScore/);
+  assert.match(app, /cleanCandidate\.startsWith\(cleanQuery\)/);
+  assert.match(app, /event\.key === "Tab"/);
+  assert.match(app, /event\.key === "ArrowRight"/);
+  assert.match(app, /selectQuestionSuggestion\(0\)/);
+  assert.match(app, /What's the pickup count for/);
 });
