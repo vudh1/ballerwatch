@@ -74,6 +74,6 @@ No Calendar ID/email is committed or logged. Normal Calendar mutation fails clos
 
 The static app is deployed from `docs/` by **Deploy GitHub Pages app**. The encrypted VAPID/subscription state is initialized and updated by **Web app runtime**.
 
-The Pages workflow self-enables Actions-based Pages using the existing repository automation PAT. If that token lacks the required Pages/repository permission, use **Settings → Pages → Build and deployment → Source → GitHub Actions** as the manual fallback and rerun the workflow.
+Pages uses a one-time repository-admin activation: **Settings → Pages → Build and deployment → Source → GitHub Actions**. After activation, **Deploy GitHub Pages app** uses the workflow-scoped `GITHUB_TOKEN`; it does not require the general automation PAT to have repository Administration permission. Before activation, the workflow reports the required step and exits without a failed deployment.
 
 A subscribed device does not depend on Telegram for delivery. GitHub Actions sends Web Push signals directly to browser push endpoints. The service worker normally fetches the newest public-safe board entry from the Worker; if that read path is unavailable, it displays a generic BallerWatch update instead.
