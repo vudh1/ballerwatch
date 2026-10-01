@@ -27,6 +27,7 @@ const els = {
   form: document.querySelector("#question-form"),
   question: document.querySelector("#question"),
   answer: document.querySelector("#answer"),
+  answerFeedbackStatus: document.querySelector("#answer-feedback-status"),
   questionSuggestions: document.querySelector("#question-suggestions"),
   installCard: document.querySelector("#install-card"),
   installHelp: document.querySelector("#install-help"),
@@ -47,6 +48,10 @@ const els = {
 let config = null;
 let currentNextGame = null;
 let activeSuggestionIndex = -1;
+let lastAnswerExchange = null;
+let feedbackSubmitted = false;
+let answerHoldTimer = null;
+let answerHoldStart = null;
 
 const OWNER_TOKEN_KEY = "ballerwatch-owner-token";
 
@@ -61,14 +66,57 @@ const COMMAND_SUGGESTIONS = [
   { value: "/help", label: "/help", description: "Available questions and commands" },
 ];
 
-const QUESTION_SUGGESTIONS = [
-  "What game is today?",
-  "What's my next game?",
-  "What's the count for Thursday?",
-  "What field is Thursday?",
-  "What time is Thursday?",
-  "What league teams are you monitoring?",
+const WEEKDAYS = [
+  "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
 ];
+
+const QUESTION_COMPLETIONS = [
+  "What game is today?",
+  "What game is tomorrow?",
+  "What's my next game?",
+  "What games are this week?",
+  "What league teams are you monitoring?",
+  ...WEEKDAYS.flatMap((day) => [
+    `What's the pickup count for ${day}?`,
+    `How many spots are left for ${day}?`,
+    `What field is ${day}?`,
+    `Where is ${day}'s game?`,
+    `What time is ${day}?`,
+  ]),
+];
+
+function normalizedWords(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9/]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function sentenceCompletionScore(candidate, query) {
+  const cleanCandidate = String(candidate || "").toLowerCase();
+  const cleanQuery = String(query || "").trim().toLowerCase();
+  if (!cleanQuery) return 99;
+  if (cleanCandidate.startsWith(cleanQuery)) return 0;
+
+  const queryWords = normalizedWords(cleanQuery);
+  const candidateWords = normalizedWords(cleanCandidate);
+  let cursor = 0;
+  for (const queryWord of queryWords) {
+    let matched = false;
+    while (cursor < candidateWords.length) {
+      if (candidateWords[cursor].startsWith(queryWord)) {
+        matched = true;
+        cursor += 1;
+        break;
+      }
+      cursor += 1;
+    }
+    if (!matched) return 99;
+  }
+  return 1;
+}
 
 function suggestionMatches(value) {
   const raw = String(value || "");
@@ -81,10 +129,17 @@ function suggestionMatches(value) {
     );
   }
 
-  if (lower.length < 2) return [];
-  return QUESTION_SUGGESTIONS
-    .filter((item) => item.toLowerCase().includes(lower))
-    .map((value) => ({ value, label: value, description: "Suggested question" }));
+  if (lower.length < 1) return [];
+  return QUESTION_COMPLETIONS
+    .map((value) => ({
+      value,
+      label: value,
+      description: "",
+      score: sentenceCompletionScore(value, lower),
+    }))
+    .filter((item) => item.score < 99)
+    .sort((a, b) => a.score - b.score || a.value.length - b.value.length)
+    .slice(0, 6);
 }
 
 function hideQuestionSuggestions() {
@@ -124,10 +179,12 @@ function renderQuestionSuggestions() {
     const label = document.createElement("strong");
     label.textContent = suggestion.label;
 
-    const description = document.createElement("span");
-    description.textContent = suggestion.description;
-
-    button.append(label, description);
+    button.append(label);
+    if (suggestion.description) {
+      const description = document.createElement("span");
+      description.textContent = suggestion.description;
+      button.append(description);
+    }
     button.addEventListener("click", () => selectQuestionSuggestion(index));
     els.questionSuggestions.append(button);
   });
@@ -323,7 +380,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=4.0.0", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=4.1.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -617,6 +674,68 @@ async function disablePush() {
   }
 }
 
+function clearAnswerHold() {
+  if (answerHoldTimer) clearTimeout(answerHoldTimer);
+  answerHoldTimer = null;
+  answerHoldStart = null;
+}
+
+async function reportWrongAnswer() {
+  clearAnswerHold();
+  if (!lastAnswerExchange || feedbackSubmitted) return;
+
+  if (!ownerToken()) {
+    els.answerFeedbackStatus.hidden = false;
+    els.answerFeedbackStatus.textContent =
+      "Pair this device in Settings to send answer feedback.";
+    await openSettings();
+    return;
+  }
+
+  feedbackSubmitted = true;
+  els.answer.classList.add("answer-feedback-pending");
+  els.answerFeedbackStatus.hidden = false;
+  els.answerFeedbackStatus.textContent = "Sending feedback…";
+  try {
+    await api("/web/feedback", {
+      method: "POST",
+      headers: ownerHeaders(),
+      body: JSON.stringify(lastAnswerExchange),
+    });
+    els.answer.classList.remove("answer-feedback-pending");
+    els.answer.classList.add("answer-feedback-sent");
+    els.answerFeedbackStatus.textContent =
+      "Marked wrong — queued for the next review.";
+  } catch (error) {
+    feedbackSubmitted = false;
+    els.answer.classList.remove("answer-feedback-pending");
+    if (error.status === 401) {
+      localStorage.removeItem(OWNER_TOKEN_KEY);
+      els.answerFeedbackStatus.textContent =
+        "Pair this device again to send answer feedback.";
+      await openSettings();
+    } else {
+      els.answerFeedbackStatus.textContent = error.message;
+    }
+  }
+}
+
+function startAnswerHold(event) {
+  if (!lastAnswerExchange || feedbackSubmitted) return;
+  clearAnswerHold();
+  answerHoldStart = { x: event.clientX, y: event.clientY };
+  answerHoldTimer = setTimeout(() => {
+    void reportWrongAnswer();
+  }, 700);
+}
+
+function moveAnswerHold(event) {
+  if (!answerHoldTimer || !answerHoldStart) return;
+  const dx = Math.abs(event.clientX - answerHoldStart.x);
+  const dy = Math.abs(event.clientY - answerHoldStart.y);
+  if (dx > 12 || dy > 12) clearAnswerHold();
+}
+
 els.question.addEventListener("input", renderQuestionSuggestions);
 els.question.addEventListener("focus", renderQuestionSuggestions);
 els.question.addEventListener("keydown", (event) => {
@@ -628,6 +747,13 @@ els.question.addEventListener("keydown", (event) => {
   } else if (event.key === "ArrowUp") {
     event.preventDefault();
     moveSuggestionSelection(-1);
+  } else if (
+    (event.key === "Tab" || event.key === "ArrowRight") &&
+    activeSuggestionIndex < 0 &&
+    els.question.selectionStart === els.question.value.length
+  ) {
+    event.preventDefault();
+    selectQuestionSuggestion(0);
   } else if (event.key === "Enter" && activeSuggestionIndex >= 0) {
     event.preventDefault();
     selectQuestionSuggestion(activeSuggestionIndex);
@@ -659,12 +785,29 @@ els.form.addEventListener("submit", async (event) => {
       }),
     });
     els.answer.textContent = payload.reply;
+    lastAnswerExchange = { question, reply: payload.reply };
+    feedbackSubmitted = false;
+    els.answer.classList.remove("answer-feedback-pending", "answer-feedback-sent");
+    els.answerFeedbackStatus.hidden = false;
+    els.answerFeedbackStatus.textContent = "Hold the answer to mark it wrong for the next review.";
     if (payload.lastDate) sessionStorage.setItem("ballerwatch-last-date", payload.lastDate);
   } catch (error) {
+    lastAnswerExchange = null;
+    feedbackSubmitted = false;
+    els.answerFeedbackStatus.hidden = true;
     els.answer.textContent = error.message;
   } finally {
     button.disabled = false;
   }
+});
+
+els.answer.addEventListener("pointerdown", startAnswerHold);
+els.answer.addEventListener("pointermove", moveAnswerHold);
+els.answer.addEventListener("pointerup", clearAnswerHold);
+els.answer.addEventListener("pointercancel", clearAnswerHold);
+els.answer.addEventListener("pointerleave", clearAnswerHold);
+els.answer.addEventListener("contextmenu", (event) => {
+  if (lastAnswerExchange) event.preventDefault();
 });
 
 els.notificationBell.addEventListener("click", openNotifications);

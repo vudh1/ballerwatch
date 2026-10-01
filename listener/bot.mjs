@@ -76,7 +76,9 @@ function applyWebSettingsEvent(event, settings) {
 }
 
 function historySource(event) {
-  return event?.source === "web-pwa-owner" ? "web-pwa-owner" : "cloudflare-fast-path";
+  if (event?.source === "web-pwa-owner") return "web-pwa-owner";
+  if (event?.source === "web-pwa-feedback") return "web-pwa-feedback";
+  return "cloudflare-fast-path";
 }
 
 function parseManualFeatureRequest(text) {

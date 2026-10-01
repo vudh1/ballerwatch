@@ -11,7 +11,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
-  <link rel="stylesheet" href="./styles.css?v=4.0.0">
+  <link rel="stylesheet" href="./styles.css?v=4.1.0">
 </head>
 <body>
   <main class="shell">
@@ -77,7 +77,8 @@
         </div>
       </form>
       <div class="answer" id="answer" hidden></div>
-      <p class="hint">Type <strong>/</strong> for commands, or start typing for suggested questions.</p>
+      <p class="answer-feedback-status" id="answer-feedback-status" hidden></p>
+      <p class="hint">Start typing for sentence autocomplete, or type <strong>/</strong> for commands.</p>
     </section>
 
     <footer>
@@ -188,6 +189,6 @@
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=4.0.0"></script>
+  <script type="module" src="./app.js?v=4.1.0"></script>
 </body>
 </html>

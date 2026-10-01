@@ -4,7 +4,7 @@ BallerWatch separates fast Telegram/PWA read paths from durable watcher state.
 
 ## Telegram listener boundary
 
-Cloudflare is the only Telegram webhook receiver. GitHub listener runs accept injected Telegram updates or privacy-minimized fast-path history events only. They never call Telegram `getUpdates`; an empty workflow dispatch is a no-op. When scheduler management access is available, BallerWatch also disables any legacy cron-job.org Telegram polling job.
+Cloudflare is the only Telegram webhook receiver. The GitHub listener is event-driven and is **not scheduled by cron-job.org**. Listener runs accept injected Telegram updates, owner-paired web settings updates, or privacy-minimized history/feedback events. They never call Telegram `getUpdates`; an empty workflow dispatch is a no-op. BallerWatch explicitly disables any legacy cron-job.org listener/polling job.
 
 ## Request path
 
