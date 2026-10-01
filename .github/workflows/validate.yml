@@ -53,6 +53,7 @@ jobs:
           node --test infra/external-schedules.test.mjs
           node --test infra/fallback-gate.test.mjs
           node --test infra/telegram-webhook/edge-runtime.test.mjs
+          node --test infra/telegram-webhook/worker-query.test.mjs
 
       - name: Bundle Cloudflare Worker
         working-directory: infra/telegram-webhook
