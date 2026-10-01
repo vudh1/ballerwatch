@@ -1,4 +1,5 @@
 name: One-time encrypted league team migration
+# Rerun after v1.2.2 migration fix.
 
 on:
   push:
