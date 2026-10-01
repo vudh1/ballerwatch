@@ -3,7 +3,8 @@
  *
  * Documentation baseline: v2.4.0. The runtime-state branch is durable storage; main stays release-only.
  * v2.5.0: missing files on a readable branch are authoritative after purge, never cache misses.
- * v2.5.4: each write replaces branch history with one root snapshot commit, preserving only current encrypted state.
+ * v2.5.4: each write replaces branch history with one root snapshot commit.
+ * v2.5.5: root snapshots contain only canonical runtime paths; source files are never carried into runtime-state.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -126,7 +127,19 @@ function createRootSnapshotCommit(directory, message) {
   return git(["-C", directory, "commit-tree", tree, "-m", message]).trim();
 }
 
+function stageCanonicalRuntimeTree(directory) {
+  git(["-C", directory, "read-tree", "--empty"]);
+  const existing = ALL_RUNTIME_FILE_PATHS.filter((file) =>
+    fs.existsSync(path.join(directory, file)),
+  );
+  if (existing.length) {
+    git(["-C", directory, "add", "-f", "--", ...existing]);
+  }
+  return existing;
+}
+
 function pushRootSnapshot(directory, expectedHead, message) {
+  stageCanonicalRuntimeTree(directory);
   const commit = createRootSnapshotCommit(directory, message);
   git(["-C", directory, ...snapshotPushArgs(STATE_BRANCH, expectedHead, commit)]);
   return commit;
@@ -148,14 +161,6 @@ function pushChangedFiles(scope, changed) {
         fs.mkdirSync(path.dirname(target), { recursive: true });
         fs.writeFileSync(target, raw);
       }
-      git(["-C", directory, "add", "-f", "--", ...changed.map(({ file }) => file)]);
-
-      try {
-        git(["-C", directory, "diff", "--cached", "--quiet"]);
-        console.log(`No remote ${scope} runtime-state changes were needed.`);
-        return 0;
-      } catch {}
-
       try {
         pushRootSnapshot(directory, expectedHead, `runtime(${scope}): current encrypted state`);
         console.log(
@@ -206,7 +211,6 @@ export function purgeRuntimeState() {
         fs.rmSync(target, { force: true });
         removed += 1;
       }
-      git(["-C", directory, "add", "-A", "--"]);
       try {
         pushRootSnapshot(directory, expectedHead, "runtime: purged factory-reset snapshot");
         console.log(
