@@ -4,14 +4,14 @@ BallerWatch is a small soccer automation system for pickup games and Seattle RAT
 
 It uses Telegram for questions and alerts, Cloudflare Workers for the webhook/fast reply path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Gemini Flash with Groq fallback for bounded AI assistance, and Google Calendar for league match sync.
 
-**Current version: 2.7.5**
+**Current version: 2.8.0**
 
 ## Recent changes
 
+- **2.8.0** — Unified Node.js runtime.
 - **2.7.5** — RATS transient-source resilience.
 - **2.7.4** — Index-independent Calendar pairing.
 - **2.7.3** — Pair Calendar bridge to intended target.
-- **2.7.2** — Stale Calendar mapping cleanup.
 
 Full release history and Telegram announcement text live in `features/versions.json`.
 
@@ -328,6 +328,8 @@ Read these before making changes:
 - `docs/wiki/`
 
 Normal releases use `release/<version>`, run validation and the notification-silent smoke test, then squash merge to `main`.
+
+Runtime code and tests use dependency-free Node.js 22 / ECMAScript modules; Python is no longer required by BallerWatch workflows.
 
 All test-only code lives under `tests/`, mirroring the source areas. Production folders should contain runtime code only.
 
