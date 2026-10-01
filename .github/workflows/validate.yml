@@ -10,6 +10,7 @@ on:
       - "watchdog/**"
       - "manual-test.mjs"
       - "privacy-audit.mjs"
+      - "infra/**"
       - ".github/workflows/**"
   workflow_dispatch:
 
@@ -38,6 +39,7 @@ jobs:
           node --check watchdog/watchdog.test.mjs
           node --check manual-test.mjs
           node --check privacy-audit.mjs
+          node --check infra/sync-cron.mjs
 
       - name: Enforce encrypted-at-rest privacy
         run: node privacy-audit.mjs
