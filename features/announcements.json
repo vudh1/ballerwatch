@@ -40,6 +40,14 @@
       "message": "League monitoring now bootstraps Third Touch FC first and PhoSaiGon second on a clean setup; you can still add, remove, or rename monitored teams in Telegram.",
       "example": "what league teams are you monitoring?",
       "enabled": true
+    },
+    {
+      "id": "2026-09-30-manual-purge-protected-main",
+      "version": "1.4.0",
+      "title": "Manual purge and safer repository changes",
+      "message": "BallerWatch now has a manual action to clear current generated data, and normal repository changes now use branches and pull requests instead of direct main commits.",
+      "example": "GitHub Actions → Purge current data",
+      "enabled": true
     }
   ]
 }

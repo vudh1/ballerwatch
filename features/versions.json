@@ -1,7 +1,19 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "1.3.2",
+  "currentVersion": "1.4.0",
   "releases": [
+    {
+      "version": "1.4.0",
+      "date": "2026-09-30",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Manual data purge and protected main",
+      "changes": [
+        "Added a manual Purge current data GitHub Action that clears generated pickup, league, Calendar-reconciliation, watchdog, and feature-request data while preserving configuration and secrets.",
+        "Added repository governance setup for a concise GitHub description and PR-only normal changes to main, with a narrow GitHub Actions bypass for encrypted runtime-state persistence.",
+        "Simplified README and agent guidance and required scheduled ChatGPT maintenance to sync from current main and use branch + pull request changes."
+      ]
+    },
     {
       "version": "1.3.2",
       "date": "2026-09-30",
