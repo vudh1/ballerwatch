@@ -1,0 +1,20 @@
+.runtime/
+__pycache__/
+*.pyc
+*.tmp
+
+# Pickup plaintext/runtime data must never be committed.
+pickup/data/
+pickup/data/*.tmp
+
+# League plaintext/runtime data must never be committed.
+league/teams.json
+league/schedule.json
+league/today.json
+league/calendar-snapshot.json
+league/calendar-changes.json
+league/telegram-update.json
+league/score-changes.json
+
+# Original unsupported Telegram questions are encrypted when persisted.
+# requests/private.json is intentionally tracked only as an encrypted envelope.
