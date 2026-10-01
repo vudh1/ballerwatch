@@ -30,7 +30,7 @@ jobs:
         env:
           GOOGLE_CALENDAR_WEBHOOK_URL: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_URL }}
           GOOGLE_CALENDAR_WEBHOOK_SECRET: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_SECRET }}
-        run: python3 league/google_calendar_purge.py
+        run: node league/google-calendar-purge.mjs
 
       - name: Purge GitHub runtime-state branch
         run: node shared/runtime-state.mjs purge
