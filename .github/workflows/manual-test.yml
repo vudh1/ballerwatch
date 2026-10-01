@@ -32,10 +32,6 @@ jobs:
         with:
           node-version: "22"
 
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
       - name: Verify read-only AI with synthetic data and no notifications
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -69,7 +65,7 @@ jobs:
           if [ "$TEAM_COUNT" -gt 0 ]; then
             node shared/league-teams.mjs prepare
             node shared/league-state.mjs prepare
-            (cd league && /usr/bin/time -f "leagueWatcherSeconds=%e" python3 watcher.py)
+            (cd league && /usr/bin/time -f "leagueWatcherSeconds=%e" node watcher.mjs)
           else
             echo "No league teams configured; league live test skipped."
           fi

@@ -60,19 +60,8 @@ jobs:
       - name: Enforce public-repository privacy
         run: node privacy-audit.mjs
 
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
       - name: Validate Apps Script syntax
         run: |
           cp league/google_apps_script/Code.gs /tmp/ballerwatch-calendar-bridge.mjs
           node --check /tmp/ballerwatch-calendar-bridge.mjs
 
-      - name: Compile Python modules
-        run: python -m compileall -q league
-
-      - name: Run league unit tests
-        env:
-          PYTHONPATH: league
-        run: python -m unittest discover -s tests/league -p '*_test.py'

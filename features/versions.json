@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "2.7.5",
+  "currentVersion": "2.8.0",
   "releases": [
+    {
+      "version": "2.8.0",
+      "date": "2026-10-01",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Unified Node.js runtime",
+      "telegramAnnouncement": "BallerWatch now uses one Node.js runtime for league automation, Calendar reconciliation, tests, and notifications while preserving existing behavior.",
+      "changes": [
+        "Migrated the six remaining league runtime Python modules and their tests to dependency-free Node.js ECMAScript modules.",
+        "Removed Python files, Python setup, compilation, unittest discovery, and Python invocations from GitHub Actions.",
+        "Preserved existing RATS tracking keys and Calendar fingerprints with Python-compatible canonical hashing plus Pacific DST behavior.",
+        "Added Node parity coverage for RATS normalization/retries, Calendar gate/pair/purge/sync, Telegram schedule notifications, and Apps Script in-place event updates.",
+        "Kept production architecture, runtime-state encryption, Calendar targeting, cron-job.org scheduling, and Telegram notification policy unchanged."
+      ]
+    },
     {
       "version": "2.7.5",
       "date": "2026-10-01",

@@ -57,7 +57,7 @@ Tests, audits, smoke tests, and temporary verification runs must **not send Tele
 
 Use the notification-silent Manual smoke test for live-source verification. Do not add production notifications to PR tests.
 
-All test-only source files live under `tests/`, mirroring the production source area where practical. Do not place `*.test.mjs`, `*_test.py`, or smoke-only scripts beside runtime modules.
+All test-only source files live under `tests/`, mirroring the production source area where practical. Do not place `*.test.mjs` or smoke-only scripts beside runtime modules.
 
 For RATS changes, preserve the fast path that tries the last known season before broader discovery and fetches independent team schedule exports concurrently.
 
@@ -88,7 +88,7 @@ Release entries may include a user-facing `telegramAnnouncement`. Telegram relea
 Read `STYLE_GUIDE.md` before editing code.
 
 - Keep runtime modules small and domain-focused; extract pure routing/parsing/formatting logic when a file starts mixing multiple concerns.
-- Every non-test runtime `.mjs` file begins with a module documentation block. Every non-test Python runtime module begins with a module docstring.
+- Every non-test runtime `.mjs` file begins with a module documentation block.
 - Comments explain responsibility, privacy boundaries, failure behavior, or non-obvious invariants rather than restating syntax.
 - When a release materially changes a module's responsibility, update its header/documentation and the relevant `docs/wiki/` page.
 - Do not rewrite old release snapshots merely to add comments. Current release documentation is the source of onboarding truth.

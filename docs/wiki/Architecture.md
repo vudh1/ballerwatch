@@ -30,6 +30,10 @@ cron-job.org is the primary scheduler:
 
 The scheduled jobs dispatch GitHub Actions directly. Cloudflare Cron Triggers are disabled.
 
+## Runtime platform
+
+GitHub Actions runtime code is dependency-free Node.js 22 / ECMAScript modules. League source normalization, Calendar reconciliation, bridge clients, Telegram notification formatting, state helpers, and tests use one runtime while the Apps Script bridge remains Google Apps Script JavaScript.
+
 ## Durable state
 
 The `runtime-state` branch is the durable runtime store. Private state is AES-GCM encrypted before it is written. Workflows materialize state temporarily, persist only changed files, and clean local runtime paths afterward.
