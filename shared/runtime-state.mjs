@@ -134,6 +134,11 @@ export async function pullRuntimeState(scope) {
       if (Object.keys(legacy).length) {
         console.log(`Recovered ${Object.keys(legacy).length} missing runtime file(s) from legacy Cloudflare KV for migration.`);
       }
+      const stillMissing = uniqueMissing.filter((file) => !fs.existsSync(file));
+      if (stillMissing.length) {
+        const restored = restoreFailoverState(scope);
+        if (restored) console.warn(`Used encrypted ${scope} Actions-cache backup for remaining runtime state.`);
+      }
     } catch (error) {
       const restored = restoreFailoverState(scope);
       if (!count && !restored) throw error;
