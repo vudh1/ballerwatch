@@ -37,6 +37,20 @@ Direct commits to `main` remain permitted for emergencies or explicit user-direc
 
 The resulting `main` history should remain release-oriented: one commit per BallerWatch version.
 
+## Telegram notification policy
+
+Proactive Telegram output is allowlisted. Production may send only:
+
+- pickup RSVP/capacity notifications from the established pickup watcher logic;
+- real RATS match-schedule changes;
+- one combined version-change announcement per Pacific day.
+
+Direct replies to owner Telegram input are also allowed.
+
+Do not send Telegram messages for watchdog failures/recovery, tests, smoke runs, builds, deploys, commits, pull requests, score-only changes, setup reminders, invalid-setting reminders, or other engineering/health events.
+
+Version announcements are derived from `features/versions.json`, combine every pending version into one message, use only user-facing release summaries, and are limited to one message per Pacific calendar day. `features/announcements.json` is legacy and must not drive Telegram sends.
+
 ## Testing
 
 Tests, audits, smoke tests, and temporary verification runs must **not send Telegram messages**.
@@ -65,7 +79,7 @@ The three cron-job.org jobs must exist with their expected 2/5/10-minute cadence
 - MAJOR: intentional breaking change.
 - No repository change means no version bump.
 
-Announcements must reference an exact release version and preserve one-time announcement behavior.
+Release entries may include a user-facing `telegramAnnouncement`. Telegram release notices are combined, version-based, and limited to one message per Pacific day; never announce commits or pull requests.
 
 ## Code style and module documentation
 
