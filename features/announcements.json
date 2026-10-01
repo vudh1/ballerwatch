@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "announcements": [
+    {
+      "id": "2026-09-30-self-improving-bot",
+      "title": "Self-improving bot requests",
+      "message": "If I don't understand a Telegram question, I now save it as a feature request for the periodic ChatGPT feature builder.",
+      "example": "Ask a new soccer-bot question; if unsupported, I'll queue it and tell you the request ID.",
+      "enabled": true
+    },
+    {
+      "id": "2026-09-30-telegram-encrypted-setup",
+      "title": "Telegram-managed encrypted setup",
+      "message": "You can now set or change your pickup RSVP/owner name through Telegram, and /setup shows any user information I still need.",
+      "example": "/setup",
+      "enabled": true
+    },
+    {
+      "id": "2026-09-30-recovery-manual-redaction",
+      "title": "Reliability and privacy upgrades",
+      "message": "BallerWatch now has automatic component recovery, a unified manual smoke test, and privacy-redacted storage for unsupported Telegram questions.",
+      "example": "Ask /setup or try a new unsupported question.",
+      "enabled": true
+    }
+  ]
+}
