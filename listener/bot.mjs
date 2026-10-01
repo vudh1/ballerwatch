@@ -12,6 +12,7 @@ const PICKUP_FEED_STATE = "pickup/state/feed.json";
 const UNKNOWN_REQUESTS_PATH = "requests/unknown.json";
 const PRIVATE_UNKNOWN_REQUESTS_PATH = "requests/private.json";
 const FEATURE_ANNOUNCEMENTS_PATH = "features/announcements.json";
+const VERSION_HISTORY_PATH = "features/versions.json";
 
 function readJson(path) {
   try {
@@ -1018,7 +1019,7 @@ async function announceNewFeatures(settings) {
 
   const item = unseen[unseen.length - 1];
   const lines = [
-    "🆕 New BallerWatch feature available",
+    `🆕 BallerWatch ${item.version ? `v${item.version}` : "feature"} available`,
     String(item.message || item.title || "A new bot feature was added."),
   ];
   if (item.example) lines.push(`Try: ${item.example}`);
@@ -1065,11 +1066,34 @@ function isSetupStatusIntent(text) {
   );
 }
 
+function versionReply() {
+  const data = readJson(VERSION_HISTORY_PATH);
+  const current = String(data?.currentVersion || "unknown");
+  const release = Array.isArray(data?.releases)
+    ? data.releases.find((item) => String(item?.version) === current)
+    : null;
+  const lines = [`BallerWatch v${current}`];
+  if (release?.title) lines.push(String(release.title));
+  for (const change of (release?.changes || []).slice(0, 5)) {
+    lines.push(`• ${change}`);
+  }
+  return lines.join("\n");
+}
+
+function isVersionIntent(text) {
+  return /^\/?version(?:@[a-z0-9_]+)?$/i.test(normalizeText(text)) ||
+    /\bwhat(?:'s| is) (?:the )?(?:bot |ballerwatch )?version\b/i.test(normalizeText(text));
+}
+
 async function handleMessage(text, settings) {
   const clean = normalizeText(text);
   if (!clean) return { settings, reply: "" };
 
   settings = cleanSnoozes(settings);
+
+  if (isVersionIntent(clean)) {
+    return { settings, reply: versionReply() };
+  }
 
   if (isSetupStatusIntent(clean)) {
     return { settings, reply: setupStatusReply(settings) };
@@ -1207,6 +1231,7 @@ async function handleMessage(text, settings) {
         "• what game is today?",
         "• what league teams are you monitoring?",
         "• /setup",
+        "• /version",
         "• what information do you still need from me?",
         "• what is my owner name?",
         "• what is the RSVP endpoint?",
