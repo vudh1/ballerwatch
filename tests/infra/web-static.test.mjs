@@ -17,13 +17,13 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
   assert.match(html, /id="settings"/);
-  assert.match(html, /styles\.css\?v=3\.1\.2/);
-  assert.match(html, /app\.js\?v=3\.1\.2/);
+  assert.match(html, /styles\.css\?v=3\.2\.0/);
+  assert.match(html, /app\.js\?v=3\.2\.0/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v3-1-2-shell/);
+  assert.match(sw, /ballerwatch-v3-2-0-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -64,7 +64,7 @@ test("Home Screen install card is removed in standalone mode and notifications u
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=3\.1\.2/);
+  assert.match(app, /sw\.js\?v=3\.2\.0/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -85,4 +85,29 @@ test("notification bell exposes a synchronized push switch", () => {
   assert.match(app, /await disablePush\(\)/);
   assert.match(css, /\.switch-track/);
   assert.match(css, /input:checked \+ \.switch-track/);
+});
+
+
+test("next-game card exposes directions and native share", () => {
+  const html = fs.readFileSync("docs/index.html", "utf8");
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  assert.match(html, /id="next-game-card"/);
+  assert.match(html, /id="next-game-directions"/);
+  assert.match(html, /id="next-game-share"/);
+  assert.match(app, /\/web\/next-game/);
+  assert.match(app, /google\.com\/maps\/search\/\?api=1/);
+  assert.match(app, /navigator\.share/);
+  assert.match(app, /navigator\.clipboard\.writeText/);
+});
+
+test("notification test is local and service-worker driven", () => {
+  const html = fs.readFileSync("docs/index.html", "utf8");
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  const sw = fs.readFileSync("docs/sw.js", "utf8");
+  assert.match(html, /id="test-notification"/);
+  assert.match(app, /ballerwatch:test-notification/);
+  assert.match(app, /delayMs:\s*5_000/);
+  assert.match(sw, /self\.addEventListener\("message"/);
+  assert.match(sw, /BallerWatch test/);
+  assert.match(sw, /showNotification/);
 });

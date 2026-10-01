@@ -1,7 +1,7 @@
 /**
  * Routes Telegram webhooks, edge Q&A, runtime-state APIs, health checks, and scheduled edge work.
  *
- * Updated v3.0.0: adds the GitHub Pages PWA read-only API and encrypted Web Push registration path while preserving the Telegram fast path. Runtime/private data must never be committed to Git.
+ * Updated v3.2.0: adds structured next-game data for the PWA while preserving the read-only privacy boundary, Telegram fast path, and encrypted Web Push registration flow.
  */
 import {
   fetchPickupSnapshot,
@@ -929,6 +929,88 @@ function webJson(request, value, init = {}) {
   return new Response(JSON.stringify(value), { ...init, headers });
 }
 
+export function webNextGameDetails(snapshot) {
+  const safe = webSafeSnapshot(snapshot);
+  const today = localDate();
+  const candidates = [];
+
+  for (const date of availableDates(safe).filter((value) => value >= today)) {
+    const facts = pickupFacts(safe, date);
+    if (facts) candidates.push({ kind: "pickup", date, start: facts.start || "", facts });
+  }
+
+  for (const game of leagueMatches(safe)) {
+    const date = String(game?.date || "");
+    if (date >= today) {
+      candidates.push({
+        kind: "league",
+        date,
+        start: String(game?.startTime || game?.start || ""),
+        game,
+      });
+    }
+  }
+
+  candidates.sort((a, b) =>
+    a.date.localeCompare(b.date) || a.start.localeCompare(b.start),
+  );
+
+  const next = candidates[0];
+  if (!next) return null;
+
+  if (next.kind === "pickup") {
+    const facts = next.facts;
+    const time = facts.start || facts.end
+      ? `${facts.start || "?"}${facts.end ? `–${facts.end}` : ""}`
+      : "";
+    const location = cleanText(facts.field, 150);
+    const address = cleanText(facts.address, 200);
+    return {
+      kind: "pickup",
+      date: next.date,
+      dateLabel: formatDate(next.date),
+      title: "Pickup",
+      time,
+      location,
+      address,
+      mapsQuery: address || location,
+      jerseyColor: "",
+      shareText: [
+        `Pickup — ${formatDate(next.date)}`,
+        time,
+        location,
+        address && address !== location ? address : "",
+      ].filter(Boolean).join("\n"),
+    };
+  }
+
+  const game = next.game || {};
+  const team = cleanText(game.team, 120) || "RATS team";
+  const opponent = cleanText(game.opponent, 120) || "opponent";
+  const location = cleanText(game.location, 200);
+  const address = cleanText(game.address, 200);
+  const time = clock(game.start || game.startTime);
+  const jerseyColor = cleanText(game.jerseyColor, 80);
+  return {
+    kind: "league",
+    date: next.date,
+    dateLabel: formatDate(next.date),
+    title: `${team} vs ${opponent}`,
+    time,
+    location,
+    address,
+    mapsQuery: address || location,
+    jerseyColor,
+    shareText: [
+      `${team} vs ${opponent} — ${formatDate(next.date)}`,
+      time,
+      location,
+      address && address !== location ? address : "",
+      jerseyColor ? `${jerseyColor} jersey` : "",
+    ].filter(Boolean).join("\n"),
+  };
+}
+
 export function webSafeSnapshot(snapshot) {
   const privateEvents = {};
   for (const [date, event] of Object.entries(snapshot?.pickupPrivate?.events || {})) {
@@ -1301,6 +1383,22 @@ export default {
       const entries = await webBoard(env, url.searchParams.get("limit") || 30);
       return webJson(request, { ok: true, entries });
     }
+    if (request.method === "GET" && url.pathname === "/web/next-game") {
+      try {
+        const snapshot = await loadSnapshot(env);
+        return webJson(request, {
+          ok: true,
+          game: webNextGameDetails(snapshot),
+        });
+      } catch {
+        return webJson(
+          request,
+          { ok: false, error: "BallerWatch game data is temporarily unavailable." },
+          { status: 503 },
+        );
+      }
+    }
+
     if (request.method === "POST" && url.pathname === "/web/ask") {
       let body;
       try { body = await request.json(); }

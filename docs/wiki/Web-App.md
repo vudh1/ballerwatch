@@ -8,6 +8,7 @@ The web app is an alternate read-only surface for BallerWatch and a notification
 
 ## What the web app does
 
+- shows the next upcoming pickup or RATS game on the main screen with Google Maps directions and native sharing;
 - shows recent pickup, RATS schedule, and version updates from a top-right notification bell instead of occupying the main screen;
 - answers one read-only question at a time using the same deterministic/AI intent path as the Telegram fast path;
 - can be added to the iPhone Home Screen and opened in standalone app mode;
@@ -31,6 +32,15 @@ On iPhone or iPad:
 5. Scroll to **Settings** at the bottom, tap **Enable push**, and approve notifications.
 
 Web Push for Home Screen web apps requires iOS/iPadOS 16.4 or newer. Notification permission must be requested in response to a user action, so the app never prompts automatically.
+
+## Next game and notification test
+
+The main screen loads the same earliest-upcoming pickup/RATS selection used by the Telegram fast path. The card exposes only public-safe game details and provides:
+
+- **Directions** — a Google Maps universal link using the published field/address, which can open the Google Maps app when available;
+- **Share** — the device share sheet, with clipboard fallback when native sharing is unavailable.
+
+The bell panel also has **Test notification**. It asks for notification permission if needed, schedules a local service-worker notification about five seconds later, and tells the user to close BallerWatch immediately. This verifies that iOS can display a BallerWatch notification while the Home Screen app is closed without sending a Web Push test signal or creating a notification-board entry.
 
 ## Push architecture
 
@@ -74,6 +84,7 @@ Push subscriptions and VAPID private keys remain encrypted on `runtime-state`.
 The Worker endpoints used by the PWA are:
 
 - `GET /web/config`
+- `GET /web/next-game`
 - `GET /web/board`
 - `POST /web/ask`
 - `POST /web/push/subscribe`

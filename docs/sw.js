@@ -1,9 +1,9 @@
-const CACHE = "ballerwatch-v3-1-2-shell";
+const CACHE = "ballerwatch-v3-2-0-shell";
 const SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=3.1.2",
-  "./app.js?v=3.1.2",
+  "./styles.css?v=3.2.0",
+  "./app.js?v=3.2.0",
   "./manifest.webmanifest",
   "./icon.svg",
 ];
@@ -38,6 +38,30 @@ self.addEventListener("fetch", (event) => {
       })
       .catch(() => caches.match(event.request).then((cached) => cached || caches.match("./index.html"))),
   );
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type !== "ballerwatch:test-notification") return;
+  const requestedDelay = Number(event.data?.delayMs);
+  const delayMs = Number.isFinite(requestedDelay)
+    ? Math.min(10_000, Math.max(0, requestedDelay))
+    : 5_000;
+
+  event.waitUntil(new Promise((resolve) => {
+    setTimeout(async () => {
+      try {
+        await self.registration.showNotification("BallerWatch test", {
+          body: "Notifications can appear while the Home Screen app is closed.",
+          icon: "./icon.svg",
+          badge: "./icon.svg",
+          tag: "ballerwatch-local-test",
+          data: { url: "https://vudh1.github.io/ballerwatch/" },
+        });
+      } finally {
+        resolve();
+      }
+    }, delayMs);
+  }));
 });
 
 self.addEventListener("push", (event) => {

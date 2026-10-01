@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "3.1.2",
+  "currentVersion": "3.2.0",
   "releases": [
+    {
+      "version": "3.2.0",
+      "date": "2026-10-01",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Next game card and closed-app notification test",
+      "telegramAnnouncement": "BallerWatch now shows the next upcoming game with Directions/Share and includes a safe notification test for the iPhone Home Screen app.",
+      "changes": [
+        "Added a public-safe Next game card that selects the earliest upcoming pickup or RATS game using the same runtime data and ordering used by the existing fast path.",
+        "Added a Google Maps Directions button using the published field/address and a native device Share action with clipboard fallback.",
+        "Added a manual Test notification control in the bell panel that schedules a local service-worker notification after five seconds so the app can be closed before the alert appears.",
+        "Kept automated tests and smoke runs notification-silent: the manual notification test does not send Web Push signals or create notification-board entries.",
+        "Added a read-only /web/next-game endpoint, privacy regression coverage, UI tests, and a new versioned PWA shell so installed Home Screen apps receive the feature."
+      ]
+    },
     {
       "version": "3.1.2",
       "date": "2026-10-01",
