@@ -42,6 +42,7 @@ jobs:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
           OWNER_RSVP_NAME: ${{ secrets.OWNER_RSVP_NAME }}
           UPSTREAM_ENDPOINT: ${{ secrets.UPSTREAM_ENDPOINT }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           TELEGRAM_UPDATE_B64: ${{ inputs.telegram_update_b64 }}
           CHAT_HISTORY_EVENT_B64: ${{ inputs.history_event_b64 }}
