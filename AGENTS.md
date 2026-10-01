@@ -7,8 +7,8 @@ Always read the current `README.md`, this file, and `features/versions.json` fro
 - Keep this public repository free of secrets and readable live/private soccer data.
 - Public feature-request summaries may contain only version 2 fixed categories and counts. Never restore free text, IDs, timestamps, or hashes of request text. Exact requests require private authorized decryption; do not infer them from categories.
 - Runtime plaintext belongs only in ignored temporary paths. Persistent private state must stay encrypted.
-- Keep cron-job.org as the recurring scheduler. Do not add GitHub `schedule:` cron.
-- Keep exactly one Telegram `getUpdates` consumer.
+- Cloudflare Cron Triggers are the target recurring scheduler. Keep cron-job.org jobs only as a fallback until the KV-backed edge cutover is verified; do not add GitHub `schedule:` cron.
+- Telegram is webhook-driven through Cloudflare. Do not recreate a recurring `getUpdates` poller.
 - To recover or verify `UPSTREAM_ENDPOINT`, follow `skills/find-upstream-endpoint/SKILL.md`. Never commit the live endpoint.
 
 ## Change process
@@ -24,6 +24,8 @@ Direct commits to `main` are allowed for normal maintenance.
 A branch and pull request may still be used for larger/riskier work, but they are not required.
 
 ## Testing
+
+Cloudflare cutover verification must use the notification-silent `/admin/shadow-refresh` path before legacy schedules are disabled.
 
 Tests, audits, smoke tests, and temporary verification runs must **not send Telegram messages**. Do not call Telegram notification code just to prove a test worked. Use workflow results/logs that contain no private participant, team, field, address, or other live soccer details.
 
