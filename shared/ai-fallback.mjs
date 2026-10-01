@@ -1,6 +1,6 @@
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const DEFAULT_MODEL = "openai/gpt-oss-20b";
-export const DAILY_AI_LIMIT = 50;
+export const DAILY_AI_LIMIT = 25;
 export const AI_TIMEOUT_MS = 2500;
 
 function cleanText(value, max = 1000) {
@@ -43,6 +43,9 @@ function parseDecision(text) {
     return {
       action: "feature_request",
       reason: cleanText(parsed.reason, 500) || "The available BallerWatch data is insufficient.",
+      category: ["schedule","rsvp","notifications","league","setup","other"].includes(parsed.category)
+        ? parsed.category
+        : "other",
     };
   }
   return null;
@@ -88,7 +91,7 @@ export async function answerUnknownWithAi(question, context, settings = {}) {
               "Never claim to perform an action, change state, book anything, modify calendars, RSVP, send messages, or access information not present in context.",
               "If the request needs unavailable information, a new capability, external lookup, or an unsupported action, return feature_request.",
               "Be concise.",
-              'Return JSON only: {"action":"answer","reply":"..."} or {"action":"feature_request","reason":"..."}.',
+              'Return JSON only: {"action":"answer","reply":"..."} or {"action":"feature_request","reason":"...","category":"schedule|rsvp|notifications|league|setup|other"}.',
             ].join(" "),
           },
           {
