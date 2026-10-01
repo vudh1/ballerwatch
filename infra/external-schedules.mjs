@@ -34,7 +34,7 @@ function jobMatchesSpec(job, spec, repo) {
 
 export function analyzeExternalSchedules(jobs, {
   repo = "vudh1/ballerwatch",
-  expectEnabled = false,
+  expectEnabled = true,
   requireAll = true,
 } = {}) {
   const list = Array.isArray(jobs) ? jobs : [];
@@ -136,7 +136,7 @@ function desiredJob(spec, { repo, branch, githubPat, enabled }) {
         "X-GitHub-Api-Version": "2022-11-28",
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ ref: branch }),
+      body: JSON.stringify({ ref: branch, inputs: { external_fallback: "true" } }),
     },
   };
 }
@@ -148,8 +148,8 @@ export async function syncExternalSchedules(mode, {
   branch = process.env.BALLERWATCH_BRANCH || "main",
 } = {}) {
   if (!apiKey) throw new Error("CRON_JOB_ORG_API_KEY is required");
-  if (!["enable", "disable", "ensure-disabled"].includes(mode)) {
-    throw new Error("Mode must be enable, disable, or ensure-disabled");
+  if (!["enable", "disable", "ensure-enabled", "ensure-disabled"].includes(mode)) {
+    throw new Error("Mode must be enable, disable, ensure-enabled, or ensure-disabled");
   }
 
   const jobs = await listExternalSchedules(apiKey);
@@ -175,7 +175,7 @@ export async function syncExternalSchedules(mode, {
 
   if (!githubPat) throw new Error("CRON_GITHUB_PAT is required");
 
-  const enabled = mode === "enable";
+  const enabled = mode === "enable" || mode === "ensure-enabled";
   for (const spec of EXTERNAL_SCHEDULE_SPECS) {
     const next = desiredJob(spec, { repo, branch, githubPat, enabled });
     const existing = jobs.find((job) => jobMatchesSpec(job, spec, repo));
@@ -199,18 +199,21 @@ export async function syncExternalSchedules(mode, {
 const isCli = process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href;
 if (isCli) {
   const mode = process.argv[2] || "";
-  if (mode === "check-disabled") {
+  if (mode === "check-enabled" || mode === "check-disabled") {
     const jobs = await listExternalSchedules();
+    const expectEnabled = mode === "check-enabled";
     const problems = analyzeExternalSchedules(jobs, {
       repo: process.env.GITHUB_REPOSITORY || "vudh1/ballerwatch",
-      expectEnabled: false,
+      expectEnabled,
       requireAll: true,
     });
     if (problems.length) {
       for (const problem of problems) console.error(problem);
       process.exitCode = 1;
     } else {
-      console.log("All three cron-job.org fallback jobs exist, have the expected cadence, and are disabled.");
+      console.log(
+        `All three cron-job.org fallback jobs exist, have the expected cadence, and are ${expectEnabled ? "enabled" : "disabled"}.`,
+      );
     }
   } else {
     await syncExternalSchedules(mode);
