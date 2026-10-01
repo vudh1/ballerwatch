@@ -1,3 +1,8 @@
+/**
+ * Validates the SemVer release ledger and announcement references used by CI.
+ *
+ * Documentation baseline: v2.3.0. Runtime/private data must never be committed to Git.
+ */
 import fs from "node:fs";
 
 function fail(message) {
