@@ -4,14 +4,14 @@ BallerWatch is a small soccer automation system for pickup games and Seattle RAT
 
 It uses Telegram for questions and alerts, Cloudflare Workers for the webhook/fast reply path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Gemini Flash with Groq fallback for bounded AI assistance, and Google Calendar for league match sync.
 
-**Current version: 2.7.4**
+**Current version: 2.7.5**
 
 ## Recent changes
 
+- **2.7.5** — RATS transient-source resilience.
 - **2.7.4** — Index-independent Calendar pairing.
 - **2.7.3** — Pair Calendar bridge to intended target.
 - **2.7.2** — Stale Calendar mapping cleanup.
-- **2.7.1** — Calendar purge reliability fix.
 
 Full release history and Telegram announcement text live in `features/versions.json`.
 
@@ -123,11 +123,12 @@ The workflow:
 
 1. restores monitored teams and last-known league state;
 2. checks the most likely current season first;
-3. retrieves independent team schedules concurrently;
-4. compares schedules and scores;
-5. sends league notifications when appropriate;
-6. updates Google Calendar only when the applied Calendar snapshot differs;
-7. persists changed encrypted state.
+3. retrieves independent team schedules concurrently with bounded retries for transient source failures;
+4. retains a previously validated last-good schedule when RATS is temporarily unavailable;
+5. compares schedules and scores;
+6. sends league notifications when appropriate;
+7. updates Google Calendar only when the applied Calendar snapshot differs;
+8. persists changed encrypted state.
 
 This avoids unnecessary Calendar calls when nothing changed.
 
@@ -256,7 +257,9 @@ It does **not** delete:
 
 - source code
 - repository or Worker secrets
-- Google Calendar events
+- unrelated Google Calendar events
+
+BallerWatch-managed RATS Calendar events are deleted by the authenticated Calendar bridge before runtime state is cleared.
 
 The next watcher runs rebuild current source state and built-in defaults.
 
