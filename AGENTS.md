@@ -4,54 +4,59 @@ Always read the current `README.md`, this file, and `features/versions.json` fro
 
 ## Privacy and architecture
 
-- GitHub contains source code, static configuration, documentation, and release history only. **Never commit runtime state back into the repository.**
-- Private/persistent runtime state belongs in the private Cloudflare `ballerwatch-runtime` KV namespace.
-- Workflows may temporarily materialize runtime files by using `shared/runtime-state.mjs pull <scope>`; they must push needed changes back to KV and remove local state before completion.
-- The privacy audit must continue to reject tracked `pickup/state/`, `league/state/`, `state/`, `league/status.json`, `requests/private.json`, and `requests/unknown.json`.
-- The public feature-request summary is served from the Worker `/public/feature-summary` endpoint and must remain version 3 fixed categories/counters only. Never expose free text, IDs, timestamps, hashes of request text, or rejected answers.
-- Cloudflare Cron Triggers are the primary recurring scheduler. cron-job.org also keeps three **enabled** external failover jobs (pickup, league, watchdog). Pickup/league fallback runs health-gate against Cloudflare and skip source work while the edge heartbeat is fresh.
+- `main` contains source code, static configuration, documentation, and release history. Do not commit generated runtime state to `main`.
+- Durable runtime state lives on the dedicated `runtime-state` branch so frequent state updates do not pollute release history.
+- Private runtime files on `runtime-state` must remain AES-GCM encrypted with the existing state-encryption boundary. Never write plaintext rosters, private settings, Telegram text, Calendar IDs, or secrets there.
+- `state/chat-history.json` retains only Groq-condensed conversation records for up to 48 hours and is encrypted.
+- `state/chat-review.json` is the only readable chat-derived review artifact. It may contain only privacy-minimized engineering signals: timestamp, `bug_candidate|feature_candidate|negative_feedback`, short sanitized summary, and short sanitized reason. Never include names, IDs, tokens, URLs, addresses, raw questions, raw replies, or quotes.
+- Explicit `/feature <request>` remains a deliberate feature-request path. Ordinary unanswered questions and thumbs-down feedback belong in the 48-hour chat review flow instead of automatically becoming feature requests.
+- Cloudflare Workers hosts the Telegram webhook and read-only fast path. **Workers KV is not part of the production runtime and Cloudflare Cron Triggers must stay disabled.**
+- The fast path reads encrypted state from the `runtime-state` branch and uses the Workers Cache API only as a short-lived best-effort cache.
+- cron-job.org is the primary recurring scheduler and dispatches the GitHub pickup, league, and watchdog workflows at their 2/5/10-minute cadences.
+- GitHub Actions pulls state from `runtime-state`, performs reconciliation/notifications/Calendar work, pushes only changed state back, then removes local runtime files.
+- Encrypted GitHub Actions cache backups remain a secondary recovery source.
 - Telegram is webhook-driven through Cloudflare. Do not recreate a recurring `getUpdates` poller.
 - To recover or verify `UPSTREAM_ENDPOINT`, follow `skills/find-upstream-endpoint/SKILL.md`. Never commit the live endpoint.
 
 ## Release workflow
 
-Normal product/repository changes should use **one release branch per target version**, named `release/<version>`.
+Normal product/repository changes use one release branch per target version, named `release/<version>`.
 
 Direct commits to `main` remain permitted for emergencies or explicit user-directed maintenance, but the default process is:
 
 1. Start `release/<next-version>` from the latest `main`.
-2. Make as many implementation/fix commits as needed on that branch.
-3. **Do not bump `features/versions.json` yet.**
+2. Make implementation/fix commits on that branch.
+3. Do not bump `features/versions.json` until the implementation is green.
 4. Run/verify **Validate code**. Release PRs also run the notification-silent **Manual smoke test** when runtime code is affected.
-5. Fix all failures on the branch. Do not hide or bypass a failed check.
-6. Only after the implementation is tested, update `features/versions.json` to the target version and add/update any warranted announcement.
-7. Run the final validation again.
-8. Open or update the PR to `main`, mark it ready, and prefer automated approval/auto-merge when repository settings allow it.
-9. Merge with **squash merge only**, so `main` receives exactly one commit for that release.
-10. Delete the release branch after merge.
+5. Fix failures rather than hiding or bypassing them.
+6. After implementation tests pass, update `features/versions.json`, current documentation, and any warranted announcement.
+7. Run final validation/smoke again.
+8. Mark the PR ready only when final checks are green.
+9. Merge with **squash merge only**, so `main` receives exactly one commit for the release.
+10. Delete the release branch after merge when practical.
 
-The resulting `main` history should be release-oriented: one commit per BallerWatch version. Do not merge release branches with merge commits or rebase-merge.
+The resulting `main` history should remain release-oriented: one commit per BallerWatch version.
 
 ## Testing
 
 Tests, audits, smoke tests, and temporary verification runs must **not send Telegram messages**.
 
-Use the notification-silent `/admin/shadow-refresh` path or **Manual smoke test** for live-source verification. Release-PR smoke tests are serialized so obsolete runs do not hammer upstream sources.
-
-Normal production listener/pickup/league runs may send their intended Telegram notifications.
+Use the notification-silent Manual smoke test for live-source verification. Do not add production notifications to PR tests.
 
 For RATS changes, preserve the fast path that tries the last known season before broader discovery and fetches independent team schedule exports concurrently.
+
+When testing runtime persistence, use encrypted fixtures or the real `runtime-state` branch through the supported runtime-state helper. Never put decrypted runtime files in an artifact or commit.
 
 ## Watchdog
 
 The watchdog must verify:
 
-- Cloudflare webhook/KV and source heartbeat health;
+- Cloudflare webhook health;
 - latest validation health;
 - public-repo privacy rules; and
-- cron-job.org fallback posture.
+- cron-job.org primary scheduler existence, cadence, target, and enabled posture.
 
-The three cron-job.org failover jobs must exist with their expected 2/5/10-minute cadences and remain enabled. A legacy Telegram polling cron must remain disabled.
+The three cron-job.org jobs must exist with their expected 2/5/10-minute cadences and remain enabled. A legacy Telegram polling cron must remain disabled.
 
 ## Versioning
 
@@ -74,10 +79,12 @@ Read `STYLE_GUIDE.md` before editing code.
 
 ## Purge semantics
 
-`PURGE` is a full runtime factory reset. It clears all Cloudflare KV runtime keys, including custom league-team state and listener/runtime settings. The next run rebuilds default teams and fresh source snapshots from code/secrets. It does not delete source code, secrets, or Google Calendar events.
+`PURGE` is a full runtime factory reset. It deletes generated runtime files from the `runtime-state` branch, including custom league-team state, listener settings, notification/watchdog state, Calendar reconciliation snapshots, and the 48-hour chat history/review. The next runs rebuild defaults and current source snapshots. It does not delete source code, secrets, or Google Calendar events.
 
-## Cloudflare outage resilience
+## Cloudflare and storage failure behavior
 
-Enabled cron-job.org jobs provide an independent scheduler path. Pickup/league external-fallback dispatches first run `infra/fallback-gate.mjs`; they proceed only when the corresponding Cloudflare heartbeat is stale/unreachable.
-
-GitHub workflows restore encrypted last-known runtime files from GitHub Actions cache if the Worker runtime-state API is unavailable. Cache payloads must remain encrypted and must never be committed.
+- If Cloudflare is unavailable, inbound Telegram webhook/fast-path questions are temporarily unavailable, but cron-job.org continues the 2/5/10-minute GitHub monitoring workflows.
+- GitHub production watcher workflows do not depend on Workers KV.
+- If the `runtime-state` branch cannot be read, workflows may restore the encrypted last-known Actions-cache backup.
+- The Worker may fall back to dispatching the GitHub listener if a direct runtime-state history write fails.
+- Do not reintroduce Workers KV as a hot datastore merely for convenience; the free-tier request ceiling is a known operational constraint.
