@@ -12,6 +12,14 @@ Telegram sends webhook updates to the Cloudflare Worker. Common read-only questi
 
 State-changing or unsupported requests are dispatched to the GitHub listener workflow.
 
+## Notification boundary
+
+Telegram has a narrow allowlist. Proactive sends come only from the pickup watcher, real league schedule changes, and the once-per-Pacific-day combined version announcement. Direct replies are sent only in response to owner input.
+
+Watchdog health/recovery, CI/tests, builds/deploys, commits/PRs, setup reminders, invalid-setting reminders, and score-only changes never generate Telegram messages.
+
+The version announcer runs alongside the watchdog schedule but is independent of watchdog health alerts. It reads `features/versions.json`, combines every pending release into one user-facing message, and defers rather than sends when the watchdog itself is unhealthy.
+
 ## Scheduler path
 
 cron-job.org is the primary scheduler:
