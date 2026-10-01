@@ -1010,21 +1010,47 @@ function recordUnknownQuestion(question, settings) {
 async function announceNewFeatures(settings) {
   const data = readJson(FEATURE_ANNOUNCEMENTS_PATH);
   const items = Array.isArray(data?.announcements) ? data.announcements : [];
-  const lastId = String(settings.lastFeatureAnnouncementId || "");
-  const unseen = items.filter(
-    (item) => item?.id && item.id !== lastId && item.enabled !== false,
+  const enabledIds = items
+    .filter((item) => item?.id && item.enabled !== false)
+    .map((item) => String(item.id));
+
+  let announcedIds;
+  if (Array.isArray(settings.announcedFeatureAnnouncementIds)) {
+    announcedIds = new Set(settings.announcedFeatureAnnouncementIds.map(String));
+  } else {
+    // Migration from the old single-last-ID scheme. Treat all announcements
+    // that already existed at migration time as seen so historical releases
+    // are never replayed or rotated.
+    announcedIds = new Set(enabledIds);
+  }
+
+  const item = items.find(
+    (candidate) =>
+      candidate?.id &&
+      candidate.enabled !== false &&
+      !announcedIds.has(String(candidate.id)),
   );
 
-  if (!unseen.length) return settings;
+  const migratedSettings = {
+    ...settings,
+    announcedFeatureAnnouncementIds: [...announcedIds],
+  };
+  delete migratedSettings.lastFeatureAnnouncementId;
 
-  const item = unseen[unseen.length - 1];
+  if (!item) return migratedSettings;
+
   const lines = [
     `🆕 BallerWatch ${item.version ? `v${item.version}` : "feature"} available`,
     String(item.message || item.title || "A new bot feature was added."),
   ];
   if (item.example) lines.push(`Try: ${item.example}`);
+
   await sendTelegram(lines.join("\n"));
-  return { ...settings, lastFeatureAnnouncementId: String(item.id) };
+  announcedIds.add(String(item.id));
+  return {
+    ...migratedSettings,
+    announcedFeatureAnnouncementIds: [...announcedIds],
+  };
 }
 
 
