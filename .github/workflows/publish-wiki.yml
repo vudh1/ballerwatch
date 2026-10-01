@@ -9,7 +9,7 @@ on:
       - ".github/workflows/publish-wiki.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ballerwatch-wiki-publish
@@ -22,24 +22,17 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Publish docs/wiki to GitHub Wiki
+      - name: Clone GitHub Wiki
         env:
-          WIKI_TOKEN: ${{ secrets.WIKI_TOKEN || secrets.REPO_ADMIN_TOKEN }}
-        shell: bash
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          if [ -z "${WIKI_TOKEN:-}" ]; then
-            echo "::notice::Wiki source is current in docs/wiki/. Add a WIKI_TOKEN secret with repository write access to initialize/sync GitHub Wiki."
-            exit 0
-          fi
-          WIKI_URL="https://x-access-token:${WIKI_TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git"
-          if ! git clone "$WIKI_URL" /tmp/ballerwatch-wiki; then
-            mkdir -p /tmp/ballerwatch-wiki
-            git -C /tmp/ballerwatch-wiki init
-            git -C /tmp/ballerwatch-wiki remote add origin "$WIKI_URL"
-          fi
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git" /tmp/ballerwatch-wiki
 
-          find /tmp/ballerwatch-wiki -maxdepth 1 -name '*.md' -delete
+      - name: Mirror docs/wiki into GitHub Wiki
+        run: |
+          set -euo pipefail
+          find /tmp/ballerwatch-wiki -maxdepth 1 -type f -name '*.md' -delete
           cp docs/wiki/*.md /tmp/ballerwatch-wiki/
           git -C /tmp/ballerwatch-wiki add -A
 

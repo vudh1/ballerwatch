@@ -59,7 +59,7 @@ Pickup and league fallback runs are health-gated to avoid duplicate source work 
 
 ## GitHub Wiki publishing
 
-The canonical pages live in `docs/wiki/`. GitHub's normal Actions token cannot initialize the separate `.wiki.git` repository. To mirror these pages into the GitHub Wiki UI, add a repository secret named `WIKI_TOKEN` with repository write access and run **Publish wiki** once. Future main changes to `docs/wiki/` sync automatically.
+The canonical pages live in `docs/wiki/`. The **Publish wiki** workflow mirrors those Markdown pages into the repository's GitHub Wiki using the workflow-scoped `GITHUB_TOKEN` with `contents: write`. No separate Wiki token is required. Changes under `docs/wiki/` on `main` trigger a sync automatically.
 
 ## Calendar target pairing
 
