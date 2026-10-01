@@ -26,8 +26,11 @@ jobs:
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@v6
-      - name: Configure GitHub Pages
+      - name: Configure or enable GitHub Pages
         uses: actions/configure-pages@v5
+        with:
+          token: ${{ secrets.CRON_GITHUB_PAT }}
+          enablement: true
       - name: Upload static PWA
         uses: actions/upload-pages-artifact@v4
         with:
