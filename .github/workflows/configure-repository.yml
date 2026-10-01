@@ -25,68 +25,21 @@ jobs:
           gh api --method PATCH "repos/$GITHUB_REPOSITORY" \
             -f description="Privacy-first soccer automation for pickup RSVP and Seattle RATS schedules, with Telegram alerts, Google Calendar sync, and self-healing GitHub Actions."
 
-      - name: Require pull requests for main
+      - name: Remove old BallerWatch main-protection ruleset
         run: |
-          cat > /tmp/ruleset.json <<'JSON'
-          {
-            "name": "Protect main via pull requests",
-            "target": "branch",
-            "enforcement": "active",
-            "bypass_actors": [
-              {
-                "actor_id": 15368,
-                "actor_type": "Integration",
-                "bypass_mode": "always"
-              }
-            ],
-            "conditions": {
-              "ref_name": {
-                "include": ["~DEFAULT_BRANCH"],
-                "exclude": []
-              }
-            },
-            "rules": [
-              {
-                "type": "pull_request",
-                "parameters": {
-                  "allowed_merge_methods": ["squash", "merge", "rebase"],
-                  "dismiss_stale_reviews_on_push": false,
-                  "require_code_owner_review": false,
-                  "require_last_push_approval": false,
-                  "required_approving_review_count": 0,
-                  "required_review_thread_resolution": true
-                }
-              },
-              {
-                "type": "required_status_checks",
-                "parameters": {
-                  "do_not_enforce_on_create": true,
-                  "required_status_checks": [
-                    {
-                      "context": "validate",
-                      "integration_id": 15368
-                    }
-                  ],
-                  "strict_required_status_checks_policy": true
-                }
-              },
-              {
-                "type": "non_fast_forward"
-              }
-            ]
-          }
-          JSON
-
           RULESET_ID="$(gh api "repos/$GITHUB_REPOSITORY/rulesets" --jq '.[] | select(.name == "Protect main via pull requests") | .id' | head -n1)"
           if [ -n "$RULESET_ID" ]; then
-            gh api --method PUT "repos/$GITHUB_REPOSITORY/rulesets/$RULESET_ID" --input /tmp/ruleset.json >/dev/null
-            echo "Updated main protection ruleset $RULESET_ID."
+            gh api --method DELETE "repos/$GITHUB_REPOSITORY/rulesets/$RULESET_ID"
+            echo "Removed old BallerWatch PR-only ruleset."
           else
-            gh api --method POST "repos/$GITHUB_REPOSITORY/rulesets" --input /tmp/ruleset.json >/dev/null
-            echo "Created main protection ruleset."
+            echo "No BallerWatch PR-only ruleset is active."
           fi
 
-      - name: Verify repository policy
+      - name: Verify repository configuration
         run: |
           gh api "repos/$GITHUB_REPOSITORY" --jq '{description, default_branch}'
-          gh api "repos/$GITHUB_REPOSITORY/rulesets" --jq '.[] | select(.name == "Protect main via pull requests") | {id,name,enforcement}'
+          if gh api "repos/$GITHUB_REPOSITORY/rulesets" --jq '.[].name' | grep -Fxq "Protect main via pull requests"; then
+            echo "::error::Old BallerWatch PR-only ruleset still exists."
+            exit 1
+          fi
+          echo "Direct commits to main are not restricted by a BallerWatch ruleset."
