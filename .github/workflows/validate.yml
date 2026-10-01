@@ -4,14 +4,12 @@ on:
   push:
     paths:
       - "listener/**"
-      - "pickup/**"
+      - "pickup/*.mjs"
       - "league/*.py"
       - "shared/**"
       - "watchdog/**"
       - "manual-test.mjs"
       - "privacy-audit.mjs"
-      - "requests/**"
-      - "state/**"
       - "infra/**"
       - "features/**"
       - "skills/**"
