@@ -67,14 +67,14 @@ jobs:
 
       - name: Fetch and validate league schedules
         if: steps.gate.outputs.should_run == 'true'
-        run: /usr/bin/time -f 'leagueWatcherSeconds=%e' python3 watcher.py
+        run: /usr/bin/time -f 'leagueWatcherSeconds=%e' node watcher.mjs
 
       - name: Compare with applied Calendar snapshot
         if: steps.gate.outputs.should_run == 'true'
         id: calendar_gate
         shell: bash
         run: |
-          python3 calendar_gate.py | tee /tmp/calendar-gate.txt
+          node calendar-gate.mjs | tee /tmp/calendar-gate.txt
           grep '^needsCalendar=' /tmp/calendar-gate.txt >> "$GITHUB_OUTPUT"
           grep '^pendingCount=' /tmp/calendar-gate.txt >> "$GITHUB_OUTPUT"
 
@@ -83,14 +83,14 @@ jobs:
         env:
           GOOGLE_CALENDAR_WEBHOOK_URL: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_URL }}
           GOOGLE_CALENDAR_WEBHOOK_SECRET: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_SECRET }}
-        run: python3 google_calendar_sync.py
+        run: node google-calendar-sync.mjs
 
       - name: Notify Telegram about successful schedule update
         if: steps.gate.outputs.should_run == 'true' && steps.calendar_gate.outputs.needsCalendar == 'true'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python3 telegram_notify.py
+        run: node telegram-notify.mjs
 
       - name: Seal league runtime state
         if: always() && steps.gate.outputs.should_run == 'true'
