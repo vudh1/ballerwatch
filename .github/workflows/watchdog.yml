@@ -1,10 +1,6 @@
 name: System watchdog
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/watchdog.yml"
   workflow_dispatch:
 
 permissions:
