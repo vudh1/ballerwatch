@@ -15,7 +15,8 @@ Always read the current `README.md`, this file, and `features/versions.json` fro
 - The GitHub Pages PWA keeps anonymous/public access read-only. Starting in v4, a device may be owner-paired with a short-lived one-time code; only an authenticated paired device may read/change the limited owner settings surface (RSVP name and monitored league teams). Arbitrary state-changing commands remain outside the public web API.
 - Web Push VAPID keys and subscriptions live only in encrypted `state/web-push.json` on `runtime-state`; never commit a VAPID private key or push endpoint to `main`.
 - Web notification-board entries exposed to the public Pages origin must be public-safe: never include RSVP names, waitlist names, owner-specific status, tokens, IDs, or private settings.
-- cron-job.org is the primary recurring scheduler and dispatches the GitHub pickup, league, and watchdog workflows at their 2/5/10-minute cadences.
+- The 14-day weather cache lives encrypted in `state/weather.json`. It may contain public venue names/addresses, cached coordinates, and match-window forecasts, but never roster or owner-private data. New venue geocoding must be cached and rate-limited; weather refreshes run at most every 6 hours.
+- cron-job.org is the primary high-frequency scheduler for pickup (2 minutes) and league (5 minutes) only. The legacy listener schedule and retired external watchdog schedule must remain disabled. System watchdog/maintenance runs from a native GitHub Actions schedule every 6 hours and also refreshes the 14-day match-weather snapshot.
 - GitHub Actions pulls state from `runtime-state`, performs reconciliation/notifications/Calendar work, pushes only changed state back, then removes local runtime files.
 - Encrypted GitHub Actions cache backups remain a secondary recovery source.
 - Telegram is webhook-driven through Cloudflare. Do not recreate a recurring `getUpdates` poller.
@@ -75,7 +76,7 @@ The watchdog must verify:
 - public-repo privacy rules; and
 - cron-job.org primary scheduler existence, cadence, target, and enabled posture.
 
-The three cron-job.org jobs must exist with their expected 2/5/10-minute cadences and remain enabled. A legacy Telegram polling cron must remain disabled.
+The two required cron-job.org jobs must exist with their expected 2/5-minute cadences and remain enabled. The legacy Telegram polling cron and retired external watchdog cron must remain disabled. The native GitHub watchdog schedule runs every 6 hours.
 
 ## Versioning
 
@@ -102,7 +103,7 @@ Read `STYLE_GUIDE.md` before editing code.
 
 ## Cloudflare and storage failure behavior
 
-- If Cloudflare is unavailable, inbound Telegram webhook/fast-path questions and live PWA Q&A/board reads are temporarily unavailable, but cron-job.org continues the 2/5/10-minute GitHub monitoring workflows.
+- If Cloudflare is unavailable, inbound Telegram webhook/fast-path questions and live PWA Q&A/board reads are temporarily unavailable, but cron-job.org continues the 2/5-minute pickup/league workflows and the native six-hour GitHub maintenance/weather schedule remains independent of Cloudflare.
 - Existing Web Push subscriptions are signaled directly from GitHub Actions to browser push services, so notification fallback does not depend on Telegram and does not require Cloudflare at send time.
 - GitHub production watcher workflows do not depend on Workers KV.
 - If the `runtime-state` branch cannot be read, workflows may restore the encrypted last-known Actions-cache backup.
