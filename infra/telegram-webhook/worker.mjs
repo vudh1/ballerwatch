@@ -65,7 +65,7 @@ async function ownerSigningKey(env) {
   );
 }
 
-async function issueOwnerToken(env) {
+export async function issueOwnerToken(env) {
   const payload = {
     v: 1,
     exp: Date.now() + 90 * 24 * 60 * 60 * 1000,
@@ -85,7 +85,7 @@ async function issueOwnerToken(env) {
   };
 }
 
-async function verifyOwnerToken(env, token) {
+export async function verifyOwnerToken(env, token) {
   const [encoded, signatureText, extra] = String(token || "").split(".");
   if (!encoded || !signatureText || extra) return false;
   try {
@@ -284,7 +284,7 @@ async function ownerSettingsView(env) {
   };
 }
 
-function normalizeOwnerSettingsInput(body) {
+export function normalizeOwnerSettingsInput(body) {
   const ownerName = cleanText(body?.ownerName, 120);
   const teams = [];
   const seen = new Set();
