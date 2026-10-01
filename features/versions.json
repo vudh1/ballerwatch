@@ -11,7 +11,8 @@
       "changes": [
         "Added an agent skill for safely discovering and verifying the pickup UPSTREAM_ENDPOINT without committing its live value.",
         "Added repository agent guidance so future maintenance uses the endpoint-discovery procedure and preserves privacy.",
-        "Clarified that TRACKER_STATE_KEY is optional when the existing deployment uses the TELEGRAM_BOT_TOKEN encryption fallback."
+        "Clarified that TRACKER_STATE_KEY is optional when the existing deployment uses the TELEGRAM_BOT_TOKEN encryption fallback.",
+        "Expanded the validation workflow triggers so version history and operational guidance changes are validated automatically."
       ]
     },
     {
