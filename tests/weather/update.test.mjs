@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import {
   addDaysIso,
   collectUpcomingGames,
@@ -89,4 +90,11 @@ test("weather helpers support 14-day range and common WMO conditions", () => {
   assert.equal(weatherCondition(0), "Clear");
   assert.equal(weatherCondition(61), "Rain");
   assert.equal(weatherCondition(95), "Thunderstorms");
+});
+
+
+test("weather request stays inside the two-week free-tier window", () => {
+  const source = fs.readFileSync("weather/update.mjs", "utf8");
+  assert.match(source, /forecast_days", "14"/);
+  assert.doesNotMatch(source, /forecast_days", "16"/);
 });
