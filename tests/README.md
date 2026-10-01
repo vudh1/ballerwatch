@@ -11,6 +11,6 @@ The directory mirrors the source layout:
 - `tests/watchdog/` — watchdog policy tests.
 - `tests/smoke/` — notification-silent live smoke helpers.
 
-CI discovers `*.test.mjs` under `tests/` and Python `*_test.py` under `tests/league/`.
+CI discovers dependency-free Node.js `*.test.mjs` files under `tests/`.
 
 Tests and smoke helpers must not send Telegram notifications or mutate Google Calendar.
