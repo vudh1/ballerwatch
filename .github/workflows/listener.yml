@@ -27,6 +27,8 @@ jobs:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
           OWNER_RSVP_NAME: ${{ secrets.OWNER_RSVP_NAME }}
           UPSTREAM_ENDPOINT: ${{ secrets.UPSTREAM_ENDPOINT }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_FREE_TIER_ONLY: ${{ secrets.GROQ_FREE_TIER_ONLY }}
           # This workflow is dispatched every minute. A long poll only keeps
           # the runner alive; a short poll lets the next run pick up anything
           # that arrives later in the minute.
