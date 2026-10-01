@@ -43,7 +43,7 @@ jobs:
           node --check pickup/notify.mjs
           node --check pickup/selection.mjs
           node --check watchdog/watchdog.mjs
-          node --check watchdog/watchdog.test.mjs
+          node --check infra/external-schedules.test.mjs
           node --check manual-test.mjs
           node --check privacy-audit.mjs
           node --check infra/external-schedules.mjs
@@ -69,12 +69,8 @@ jobs:
       - name: Run request privacy regression tests
         run: node --test shared/feature-requests.test.mjs
 
-      - name: Run watchdog unit tests
-        env:
-          TELEGRAM_BOT_TOKEN: fixture
-          TELEGRAM_CHAT_ID: fixture
-          TRACKER_STATE_KEY: fixture
-        run: node --test watchdog/watchdog.test.mjs
+      - name: Test external fallback scheduler rules
+        run: node --test infra/external-schedules.test.mjs
 
       - uses: actions/setup-python@v6
         with:
