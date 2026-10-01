@@ -48,6 +48,10 @@ Production automation and tests run on Node.js 22 with ECMAScript modules. The l
 
 The league watcher retries transient RATS failures such as HTTP 429/502/503/504 and network timeouts with bounded exponential backoff. If all retries fail but an already-validated schedule exists, production keeps that last-good schedule and skips Calendar/Telegram changes for that refresh. Cold starts, authentication failures, malformed schemas, and integrity mismatches still fail closed.
 
+## League game duration
+
+When the RATS export publishes an end time, BallerWatch uses that value. If RATS omits the end time, BallerWatch estimates a **two-hour duration** from the published start time. That estimated end is used consistently for Calendar events and future/past game-window decisions.
+
 ## External schedules
 
 cron-job.org jobs are expected to exist and stay enabled:
