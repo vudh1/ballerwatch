@@ -17,8 +17,8 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
   assert.match(html, /id="settings"/);
-  assert.match(html, /styles\\.css\\?v=3\\.1\\.1/);
-  assert.match(html, /app\\.js\\?v=3\\.1\\.1/);
+  assert.match(html, /styles\.css\?v=3\.1\.1/);
+  assert.match(html, /app\.js\?v=3\.1\.1/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
