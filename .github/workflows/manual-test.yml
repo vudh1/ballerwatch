@@ -10,6 +10,7 @@ on:
       - "league/**"
       - "shared/**"
       - "watchdog/**"
+      - "weather/**"
       - "infra/**"
       - "tests/**"
       - ".github/workflows/**"
