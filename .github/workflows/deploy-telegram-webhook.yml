@@ -12,7 +12,7 @@ on:
       - ".github/workflows/deploy-telegram-webhook.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ballerwatch-telegram-deploy
@@ -44,12 +44,24 @@ jobs:
             test -n "${!name}" || { echo "::error::Missing $name"; exit 1; }
           done
 
+      - name: Migrate and verify GitHub runtime-state branch
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: |
+          for scope in listener pickup league watchdog; do
+            node shared/runtime-state.mjs pull "$scope"
+            node shared/runtime-state.mjs push "$scope"
+            node shared/runtime-state.mjs clean "$scope"
+          done
+
+
       - name: Prepare Cloudflare runtime config
         working-directory: infra/telegram-webhook
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_KV_NAMESPACE_ID: ${{ secrets.CLOUDFLARE_KV_NAMESPACE_ID }}
         run: node prepare-config.mjs
 
       - name: Deploy Worker shell
@@ -107,35 +119,11 @@ jobs:
           echo
           echo "Telegram webhook: $WEBHOOK_URL"
 
-          echo "Running notification-silent edge verification and priming private KV..."
-          curl --max-time 75 --fail-with-body --silent --show-error \
-            -X POST "https://ballerwatch-telegram.$SUBDOMAIN.workers.dev/admin/shadow-refresh?target=all&write=1" \
-            -H "x-ballerwatch-admin: $SECRET"
+          echo "Verifying webhook-only Worker health..."
+          curl --max-time 15 --fail-with-body --silent --show-error "https://ballerwatch-telegram.$SUBDOMAIN.workers.dev/health"
           echo
 
-      - name: Verify GitHub-to-KV runtime-state bridge
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          for scope in listener pickup league watchdog; do
-            node shared/runtime-state.mjs pull "$scope"
-            node shared/runtime-state.mjs push "$scope"
-            node shared/runtime-state.mjs clean "$scope"
-          done
-
-      - name: Enable verified Cloudflare schedules
-        working-directory: infra/telegram-webhook
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_KV_NAMESPACE_ID: ${{ secrets.CLOUDFLARE_KV_NAMESPACE_ID }}
-          EDGE_CRONS_ENABLED: "true"
-        run: |
-          node prepare-config.mjs
-          npx --yes wrangler@4 deploy --config wrangler.generated.jsonc
-
-      - name: Ensure external failover schedules stay enabled
+      - name: Ensure primary GitHub schedules stay enabled
         env:
           CRON_JOB_ORG_API_KEY: ${{ secrets.CRON_JOB_ORG_API_KEY }}
           CRON_GITHUB_PAT: ${{ secrets.CRON_GITHUB_PAT }}

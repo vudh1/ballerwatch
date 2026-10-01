@@ -50,9 +50,9 @@ for (const file of files) {
     fail(`runtime/private file is tracked: ${file}`);
   }
   if (RUNTIME_PREFIXES.some(prefix => file.startsWith(prefix))) {
-    fail(`Cloudflare KV runtime-state path is tracked: ${file}`);
+    fail(`runtime-state path is tracked on main: ${file}`);
   }
 }
 
 if (process.exitCode) process.exit(process.exitCode);
-console.log("Privacy audit passed: GitHub contains code/config/history only; runtime state is not tracked.");
+console.log("Privacy audit passed: main contains code/config/history only; runtime state is not tracked on main.");

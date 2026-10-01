@@ -10,7 +10,7 @@ on:
         type: boolean
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ballerwatch-pickup
@@ -42,7 +42,7 @@ jobs:
           restore-keys: |
             ballerwatch-runtime-pickup-
 
-      - name: Pull runtime state
+      - name: Pull GitHub runtime state
         if: steps.gate.outputs.should_run == 'true'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -67,7 +67,7 @@ jobs:
           OWNER_RSVP_NAME: ${{ secrets.OWNER_RSVP_NAME }}
         run: node pickup/notify.mjs
 
-      - name: Push runtime state
+      - name: Push GitHub runtime state
         if: always() && steps.gate.outputs.should_run == 'true'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}

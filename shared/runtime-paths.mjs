@@ -1,12 +1,14 @@
 /**
  * Canonical runtime-file scopes shared by GitHub workflows and the Cloudflare Worker.
  *
- * Documentation baseline: v2.3.0. Keeping this list in one module prevents state-path drift.
+ * Documentation baseline: v2.4.0. Keeping this list in one module prevents state-path drift.
  */
 
 export const RUNTIME_SCOPES = Object.freeze({
   listener: Object.freeze([
     "state/listener.json",
+    "state/chat-history.json",
+    "state/chat-review.json",
     "league/state/teams.json",
     "pickup/state/feed.json",
     "pickup/state/events.json",

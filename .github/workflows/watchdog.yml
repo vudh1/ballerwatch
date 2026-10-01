@@ -10,7 +10,7 @@ on:
         type: boolean
 
 permissions:
-  contents: read
+  contents: write
   actions: read
 
 concurrency:
@@ -35,7 +35,7 @@ jobs:
           restore-keys: |
             ballerwatch-runtime-watchdog-
 
-      - name: Pull watchdog state
+      - name: Pull GitHub watchdog state
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -52,7 +52,7 @@ jobs:
           CRON_JOB_ORG_API_KEY: ${{ secrets.CRON_JOB_ORG_API_KEY }}
         run: node watchdog/watchdog.mjs
 
-      - name: Push watchdog state
+      - name: Push GitHub watchdog state
         if: always()
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
