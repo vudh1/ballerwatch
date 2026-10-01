@@ -246,8 +246,8 @@ def write_json(path, value):
 def is_transient_source_error(error):
     current = error
     while current is not None:
-        if isinstance(current, urllib.error.HTTPError) and current.code in (429, 502, 503, 504):
-            return True
+        if isinstance(current, urllib.error.HTTPError):
+            return current.code in (429, 502, 503, 504)
         if isinstance(current, (urllib.error.URLError, TimeoutError)):
             return True
         current = current.__cause__
