@@ -31,22 +31,25 @@ function dedupeTeams(teams) {
   return output;
 }
 
+function loadLegacyLeagueTeams() {
+  try {
+    const legacy = JSON.parse(fs.readFileSync(LEAGUE_TEAM_RUNTIME_PATH, "utf8"));
+    if (Array.isArray(legacy?.teams)) return dedupeTeams(legacy.teams);
+  } catch {}
+  return [];
+}
+
 export function loadLeagueTeams() {
   try {
     const encrypted = JSON.parse(fs.readFileSync(LEAGUE_TEAM_STATE_PATH, "utf8"));
     const payload = decryptState(encrypted);
-    if (payload && Array.isArray(payload.teams)) {
+    if (payload && Array.isArray(payload.teams) && payload.teams.length) {
       return dedupeTeams(payload.teams);
     }
   } catch {}
 
   // One-time migration path from the old plaintext config.
-  try {
-    const legacy = JSON.parse(fs.readFileSync(LEAGUE_TEAM_RUNTIME_PATH, "utf8"));
-    if (Array.isArray(legacy?.teams)) return dedupeTeams(legacy.teams);
-  } catch {}
-
-  return [];
+  return loadLegacyLeagueTeams();
 }
 
 export function saveLeagueTeams(teams) {
@@ -88,7 +91,8 @@ if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).
     const teams = writeRuntimeLeagueTeams();
     console.log(`Prepared ${teams.length} encrypted league team(s) for runtime.`);
   } else if (command === "migrate") {
-    const teams = ensureEncryptedLeagueTeams();
+    const legacyTeams = loadLegacyLeagueTeams();
+    const teams = legacyTeams.length ? saveLeagueTeams(legacyTeams) : ensureEncryptedLeagueTeams();
     if (!teams.length) throw new Error("No league teams available to migrate.");
     console.log(`Encrypted ${teams.length} league team(s).`);
   } else if (command === "list-count") {
