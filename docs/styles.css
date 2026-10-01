@@ -338,7 +338,7 @@ dialog li { margin: 0.55rem 0; }
 
 @media (max-width: 560px) {
   .hero { align-items: flex-start; }
-  .hero-actions { flex-direction: column; align-items: flex-end; }
+  .hero-actions { flex-direction: row; align-items: center; flex-wrap: nowrap; }
   .footer-install { align-items: flex-start; flex-direction: column; }
   .question-row { grid-template-columns: 1fr; }
   .question-row button { width: 100%; }

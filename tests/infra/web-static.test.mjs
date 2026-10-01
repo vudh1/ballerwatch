@@ -16,13 +16,13 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=4\.1\.0/);
-  assert.match(html, /app\.js\?v=4\.1\.0/);
+  assert.match(html, /styles\.css\?v=4\.1\.1/);
+  assert.match(html, /app\.js\?v=4\.1\.1/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v4-1-0-shell/);
+  assert.match(sw, /ballerwatch-v4-1-1-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -63,7 +63,7 @@ test("Home Screen install card is removed in standalone mode and notifications u
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=4\.1\.0/);
+  assert.match(app, /sw\.js\?v=4\.1\.1/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -195,4 +195,11 @@ test("question autocomplete predicts full sentences from typed prefixes", () => 
   assert.match(app, /event\.key === "ArrowRight"/);
   assert.match(app, /selectQuestionSuggestion\(0\)/);
   assert.match(app, /What's the pickup count for/);
+});
+
+
+test("mobile header keeps settings and bell on the same row", () => {
+  const css = fs.readFileSync("docs/styles.css", "utf8");
+  assert.match(css, /@media \(max-width: 560px\)[\s\S]*\.hero-actions \{[^}]*flex-direction:\s*row;/);
+  assert.match(css, /\.hero-actions \{[^}]*display:\s*flex;/);
 });
