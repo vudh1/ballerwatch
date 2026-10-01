@@ -1,3 +1,13 @@
+import {
+  fetchPickupSnapshot,
+  fetchLeagueSnapshot,
+  fingerprint,
+  kvJsonGet,
+  kvJsonPut,
+  kvTextGet,
+  kvTextPut,
+} from "./edge-runtime.mjs";
+
 const REPO = "vudh1/ballerwatch";
 const RAW_CACHE_SECONDS = 20;
 const CONTEXT_CACHE_SECONDS = 600;
@@ -75,6 +85,30 @@ async function githubFile(env, path) {
 }
 
 async function loadSnapshot(env) {
+  if (env.BALLERWATCH_STATE) {
+    const [pickup, pickupPrivate, league, today, teams, version] = await Promise.all([
+      kvJsonGet(env, "snapshot:pickup"),
+      kvJsonGet(env, "snapshot:pickup-private"),
+      kvJsonGet(env, "snapshot:league"),
+      kvJsonGet(env, "snapshot:today"),
+      kvJsonGet(env, "snapshot:teams"),
+      kvTextGet(env, "snapshot:version"),
+    ]);
+    if (pickup && league && Array.isArray(teams)) {
+      return {
+        pickup,
+        pickupPrivate: pickupPrivate || { events: {} },
+        league,
+        today: today || league.today || { games: [] },
+        teams,
+        settings: {},
+        version: version || "unknown",
+        loadedAt: new Date().toISOString(),
+        source: "cloudflare-kv",
+      };
+    }
+  }
+
   const cache = caches.default;
   const key = new Request("https://ballerwatch.internal/cache/snapshot");
   const cached = await cache.match(key);
@@ -143,9 +177,9 @@ async function sendTelegram(env, text, extra = {}) {
   return payload.result || null;
 }
 
-async function dispatchGitHub(env, update) {
+async function dispatchWorkflow(env, workflow, inputs = {}) {
   const response = await fetch(
-    `https://api.github.com/repos/${REPO}/actions/workflows/listener.yml/dispatches`,
+    `https://api.github.com/repos/${REPO}/actions/workflows/${workflow}/dispatches`,
     {
       method: "POST",
       headers: {
@@ -157,11 +191,15 @@ async function dispatchGitHub(env, update) {
       },
       body: JSON.stringify({
         ref: "main",
-        inputs: { telegram_update_b64: base64Json(update) },
+        ...(Object.keys(inputs).length ? { inputs } : {}),
       }),
     },
   );
-  if (!response.ok) throw new Error(`GitHub dispatch failed: HTTP ${response.status}`);
+  if (!response.ok) throw new Error(`GitHub dispatch failed for ${workflow}: HTTP ${response.status}`);
+}
+
+async function dispatchGitHub(env, update) {
+  return dispatchWorkflow(env, "listener.yml", { telegram_update_b64: base64Json(update) });
 }
 
 function localDate() {
@@ -353,13 +391,18 @@ function isStateChanging(text) {
   );
 }
 
-async function contextGet(chatId) {
+async function contextGet(chatId, env) {
+  if (env.BALLERWATCH_STATE) return (await kvJsonGet(env, `context:${chatId}`)) || {};
   const key=new Request(`https://ballerwatch.internal/context/${chatId}`);
   const hit=await caches.default.match(key);
   return hit ? hit.json().catch(()=>({})) : {};
 }
 
-async function contextPut(chatId, context) {
+async function contextPut(chatId, context, env) {
+  if (env.BALLERWATCH_STATE) {
+    await kvJsonPut(env, `context:${chatId}`, context, { expirationTtl: CONTEXT_CACHE_SECONDS });
+    return;
+  }
   const key=new Request(`https://ballerwatch.internal/context/${chatId}`);
   await caches.default.put(key,new Response(JSON.stringify(context),{
     headers:{"cache-control":`public,max-age=${CONTEXT_CACHE_SECONDS}`}
@@ -371,8 +414,15 @@ function secondsUntilUtcMidnight() {
   return Math.max(60,Math.floor((Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()+1)-now.getTime())/1000));
 }
 
-async function edgeAiBudgetTake() {
+async function edgeAiBudgetTake(env) {
   const day=new Date().toISOString().slice(0,10);
+  if (env.BALLERWATCH_STATE) {
+    const key=`ai-budget:${day}`;
+    const used=Number(await kvTextGet(env,key)) || 0;
+    if(used>=EDGE_AI_DAILY_LIMIT) return false;
+    await kvTextPut(env,key,used+1,{expirationTtl:secondsUntilUtcMidnight()});
+    return true;
+  }
   const key=new Request(`https://ballerwatch.internal/ai-budget/${day}`);
   const cache=caches.default;
   const hit=await cache.match(key);
@@ -383,7 +433,7 @@ async function edgeAiBudgetTake() {
 }
 
 async function classifyWithAi(env, question, snapshot, context) {
-  if (!env.GROQ_API_KEY || !(await edgeAiBudgetTake())) return null;
+  if (!env.GROQ_API_KEY || !(await edgeAiBudgetTake(env))) return null;
   const controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),EDGE_AI_TIMEOUT_MS);
   try {
@@ -428,7 +478,7 @@ async function fastReply(env, message) {
   snapshot.ownerName=cleanText(env.OWNER_RSVP_NAME,200);
 
   const chatId=String(message.chat.id);
-  const context=await contextGet(chatId);
+  const context=await contextGet(chatId, env);
   let intent=directIntent(text);
   let ai=null;
   if(!intent) {
@@ -471,15 +521,145 @@ async function fastReply(env, message) {
     lastReply:reply.slice(0,1200),
     lastBotMessageId:Number(sent?.message_id||0),
     updatedAt:new Date().toISOString(),
-  });
+  }, env);
   return {reply,messageId:Number(sent?.message_id||0),intent};
 }
 
+async function githubLeagueTeams(env) {
+  try {
+    const encrypted=await githubFile(env,"league/state/teams.json");
+    const payload=await decryptState(encrypted,env);
+    if(payload && Array.isArray(payload.teams) && payload.teams.length) return payload.teams.map(cleanText).filter(Boolean);
+  } catch {}
+  const snap=await loadSnapshot(env).catch(()=>null);
+  return Array.isArray(snap?.teams) ? snap.teams : [];
+}
+
+function ageMinutes(value) {
+  const ms=Date.now()-Date.parse(String(value||""));
+  return Number.isFinite(ms)?ms/60000:Infinity;
+}
+
+async function heartbeat(env,name,force=false) {
+  const key=`heartbeat:${name}`;
+  const prev=await kvTextGet(env,key);
+  if(force || ageMinutes(prev)>=9) await kvTextPut(env,key,new Date().toISOString());
+}
+
+async function dispatchProblemOnce(env,component,error) {
+  const key=`problem-dispatch:${component}`;
+  const last=await kvTextGet(env,key);
+  if(ageMinutes(last)<10) return;
+  await kvTextPut(env,key,new Date().toISOString(),{expirationTtl:3600});
+  console.error(`${component} edge refresh failed`,error);
+  await dispatchWorkflow(env,"watchdog.yml").catch(()=>null);
+}
+
+async function refreshPickupEdge(env,{dispatch=true,write=true}={}) {
+  const snapshot=await fetchPickupSnapshot(env.UPSTREAM_ENDPOINT);
+  const fp=await fingerprint(snapshot);
+  const old=await kvTextGet(env,"fingerprint:pickup");
+  const changed=old!==fp;
+  if(write) {
+    if(changed || !(await kvJsonGet(env,"snapshot:pickup"))) {
+      await Promise.all([
+        kvJsonPut(env,"snapshot:pickup",snapshot.feed),
+        kvJsonPut(env,"snapshot:pickup-private",snapshot.private),
+        kvTextPut(env,"fingerprint:pickup",fp),
+      ]);
+    }
+    await heartbeat(env,"pickup",changed);
+  }
+  if(changed && dispatch) await dispatchWorkflow(env,"pickup.yml");
+  return {ok:true,changed,dateCount:snapshot.feed.dates.length};
+}
+
+async function refreshLeagueEdge(env,{dispatch=true,write=true}={}) {
+  const teams=await githubLeagueTeams(env);
+  if(!teams.length) throw new Error("No monitored league teams available");
+  const previous=await kvJsonGet(env,"snapshot:league");
+  const league=await fetchLeagueSnapshot(teams,previous?.season||previous?.seasonId||"");
+  const fp=await fingerprint({teams:league.teams,season:league.season});
+  const old=await kvTextGet(env,"fingerprint:league");
+  const changed=old!==fp;
+  if(write) {
+    if(changed || !previous) {
+      await Promise.all([
+        kvJsonPut(env,"snapshot:league",league),
+        kvJsonPut(env,"snapshot:today",league.today),
+        kvJsonPut(env,"snapshot:teams",teams),
+        kvTextPut(env,"fingerprint:league",fp),
+      ]);
+    }
+    await heartbeat(env,"league",changed);
+  }
+  if(changed && dispatch) await dispatchWorkflow(env,"league.yml");
+  return {ok:true,changed,teamCount:teams.length,matchCount:league.teams.reduce((n,t)=>n+(t.matches?.length||0),0)};
+}
+
+async function refreshVersionEdge(env) {
+  try {
+    const v=await githubFile(env,"features/versions.json");
+    if(v?.currentVersion) await kvTextPut(env,"snapshot:version",String(v.currentVersion));
+  } catch {}
+}
+
+async function edgeWatchdog(env) {
+  const [pickup,league,lastDeep]=await Promise.all([
+    kvTextGet(env,"heartbeat:pickup"),
+    kvTextGet(env,"heartbeat:league"),
+    kvTextGet(env,"watchdog:last-deep"),
+  ]);
+  if(ageMinutes(pickup)>8 || ageMinutes(league)>12) await dispatchProblemOnce(env,"stale-runtime",new Error("Edge source heartbeat is stale"));
+  const day=new Date().toISOString().slice(0,10);
+  if(lastDeep!==day) {
+    await dispatchWorkflow(env,"watchdog.yml");
+    await kvTextPut(env,"watchdog:last-deep",day,{expirationTtl:172800});
+  }
+  await refreshVersionEdge(env);
+}
+
+async function runScheduled(cron,env) {
+  try {
+    if(cron==="*/2 * * * *") return await refreshPickupEdge(env);
+    if(cron==="*/5 * * * *") return await refreshLeagueEdge(env);
+    if(cron==="*/10 * * * *") return await edgeWatchdog(env);
+  } catch(error) {
+    const component=cron.startsWith("*/2")?"pickup":cron.startsWith("*/5")?"league":"watchdog";
+    await dispatchProblemOnce(env,component,error);
+    throw error;
+  }
+}
+
 export default {
+  async scheduled(controller, env, ctx) {
+    ctx.waitUntil(runScheduled(controller.cron,env));
+  },
+
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (request.method === "GET" && url.pathname === "/health") {
-      return Response.json({ ok: true, service: "ballerwatch-telegram-webhook", fastPath: true });
+      const [pickup,league]=env.BALLERWATCH_STATE ? await Promise.all([
+        kvTextGet(env,"heartbeat:pickup"),kvTextGet(env,"heartbeat:league")
+      ]) : ["",""];
+      return Response.json({
+        ok:true,
+        service:"ballerwatch-telegram-webhook",
+        fastPath:true,
+        runtime:"cloudflare-primary-preview",
+        kv:Boolean(env.BALLERWATCH_STATE),
+        pickupAgeMinutes:pickup?Math.round(ageMinutes(pickup)*10)/10:null,
+        leagueAgeMinutes:league?Math.round(ageMinutes(league)*10)/10:null,
+      });
+    }
+    if (request.method === "POST" && url.pathname === "/admin/shadow-refresh") {
+      const secret=request.headers.get("x-ballerwatch-admin")||"";
+      if(!secret || secret!==env.TELEGRAM_WEBHOOK_SECRET) return new Response("Unauthorized",{status:401});
+      const target=url.searchParams.get("target")||"all";
+      const out={};
+      if(target==="all"||target==="pickup") out.pickup=await refreshPickupEdge(env,{dispatch:false,write:false});
+      if(target==="all"||target==="league") out.league=await refreshLeagueEdge(env,{dispatch:false,write:false});
+      return Response.json({ok:true,...out});
     }
     if (request.method !== "POST" || url.pathname !== "/telegram") {
       return new Response("Not found", { status: 404 });

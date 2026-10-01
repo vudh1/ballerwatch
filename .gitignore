@@ -22,3 +22,6 @@ league/score-changes.json
 # Never commit external-service OAuth/config credentials.
 .clasp.json
 .clasprc.json
+
+# Generated at deploy time; contains the private Cloudflare KV binding ID.
+infra/telegram-webhook/wrangler.generated.jsonc

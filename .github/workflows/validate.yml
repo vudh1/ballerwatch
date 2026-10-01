@@ -48,7 +48,18 @@ jobs:
           node --check infra/sync-cron.mjs
           node --check infra/disable-listener-cron.mjs
           node --check infra/telegram-webhook/worker.mjs
+          node --check infra/telegram-webhook/edge-runtime.mjs
+          node --check infra/telegram-webhook/prepare-config.mjs
+          node --check infra/telegram-webhook/edge-runtime.test.mjs
+          node --check infra/disable-external-schedules.mjs
           node --check infra/validate-versions.mjs
+
+      - name: Test Cloudflare edge runtime
+        run: node --test infra/telegram-webhook/edge-runtime.test.mjs
+
+      - name: Bundle Cloudflare Worker
+        working-directory: infra/telegram-webhook
+        run: npx --yes wrangler@4 deploy --dry-run --outdir /tmp/ballerwatch-worker
 
       - name: Validate release history
         run: node infra/validate-versions.mjs

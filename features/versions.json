@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "1.5.0",
+  "currentVersion": "1.6.0",
   "releases": [
+    {
+      "version": "1.6.0",
+      "date": "2026-09-30",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Cloudflare primary-runtime preview",
+      "changes": [
+        "Added a Cloudflare scheduled edge runtime for 2-minute pickup checks, 5-minute RATS checks, and 10-minute health/deep-watchdog coordination.",
+        "Added private Cloudflare KV hot-state support for current soccer snapshots, conversation context, AI budget, fingerprints and scheduler health.",
+        "Edge polling dispatches the existing GitHub pickup/league workflows only when source data changes, moving routine GitHub Actions out of the normal polling hot path after cutover.",
+        "Added notification-silent shadow refresh verification before legacy cron-job.org schedules are disabled.",
+        "Added dynamic KV provisioning with a manual CLOUDFLARE_KV_NAMESPACE_ID fallback, plus Worker bundle and edge-runtime regression tests.",
+        "Activation remains gated until Cloudflare KV access is available; failed cutover verification leaves the existing cron-job.org production schedules active."
+      ]
+    },
     {
       "version": "1.5.0",
       "date": "2026-09-30",

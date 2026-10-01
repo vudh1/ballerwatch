@@ -1,26 +1,7 @@
 const API = "https://api.cron-job.org";
-const REPO = process.env.GITHUB_REPOSITORY || "vudh1/ballerwatch";
-const BRANCH = process.env.BALLERWATCH_BRANCH || "main";
 const API_KEY = process.env.CRON_JOB_ORG_API_KEY || "";
-const GH_PAT = process.env.CRON_GITHUB_PAT || "";
-const CLEANUP_OLD = !/^(0|false|no)$/i.test(process.env.CLEANUP_OLD_CRON || "true");
 
 if (!API_KEY) throw new Error("CRON_JOB_ORG_API_KEY is required");
-if (!GH_PAT) throw new Error("CRON_GITHUB_PAT is required");
-if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(REPO)) throw new Error("Invalid GITHUB_REPOSITORY");
-
-const allMinutes = (step) =>
-  step === 1
-    ? [-1]
-    : Array.from({ length: Math.ceil(60 / step) }, (_, i) => i * step).filter((v) => v < 60);
-
-const specs = [
-  { key: "pickup", title: "BallerWatch - Pickup watcher", workflow: "pickup.yml", minutes: allMinutes(2) },
-  { key: "league", title: "BallerWatch - League watcher", workflow: "league.yml", minutes: allMinutes(5) },
-  { key: "watchdog", title: "BallerWatch - System watchdog", workflow: "watchdog.yml", minutes: allMinutes(10) },
-];
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function cron(path, { method = "GET", body } = {}) {
   const response = await fetch(`${API}${path}`, {
@@ -31,116 +12,43 @@ async function cron(path, { method = "GET", body } = {}) {
     },
     body: body ? JSON.stringify(body) : undefined,
   });
-  const text = await response.text();
-  let data = {};
-  try {
-    data = text ? JSON.parse(text) : {};
-  } catch {}
-  if (!response.ok) {
-    throw new Error(`cron-job.org ${method} ${path} failed (${response.status})`);
-  }
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(`cron-job.org ${method} ${path} failed (${response.status})`);
   return data;
 }
 
-function desiredJob(spec) {
-  return {
-    enabled: true,
-    title: spec.title,
-    saveResponses: false,
-    url: `https://api.github.com/repos/${REPO}/actions/workflows/${spec.workflow}/dispatches`,
-    requestMethod: 1,
-    requestTimeout: 30,
-    redirectSuccess: false,
-    schedule: {
-      timezone: "UTC",
-      expiresAt: 0,
-      hours: [-1],
-      mdays: [-1],
-      minutes: spec.minutes,
-      months: [-1],
-      wdays: [-1],
-    },
-    notification: {
-      onFailure: true,
-      onFailureCount: 1,
-      onSuccess: true,
-      onDisable: true,
-      onSslCertExpiry: false,
-      mode: 1,
-    },
-    extendedData: {
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${GH_PAT}`,
-        "X-GitHub-Api-Version": "2022-11-28",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ ref: BRANCH }),
-    },
-  };
+const listed = await cron("/jobs");
+if (listed.someFailed) {
+  throw new Error("cron-job.org returned an incomplete job list; refusing to mutate jobs");
 }
 
-function isSupersededSoccerJob(job) {
-  const url = String(job?.url || "");
-  return (
-    url.includes("/repos/vudh1/ballerbaywatch/actions/workflows/") ||
-    url.includes("/repos/vudh1/ttf-watcher/actions/workflows/") ||
-    url.includes("/repos/vudh1/rats-league-watcher/actions/workflows/")
-  );
+const jobs = Array.isArray(listed.jobs) ? listed.jobs : [];
+const workflowNames = ["listener.yml", "pickup.yml", "league.yml", "watchdog.yml"];
+const titles = [
+  "BallerWatch - Telegram listener",
+  "BallerWatch - Pickup watcher",
+  "BallerWatch - League watcher",
+  "BallerWatch - System watchdog",
+];
+
+const matches = jobs.filter(job =>
+  job.enabled &&
+  (
+    titles.includes(job.title) ||
+    workflowNames.some(name =>
+      String(job.url || "").includes(`/ballerwatch/actions/workflows/${name}/dispatches`)
+    )
+  )
+);
+
+for (const job of matches) {
+  await cron(`/jobs/${job.jobId}`, {
+    method: "PATCH",
+    body: { job: { enabled: false } },
+  });
+  console.log(`Disabled legacy BallerWatch cron job ${job.jobId}.`);
 }
 
-async function main() {
-  const listed = await cron("/jobs");
-  if (listed.someFailed) {
-    throw new Error("cron-job.org returned an incomplete job list; refusing to mutate jobs");
-  }
-  const jobs = Array.isArray(listed.jobs) ? listed.jobs : [];
-  const usedIds = new Set();
-
-  for (const spec of specs) {
-    const desired = desiredJob(spec);
-    const urlMatch = jobs.find((j) => j.url === desired.url && !usedIds.has(j.jobId));
-    const titleMatch = jobs.find((j) => j.title === desired.title && !usedIds.has(j.jobId));
-    const existing = urlMatch || titleMatch;
-
-    if (existing) {
-      await cron(`/jobs/${existing.jobId}`, { method: "PATCH", body: { job: desired } });
-      usedIds.add(existing.jobId);
-      console.log(`Updated ${spec.key} cron job (${existing.jobId}).`);
-    } else {
-      const created = await cron("/jobs", { method: "PUT", body: { job: desired } });
-      if (!created.jobId) throw new Error(`cron-job.org did not return a jobId for ${spec.key}`);
-      usedIds.add(created.jobId);
-      console.log(`Created ${spec.key} cron job (${created.jobId}).`);
-      // cron-job.org limits job creation to one request/second.
-      await sleep(1100);
-    }
-  }
-
-  // Telegram is webhook-driven now. Never recreate the old one-minute poller.
-  for (const job of jobs.filter(
-    (j) =>
-      j.enabled &&
-      (
-        j.title === "BallerWatch - Telegram listener" ||
-        String(j.url || "").includes("/ballerwatch/actions/workflows/listener.yml/dispatches")
-      ),
-  )) {
-    await cron(`/jobs/${job.jobId}`, { method: "PATCH", body: { job: { enabled: false } } });
-    console.log(`Disabled legacy listener cron job ${job.jobId}.`);
-  }
-
-  // Only disable old jobs after all three scheduled BallerWatch jobs were created/updated.
-  if (CLEANUP_OLD) {
-    for (const job of jobs.filter(
-      (j) => isSupersededSoccerJob(j) && !usedIds.has(j.jobId) && j.enabled,
-    )) {
-      await cron(`/jobs/${job.jobId}`, { method: "PATCH", body: { job: { enabled: false } } });
-      console.log(`Disabled superseded cron job ${job.jobId}.`);
-    }
-  }
-
-  console.log("cron-job.org sync complete: 3 scheduled BallerWatch jobs are configured; Telegram is webhook-driven.");
-}
-
-await main();
+console.log(
+  "BallerWatch scheduling is Cloudflare-owned: pickup every 2 minutes, league every 5 minutes, edge health every 10 minutes. cron-job.org BallerWatch jobs remain disabled."
+);
