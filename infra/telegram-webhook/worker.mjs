@@ -929,7 +929,7 @@ function webJson(request, value, init = {}) {
   return new Response(JSON.stringify(value), { ...init, headers });
 }
 
-function webSafeSnapshot(snapshot) {
+export function webSafeSnapshot(snapshot) {
   const privateEvents = {};
   for (const [date, event] of Object.entries(snapshot?.pickupPrivate?.events || {})) {
     privateEvents[date] = {
@@ -1072,7 +1072,7 @@ async function webBoard(env, limit = 30) {
   return entries.slice(0, Math.max(1, Math.min(Number(limit) || 30, 50)));
 }
 
-function validWebSubscription(value) {
+export function validWebSubscription(value) {
   const endpoint = cleanText(value?.endpoint, 5000);
   if (!endpoint.startsWith("https://")) return null;
   return {
