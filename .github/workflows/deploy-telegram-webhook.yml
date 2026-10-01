@@ -135,9 +135,15 @@ jobs:
           echo
           echo "Telegram webhook: $WEBHOOK_URL"
 
-          echo "Verifying webhook-only Worker health..."
-          curl --max-time 15 --fail-with-body --silent --show-error "https://ballerwatch-telegram.$SUBDOMAIN.workers.dev/health"
+          echo "Verifying webhook/PWA Worker health..."
+          BASE_URL="https://ballerwatch-telegram.$SUBDOMAIN.workers.dev"
+          curl --max-time 15 --fail-with-body --silent --show-error "$BASE_URL/health"
           echo
+
+          echo "Verifying PWA API surface..."
+          PWA_CONFIG="$(curl --max-time 15 --fail-with-body --silent --show-error "$BASE_URL/web/config")"
+          node -e 'const x=JSON.parse(process.argv[1]); if(x.ok!==true || !x.push || !("ready" in x.push) || !x.version) process.exit(1)' "$PWA_CONFIG"
+          echo "PWA API verified."
 
       - name: Ensure primary GitHub schedules stay enabled
         env:
