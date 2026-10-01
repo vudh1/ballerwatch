@@ -1,13 +1,13 @@
 /**
  * Implements the GitHub-hosted Telegram fallback bot, state-changing commands, and deterministic replies.
  *
- * Documentation baseline: v2.4.0. Runtime/private data must never be committed to Git.
+ * Documentation baseline: v2.5.2. The listener is webhook-input only: Telegram updates and fast-path history events are injected by Cloudflare; empty dispatches never poll Telegram. Runtime/private data must never be committed to Git.
  */
 import { recordUnknownQuestion, refreshPublicRequests } from "../shared/feature-requests.mjs";
 import { answerUnknownWithAi } from "../shared/ai-fallback.mjs";
 import { findChatExchange, recordChatExchange } from "../shared/chat-history.mjs";
 import fs from "node:fs";
-import { getTelegramUpdates, isOwnerChat, sendTelegram, sendTyping } from "../shared/telegram.mjs";
+import { isOwnerChat, sendTelegram, sendTyping } from "../shared/telegram.mjs";
 import { loadBotState, saveBotState } from "../shared/bot-state.mjs";
 import { decryptState } from "../shared/state-crypto.mjs";
 import { ensureEncryptedLeagueTeams, loadLeagueTeams, normalizeLeagueTeamName, saveLeagueTeams } from "../shared/league-teams.mjs";
@@ -1226,6 +1226,13 @@ async function handleMessage(text, settings) {
 }
 
 async function main() {
+  const injectedUpdate = String(process.env.TELEGRAM_UPDATE_B64 || "").trim();
+  const historyEventB64 = String(process.env.CHAT_HISTORY_EVENT_B64 || "").trim();
+  if (!injectedUpdate && !historyEventB64) {
+    console.log("No webhook listener payload supplied; webhook-only listener has nothing to process.");
+    return;
+  }
+
   refreshPublicRequests();
   ensureEncryptedLeagueTeams();
   const state = loadBotState();
@@ -1245,22 +1252,32 @@ async function main() {
   settings.snoozeUntil = String(settings.snoozeUntil || "");
   settings.recentBotReplies = Array.isArray(settings.recentBotReplies) ? settings.recentBotReplies : [];
   settings = cleanSnoozes(settings);
+
+  if (historyEventB64 && !injectedUpdate) {
+    const event = JSON.parse(Buffer.from(historyEventB64, "base64").toString("utf8"));
+    await recordChatExchange({
+      question: event.question,
+      reply: event.reply,
+      hint: event.hint || "",
+      source: "cloudflare-fast-path",
+    });
+    settings = rememberBotReply(settings, event.question, event.reply, event.messageId);
+    if (event.lastDate) settings.lastReferencedDate = String(event.lastDate);
+    saveBotState(state.lastUpdateId || 0, settings);
+    console.log("Recorded Cloudflare fast-path chat history.");
+    return;
+  }
+
   settings = await announceNewFeatures(settings);
   settings = await promptForMissingSetup(settings);
   settings = await promptForInvalidOwnerName(settings);
   settings = await promptForInvalidEndpoint(settings);
 
-  const injectedUpdate = String(process.env.TELEGRAM_UPDATE_B64 || "").trim();
   let updates;
-  if (injectedUpdate) {
-    try {
-      updates = [JSON.parse(Buffer.from(injectedUpdate, "base64").toString("utf8"))];
-    } catch {
-      throw new Error("TELEGRAM_UPDATE_B64 is invalid.");
-    }
-  } else {
-    const pollSeconds = Math.max(0, Math.min(50, Number(process.env.TELEGRAM_POLL_TIMEOUT || 50)));
-    updates = await getTelegramUpdates(state.lastUpdateId ? state.lastUpdateId + 1 : 0, pollSeconds);
+  try {
+    updates = [JSON.parse(Buffer.from(injectedUpdate, "base64").toString("utf8"))];
+  } catch {
+    throw new Error("TELEGRAM_UPDATE_B64 is invalid.");
   }
   let lastUpdateId = state.lastUpdateId || 0;
 
@@ -1314,7 +1331,6 @@ async function main() {
   settings.mutedDates = settings.mutedDates.filter((date) => date >= today);
   settings = cleanSnoozes(settings);
 
-  const historyEventB64 = String(process.env.CHAT_HISTORY_EVENT_B64 || "").trim();
   if (historyEventB64) {
     const event = JSON.parse(Buffer.from(historyEventB64, "base64").toString("utf8"));
     await recordChatExchange({

@@ -4,7 +4,13 @@ BallerWatch is a small soccer automation system for pickup games and Seattle RAT
 
 It uses Telegram for questions and alerts, Cloudflare Workers for the webhook/fast reply path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Gemini Flash with Groq fallback for bounded AI assistance, and Google Calendar for league match sync.
 
-**Current version: 2.5.1**
+**Current version: 2.5.2**
+
+## What changed in 2.5.2
+
+2.5.2 enforces the webhook-only Telegram architecture. The GitHub listener no longer falls back to Telegram `getUpdates` when a workflow dispatch has no Telegram update payload.
+
+Cloudflare fast-path history-only dispatches are handled directly, and empty listener dispatches safely do nothing. When cron-job.org management API access is available, scheduler synchronization also disables any legacy Telegram polling schedule.
 
 ## What changed in 2.5.1
 
