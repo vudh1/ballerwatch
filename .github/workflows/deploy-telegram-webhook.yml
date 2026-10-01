@@ -2,6 +2,12 @@ name: Deploy Telegram webhook
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "infra/telegram-webhook/**"
+      - "infra/disable-listener-cron.mjs"
+      - ".github/workflows/deploy-telegram-webhook.yml"
 
 permissions:
   contents: read
