@@ -64,6 +64,14 @@
       "message": "BallerWatch now runs Cloudflare-first: Telegram fast-path answers and 2/5/10-minute source checks happen at the edge, while GitHub runs only when reconciliation, writes, CI or maintenance are needed.",
       "example": "Ask: what's my next game? Then follow with: what field?",
       "enabled": true
+    },
+    {
+      "id": "2026-10-01-kv-only-runtime",
+      "version": "2.1.0",
+      "title": "Private KV-only runtime state",
+      "message": "BallerWatch runtime data now stays in private Cloudflare KV. GitHub stores code, configuration, documentation and release history only — live soccer and bot state are no longer committed to the repository.",
+      "example": "Use /version to confirm BallerWatch 2.1.0.",
+      "enabled": true
     }
   ]
 }
