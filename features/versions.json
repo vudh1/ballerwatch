@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "3.0.1",
+  "currentVersion": "3.0.2",
   "releases": [
+    {
+      "version": "3.0.2",
+      "date": "2026-10-01",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Least-privilege GitHub Pages activation",
+      "telegramAnnouncement": "BallerWatch web app deployment now follows GitHub's standard Pages activation path without requiring an admin-level automation token.",
+      "changes": [
+        "Removed the failed attempt to self-enable GitHub Pages with CRON_GITHUB_PAT; GitHub requires repository Administration-write in addition to Pages-write for that operation.",
+        "Changed the Pages workflow to detect whether the site is activated, report the exact one-time Settings step when it is not, and avoid turning that external setup requirement into a failed release workflow.",
+        "After one-time GitHub Pages activation, deployment uses the normal workflow-scoped GITHUB_TOKEN with pages: write and id-token: write rather than broadening the general automation PAT.",
+        "Added regression coverage and updated PWA/operations documentation for the least-privilege activation flow."
+      ]
+    },
     {
       "version": "3.0.1",
       "date": "2026-10-01",
