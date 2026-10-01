@@ -1,11 +1,16 @@
 # Runtime and failover
 
-BallerWatch uses layered failure handling instead of one scheduler.
+BallerWatch uses independent layers so the Cloudflare KV quota is not a production dependency.
 
-1. **Cloudflare primary:** webhook, KV, fast Q&A, and 2/5/10-minute edge checks.
-2. **cron-job.org external failover:** enabled jobs dispatch pickup every 2 minutes, league every 5 minutes, and watchdog every 10 minutes.
-3. **Fallback gate:** pickup/league GitHub workflows immediately skip expensive work while the corresponding Cloudflare heartbeat is fresh.
-4. **Worker/KV access fallback:** workflows restore encrypted last-known runtime state from GitHub Actions cache when the Worker runtime-state API is unavailable.
-5. **Telegram remains independent:** GitHub workflows can still send Telegram alerts if Cloudflare is unavailable.
+1. **Cloudflare webhook:** receives Telegram updates and handles common read-only answers.
+2. **Workers Cache:** short-lived best-effort cache only; it is not authoritative storage.
+3. **cron-job.org:** primary 2/5/10-minute scheduler for pickup, league, and watchdog.
+4. **GitHub Actions:** performs source checks, notifications, Calendar reconciliation, and state-changing listener work.
+5. **runtime-state branch:** durable generated state, with private payloads encrypted.
+6. **Actions cache:** encrypted last-known recovery backup.
 
-If Cloudflare is fully unavailable, the public web app/API will be unavailable, but the enabled external cron plus GitHub/Telegram path can continue core monitoring using the encrypted backup state.
+Workers KV and Cloudflare Cron Triggers are not used by the production 2.4 runtime.
+
+If Cloudflare is unavailable, new inbound Telegram webhook commands are temporarily unavailable, but cron-job.org and GitHub continue core soccer monitoring and outbound watcher notifications.
+
+If the runtime-state branch cannot be read, GitHub workflows may restore the encrypted Actions-cache backup. If the Worker cannot directly persist a fast-path chat-history entry, it may dispatch the GitHub listener as a persistence fallback.
