@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "3.1.1",
+  "currentVersion": "3.1.2",
   "releases": [
+    {
+      "version": "3.1.2",
+      "date": "2026-10-01",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Bell push notification switch",
+      "telegramAnnouncement": "The BallerWatch notification bell now includes a quick Push notifications switch that stays synchronized with the full Settings controls.",
+      "changes": [
+        "Added a compact Push notifications on/off switch to the top-right notification bell panel.",
+        "The bell switch uses the same Web Push subscribe/unsubscribe path as Settings, so both surfaces stay synchronized with the device's real browser subscription.",
+        "Disabled the quick switch when Web Push is unsupported or notification permission is blocked, while preserving the existing Home Screen installation guidance on iPhone.",
+        "Bumped versioned PWA assets and the offline shell cache so installed Home Screen apps receive the new control without reinstalling."
+      ]
+    },
     {
       "version": "3.1.1",
       "date": "2026-10-01",
