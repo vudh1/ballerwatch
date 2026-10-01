@@ -1,10 +1,18 @@
 import copy
 import json
 import os
+import urllib.error
 from pathlib import Path
 import unittest
 from unittest.mock import patch
-from watcher import normalize, discover_latest_season, edge_signal_aggregate, HEADERS
+from watcher import (
+    HEADERS,
+    discover_latest_season,
+    edge_signal_aggregate,
+    is_transient_source_error,
+    normalize,
+    valid_previous_schedule,
+)
 
 class ScheduleTests(unittest.TestCase):
     def setUp(self):
@@ -120,4 +128,16 @@ class ScheduleTests(unittest.TestCase):
         self.exports['Team Alpha'][1][1] = '2026-11-02'
         game = normalize('fall-2026', self.aggregate, self.exports)['teams'][0]['matches'][0]
         self.assertTrue(game['start'].endswith('-08:00'))
+
+    def test_transient_source_errors_are_narrowly_classified(self):
+        temporary = urllib.error.HTTPError('https://example.invalid', 503, 'Unavailable', {}, None)
+        permanent = urllib.error.HTTPError('https://example.invalid', 401, 'Unauthorized', {}, None)
+        self.assertTrue(is_transient_source_error(temporary))
+        self.assertFalse(is_transient_source_error(permanent))
+        self.assertFalse(is_transient_source_error(ValueError('schema changed')))
+
+    def test_last_good_schedule_must_be_valid_before_smoke_can_retain_it(self):
+        self.assertTrue(valid_previous_schedule({'ok': True, 'teams': []}))
+        self.assertFalse(valid_previous_schedule({'ok': False, 'teams': []}))
+        self.assertFalse(valid_previous_schedule(None))
 if __name__ == '__main__': unittest.main()
