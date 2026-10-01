@@ -1,185 +1,184 @@
 # BallerWatch
 
-One public, zero-cost soccer automation repo with three independently scheduled components:
+BallerWatch is a small soccer automation system for **pickup games** and **Seattle RATS league games**.
 
-1. **Telegram listener** — poll every **1 minute**
-2. **Pickup watcher** — refresh every **2 minutes**
-3. **RATS league watcher** — refresh every **5 minutes**
+It runs in GitHub Actions, sends Telegram updates, keeps Google Calendar in sync, and stores private soccer data encrypted.
 
-There is intentionally **no GitHub Actions `schedule:` cron**. All recurring runs are started by cron-job.org through `workflow_dispatch`. The cron-job.org configuration itself is now managed idempotently by `.github/workflows/setup-cron.yml`.
+**Current version: 1.4.0**
 
-## Architecture
+## What it does
 
-```text
-cron-job.org
-  ├─ every 1 min ──> listener.yml ──> Telegram getUpdates (long poll)
-  │                                  ├─ decrypts pickup/state/feed.json
-  │                                  └─ decrypts league/state/today.json
-  │
-  ├─ every 2 min ──> pickup.yml ────> RSVP source
-  │                                  ├─ plaintext only in .runtime/
-  │                                  ├─ encrypted pickup/state/*
-  │                                  └─ Telegram RSVP notifications
-  │
-  └─ every 5 min ──> league.yml ────> Seattle RATS
-                                     ├─ plaintext only inside runner
-                                     ├─ encrypted league/state/*
-                                     ├─ Google Calendar bridge
-                                     └─ Telegram schedule/score notifications
-```
+- Checks the pickup RSVP source every **2 minutes**.
+- Checks Seattle RATS schedules every **5 minutes**.
+- Checks Telegram commands every **1 minute**.
+- Runs a watchdog every **10 minutes** and retries a component when it becomes stale or fails.
+- Sends pickup, waitlist, schedule, score, and setup notifications through Telegram.
+- Syncs changed RATS games to Google Calendar.
+- Keeps private runtime data encrypted in the public repository.
+- Lets monitored RATS teams be added, removed, or renamed through Telegram.
 
-The Telegram bot has exactly **one** `getUpdates` consumer: the listener. This avoids two repositories or workflows racing and consuming each other's Telegram messages.
+Recurring runs come from cron-job.org. BallerWatch intentionally does **not** use GitHub's built-in scheduled cron.
 
-## Telegram
+## Default league teams
 
-Examples:
+A fresh setup starts with these teams, in priority order:
 
-- `what game is today?`
-- `what games are today?`
-- `/setup`
-- `/version` — current SemVer release and latest changes
-- `what information do you still need from me?`
-- `what is my owner name?`
-- `owner name <exact RSVP display name>`
-- `change owner name to <new name>`
+1. **Third Touch FC**
+2. **PhoSaiGon**
+
+After the first run, the encrypted team list becomes the saved configuration. Telegram can still change it.
+
+Useful commands include:
+
 - `what league teams are you monitoring?`
 - `add league team <name>`
-- `rename league team <old> to <new>`
 - `remove league team <name>`
-- `what's the count for 10/8?`
-- `don't watch 10/8`
-- `watch 10/8 again`
-- `snooze for 30 minutes`
-- `unsnooze`
+- `rename league team <old> to <new>`
+- `/setup`
+- `/version`
 - `/help`
 
-## Encrypted user setup
+## Main workflows
 
-`OWNER_RSVP_NAME` and `UPSTREAM_ENDPOINT` are GitHub Actions Secrets that act as private defaults. Telegram can optionally set encrypted overrides for either value without revealing the default secret. The bot asks for the exact RSVP display name when it is missing and can report setup status with `/setup`. While the name is missing, or while a configured name does not match any participant/waitlist name in non-empty current RSVP data, the listener sends at most one reminder per 24 hours. League-team configuration is handled the same way.
+| Action | Purpose |
+| --- | --- |
+| **Telegram listener** | Reads Telegram commands every minute. |
+| **Pickup watcher** | Refreshes pickup RSVP data every 2 minutes. |
+| **RATS league watcher** | Refreshes league schedules every 5 minutes and syncs Calendar changes. |
+| **System watchdog** | Checks health every 10 minutes and retries failed/stale components. |
+| **Manual smoke test** | Runs a safe end-to-end test without changing Calendar or normal notification state. |
+| **Purge current data** | Deletes current generated snapshots so the system can rebuild them from clean state. |
+| **Configure external cron** | Creates/updates the cron-job.org schedules. |
+| **Deploy Calendar bridge** | Deploys the Google Apps Script Calendar bridge. |
+| **Configure repository** | Sets the repo description and protects `main` with PR-only code changes. |
 
-Credentials such as Telegram tokens, `TRACKER_STATE_KEY`, and Calendar webhook credentials remain secret-only. `OWNER_RSVP_NAME` and `UPSTREAM_ENDPOINT` remain GitHub Secrets as defaults; Telegram may store an encrypted override when the name no longer matches or the endpoint becomes unhealthy.
+## Purge current data
 
-## Encrypted league team configuration
+Use **Actions → Purge current data → Run workflow** and type:
 
-The monitored RATS team list is managed through Telegram and stored with AES-256-GCM encryption in `league/state/teams.json`, using `TRACKER_STATE_KEY` (or the Telegram token fallback) as key material. The league schedule, today's-game snapshot, and Calendar snapshot are also persisted encrypted under `league/state/`. The workflow decrypts them only inside the Actions runner and deletes all plaintext copies before committing.
+`PURGE`
 
-Team matching remains case-insensitive and whitespace-normalized. The bot refuses to remove the last configured league team.
+The purge removes current generated data:
 
-On the first listener or league run after migration, the legacy plaintext team config is encrypted automatically. On the first league run, the legacy plaintext schedule/today/Calendar snapshots are also encrypted and removed from the repository.
+- pickup snapshots and notification state
+- league schedule/today/Calendar snapshots
+- league health/status
+- watchdog state
+- stored feature suggestions
 
-Today's-game replies combine both sources and can include:
+It **does not** remove:
 
-- Pickup / TTF game
-- RATS game + watched team
-- Start time
-- Field/location
-- Google Maps link
-- Jersey color when RATS publishes it
+- GitHub Actions secrets
+- source code or version history
+- Telegram listener settings, update offset, or announcement history
+- encrypted league team configuration
+- Google Calendar events
 
-## Secrets
+The normal scheduled workflows will fetch fresh data again after the purge.
 
-Add these repository Actions secrets before cutover:
+## Privacy
+
+This is a public repository, so private runtime information is never intentionally stored as readable tracked files.
+
+Pickup and league state is encrypted with AES-256-GCM. Plaintext is allowed only temporarily inside a GitHub Actions runner and is removed before state is committed.
+
+`TRACKER_STATE_KEY` is optional. If it is not set, the existing `TELEGRAM_BOT_TOKEN` is used as the encryption-key source. Do not add a new state key to an existing installation without a planned key rotation.
+
+## Required secrets
+
+Core:
 
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_CHAT_ID`
-- `TRACKER_STATE_KEY` — optional dedicated state-encryption key; when unset, BallerWatch intentionally falls back to `TELEGRAM_BOT_TOKEN`
 - `OWNER_RSVP_NAME`
 - `UPSTREAM_ENDPOINT`
+- `TRACKER_STATE_KEY` — optional
+
+Calendar:
+
 - `GOOGLE_CALENDAR_WEBHOOK_URL`
 - `GOOGLE_CALENDAR_WEBHOOK_SECRET`
-- `CRON_JOB_ORG_API_KEY` — cron-job.org Settings → API key
-- `CRON_GITHUB_PAT` — fine-grained GitHub token restricted to this repo with Actions read/write
-- `CLASPRC_JSON` — OAuth credentials produced by `clasp login`; treat as highly sensitive
-- `APPS_SCRIPT_ID` — Script ID for the existing Calendar bridge Apps Script project (Project Settings → IDs)
-- `APPS_SCRIPT_DEPLOYMENT_ID` — active versioned web-app deployment ID
 
-`TRACKER_STATE_KEY` is optional. If the migrated system never had one, leave it unset during cutover so existing encrypted state continues using the same `TELEGRAM_BOT_TOKEN` fallback. Do not introduce a new state key during migration without an explicit key-rotation procedure.
+cron-job.org:
 
-`UPSTREAM_ENDPOINT` is the normal pickup RSVP backend used by the public RSVP frontend, not its admin endpoint. To recover or verify it without hardcoding the live value here, follow `skills/find-upstream-endpoint/SKILL.md`.
+- `CRON_JOB_ORG_API_KEY`
+- `CRON_GITHUB_PAT`
 
-Use the **same existing secret values** where applicable so encrypted state and the Calendar bridge continue working.
+Apps Script deployment:
 
-## Operational runbooks
+- `CLASPRC_JSON`
+- `APPS_SCRIPT_ID`
+- `APPS_SCRIPT_DEPLOYMENT_ID`
 
-Repository-maintenance agents should start with `AGENTS.md`. The endpoint recovery procedure lives in `skills/find-upstream-endpoint/SKILL.md`; it explains how to trace the public RSVP frontend to the normal data backend, distinguish it from the admin endpoint, verify the required read actions, and keep the live endpoint out of tracked source.
+Repository setup:
 
-## cron-job.org — automated provisioning
+- `REPO_ADMIN_TOKEN` — one-time fine-grained token with **Administration: read/write** for this repository. Run **Configure repository**, then this secret may be removed.
 
-Do **not** create the four jobs manually. Add `CRON_JOB_ORG_API_KEY` and `CRON_GITHUB_PAT` as repository Actions secrets, then run **Configure external cron** from GitHub Actions.
+Never commit any of these values.
 
-`infra/sync-cron.mjs` uses the cron-job.org REST API to create or update exactly these BallerWatch jobs:
+## Initial setup
 
-- listener — every 1 minute
-- pickup — every 2 minutes
-- league — every 5 minutes
-- watchdog — every 10 minutes
+1. Add the required GitHub Actions secrets.
+2. Run **Configure external cron**.
+3. Run **Deploy Calendar bridge**.
+4. Run **Configure repository** once to set the repo description and protect `main`.
+5. Run **Manual smoke test**.
+6. Confirm listener, pickup, league, watchdog, Telegram, and Calendar behavior.
 
-Each job POSTs `{"ref":"main"}` to the corresponding GitHub `workflow_dispatch` endpoint. The GitHub PAT is sent to cron-job.org only as the private Authorization header required for those future dispatches; it is never committed or printed. Saved cron responses are disabled.
+For pickup endpoint recovery, follow `skills/find-upstream-endpoint/SKILL.md`. Do not put the live endpoint in source code.
 
-Provisioning is idempotent: rerunning the workflow updates existing BallerWatch jobs rather than duplicating them. By default it also disables enabled cron jobs that still target `ballerbaywatch`, `ttf-watcher`, or `rats-league-watcher`, but only after all four BallerWatch jobs have been synced.
+## Protecting main
 
-## Google Apps Script — automated deployment
+Normal code/config/documentation changes must use:
 
-The Calendar bridge can also be deployed from GitHub. Add these Actions secrets:
+`branch → pull request → Validate code → merge to main`
 
-- `CLASPRC_JSON` — contents of the OAuth credential file created by `clasp login`
-- `APPS_SCRIPT_ID` — Script ID of the existing Calendar bridge project (Project Settings → IDs)
-- `APPS_SCRIPT_DEPLOYMENT_ID` — the existing active web-app deployment ID
-- existing `GOOGLE_CALENDAR_WEBHOOK_URL` — used to verify the deployed bridge
+Direct human or ChatGPT code commits to `main` are not allowed.
 
-Then run **Deploy Calendar bridge** once. Future changes to `league/google_apps_script/Code.gs` deploy automatically.
+The **GitHub Actions app is the only bypass**. It needs that exception because listener/pickup/league/watchdog workflows save encrypted runtime state directly to `main`. The manual purge action also uses this controlled automation path.
 
-The deployment workflow first pulls the existing Apps Script project so its manifest and any other project files are preserved, overwrites only `Code.gs` from this repository, pushes the project, and updates the existing versioned deployment. Updating the existing deployment preserves its webhook URL.
+Scheduled ChatGPT maintenance tasks must read the current `AGENTS.md`, `README.md`, and `features/versions.json` before changing anything. If they make a repository change, they must create a branch and PR rather than writing directly to `main`.
 
-The existing Apps Script Script Property `WEBHOOK_SECRET` remains private inside Apps Script and must already match `GOOGLE_CALENDAR_WEBHOOK_SECRET`. The workflow does not copy that secret into source code.
+## Validation
 
-Before using CI deployment, enable the Apps Script API for the Google account and allow Apps Script API access to projects. Service accounts are intentionally not used because the Apps Script API does not support them.
+**Validate code** checks:
 
-## Cost
+- JavaScript syntax
+- release/version history
+- privacy rules
+- watchdog tests
+- league tests
 
-Keep this repository **public** and use standard GitHub-hosted runners. Public-repository standard Actions runners are free; cron-job.org is free and supports execution as often as every minute.
+PRs to `main` must pass this validation before merging.
 
-## Migration / cutover
+## Versioning
 
-Do not run two Telegram listeners against the same bot token.
+BallerWatch uses Semantic Versioning:
 
-1. Add the secrets above.\n2. Run **Configure external cron**; leave cleanup enabled to disable superseded soccer cron jobs after successful sync.\n3. Run **Deploy Calendar bridge** once after adding the clasp secrets.\n4. Run the manual smoke test and verify listener/pickup/league/watchdog activity.\n5. Leave old repositories intact only until the new system is verified, then delete/archive them as desired.
+- **MAJOR** — breaking change
+- **MINOR** — new backward-compatible feature
+- **PATCH** — backward-compatible fix or internal/reliability/privacy improvement
 
-## Versioning and release history
+The full history is in `features/versions.json`.
 
-BallerWatch uses Semantic Versioning: `MAJOR.MINOR.PATCH`.
+### Latest — v1.4.0
 
-- **MAJOR** — intentional breaking behavior/configuration change
-- **MINOR** — new user-facing capability that remains backward compatible
-- **PATCH** — backward-compatible bug fix, reliability, privacy, source-compatibility, or internal improvement
+- Added the manual **Purge current data** action.
+- Added PR-only governance for normal changes to `main`, while keeping a narrow GitHub Actions bypass for encrypted runtime state.
+- Added one-time repository setup for the GitHub description and main-branch ruleset.
+- Simplified this README and updated maintenance guidance so scheduled ChatGPT tasks always start from the current repository state.
 
-The canonical ledger is `features/versions.json`. It stores `currentVersion` plus every release's date, bump type, source, title, and change list. `features/announcements.json` references these versions for Telegram announcements.
+Recent reliability fixes also recover manually deleted Calendar events and safely persist state when multiple workflows finish at the same time.
 
-Any scheduled ChatGPT task that commits a product change must update the ledger in the **same change set**. Feature Builder changes normally bump MINOR; watcher audit fixes normally bump PATCH. A scheduled task must not bump the version when it makes no repository change.
+## Repository maintenance
 
-`infra/validate-versions.mjs` enforces valid SemVer, newest-first unique releases, current-version consistency, and valid announcement version references.
+Start with `AGENTS.md`.
 
-## Self-improving Telegram requests
+Important rules:
 
-If the Telegram listener cannot match a question to a supported command, it records a deduplicated request in `requests/unknown.json`. A separate ChatGPT feature-builder task reviews open requests every three days and may implement small/medium safe features. After implementing a feature, it should append an entry to `features/announcements.json`; the bot announces the newest unseen feature once.
-
-Unsupported Telegram questions are saved in two forms:
-
-- `requests/unknown.json` contains a privacy-redacted version for the ChatGPT feature builder. Known owner/player/team/opponent/field/address/division values plus dates, times, and URLs are replaced with placeholders.
-- `requests/private.json` contains the original question encrypted with the same state encryption used elsewhere.
-
-The feature builder reads only the redacted queue. No Telegram chat ID is stored with requests.
-
-
-### Watchdog
-
-Create one additional cron-job.org dispatch every **10 minutes**:
-
-`https://api.github.com/repos/vudh1/ballerwatch/actions/workflows/watchdog.yml/dispatches`
-
-The watchdog verifies listener/pickup/league freshness, the latest validation result, encrypted-state decryptability, and absence of tracked plaintext match feeds. If the listener, pickup watcher, or league watcher is stale/failed, it can dispatch that exact workflow again. Recent active runs block duplicate recovery, and retries are throttled to a 10-minute cooldown. Validation/privacy/configuration problems alert without blind recovery. It sends Telegram only for a new incident or recovery.
-
-## Manual smoke test
-
-`.github/workflows/manual-test.yml` is workflow-dispatch only. It refreshes the real pickup source, refreshes RATS using the encrypted monitored-team config, exercises the real pickup selection logic, and sends one private Telegram summary. It does not call Google Calendar, does not send normal watcher notifications, and does not commit the test refresh.
-
+- Keep secrets and live/private soccer data out of readable tracked files.
+- Do not add GitHub `schedule:` cron jobs.
+- Keep exactly one Telegram `getUpdates` consumer.
+- Use a branch and PR for normal repository changes.
+- Update `features/versions.json` whenever the product/repository changes.
+- Do not bump the version when nothing changed.
