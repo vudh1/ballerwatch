@@ -4,7 +4,7 @@ BallerWatch is a small soccer automation system for **pickup games** and **Seatt
 
 It runs in GitHub Actions, sends Telegram updates, keeps Google Calendar in sync, and stores private soccer data encrypted.
 
-**Current version: 1.4.0**
+**Current version: 1.4.1**
 
 ## What it does
 
@@ -19,14 +19,9 @@ It runs in GitHub Actions, sends Telegram updates, keeps Google Calendar in sync
 
 Recurring runs come from cron-job.org. BallerWatch intentionally does **not** use GitHub's built-in scheduled cron.
 
-## Default league teams
+## League teams
 
-A fresh setup starts with these teams, in priority order:
-
-1. **Third Touch FC**
-2. **PhoSaiGon**
-
-After the first run, the encrypted team list becomes the saved configuration. Telegram can still change it.
+A fresh setup includes built-in default monitored teams. The actual default names stay in code rather than this README. After the first run, the encrypted team list becomes the saved configuration and Telegram can add, remove, or rename teams.
 
 Useful commands include:
 
@@ -46,11 +41,11 @@ Useful commands include:
 | **Pickup watcher** | Refreshes pickup RSVP data every 2 minutes. |
 | **RATS league watcher** | Refreshes league schedules every 5 minutes and syncs Calendar changes. |
 | **System watchdog** | Checks health every 10 minutes and retries failed/stale components. |
-| **Manual smoke test** | Runs a safe end-to-end test without changing Calendar or normal notification state. |
+| **Manual smoke test** | Runs a notification-silent end-to-end test without changing Calendar or normal notification state. |
 | **Purge current data** | Deletes current generated snapshots so the system can rebuild them from clean state. |
 | **Configure external cron** | Creates/updates the cron-job.org schedules. |
 | **Deploy Calendar bridge** | Deploys the Google Apps Script Calendar bridge. |
-| **Configure repository** | Sets the repo description and protects `main` with PR-only code changes. |
+| **Configure repository** | Sets the GitHub repository description. |
 
 ## Purge current data
 
@@ -112,7 +107,7 @@ Apps Script deployment:
 
 Repository setup:
 
-- `REPO_ADMIN_TOKEN` — one-time fine-grained token with **Administration: read/write** for this repository. Run **Configure repository**, then this secret may be removed.
+- `REPO_ADMIN_TOKEN` — optional one-time fine-grained token with **Administration: read/write** if you want the **Configure repository** action to set the GitHub description.
 
 Never commit any of these values.
 
@@ -121,23 +116,17 @@ Never commit any of these values.
 1. Add the required GitHub Actions secrets.
 2. Run **Configure external cron**.
 3. Run **Deploy Calendar bridge**.
-4. Run **Configure repository** once to set the repo description and protect `main`.
-5. Run **Manual smoke test**.
-6. Confirm listener, pickup, league, watchdog, Telegram, and Calendar behavior.
+4. Optionally run **Configure repository** once to set the repo description.
+5. Run **Manual smoke test**. Tests do not send Telegram messages.
+6. Confirm listener, pickup, league, watchdog, Telegram, and Calendar behavior during normal scheduled operation.
 
 For pickup endpoint recovery, follow `skills/find-upstream-endpoint/SKILL.md`. Do not put the live endpoint in source code.
 
-## Protecting main
+## Repository changes
 
-Normal code/config/documentation changes must use:
+Direct commits to `main` are allowed. Before changing the repository, maintenance agents should read the current `AGENTS.md`, `README.md`, and `features/versions.json` so they use the latest behavior and version.
 
-`branch → pull request → Validate code → merge to main`
-
-Direct human or ChatGPT code commits to `main` are not allowed.
-
-The **GitHub Actions app is the only bypass**. It needs that exception because listener/pickup/league/watchdog workflows save encrypted runtime state directly to `main`. The manual purge action also uses this controlled automation path.
-
-Scheduled ChatGPT maintenance tasks must read the current `AGENTS.md`, `README.md`, and `features/versions.json` before changing anything. If they make a repository change, they must create a branch and PR rather than writing directly to `main`.
+Changes must still be validated. Tests and smoke tests must not send Telegram messages. Production watcher runs may send their normal notifications.
 
 ## Validation
 
@@ -149,7 +138,7 @@ Scheduled ChatGPT maintenance tasks must read the current `AGENTS.md`, `README.m
 - watchdog tests
 - league tests
 
-PRs to `main` must pass this validation before merging.
+Run or verify this validation after repository changes.
 
 ## Versioning
 
@@ -161,12 +150,12 @@ BallerWatch uses Semantic Versioning:
 
 The full history is in `features/versions.json`.
 
-### Latest — v1.4.0
+### Latest — v1.4.1
 
-- Added the manual **Purge current data** action.
-- Added PR-only governance for normal changes to `main`, while keeping a narrow GitHub Actions bypass for encrypted runtime state.
-- Added one-time repository setup for the GitHub description and main-branch ruleset.
-- Simplified this README and updated maintenance guidance so scheduled ChatGPT tasks always start from the current repository state.
+- Direct commits to `main` are allowed again; PR-only repository protection is no longer part of BallerWatch setup.
+- Manual smoke testing is notification-silent and does not send Telegram messages.
+- Default monitored team names were removed from this README; the defaults remain in code.
+- Scheduled ChatGPT maintenance still syncs from the current repository before making changes and validates changes afterward.
 
 Recent reliability fixes also recover manually deleted Calendar events and safely persist state when multiple workflows finish at the same time.
 
@@ -179,6 +168,6 @@ Important rules:
 - Keep secrets and live/private soccer data out of readable tracked files.
 - Do not add GitHub `schedule:` cron jobs.
 - Keep exactly one Telegram `getUpdates` consumer.
-- Use a branch and PR for normal repository changes.
+- Direct commits to `main` are allowed, but validate every repository change.
 - Update `features/versions.json` whenever the product/repository changes.
 - Do not bump the version when nothing changed.

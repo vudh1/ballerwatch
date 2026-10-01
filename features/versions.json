@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "1.4.0",
+  "currentVersion": "1.4.1",
   "releases": [
+    {
+      "version": "1.4.1",
+      "date": "2026-09-30",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Direct-main maintenance and silent testing",
+      "changes": [
+        "Allowed validated repository maintenance changes to commit directly to main again and removed the PR-only governance requirement.",
+        "Made the manual smoke test notification-silent: it verifies refreshed pickup and league data without sending Telegram messages or changing Google Calendar.",
+        "Removed default monitored team names from README while keeping the configured defaults in code.",
+        "Updated scheduled ChatGPT maintenance guidance to sync current repository instructions before changes and avoid Telegram notifications during testing."
+      ]
+    },
     {
       "version": "1.4.0",
       "date": "2026-09-30",

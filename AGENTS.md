@@ -12,21 +12,21 @@ Always read the current `README.md`, this file, and `features/versions.json` fro
 
 ## Change process
 
-Normal code, workflow, documentation, configuration, and product changes must use:
+Direct commits to `main` are allowed for normal maintenance.
 
 1. Start from the latest `main`.
-2. Create a new branch.
-3. Make the smallest safe change.
-4. Update `features/versions.json` in the same change set when the repository/product changed.
-5. Open a pull request to `main`.
-6. Wait for **Validate code** to pass.
-7. Merge the PR. Never commit the change directly to `main`.
+2. Make the smallest safe change.
+3. Update `features/versions.json` in the same change set when the repository/product changed.
+4. Run or verify **Validate code** after the change.
+5. If validation fails, fix it promptly or revert the change.
 
-If validation fails, fix the same branch/PR. If the change cannot be safely completed, leave `main` unchanged and report the blocker.
+A branch and pull request may still be used for larger/riskier work, but they are not required.
 
-The only direct-main exception is automated encrypted/generated runtime state written by trusted GitHub Actions workflows. Do not use that exception for code or maintenance changes.
+## Testing
 
-Scheduled ChatGPT tasks follow the same branch + PR rule.
+Tests, audits, smoke tests, and temporary verification runs must **not send Telegram messages**. Do not call Telegram notification code just to prove a test worked. Use workflow results/logs that contain no private participant, team, field, address, or other live soccer details.
+
+Normal production listener/pickup/league runs may send their intended Telegram notifications.
 
 ## Versioning
 
