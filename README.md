@@ -14,6 +14,8 @@ This release also hardens runtime recovery after PURGE: when the `runtime-state`
 
 cron-job.org remains the primary 2/5/10-minute scheduler. The watchdog now checks cron-job.org's management API only every six hours (four routine reads per day). Release smoke treats temporary API unavailability such as HTTP 429 as a warning, but still fails when the API responds and the scheduler configuration is actually missing, disabled, duplicated, or misconfigured.
 
+The notification-silent smoke test also preserves a valid last-good league snapshot when the RATS source itself is temporarily unavailable (for example HTTP 503). Parser/schema errors, authentication failures, and invalid stored state still fail the test.
+
 ## What changed in 2.4.1
 
 2.4.1 explicitly publishes an empty Cloudflare Cron Trigger list and verifies after deployment that the Worker has zero scheduled triggers. This fixes a cutover detail where omitting the Wrangler `triggers` field leaves previously deployed Cron Triggers in place.
