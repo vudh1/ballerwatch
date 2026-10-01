@@ -2,9 +2,23 @@ name: Manual smoke test
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "listener/**"
+      - "pickup/**"
+      - "league/**"
+      - "shared/**"
+      - "watchdog/**"
+      - "infra/**"
+      - ".github/workflows/**"
 
 permissions:
   contents: read
+
+concurrency:
+  group: ballerwatch-manual-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -47,7 +61,7 @@ jobs:
           if [ "$TEAM_COUNT" -gt 0 ]; then
             node shared/league-teams.mjs prepare
             node shared/league-state.mjs prepare
-            (cd league && python watcher.py)
+            (cd league && /usr/bin/time -f "leagueWatcherSeconds=%e" python3 watcher.py)
           else
             echo "No league teams configured; league live test skipped."
           fi
@@ -58,6 +72,11 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           OWNER_RSVP_NAME: ${{ secrets.OWNER_RSVP_NAME }}
         run: node manual-test.mjs
+
+      - name: Verify disabled external fallback posture
+        env:
+          CRON_JOB_ORG_API_KEY: ${{ secrets.CRON_JOB_ORG_API_KEY }}
+        run: node infra/external-schedules.mjs check-disabled
 
       - name: Remove all transient runtime data
         if: always()

@@ -133,17 +133,18 @@ jobs:
           node prepare-config.mjs
           npx --yes wrangler@4 deploy --config wrangler.generated.jsonc
 
-      - name: Disable legacy external schedules after edge verification
+      - name: Prepare disabled external fallback schedules
         env:
           CRON_JOB_ORG_API_KEY: ${{ secrets.CRON_JOB_ORG_API_KEY }}
-        run: node infra/disable-external-schedules.mjs
+          CRON_GITHUB_PAT: ${{ secrets.CRON_GITHUB_PAT }}
+        run: node infra/external-schedules.mjs ensure-disabled
 
       - name: Restore legacy schedules if edge deployment fails
         if: failure()
         env:
           CRON_JOB_ORG_API_KEY: ${{ secrets.CRON_JOB_ORG_API_KEY }}
           CRON_GITHUB_PAT: ${{ secrets.CRON_GITHUB_PAT }}
-        run: node infra/enable-external-schedules.mjs
+        run: node infra/external-schedules.mjs enable
 
       - name: Clean temporary files
         if: always()

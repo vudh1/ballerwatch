@@ -38,6 +38,7 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
           TELEGRAM_WEBHOOK_HEALTH_URL: https://ballerwatch-telegram.vudhone.workers.dev/health
+          CRON_JOB_ORG_API_KEY: ${{ secrets.CRON_JOB_ORG_API_KEY }}
         run: node watchdog/watchdog.mjs
 
       - name: Push watchdog state to Cloudflare KV

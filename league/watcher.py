@@ -1,9 +1,9 @@
 """Fetch the public API used by the Seattle RATS standings widget."""
 import hashlib
 import json
-import os
 import time
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -85,9 +85,13 @@ def event_score(event, side):
     return None
 
 
-def discover_latest_season():
+def discover_latest_season(preferred=None):
     last_error = None
-    for season_id in season_candidates():
+    candidates = []
+    if isinstance(preferred, str) and preferred.strip():
+        candidates.append(preferred.strip())
+    candidates.extend(season for season in season_candidates() if season not in candidates)
+    for season_id in candidates:
         try:
             aggregate = call('get-aggregate', {'season': season_id})
         except Exception as error:
@@ -212,15 +216,30 @@ def write_json(path, value):
 def main():
     now = datetime.now(TZ).isoformat()
     try:
-        season_id, aggregate = discover_latest_season()
-        exports = {}
-        for team_name in configured_teams():
+        previous = json.loads(Path('schedule.json').read_text()) if Path('schedule.json').exists() else None
+        preferred_season = previous.get('seasonId') if isinstance(previous, dict) else None
+        season_id, aggregate = discover_latest_season(preferred_season)
+
+        teams = configured_teams()
+        schedule_keys = {}
+        for team_name in teams:
             team = next(iter(team_matches(aggregate, team_name)), None)
             if not team or not team.get('schedule_key'):
                 raise ValueError('Team schedule key missing')
-            exports[team_name] = call('get-schedule', {'season': season_id, 'key': team['schedule_key']})
+            schedule_keys[team_name] = team['schedule_key']
+
+        # Team exports are independent API calls. Fetch them concurrently so
+        # two monitored teams cost roughly one network round-trip instead of two.
+        exports = {}
+        with ThreadPoolExecutor(max_workers=min(4, len(schedule_keys))) as pool:
+            futures = {
+                pool.submit(call, 'get-schedule', {'season': season_id, 'key': key}): team_name
+                for team_name, key in schedule_keys.items()
+            }
+            for future in as_completed(futures):
+                exports[futures[future]] = future.result()
+
         payload = normalize(season_id, aggregate, exports)
-        previous = json.loads(Path('schedule.json').read_text()) if Path('schedule.json').exists() else None
 
         score_updates = []
         if previous and previous.get('seasonId') == payload.get('seasonId'):
@@ -271,14 +290,9 @@ def main():
             'updatedAt': now,
         })
         write_json('schedule.json', payload)
-        write_json('status.json', {'ok': True, 'lastSuccessfulCheckAt': now, 'lastAttemptAt': now,
-            'contentHash': payload['contentHash'], 'githubRunId': os.environ.get('GITHUB_RUN_ID')})
         print('Validated published match counts:', [t['publishedMatchCount'] for t in payload['teams']])
     except Exception as error:
-        old = json.loads(Path('status.json').read_text()) if Path('status.json').exists() else {}
-        write_json('status.json', {**old, 'ok': False, 'lastAttemptAt': now,
-            'error': 'Source validation or retrieval failed; last good schedule retained.'})
-        raise RuntimeError('RATS refresh failed; retained last good schedule') from error
+        raise RuntimeError('RATS refresh failed; retained last good KV snapshot') from error
 
 if __name__ == '__main__':
     main()

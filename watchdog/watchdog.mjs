@@ -4,11 +4,12 @@ import crypto from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { decryptState, encryptState } from "../shared/state-crypto.mjs";
 import { sendTelegram } from "../shared/telegram.mjs";
+import {
+  analyzeExternalSchedules,
+  listExternalSchedules,
+} from "../infra/external-schedules.mjs";
 
 const STATE_PATH = "state/watchdog.json";
-const RECOVERY_COOLDOWN_MINUTES = 10;
-
-export const WORKFLOWS = []
 
 function readJson(file) {
   try {
@@ -35,198 +36,85 @@ function saveState(value) {
   return true;
 }
 
-async function github(pathname, options = {}) {
+async function github(pathname) {
   const repo = process.env.GITHUB_REPOSITORY;
   const token = process.env.GITHUB_TOKEN;
-  if (!repo || !token) {
-    throw new Error("GitHub repository/token context is missing.");
-  }
+  if (!repo || !token) throw new Error("GitHub repository/token context is missing.");
 
   const response = await fetch(`https://api.github.com/repos/${repo}${pathname}`, {
-    ...options,
     signal: AbortSignal.timeout(30_000),
     headers: {
-      "content-type": "application/json",
       authorization: `Bearer ${token}`,
       accept: "application/vnd.github+json",
       "x-github-api-version": "2022-11-28",
-      "user-agent": "ballerwatch-watchdog/2.0",
-      ...(options.headers || {}),
+      "user-agent": "ballerwatch-watchdog/2.2",
     },
   });
 
   const raw = await response.text();
   const payload = raw ? JSON.parse(raw) : {};
   if (!response.ok) {
-    throw new Error(
-      `GitHub API ${response.status}: ${payload.message || "request failed"}`,
-    );
+    throw new Error(`GitHub API ${response.status}: ${payload.message || "request failed"}`);
   }
   return payload;
 }
 
-export function ageMinutes(value, nowMs = Date.now()) {
-  const ms = nowMs - Date.parse(value || "");
-  return Number.isFinite(ms) ? ms / 60000 : Infinity;
-}
-
-export function analyzeWorkflowRuns(runs, spec, nowMs = Date.now()) {
-  const list = Array.isArray(runs) ? runs : [];
-  const latest = list[0] || null;
-  const recentActive = list.find(
-    (run) =>
-      run.status !== "completed" &&
-      ageMinutes(run.created_at, nowMs) < spec.activeGraceMinutes,
-  );
-
-  if (recentActive) {
-    return {
-      healthy: true,
-      active: true,
-      recoverable: false,
-      key: null,
-      message: null,
-    };
-  }
-
-  if (!latest) {
-    return {
-      healthy: false,
-      active: false,
-      recoverable: true,
-      key: `${spec.file}:no-runs`,
-      message: `${spec.label}: no workflow run found`,
-    };
-  }
-
-  if (
-    latest.status !== "completed" &&
-    ageMinutes(latest.created_at, nowMs) >= spec.activeGraceMinutes
-  ) {
-    return {
-      healthy: false,
-      active: false,
-      recoverable: true,
-      key: `${spec.file}:stalled`,
-      message: `${spec.label}: latest run appears stalled`,
-    };
-  }
-
-  if (
-    latest.status === "completed" &&
-    latest.conclusion &&
-    latest.conclusion !== "success"
-  ) {
-    return {
-      healthy: false,
-      active: false,
-      recoverable: true,
-      key: `${spec.file}:failed`,
-      message: `${spec.label}: latest run concluded ${latest.conclusion}`,
-    };
-  }
-
-  const lastSuccess = list.find(
-    (run) => run.status === "completed" && run.conclusion === "success",
-  );
-  if (!lastSuccess) {
-    return {
-      healthy: false,
-      active: false,
-      recoverable: true,
-      key: `${spec.file}:no-success`,
-      message: `${spec.label}: no successful run found`,
-    };
-  }
-
-  if (ageMinutes(lastSuccess.updated_at || lastSuccess.created_at, nowMs) > spec.maxAgeMinutes) {
-    return {
-      healthy: false,
-      active: false,
-      recoverable: true,
-      key: `${spec.file}:stale`,
-      message: `${spec.label}: last successful run is stale`,
-    };
-  }
-
-  return {
-    healthy: true,
-    active: false,
-    recoverable: false,
-    key: null,
-    message: null,
-  };
-}
-
-export function shouldDispatchRecovery(lastRecoveryAt, nowMs = Date.now()) {
-  const previous = Date.parse(lastRecoveryAt || "");
-  return (
-    !Number.isFinite(previous) ||
-    nowMs - previous >= RECOVERY_COOLDOWN_MINUTES * 60_000
-  );
-}
-
-async function workflowProblem(spec) {
-  const data = await github(
-    `/actions/workflows/${encodeURIComponent(spec.file)}/runs?per_page=10`,
-  );
-  return analyzeWorkflowRuns(data.workflow_runs, spec);
-}
-
-async function dispatchRecovery(spec) {
-  await github(
-    `/actions/workflows/${encodeURIComponent(spec.file)}/dispatches`,
-    {
-      method: "POST",
-      body: JSON.stringify({ ref: "main" }),
-    },
-  );
-}
-
-async function telegramWebhookProblem() {
+async function telegramWebhookHealth() {
   const url = String(process.env.TELEGRAM_WEBHOOK_HEALTH_URL || "").trim();
-  if (!url) return null;
+  if (!url) return { healthy: true, problem: null };
+
   try {
     const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok || payload?.ok !== true || payload?.service !== "ballerwatch-telegram-webhook") {
       return {
-        key: "telegram-webhook:unhealthy",
-        message: "Telegram webhook: health check failed",
-        recoverable: false,
+        healthy: false,
+        problem: {
+          key: "telegram-webhook:unhealthy",
+          message: "Telegram webhook: health check failed",
+        },
       };
     }
-    if (payload?.runtime === "cloudflare-primary-preview") {
-      if (payload?.kv !== true) {
-        return {
+
+    if (payload?.kv !== true) {
+      return {
+        healthy: false,
+        problem: {
           key: "edge-runtime:kv",
           message: "Cloudflare runtime: KV binding is unavailable",
-          recoverable: false,
-        };
-      }
-      const pickupAge=Number(payload?.pickupAgeMinutes);
-      const leagueAge=Number(payload?.leagueAgeMinutes);
-      if (!Number.isFinite(pickupAge) || pickupAge > 8) {
-        return {
+        },
+      };
+    }
+
+    const pickupAge = Number(payload?.pickupAgeMinutes);
+    const leagueAge = Number(payload?.leagueAgeMinutes);
+    if (!Number.isFinite(pickupAge) || pickupAge > 8) {
+      return {
+        healthy: false,
+        problem: {
           key: "edge-runtime:pickup-stale",
           message: "Cloudflare runtime: pickup heartbeat is stale",
-          recoverable: false,
-        };
-      }
-      if (!Number.isFinite(leagueAge) || leagueAge > 12) {
-        return {
+        },
+      };
+    }
+    if (!Number.isFinite(leagueAge) || leagueAge > 12) {
+      return {
+        healthy: false,
+        problem: {
           key: "edge-runtime:league-stale",
           message: "Cloudflare runtime: league heartbeat is stale",
-          recoverable: false,
-        };
-      }
+        },
+      };
     }
-    return null;
+
+    return { healthy: true, problem: null };
   } catch {
     return {
-      key: "telegram-webhook:unreachable",
-      message: "Telegram webhook: health endpoint is unreachable",
-      recoverable: false,
+      healthy: false,
+      problem: {
+        key: "telegram-webhook:unreachable",
+        message: "Telegram webhook: health endpoint is unreachable",
+      },
     };
   }
 }
@@ -240,17 +128,35 @@ async function validationProblem() {
     return {
       key: "validation:no-run",
       message: "Validation: no completed run found",
-      recoverable: false,
     };
   }
   if (latest.status !== "completed" || latest.conclusion !== "success") {
     return {
       key: "validation:failed",
       message: `Validation: latest completed result is ${latest.conclusion || latest.status}`,
-      recoverable: false,
     };
   }
   return null;
+}
+
+async function externalCronProblems(edgeHealthy) {
+  try {
+    const jobs = await listExternalSchedules();
+    const messages = analyzeExternalSchedules(jobs, {
+      repo: process.env.GITHUB_REPOSITORY || "vudh1/ballerwatch",
+      expectEnabled: edgeHealthy ? false : null,
+      requireAll: true,
+    });
+    return messages.map((message, index) => ({
+      key: `external-cron:${index}:${message}`,
+      message: `cron-job.org fallback: ${message}`,
+    }));
+  } catch (error) {
+    return [{
+      key: "external-cron:unreachable",
+      message: `cron-job.org fallback: unable to verify jobs (${error.message})`,
+    }];
+  }
 }
 
 function sensitivePlaintextProblems() {
@@ -262,21 +168,20 @@ function sensitivePlaintextProblems() {
     "league/calendar-changes.json",
     "league/telegram-update.json",
     "league/score-changes.json",
+    "league/status.json",
   ];
 
   const problems = files
     .filter((file) => fs.existsSync(file))
     .map((file) => ({
       key: `privacy:plaintext:${file}`,
-      message: `Privacy: plaintext file exists: ${file}`,
-      recoverable: false,
+      message: `Privacy: plaintext runtime file exists: ${file}`,
     }));
 
   if (fs.existsSync("pickup/data")) {
     problems.push({
       key: "privacy:pickup-data",
       message: "Privacy: plaintext pickup/data directory exists",
-      recoverable: false,
     });
   }
   return problems;
@@ -284,49 +189,15 @@ function sensitivePlaintextProblems() {
 
 export async function runWatchdog() {
   const previous = loadState();
-  const recoveries = { ...(previous.recoveries || {}) };
   const problems = [];
-  const recoveryLines = [];
 
-  for (const spec of WORKFLOWS) {
-    const assessment = await workflowProblem(spec);
-    if (assessment.healthy) continue;
-
-    const problem = {
-      key: assessment.key,
-      message: assessment.message,
-      recoverable: assessment.recoverable,
-      workflowFile: spec.file,
-    };
-    problems.push(problem);
-
-    if (
-      assessment.recoverable &&
-      shouldDispatchRecovery(recoveries[spec.file]?.lastRecoveryAt)
-    ) {
-      try {
-        await dispatchRecovery(spec);
-        const now = new Date().toISOString();
-        recoveries[spec.file] = {
-          lastRecoveryAt: now,
-          lastIssueKey: assessment.key,
-        };
-        recoveryLines.push(`↻ Recovery dispatched: ${spec.label}`);
-      } catch (error) {
-        problems.push({
-          key: `${spec.file}:recovery-failed`,
-          message: `${spec.label}: recovery dispatch failed (${error.message})`,
-          recoverable: false,
-        });
-      }
-    }
-  }
-
-  const webhook = await telegramWebhookProblem();
-  if (webhook) problems.push(webhook);
+  const edge = await telegramWebhookHealth();
+  if (edge.problem) problems.push(edge.problem);
 
   const validation = await validationProblem();
   if (validation) problems.push(validation);
+
+  problems.push(...await externalCronProblems(edge.healthy));
   problems.push(...sensitivePlaintextProblems());
 
   const fingerprint = crypto
@@ -340,7 +211,6 @@ export async function runWatchdog() {
         [
           "🚨 BallerWatch watchdog",
           ...problems.map((p) => `• ${p.message}`),
-          ...recoveryLines,
         ].join("\n"),
       );
     }
@@ -350,19 +220,13 @@ export async function runWatchdog() {
       fingerprint,
       checkedAt: new Date().toISOString(),
       problemCount: problems.length,
-      recoveries,
     });
-
-    console.log(
-      `Watchdog found ${problems.length} problem(s); ${recoveryLines.length} recovery dispatch(es).`,
-    );
-    return { healthy: false, problems, recoveryLines };
+    console.log(`Watchdog found ${problems.length} problem(s).`);
+    return { healthy: false, problems };
   }
 
   if (previous.healthy === false) {
-    await sendTelegram(
-      "✅ BallerWatch watchdog: all components recovered and healthy.",
-    );
+    await sendTelegram("✅ BallerWatch watchdog: all components recovered and healthy.");
   }
 
   saveState({
@@ -370,10 +234,9 @@ export async function runWatchdog() {
     fingerprint,
     checkedAt: new Date().toISOString(),
     problemCount: 0,
-    recoveries,
   });
   console.log("All BallerWatch components are healthy.");
-  return { healthy: true, problems: [], recoveryLines: [] };
+  return { healthy: true, problems: [] };
 }
 
 const isMain =
@@ -384,9 +247,7 @@ if (isMain) {
   runWatchdog().catch(async (error) => {
     console.error(error);
     try {
-      await sendTelegram(
-        `🚨 BallerWatch watchdog itself failed: ${error.message}`,
-      );
+      await sendTelegram(`🚨 BallerWatch watchdog itself failed: ${error.message}`);
     } catch {}
     process.exit(1);
   });

@@ -2,12 +2,6 @@ name: Configure external cron
 
 on:
   workflow_dispatch:
-    inputs:
-      cleanup_old_jobs:
-        description: "Disable superseded ballerbaywatch/ttf-watcher/rats-league-watcher cron jobs"
-        required: true
-        default: true
-        type: boolean
 
 permissions:
   contents: read
@@ -27,10 +21,9 @@ jobs:
           test -n "$CRON_JOB_ORG_API_KEY" || { echo "Missing CRON_JOB_ORG_API_KEY secret"; exit 1; }
           test -n "$CRON_GITHUB_PAT" || { echo "Missing CRON_GITHUB_PAT secret"; exit 1; }
 
-      - name: Create or update cron-job.org jobs
+      - name: Prepare disabled cron-job.org fallback jobs
         env:
           CRON_JOB_ORG_API_KEY: ${{ secrets.CRON_JOB_ORG_API_KEY }}
           CRON_GITHUB_PAT: ${{ secrets.CRON_GITHUB_PAT }}
-          CLEANUP_OLD_CRON: ${{ inputs.cleanup_old_jobs }}
           BALLERWATCH_BRANCH: main
-        run: node infra/sync-cron.mjs
+        run: node infra/external-schedules.mjs ensure-disabled

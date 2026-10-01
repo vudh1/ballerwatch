@@ -1,7 +1,7 @@
 import copy
 import unittest
 from unittest.mock import patch
-from watcher import normalize, HEADERS
+from watcher import normalize, discover_latest_season, HEADERS
 
 class ScheduleTests(unittest.TestCase):
     def setUp(self):
@@ -17,6 +17,20 @@ class ScheduleTests(unittest.TestCase):
                 'start_time': '19:15:00', 'home_color': 'White', 'away_color': 'White'}]}
         self.exports = {'Team Alpha': [HEADERS, ['game', '2026-10-05', '19:15:00', '', '', 'US/Pacific', 'Home', 'Opponent', 'Field', 'Black', 'White', 'Yes', 'Yes', 'Set up goals']],
             'Team Beta': [HEADERS, ['bye', '2026-10-06', '', '', '', 'US/Pacific', '', '', '', '', '', 'Yes', 'Yes', '']]}
+    def test_preferred_season_is_tried_first(self):
+        aggregate = {
+            'teams': [
+                {'name': 'Team Alpha', 'schedule_key': 'a'},
+                {'name': 'Team Beta', 'schedule_key': 'b'},
+            ],
+            'events': [],
+        }
+        with patch('watcher.call', return_value=aggregate) as mocked:
+            season, returned = discover_latest_season('fall-2026')
+        self.assertEqual(season, 'fall-2026')
+        self.assertIs(returned, aggregate)
+        mocked.assert_called_once_with('get-aggregate', {'season': 'fall-2026'})
+
     def test_exact_team_and_byes(self):
         out = normalize('fall-2026', self.aggregate, self.exports)
         self.assertEqual([t['publishedMatchCount'] for t in out['teams']], [1, 0])

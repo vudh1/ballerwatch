@@ -72,6 +72,14 @@
       "message": "BallerWatch runtime data now stays in private Cloudflare KV. GitHub stores code, configuration, documentation and release history only — live soccer and bot state are no longer committed to the repository.",
       "example": "Use /version to confirm BallerWatch 2.1.0.",
       "enabled": true
+    },
+    {
+      "id": "2026-10-01-release-workflow-and-faster-rats",
+      "version": "2.2.0",
+      "title": "Faster RATS reconciliation",
+      "message": "BallerWatch now reconciles RATS changes faster, verifies its cron-job.org emergency fallback jobs, and develops each new release on a tested branch before one squash commit reaches main.",
+      "example": "Use /version to confirm BallerWatch 2.2.0.",
+      "enabled": true
     }
   ]
 }
