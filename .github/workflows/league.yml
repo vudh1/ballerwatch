@@ -1,0 +1,115 @@
+name: RATS league watcher
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ballerwatch-league
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: league
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Sync latest state
+        working-directory: .
+        run: git pull --rebase origin main
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Prepare encrypted league team config
+        working-directory: .
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: node shared/league-teams.mjs prepare
+
+      - name: Prepare encrypted league runtime state
+        working-directory: .
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: node shared/league-state.mjs prepare
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Test normalization
+        run: python -m unittest watcher_test.py
+
+      - name: Fetch and validate league schedules
+        run: python watcher.py
+
+      - name: Notify Telegram about score changes
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python telegram_score_notify.py
+
+      - name: Compare with applied Calendar snapshot
+        id: calendar_gate
+        shell: bash
+        run: |
+          python calendar_gate.py | tee /tmp/calendar-gate.txt
+          grep '^needsCalendar=' /tmp/calendar-gate.txt >> "$GITHUB_OUTPUT"
+          grep '^pendingCount=' /tmp/calendar-gate.txt >> "$GITHUB_OUTPUT"
+
+      - name: Sync changed matches to Google Calendar
+        if: steps.calendar_gate.outputs.needsCalendar == 'true'
+        env:
+          GOOGLE_CALENDAR_WEBHOOK_URL: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_URL }}
+          GOOGLE_CALENDAR_WEBHOOK_SECRET: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_SECRET }}
+        run: python google_calendar_sync.py
+
+      - name: Notify Telegram about successful schedule update
+        if: steps.calendar_gate.outputs.needsCalendar == 'true'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python telegram_notify.py
+
+      - name: Calendar unchanged
+        if: steps.calendar_gate.outputs.needsCalendar != 'true'
+        run: echo "No material future-match changes; Google Calendar was not called."
+
+      - name: Seal league runtime state
+        if: always()
+        working-directory: .
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: node shared/league-state.mjs seal
+
+      - name: Remove plaintext league team config
+        if: always()
+        working-directory: .
+        run: rm -f league/teams.json
+
+      - name: Persist encrypted league state
+        if: always()
+        working-directory: .
+        run: |
+          if [ -z "$(git status --porcelain -- league)" ]; then
+            echo "No league state changes."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A -- league
+          git commit -m "Refresh RATS league state"
+          git pull --rebase origin main
+          git push
