@@ -1,7 +1,18 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "1.2.1",
+  "currentVersion": "1.2.2",
   "releases": [
+    {
+      "version": "1.2.2",
+      "date": "2026-09-30",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "League team migration reliability",
+      "changes": [
+        "Fixed legacy league-team migration so a valid legacy configuration replaces an existing empty encrypted placeholder.",
+        "Preserved the rule that only encrypted league-team state is persisted in BallerWatch."
+      ]
+    },
     {
       "version": "1.2.1",
       "date": "2026-09-30",
