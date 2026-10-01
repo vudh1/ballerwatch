@@ -10,7 +10,7 @@ Cloudflare is the only Telegram webhook receiver. GitHub listener runs accept in
 
 Telegram sends webhook updates to the Cloudflare Worker. Common read-only questions are answered there from a short-lived Workers Cache backed by encrypted files on the GitHub `runtime-state` branch.
 
-The GitHub Pages PWA uses the same Worker for public-safe read-only Q&A, notification-board reads, and encrypted Web Push registration. State-changing requests remain on Telegram and are dispatched to the GitHub listener workflow when required.
+The GitHub Pages PWA uses the same Worker for public-safe Q&A, notification-board reads, Web Push registration, and a narrowly scoped owner-paired settings API. Anonymous access stays read-only. A paired device can change only RSVP owner name and monitored league teams; those writes are dispatched through the existing GitHub listener/runtime-state flow.
 
 ## Notification boundary
 
@@ -42,7 +42,7 @@ GitHub Actions cache keeps encrypted last-known backups for recovery.
 
 ## Chat review
 
-Telegram conversations may be retained for up to 48 hours as Groq-condensed encrypted records. Only sanitized engineering signals are readable by the scheduled maintenance task.
+Owner conversations may be retained for up to 48 hours as Groq-condensed encrypted records. This includes private-bot exchanges and owner-paired PWA Q&A; anonymous web Q&A is not retained. Only sanitized engineering signals are readable by the scheduled maintenance task.
 
 ## Gemini-first answer path
 
