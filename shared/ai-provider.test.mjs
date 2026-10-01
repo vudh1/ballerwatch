@@ -32,7 +32,7 @@ test("Gemini answers first using header authentication, bounded JSON and no tool
   assert.equal(calls.length, 1);
   assert.equal(calls[0].options.headers["x-goog-api-key"], "test-gemini");
   assert.ok(!calls[0].url.includes("test-gemini"));
-  assert.equal(calls[0].body.generationConfig.thinkingConfig.thinkingBudget, 0);
+  assert.equal(calls[0].body.generationConfig.thinkingConfig.thinkingLevel, "low");
   assert.equal(calls[0].body.tools, undefined);
 });
 

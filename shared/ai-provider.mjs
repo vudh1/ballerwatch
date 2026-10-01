@@ -22,7 +22,7 @@ export async function requestAiJson(provider, env, { system, user, tokens, timeo
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const gemini = provider === "gemini";
-    const model = env.GEMINI_MODEL || "gemini-2.5-flash";
+    const model = env.GEMINI_MODEL || "gemini-3.8-flash";
     const url = gemini
       ? `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`
       : "https://api.groq.com/openai/v1/chat/completions";
@@ -31,9 +31,11 @@ export async function requestAiJson(provider, env, { system, user, tokens, timeo
       contents: [{ role: "user", parts: [{ text: user }] }],
       generationConfig: {
         temperature: 0,
-        maxOutputTokens: tokens,
+        maxOutputTokens: tokens + 512,
         responseMimeType: "application/json",
-        thinkingConfig: { thinkingBudget: 0 },
+        thinkingConfig: model.startsWith("gemini-2.5-")
+          ? { thinkingBudget: 0 }
+          : { thinkingLevel: "low" },
       },
     } : {
       model: env.GROQ_MODEL || "openai/gpt-oss-20b",
