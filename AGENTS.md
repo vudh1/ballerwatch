@@ -7,7 +7,7 @@ Always read the current `README.md`, this file, and `features/versions.json` fro
 - Keep this public repository free of secrets and readable live/private soccer data.
 - Public feature-request summaries may contain only version 2 fixed categories and counts. Never restore free text, IDs, timestamps, or hashes of request text. Exact requests require private authorized decryption; do not infer them from categories.
 - Runtime plaintext belongs only in ignored temporary paths. Persistent private state must stay encrypted.
-- Cloudflare Cron Triggers are the target recurring scheduler. Keep cron-job.org jobs only as a fallback until the KV-backed edge cutover is verified; do not add GitHub `schedule:` cron.
+- Cloudflare Cron Triggers are the recurring scheduler. Keep cron-job.org BallerWatch jobs disabled during healthy operation; deployment may restore them automatically as a failure fallback. Do not add GitHub `schedule:` cron.
 - Telegram is webhook-driven through Cloudflare. Do not recreate a recurring `getUpdates` poller.
 - To recover or verify `UPSTREAM_ENDPOINT`, follow `skills/find-upstream-endpoint/SKILL.md`. Never commit the live endpoint.
 

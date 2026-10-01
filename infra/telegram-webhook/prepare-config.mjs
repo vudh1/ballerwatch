@@ -7,6 +7,7 @@ if(!token||!account) throw new Error("Cloudflare credentials are required");
 const API="https://api.cloudflare.com/client/v4";
 const title="ballerwatch-runtime";
 const suppliedNamespaceId=String(process.env.CLOUDFLARE_KV_NAMESPACE_ID||"").trim();
+const schedulesEnabled=/^(1|true|yes)$/i.test(String(process.env.EDGE_CRONS_ENABLED||""));
 
 async function cf(path,{method="GET",body}={}) {
   const r=await fetch(API+path,{
@@ -49,8 +50,12 @@ const config={
   compatibility_date:"2026-09-30",
   workers_dev:true,
   kv_namespaces:[{binding:"BALLERWATCH_STATE",id:ns.id}],
-  triggers:{crons:["*/2 * * * *","*/5 * * * *","*/10 * * * *"]},
+  ...(schedulesEnabled ? {triggers:{crons:["*/2 * * * *","*/5 * * * *","*/10 * * * *"]}} : {}),
 };
 
 fs.writeFileSync("wrangler.generated.jsonc",JSON.stringify(config,null,2)+"\n");
-console.log("Generated Worker config with private KV and 2/5/10-minute edge schedules.");
+console.log(
+  schedulesEnabled
+    ? "Generated Worker config with private KV and 2/5/10-minute edge schedules."
+    : "Generated Worker config with private KV and edge schedules disabled for verification."
+);

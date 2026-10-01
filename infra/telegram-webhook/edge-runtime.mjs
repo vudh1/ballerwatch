@@ -21,7 +21,10 @@ function localDate(now = new Date()) {
 function seasonCandidates(now = new Date()) {
   const y = Number(localDate(now).slice(0,4));
   const out=[];
-  for(let year=y+1; year>=y-2; year--) {
+  // Edge change detection prefers the current year first so a missing future
+  // season cannot add several network timeouts to every check. The full
+  // GitHub watcher still performs deeper season rollover discovery.
+  for(const year of [y, y + 1, y - 1, y - 2]) {
     for(const name of [...SEASONS].reverse()) out.push(`${name}-${year}`);
   }
   return out;
@@ -113,7 +116,7 @@ function normalizeLeague(teams, season, aggregate, exportsByTeam) {
   }
   const today=localDate();
   return {
-    schemaVersion:2, ok:true, season, timezone:TIME_ZONE,
+    schemaVersion:2, ok:true, season, seasonId:season, timezone:TIME_ZONE,
     teams:result,
     today:{schemaVersion:2,ok:true,date:today,timezone:TIME_ZONE,games:result.flatMap(t=>t.matches).filter(g=>g.date===today)},
   };
@@ -166,6 +169,77 @@ export async function fetchPickupSnapshot(endpoint) {
     feed:{ok:true,timezone:TIME_ZONE,dates:dates.map(date=>({date,path:`dates/${date}.json`})),events},
     private:{events:privateEvents},
   };
+}
+
+export async function fetchLeagueSignal(teams, season) {
+  const cleaned=(teams||[]).map(cleanName).filter(Boolean);
+  if(!cleaned.length) throw new Error("No league teams configured");
+
+  let seasonId=String(season||"").trim();
+  let aggregate=null;
+  if(seasonId) {
+    try {
+      aggregate=await ratsCall("get-aggregate",{season:seasonId});
+      const complete=
+        aggregate &&
+        Array.isArray(aggregate.teams) &&
+        Array.isArray(aggregate.events) &&
+        cleaned.every(team=>teamMatches(aggregate,team).length===1);
+      if(!complete) aggregate=null;
+    } catch {
+      aggregate=null;
+    }
+  }
+
+  if(!aggregate) {
+    const discovered=await discoverSeason(cleaned,"");
+    seasonId=discovered.season;
+    aggregate=discovered.aggregate;
+  }
+
+  if(!aggregate || !Array.isArray(aggregate.teams) || !Array.isArray(aggregate.events)) {
+    throw new Error("Unrecognized RATS aggregate schema");
+  }
+  const names=new Set(cleaned.map(normalizeName));
+  const teamsSignal=aggregate.teams
+    .filter(t=>names.has(normalizeName(t?.name)))
+    .map(t=>({
+      name:cleanName(t?.name),
+      day:t?.day ?? null,
+      gender:t?.gender ?? null,
+      division:t?.division ?? null,
+      color:t?.color ?? null,
+      color_alt:t?.color_alt ?? null,
+      schedule_key:t?.schedule_key ?? null,
+    }))
+    .sort((a,b)=>a.name.localeCompare(b.name));
+
+  const eventsSignal=aggregate.events
+    .filter(event =>
+      names.has(normalizeName(event?.home_team_name)) ||
+      names.has(normalizeName(event?.away_team_name))
+    )
+    .map(event=>({
+      id:String(event?.id || event?.event_id || ""),
+      home_team_name:cleanName(event?.home_team_name),
+      away_team_name:cleanName(event?.away_team_name),
+      start_date:String(event?.start_date || ""),
+      start_time:String(event?.start_time || ""),
+      location:String(event?.location || ""),
+      notes:String(event?.notes || ""),
+      home_color:event?.home_color ?? null,
+      away_color:event?.away_color ?? null,
+      home_score:eventScore(event,"home"),
+      away_score:eventScore(event,"away"),
+    }))
+    .sort((a,b)=>
+      a.start_date.localeCompare(b.start_date) ||
+      a.start_time.localeCompare(b.start_time) ||
+      a.home_team_name.localeCompare(b.home_team_name) ||
+      a.away_team_name.localeCompare(b.away_team_name)
+    );
+
+  return {season:seasonId,teams:teamsSignal,events:eventsSignal};
 }
 
 export async function fetchLeagueSnapshot(teams, preferredSeason="") {

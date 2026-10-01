@@ -10,20 +10,7 @@ import { loadLeagueTeams } from "../shared/league-teams.mjs";
 const STATE_PATH = "state/watchdog.json";
 const RECOVERY_COOLDOWN_MINUTES = 10;
 
-export const WORKFLOWS = [
-  {
-    file: "pickup.yml",
-    label: "Pickup watcher",
-    maxAgeMinutes: 7,
-    activeGraceMinutes: 6,
-  },
-  {
-    file: "league.yml",
-    label: "League watcher",
-    maxAgeMinutes: 15,
-    activeGraceMinutes: 8,
-  },
-];
+export const WORKFLOWS = []
 
 function readJson(file) {
   try {
@@ -210,6 +197,31 @@ async function telegramWebhookProblem() {
         message: "Telegram webhook: health check failed",
         recoverable: false,
       };
+    }
+    if (payload?.runtime === "cloudflare-primary-preview") {
+      if (payload?.kv !== true) {
+        return {
+          key: "edge-runtime:kv",
+          message: "Cloudflare runtime: KV binding is unavailable",
+          recoverable: false,
+        };
+      }
+      const pickupAge=Number(payload?.pickupAgeMinutes);
+      const leagueAge=Number(payload?.leagueAgeMinutes);
+      if (!Number.isFinite(pickupAge) || pickupAge > 8) {
+        return {
+          key: "edge-runtime:pickup-stale",
+          message: "Cloudflare runtime: pickup heartbeat is stale",
+          recoverable: false,
+        };
+      }
+      if (!Number.isFinite(leagueAge) || leagueAge > 12) {
+        return {
+          key: "edge-runtime:league-stale",
+          message: "Cloudflare runtime: league heartbeat is stale",
+          recoverable: false,
+        };
+      }
     }
     return null;
   } catch {

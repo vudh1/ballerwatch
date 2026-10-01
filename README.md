@@ -6,7 +6,7 @@ It combines Telegram, Cloudflare Workers, GitHub Actions, cron-job.org, Groq, an
 
 The project is designed to stay inexpensive to operate: the normal architecture uses free service tiers and avoids unnecessary polling or paid AI calls.
 
-**Current version: 1.6.0**
+**Current version: 2.0.0**
 
 ## How BallerWatch works
 
@@ -191,7 +191,7 @@ For recoverable watcher failures, it can dispatch the affected GitHub workflow a
 
 ## Scheduling
 
-BallerWatch is migrating recurring watcher checks from cron-job.org to **Cloudflare Cron Triggers**. The edge runtime is designed to poll pickup every 2 minutes, RATS every 5 minutes, and perform health coordination every 10 minutes. During migration, the existing cron-job.org schedules remain the production fallback until the Cloudflare KV-backed cutover passes its shadow refresh verification.
+Recurring watcher checks run on **Cloudflare Cron Triggers**: pickup every 2 minutes, RATS every 5 minutes, and edge health coordination every 10 minutes. cron-job.org BallerWatch schedules are normally disabled and are restored automatically only if an edge deployment fails before verified activation.
 
 Current cadence:
 
@@ -421,11 +421,11 @@ Commands that modify state, such as snooze/mute changes, league-team changes, se
 This split keeps fast questions fast while preserving the existing encrypted persistence and deterministic write behavior.
 
 
-## Cloudflare primary-runtime migration
+## Cloudflare primary runtime
 
-Version 1.6.0 introduces the 2.0 architecture preview.
+Version 2.0.0 makes Cloudflare the primary operational runtime.
 
-After successful activation, Cloudflare becomes the normal scheduler and hot-state runtime:
+Cloudflare is the normal scheduler and hot-state runtime:
 
 ```text
 Telegram ───────────────→ Cloudflare Worker
@@ -440,13 +440,13 @@ Telegram ───────────────→ Cloudflare Worker
                                       └─ GitHub Action only when source data changed
 ```
 
-The existing GitHub pickup and league workflows remain responsible for mature notification, encrypted-repository persistence, and Calendar reconciliation. The difference is that they no longer need to start on every polling interval once edge cutover is active.
+The existing GitHub pickup and league workflows remain responsible for mature notification, encrypted-repository persistence, and Calendar reconciliation. They are dispatched when Cloudflare detects relevant source changes instead of starting on every polling interval.
 
-Deployment performs a notification-silent shadow refresh against both live sources before disabling the legacy cron-job.org jobs.
+Deployment performs a notification-silent live-source verification and primes private KV before enabling edge schedules. Legacy cron-job.org jobs remain disabled after a healthy deployment and are automatically restored if edge activation fails.
 
 Cloudflare KV setup can be completed in either of two ways:
 
 - grant the deployment token permission to create/list Workers KV namespaces; or
 - manually create a private KV namespace and store its namespace ID as the optional GitHub secret `CLOUDFLARE_KV_NAMESPACE_ID`.
 
-If KV provisioning or shadow verification fails, the deployment stops before disabling the old schedules.
+If KV provisioning or source verification fails, deployment restores the legacy cron-job.org schedules so monitoring continues.
