@@ -16,3 +16,7 @@ cron-job.org jobs are expected to exist and stay enabled:
 - watchdog: every 10 minutes.
 
 Pickup and league fallback runs are health-gated to avoid duplicate source work while Cloudflare is healthy.
+
+## GitHub Wiki publishing
+
+The canonical pages live in `docs/wiki/`. GitHub's normal Actions token cannot initialize the separate `.wiki.git` repository. To mirror these pages into the GitHub Wiki UI, add a repository secret named `WIKI_TOKEN` with repository write access and run **Publish wiki** once. Future main changes to `docs/wiki/` sync automatically.
