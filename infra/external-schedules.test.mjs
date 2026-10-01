@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   EXTERNAL_SCHEDULE_SPECS,
   analyzeExternalSchedules,
+  syncExternalSchedulesOptional,
   verifyExternalSchedules,
 } from "./external-schedules.mjs";
 
@@ -71,4 +72,25 @@ test("optional release verification still reports a verified bad scheduler postu
   });
   assert.equal(result.available, true);
   assert.ok(result.problems.some((problem) => problem.includes("scheduled job is missing")));
+});
+
+test("optional scheduler synchronization tolerates temporary quota exhaustion", async () => {
+  const result = await syncExternalSchedulesOptional(
+    "ensure-enabled",
+    {},
+    async () => { throw new Error("cron-job.org GET /jobs failed (429)"); },
+  );
+  assert.equal(result.available, false);
+  assert.match(result.warning, /429/);
+});
+
+test("optional scheduler synchronization still fails on auth errors", async () => {
+  await assert.rejects(
+    syncExternalSchedulesOptional(
+      "ensure-enabled",
+      {},
+      async () => { throw new Error("cron-job.org GET /jobs failed (401)"); },
+    ),
+    /401/,
+  );
 });
