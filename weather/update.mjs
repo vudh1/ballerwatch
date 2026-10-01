@@ -317,7 +317,7 @@ export async function fetchForecast(latitude, longitude, {
   );
   url.searchParams.set("temperature_unit", "fahrenheit");
   url.searchParams.set("timezone", TIME_ZONE);
-  url.searchParams.set("forecast_days", "16");
+  url.searchParams.set("forecast_days", "14");
   const response = await fetchImpl(url, { signal: AbortSignal.timeout(20_000) });
   if (!response.ok) throw new Error(`Open-Meteo HTTP ${response.status}`);
   return response.json();
