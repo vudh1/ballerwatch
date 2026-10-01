@@ -4,7 +4,7 @@ BallerWatch is a privacy-first soccer assistant for pickup games and Seattle RAT
 
 It combines **Telegram**, **Cloudflare Workers + KV**, **GitHub Actions**, **Groq**, and **Google Calendar** to monitor soccer data, answer questions, send useful alerts, and keep league matches synchronized.
 
-**Current version: 2.3.0**
+**Current version: 2.3.1**
 
 ## Architecture
 
