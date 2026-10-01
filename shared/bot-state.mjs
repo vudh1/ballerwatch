@@ -16,7 +16,6 @@ function defaults() {
     lastSetupReminderAt: "",
     lastOwnerNameReminderAt: "",
     lastEndpointReminderAt: "",
-    announcedFeatureAnnouncementIds: [],
   };
 }
 
