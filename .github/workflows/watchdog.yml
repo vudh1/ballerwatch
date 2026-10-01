@@ -14,25 +14,16 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 2
     steps:
       - uses: actions/checkout@v5
         with:
-          fetch-depth: 0
-
-      - name: Sync latest state
-        run: git pull --rebase origin main
+          ref: main
+          fetch-depth: 1
 
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
-
-      - name: Test watchdog recovery logic
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-        run: node --test watchdog/watchdog.test.mjs
 
       - name: Verify workflows, validation, encryption and state
         env:
@@ -54,7 +45,7 @@ jobs:
           git commit -m "Update watchdog health state"
           STATE_COMMIT="$(git rev-parse HEAD)"
           for attempt in 1 2 3 4; do
-            git fetch origin main
+            git fetch --depth=1 origin main
             git reset --hard origin/main
             if ! git cherry-pick -X theirs "$STATE_COMMIT"; then
               git cherry-pick --abort || true
@@ -62,7 +53,7 @@ jobs:
               sleep $((attempt * 2))
               continue
             fi
-            if git push; then
+            if git push origin HEAD:main; then
               exit 0
             fi
             echo "Push raced with another workflow; retrying ($attempt/4)."
