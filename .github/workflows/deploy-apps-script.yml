@@ -85,7 +85,7 @@ jobs:
           GOOGLE_CALENDAR_WEBHOOK_URL: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_URL }}
           GOOGLE_CALENDAR_WEBHOOK_SECRET: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_SECRET }}
           BALLERWATCH_CALENDAR_PAIR_MARKER: bw-pair-7f3c2a91
-        run: python3 league/google_calendar_pair.py
+        run: node league/google-calendar-pair.mjs
 
       - name: One-time full reset requested by release commit
         if: github.event_name == 'push' && contains(github.event.head_commit.message, '[purge-all]')
@@ -96,7 +96,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          python3 league/google_calendar_purge.py
+          node league/google-calendar-purge.mjs
           node shared/runtime-state.mjs purge
 
       - name: Remove OAuth material
