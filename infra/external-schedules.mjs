@@ -1,7 +1,7 @@
 /**
  * Manages cron-job.org primary GitHub schedules and validates their target/cadence posture.
  *
- * Documentation baseline: v2.4.0. Runtime/private data must never be committed to Git.
+ * Documentation baseline: v2.4.2. Runtime/private data must never be committed to Git.
  */
 const API = "https://api.cron-job.org";
 
@@ -32,6 +32,10 @@ function jobMatchesSpec(job, spec, repo) {
   );
 }
 
+function matchingJobs(jobs, spec, repo) {
+  return jobs.filter((job) => jobMatchesSpec(job, spec, repo));
+}
+
 export function analyzeExternalSchedules(jobs, {
   repo = "vudh1/ballerwatch",
   expectEnabled = true,
@@ -41,16 +45,18 @@ export function analyzeExternalSchedules(jobs, {
   const problems = [];
 
   for (const spec of EXTERNAL_SCHEDULE_SPECS) {
-    const matches = list.filter((job) => jobMatchesSpec(job, spec, repo));
+    const matches = matchingJobs(list, spec, repo);
     if (!matches.length) {
       if (requireAll) problems.push(`${spec.title}: scheduled job is missing`);
       continue;
     }
-    if (matches.length > 1) {
-      problems.push(`${spec.title}: duplicate scheduled jobs exist`);
+
+    const enabledMatches = matches.filter((job) => job.enabled);
+    if (enabledMatches.length > 1) {
+      problems.push(`${spec.title}: duplicate enabled scheduled jobs exist`);
     }
 
-    const job = matches[0];
+    const job = enabledMatches[0] || matches[0];
     if (expectEnabled !== null && Boolean(job.enabled) !== Boolean(expectEnabled)) {
       problems.push(
         `${spec.title}: expected ${expectEnabled ? "enabled" : "disabled"} but is ${job.enabled ? "enabled" : "disabled"}`,
@@ -80,20 +86,41 @@ export function analyzeExternalSchedules(jobs, {
 }
 
 async function cronCall(apiKey, path, { method = "GET", body } = {}) {
-  const response = await fetch(API + path, {
-    method,
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: body ? JSON.stringify(body) : undefined,
-    signal: AbortSignal.timeout(15_000),
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(`cron-job.org ${method} ${path} failed (${response.status})`);
+  const maximumAttempts = method === "GET" ? 4 : 1;
+
+  for (let attempt = 1; attempt <= maximumAttempts; attempt += 1) {
+    const response = await fetch(API + path, {
+      method,
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: body ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(15_000),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (response.ok) return data;
+
+    const retryable =
+      response.status === 429 ||
+      [500, 502, 503, 504].includes(response.status);
+    if (!retryable || attempt === maximumAttempts) {
+      throw new Error(
+        `cron-job.org ${method} ${path} failed (${response.status})`,
+      );
+    }
+
+    const retryAfter = Number(response.headers.get("retry-after"));
+    const delayMs = Number.isFinite(retryAfter)
+      ? Math.min(10_000, Math.max(1_000, retryAfter * 1000))
+      : attempt * 1_500;
+    console.log(
+      `cron-job.org ${method} ${path} returned ${response.status}; retrying.`,
+    );
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
   }
-  return data;
+
+  throw new Error(`cron-job.org ${method} ${path} exhausted retries`);
 }
 
 export async function listExternalSchedules(apiKey = process.env.CRON_JOB_ORG_API_KEY || "") {
@@ -178,13 +205,24 @@ export async function syncExternalSchedules(mode, {
   const enabled = mode === "enable" || mode === "ensure-enabled";
   for (const spec of EXTERNAL_SCHEDULE_SPECS) {
     const next = desiredJob(spec, { repo, branch, githubPat, enabled });
-    const existing = jobs.find((job) => jobMatchesSpec(job, spec, repo));
+    const matches = matchingJobs(jobs, spec, repo);
+    const existing = matches.find((job) => job.enabled) || matches[0];
     if (existing) {
       await cronCall(apiKey, `/jobs/${existing.jobId}`, {
         method: "PATCH",
         body: { job: next },
       });
       console.log(`${enabled ? "Enabled" : "Prepared disabled"} schedule ${spec.title} (${existing.jobId}).`);
+
+      for (const duplicate of matches.filter((job) => job.jobId !== existing.jobId && job.enabled)) {
+        await cronCall(apiKey, `/jobs/${duplicate.jobId}`, {
+          method: "PATCH",
+          body: { job: { enabled: false } },
+        });
+        console.log(
+          `Disabled duplicate schedule ${duplicate.jobId} (${spec.title}).`,
+        );
+      }
     } else {
       const created = await cronCall(apiKey, "/jobs", {
         method: "PUT",
