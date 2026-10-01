@@ -52,10 +52,10 @@ The Settings gear is private by default. A new device must be paired with a temp
 1. Request `/webpair` from the owner bot.
 2. Open the Settings gear in the web app.
 3. Enter the six-digit code within 10 minutes.
-4. The Worker verifies and immediately consumes the code.
+4. The Worker verifies the code, then dispatches the listener workflow to consume it in encrypted runtime state.
 5. The browser stores a signed owner capability token locally for up to 90 days.
 
-The token is signed with existing private runtime key material and is never written to the repository. After pairing, Settings displays the effective pickup RSVP name and current monitored league teams. Saving changes dispatches the normal encrypted listener/runtime workflow; the public repository never receives plaintext private settings.
+Pairing failures return a readable app error rather than a generic browser network failure. The token is signed with existing private runtime key material and is never written to the repository. After pairing, Settings displays the effective pickup RSVP name and current monitored league teams. Saving changes dispatches the normal encrypted listener/runtime workflow; the public repository never receives plaintext private settings.
 
 Disconnecting from Settings removes the local token from that device. Rotating the runtime signing key also invalidates existing paired-device tokens.
 

@@ -268,32 +268,19 @@ async function ownerSettingsRecord(env) {
 async function pairOwnerDevice(env, code) {
   const normalized = cleanText(code, 12);
   if (!/^\d{6}$/.test(normalized)) return null;
-  const { listenerRecord, settings } = await ownerSettingsRecord(env);
+  const { settings } = await ownerSettingsRecord(env);
   const expiresAt = Date.parse(String(settings.webPairExpiresAt || ""));
   if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) return null;
   const expected = cleanText(settings.webPairCodeHash, 128);
   if (!expected || expected !== await sha256Hex(normalized)) return null;
 
   const paired = await issueOwnerToken(env);
-  const nextListener = {
-    ...(listenerRecord.value || {}),
-    lastUpdateId: Number(listenerRecord.value?.lastUpdateId || 0),
-    settings: await encryptState(
-      {
-        ...settings,
-        webPairCodeHash: "",
-        webPairExpiresAt: "",
-      },
-      env,
-    ),
-  };
-  await githubStatePut(
-    env,
-    "state/listener.json",
-    nextListener,
-    listenerRecord.sha,
-    "runtime(listener): consume web owner pairing code",
-  );
+  await dispatchWorkflow(env, "listener.yml", {
+    web_settings_event_b64: base64Json({
+      action: "consume-pair-code",
+      pairCodeHash: expected,
+    }),
+  });
   return paired;
 }
 
@@ -1560,15 +1547,25 @@ export default {
       let body;
       try { body = await request.json(); }
       catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
-      const paired = await pairOwnerDevice(env, body?.code);
-      if (!paired) {
+
+      try {
+        const paired = await pairOwnerDevice(env, body?.code);
+        if (!paired) {
+          return webJson(
+            request,
+            { ok: false, error: "Pairing code is invalid or expired. Request a new /webpair code." },
+            { status: 401 },
+          );
+        }
+        return webJson(request, { ok: true, ...paired });
+      } catch (error) {
+        console.error("Owner pairing failed", error);
         return webJson(
           request,
-          { ok: false, error: "Pairing code is invalid or expired." },
-          { status: 401 },
+          { ok: false, error: "Pairing service is temporarily unavailable. Request a new /webpair code and try again." },
+          { status: 503 },
         );
       }
-      return webJson(request, { ok: true, ...paired });
     }
 
     if (

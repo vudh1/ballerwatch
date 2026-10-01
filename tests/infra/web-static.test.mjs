@@ -16,13 +16,13 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=4\.1\.1/);
-  assert.match(html, /app\.js\?v=4\.1\.1/);
+  assert.match(html, /styles\.css\?v=4\.1\.2/);
+  assert.match(html, /app\.js\?v=4\.1\.2/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v4-1-1-shell/);
+  assert.match(sw, /ballerwatch-v4-1-2-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -63,7 +63,7 @@ test("Home Screen install card is removed in standalone mode and notifications u
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=4\.1\.1/);
+  assert.match(app, /sw\.js\?v=4\.1\.2/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -202,4 +202,21 @@ test("mobile header keeps settings and bell on the same row", () => {
   const css = fs.readFileSync("docs/styles.css", "utf8");
   assert.match(css, /@media \(max-width: 560px\)[\s\S]*\.hero-actions \{[^}]*flex-direction:\s*row;/);
   assert.match(css, /\.hero-actions \{[^}]*display:\s*flex;/);
+});
+
+
+test("owner pairing consumes codes through listener workflow and returns web-safe errors", () => {
+  const worker = fs.readFileSync("infra/telegram-webhook/worker.mjs", "utf8");
+  const listener = fs.readFileSync("listener/bot.mjs", "utf8");
+
+  const pairFunction = worker.match(/async function pairOwnerDevice[\s\S]*?\n}\n/);
+  assert.ok(pairFunction);
+  assert.match(pairFunction[0], /dispatchWorkflow\(env, "listener\.yml"/);
+  assert.match(pairFunction[0], /action: "consume-pair-code"/);
+  assert.doesNotMatch(pairFunction[0], /githubStatePut/);
+
+  assert.match(listener, /event\?\.action === "consume-pair-code"/);
+  assert.match(listener, /webPairCodeHash: ""/);
+  assert.match(worker, /Pairing service is temporarily unavailable/);
+  assert.match(worker, /webJson\([\s\S]*status: 503/);
 });

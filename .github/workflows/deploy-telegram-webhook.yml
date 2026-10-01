@@ -145,6 +145,23 @@ jobs:
           node -e 'const x=JSON.parse(process.argv[1]); if(x.ok!==true || !x.push || !("ready" in x.push) || !x.version) process.exit(1)' "$PWA_CONFIG"
           echo "PWA API verified."
 
+          echo "Verifying owner-pairing error response and CORS..."
+          PAIR_HEADERS="/tmp/ballerwatch-pair-headers"
+          PAIR_BODY="/tmp/ballerwatch-pair-body"
+          PAIR_STATUS="$(curl --max-time 15 --silent --show-error \
+            --dump-header "$PAIR_HEADERS" \
+            --output "$PAIR_BODY" \
+            --write-out "%{http_code}" \
+            -X POST "$BASE_URL/web/owner/pair" \
+            -H "Origin: https://vudh1.github.io" \
+            -H "Content-Type: application/json" \
+            --data '{"code":"000000"}')"
+          test "$PAIR_STATUS" = "401" || { echo "::error::Expected invalid pair code to return 401, got $PAIR_STATUS"; cat "$PAIR_BODY"; exit 1; }
+          grep -qi '^access-control-allow-origin: https://vudh1.github.io' "$PAIR_HEADERS" || { echo "::error::Pairing response is missing expected CORS origin"; cat "$PAIR_HEADERS"; exit 1; }
+          node -e 'const fs=require("fs");const x=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));if(x.ok!==false||!x.error)process.exit(1)' "$PAIR_BODY"
+          rm -f "$PAIR_HEADERS" "$PAIR_BODY"
+          echo "Owner-pairing error response verified."
+
       - name: Ensure primary GitHub schedules stay enabled
         env:
           CRON_JOB_ORG_API_KEY: ${{ secrets.CRON_JOB_ORG_API_KEY }}
