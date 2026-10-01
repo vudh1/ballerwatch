@@ -1,10 +1,11 @@
 /**
  * Implements the GitHub-hosted Telegram fallback bot, state-changing commands, and deterministic replies.
  *
- * Documentation baseline: v2.3.0. Runtime/private data must never be committed to Git.
+ * Documentation baseline: v2.4.0. Runtime/private data must never be committed to Git.
  */
 import { recordUnknownQuestion, refreshPublicRequests } from "../shared/feature-requests.mjs";
 import { answerUnknownWithAi } from "../shared/ai-fallback.mjs";
+import { recordChatExchange } from "../shared/chat-history.mjs";
 import fs from "node:fs";
 import { getTelegramUpdates, isOwnerChat, sendTelegram, sendTyping } from "../shared/telegram.mjs";
 import { loadBotState, saveBotState } from "../shared/bot-state.mjs";
@@ -1218,18 +1219,9 @@ async function handleMessage(text, settings) {
     return { settings, reply: ai.decision.reply };
   }
 
-  const requestId = recordUnknownQuestion(clean, "requests", {
-    ...(ai.decision?.action === "feature_request" ? {
-      source: "ai_feature_request",
-      aiCategory: ai.decision.category,
-      aiReason: ai.decision.reason,
-    } : {}),
-  });
   return {
     settings,
-    reply: requestId
-      ? `I couldn't answer that reliably yet. I saved your request privately as ${requestId} for the next feature cycle.`
-      : "I couldn't answer that reliably yet.",
+    reply: "I could not answer that reliably yet. I saved this conversation for the next review.",
   };
 }
 
@@ -1289,13 +1281,13 @@ async function main() {
     if (isThumbsDownFeedback(message.text) && repliedToId) {
       const remembered = findRememberedReply(settings, repliedToId);
       if (remembered) {
-        const requestId = recordUnknownQuestion(remembered.question, "requests", {
-          source: "thumbs_down",
-          rejectedAnswer: remembered.reply,
+        const feedbackReply = "Got it — I saved that answer as negative feedback for the next review.";
+        await recordChatExchange({
+          question: remembered.question,
+          reply: remembered.reply,
+          hint: "negative_feedback",
+          source: "telegram-feedback",
         });
-        const feedbackReply = requestId
-          ? `Got it — I saved that answer as incorrect and queued ${requestId} for the next feature cycle.`
-          : "I couldn't save that feedback.";
         const sent = await sendTelegram(feedbackReply);
         settings = rememberBotReply(settings, message.text, feedbackReply, sent?.message_id);
         continue;
@@ -1309,12 +1301,33 @@ async function main() {
     if (result.reply) {
       const sent = await sendTelegram(result.reply);
       settings = rememberBotReply(settings, message.text, result.reply, sent?.message_id);
+      await recordChatExchange({
+        question: message.text,
+        reply: result.reply,
+        source: "github-listener",
+      });
     }
   }
 
   const today = localToday();
   settings.mutedDates = settings.mutedDates.filter((date) => date >= today);
   settings = cleanSnoozes(settings);
+
+  const historyEventB64 = String(process.env.CHAT_HISTORY_EVENT_B64 || "").trim();
+  if (historyEventB64) {
+    const event = JSON.parse(Buffer.from(historyEventB64, "base64").toString("utf8"));
+    await recordChatExchange({
+      question: event.question,
+      reply: event.reply,
+      hint: event.hint || "",
+      source: "cloudflare-fast-path",
+    });
+    settings = rememberBotReply(settings, event.question, event.reply, event.messageId);
+    if (event.lastDate) settings.lastReferencedDate = String(event.lastDate);
+    saveBotState(state.lastUpdateId || 0, settings);
+    console.log("Recorded Cloudflare fast-path chat history.");
+    return;
+  }
 
   saveBotState(lastUpdateId, settings);
   console.log(`Processed ${updates.length} Telegram update(s).`);
