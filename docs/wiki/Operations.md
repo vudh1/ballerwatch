@@ -52,3 +52,11 @@ Pickup and league fallback runs are health-gated to avoid duplicate source work 
 ## GitHub Wiki publishing
 
 The canonical pages live in `docs/wiki/`. GitHub's normal Actions token cannot initialize the separate `.wiki.git` repository. To mirror these pages into the GitHub Wiki UI, add a repository secret named `WIKI_TOKEN` with repository write access and run **Publish wiki** once. Future main changes to `docs/wiki/` sync automatically.
+
+## Calendar target pairing
+
+The Apps Script bridge does not assume its script owner's default Calendar is the desired BallerWatch Calendar.
+
+Pairing uses a temporary non-sensitive marker event on the intended Calendar. The bridge searches calendars visible to the Apps Script account for exactly one marker, stores only that Calendar ID in private Script Properties, removes the marker, and then uses the paired Calendar for sync and purge operations.
+
+No Calendar ID/email is committed or logged. Normal Calendar mutation fails closed if no target is paired.
