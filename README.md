@@ -269,11 +269,13 @@ The next watcher runs rebuild current source state and built-in defaults.
 | **Telegram listener** | Handle state-changing or unsupported Telegram commands |
 | **System watchdog** | Validate service/scheduler health |
 | **Deploy Telegram webhook** | Deploy the webhook-only Cloudflare Worker |
+| **Deploy Calendar bridge** | Deploy and verify the Apps Script Calendar bridge |
 | **Validate code** | Style, syntax, tests, privacy audit |
 | **Manual smoke test** | Notification-silent live-source verification |
 | **Purge current data** | Factory-reset generated runtime state |
 | **Configure external cron** | Create/repair the 2/5/10-minute cron-job.org schedules |
 | **Publish wiki** | Mirror `docs/wiki/` into the GitHub Wiki when configured |
+| **Cleanup merged release branches** | Remove stale `release/*` and `fix/*` branches |
 
 ## Required secrets
 
@@ -323,6 +325,8 @@ Read these before making changes:
 - `docs/wiki/`
 
 Normal releases use `release/<version>`, run validation and the notification-silent smoke test, then squash merge to `main`.
+
+All test-only code lives under `tests/`, mirroring the source areas. Production folders should contain runtime code only.
 
 Do not send Telegram messages from tests.
 
