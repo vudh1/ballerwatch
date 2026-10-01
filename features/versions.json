@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "2.3.1",
+  "currentVersion": "2.4.0",
   "releases": [
+    {
+      "version": "2.4.0",
+      "date": "2026-10-01",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "KV-free runtime and 48-hour chat review",
+      "changes": [
+        "Removed Workers KV and Cloudflare Cron Triggers from the production runtime to eliminate the daily KV request-limit risk; Cloudflare now hosts only the Telegram webhook and read-only fast path with short-lived Cache API use.",
+        "Made cron-job.org the primary 2/5/10-minute scheduler and moved durable generated state to a dedicated runtime-state Git branch, with private runtime payloads remaining AES-GCM encrypted and main staying release-oriented.",
+        "Added one-time migration from the existing Cloudflare KV runtime into the runtime-state branch before the KV binding is removed, while retaining encrypted GitHub Actions cache as a recovery source.",
+        "Replaced automatic feature-request creation for unanswered questions and thumbs-down feedback with a 48-hour Groq-condensed encrypted Telegram history and privacy-minimized bug/feature/negative-feedback review signals.",
+        "Kept the Telegram fast path lightweight by persisting condensed history asynchronously to the runtime-state branch after the reply, using the GitHub listener only as a persistence fallback."
+      ]
+    },
     {
       "version": "2.3.1",
       "date": "2026-10-01",
