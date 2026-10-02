@@ -106,14 +106,15 @@ The v3 PWA is published at:
 It provides:
 
 - an installable Home Screen app shell with a translucent Liquid Glass-inspired dashboard;
-- a redesigned match dashboard with a next-game spotlight, Google Maps directions, and native share;
+- a redesigned match dashboard with a next-game spotlight, Google Maps directions, and Tesla-focused destination sharing;
 - a compact 14-day game calendar for pickup and monitored RATS teams;
 - match-window weather showing condition, temperature, and the maximum rain probability during the scheduled game window;
-- a recent notification panel behind the top-right bell;
+- a compact notification inbox behind the top-right bell with unread counts, full-screen reading, and per-device swipe-to-delete;
 - one-question/one-answer Q&A with slash commands and Google-style full-sentence autocomplete; paired-owner questions join the same privacy-minimized 48-hour review history while anonymous web questions are not retained;
 - owner-paired long-press feedback on an answer to mark it wrong for the next engineering review;
-- Web Push controls inside the notification bell for pickup, real RATS schedule-change, and version notifications;
+- a compact Web Push On/Off control beside notification Refresh for pickup, real RATS schedule-change, and version notifications;
 - a manual local notification test for confirming iPhone notification display while the app is closed.
+- a Telegram footer shortcut beside GitHub and Wiki.
 
 On iPhone, open the site in Safari, choose **Share → Add to Home Screen**, open the installed BallerWatch app, then use the notification bell to turn Push notifications on.
 
