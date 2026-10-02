@@ -2,11 +2,11 @@
  * BallerWatch PWA client: renders the dashboard, read-only Q&A, notifications,
  * user Settings, connected-card navigation, and installed-app update behavior.
  *
- * v5.8 keeps legacy `owner-*` DOM IDs and the existing localStorage token key
- * so already-installed 5.7 clients stay signed in; current UI copy and API calls
- * use user terminology.
+ * v6.0 is web-only. Legacy `owner-*` DOM IDs and the existing localStorage
+ * token key remain for installed-client compatibility, while authentication,
+ * recovery, settings, Q&A, and notifications are all web-native.
  */
-const API = "https://ballerwatch-telegram.vudhone.workers.dev";
+const API = "https://ballerwatch-web.vudhone.workers.dev";
 
 const els = {
   system: document.querySelector("#system-status"),
@@ -18,14 +18,11 @@ const els = {
   settingsButton: document.querySelector("#settings-button"),
   settingsDialog: document.querySelector("#settings-dialog"),
   closeSettings: document.querySelector("#close-settings"),
-  settingsPairView: document.querySelector("#settings-pair-view"),
+  settingsLoginView: document.querySelector("#settings-login-view"),
   settingsOwnerView: document.querySelector("#settings-owner-view"),
   ownerLoginForm: document.querySelector("#owner-login-form"),
   ownerLoginPassword: document.querySelector("#owner-login-password"),
   ownerLoginStatus: document.querySelector("#owner-login-status"),
-  ownerPairForm: document.querySelector("#owner-pair-form"),
-  ownerPairCode: document.querySelector("#owner-pair-code"),
-  ownerPairStatus: document.querySelector("#owner-pair-status"),
   ownerSettingsForm: document.querySelector("#owner-settings-form"),
   ownerName: document.querySelector("#owner-name"),
   ownerTeams: document.querySelector("#owner-teams"),
@@ -317,26 +314,25 @@ async function api(path, options = {}) {
   return payload;
 }
 
-function showPairSettings(message = "") {
-  els.settingsPairView.hidden = false;
+function showLoginSettings(message = "") {
+  els.settingsLoginView.hidden = false;
   els.settingsOwnerView.hidden = true;
   els.ownerLoginStatus.textContent = message;
-  els.ownerPairStatus.textContent = "";
 }
 
 function showOwnerSettings(settings) {
-  els.settingsPairView.hidden = true;
+  els.settingsLoginView.hidden = true;
   els.settingsOwnerView.hidden = false;
   els.ownerName.value = settings?.ownerName || "";
   els.ownerTeams.value = Array.isArray(settings?.teams) ? settings.teams.join("\n") : "";
   els.ownerPasswordStatus.textContent = settings?.passwordConfigured
     ? "User password is set. New devices can sign in directly."
-    : "Set a user password so new devices can sign in without /webpair.";
+    : "No user password is configured. Use the GitHub password recovery workflow to bootstrap access.";
 }
 
 async function loadOwnerSettings() {
   if (!ownerToken()) {
-    showPairSettings();
+    showLoginSettings();
     return;
   }
 
@@ -350,7 +346,7 @@ async function loadOwnerSettings() {
   } catch (error) {
     if (error.status === 401) {
       localStorage.removeItem(OWNER_TOKEN_KEY);
-      showPairSettings("Sign in again to edit user settings.");
+      showLoginSettings("Sign in again to edit user settings.");
       return;
     }
     showOwnerSettings({});
@@ -384,31 +380,6 @@ async function loginOwnerDevice(event) {
   }
 }
 
-async function pairOwnerDevice(event) {
-  event.preventDefault();
-  const code = els.ownerPairCode.value.trim();
-  const button = els.ownerPairForm.querySelector("button");
-  button.disabled = true;
-  els.ownerPairStatus.textContent = "Pairing…";
-  try {
-    const payload = await api("/web/user/pair", {
-      method: "POST",
-      body: JSON.stringify({ code }),
-    });
-    localStorage.setItem(OWNER_TOKEN_KEY, payload.token);
-    els.ownerPairCode.value = "";
-    await loadOwnerSettings();
-    if (!payload.passwordConfigured) {
-      els.ownerPasswordStatus.textContent =
-        "Paired. Set a user password below so future devices can sign in directly.";
-    }
-  } catch (error) {
-    els.ownerPairStatus.textContent = error.message;
-  } finally {
-    button.disabled = false;
-  }
-}
-
 async function saveOwnerSettings(event) {
   event.preventDefault();
   const button = els.ownerSettingsForm.querySelector("button");
@@ -433,7 +404,7 @@ async function saveOwnerSettings(event) {
   } catch (error) {
     if (error.status === 401) {
       localStorage.removeItem(OWNER_TOKEN_KEY);
-      showPairSettings("Sign in again to edit user settings.");
+      showLoginSettings("Sign in again to edit user settings.");
     } else {
       els.ownerSettingsStatus.textContent = error.message;
     }
@@ -469,7 +440,7 @@ async function saveOwnerPassword(event) {
   } catch (error) {
     if (error.status === 401) {
       localStorage.removeItem(OWNER_TOKEN_KEY);
-      showPairSettings("Sign in again to change the user password.");
+      showLoginSettings("Sign in again to change the user password.");
     } else {
       els.ownerPasswordStatus.textContent = error.message;
     }
@@ -480,7 +451,7 @@ async function saveOwnerPassword(event) {
 
 function disconnectOwnerDevice() {
   localStorage.removeItem(OWNER_TOKEN_KEY);
-  showPairSettings("This device is signed out of private settings.");
+  showLoginSettings("This device is signed out of private settings.");
 }
 
 async function revokeOwnerDevices() {
@@ -493,11 +464,11 @@ async function revokeOwnerDevices() {
       body: "{}",
     });
     localStorage.removeItem(OWNER_TOKEN_KEY);
-    showPairSettings("All signed-in devices were revoked. Sign in again when needed.");
+    showLoginSettings("All signed-in devices were revoked. Sign in again when needed.");
   } catch (error) {
     if (error.status === 401) {
       localStorage.removeItem(OWNER_TOKEN_KEY);
-      showPairSettings("This sign-in has expired. Sign in again.");
+      showLoginSettings("This sign-in has expired. Sign in again.");
     } else {
       els.ownerSettingsStatus.textContent = error.message;
     }
@@ -529,7 +500,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=5.8.2", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=6.0.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -1812,7 +1783,6 @@ els.notificationBell.addEventListener("click", openNotifications);
 els.settingsButton.addEventListener("click", openSettings);
 els.closeSettings.addEventListener("click", () => els.settingsDialog.close());
 els.ownerLoginForm.addEventListener("submit", loginOwnerDevice);
-els.ownerPairForm.addEventListener("submit", pairOwnerDevice);
 els.ownerSettingsForm.addEventListener("submit", saveOwnerSettings);
 els.ownerPasswordForm.addEventListener("submit", saveOwnerPassword);
 els.ownerDisconnect.addEventListener("click", disconnectOwnerDevice);
