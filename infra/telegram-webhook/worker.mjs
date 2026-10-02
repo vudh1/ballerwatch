@@ -1569,14 +1569,19 @@ async function fastReply(env, message) {
 }
 
 
-function webCorsHeaders(request) {
+function webRequestOriginAllowed(request) {
   const origin = request.headers.get("origin") || "";
-  const allowed =
+  return (
     origin === "https://vudh1.github.io" ||
     origin === "http://localhost" ||
-    origin.startsWith("http://localhost:");
+    origin.startsWith("http://localhost:")
+  );
+}
+
+function webCorsHeaders(request) {
+  const origin = request.headers.get("origin") || "";
   return {
-    "access-control-allow-origin": allowed ? origin : "https://vudh1.github.io",
+    ...(webRequestOriginAllowed(request) ? { "access-control-allow-origin": origin } : {}),
     "access-control-allow-methods": "GET,POST,OPTIONS",
     "access-control-allow-headers": "content-type, authorization",
     "access-control-max-age": "86400",
@@ -1584,9 +1589,25 @@ function webCorsHeaders(request) {
   };
 }
 
+function webSecurityHeaders() {
+  return {
+    "content-security-policy":
+      "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY",
+    "referrer-policy": "no-referrer",
+    "permissions-policy":
+      "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()",
+  };
+}
+
+function webResponseHeaders(request) {
+  return { ...webCorsHeaders(request), ...webSecurityHeaders() };
+}
+
 function webJson(request, value, init = {}) {
   const headers = new Headers(init.headers || {});
-  for (const [key, val] of Object.entries(webCorsHeaders(request))) headers.set(key, val);
+  for (const [key, val] of Object.entries(webResponseHeaders(request))) headers.set(key, val);
   headers.set("content-type", "application/json; charset=utf-8");
   headers.set("cache-control", "no-store");
   return new Response(JSON.stringify(value), { ...init, headers });
@@ -2184,7 +2205,7 @@ export default {
       }
     }
     if (request.method === "OPTIONS" && url.pathname.startsWith("/web/")) {
-      return new Response(null, { status: 204, headers: webCorsHeaders(request) });
+      return new Response(null, { status: 204, headers: webResponseHeaders(request) });
     }
     if (request.method === "GET" && url.pathname === "/web/config") {
       try {
