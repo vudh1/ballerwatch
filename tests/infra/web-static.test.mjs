@@ -146,21 +146,35 @@ test("app-facing copy mentions Telegram only for the explicit footer shortcut", 
 });
 
 
-test("owner settings use a paired gear surface and paired Q&A auth", () => {
+test("owner settings support app-native password sign-in with pairing as recovery", () => {
   const html = fs.readFileSync("docs/index.html", "utf8");
   const app = fs.readFileSync("docs/app.js", "utf8");
   const worker = fs.readFileSync("infra/telegram-webhook/worker.mjs", "utf8");
   const listener = fs.readFileSync("listener/bot.mjs", "utf8");
+
   assert.match(html, /id="settings-button"/);
   assert.match(html, /id="settings-dialog"/);
+  assert.match(html, /id="owner-login-form"/);
+  assert.match(html, /id="owner-login-password"/);
+  assert.match(html, /id="owner-password-form"/);
+  assert.match(html, /Use a pairing code instead/);
   assert.match(html, /id="owner-pair-form"/);
   assert.match(html, /id="owner-name"/);
   assert.match(html, /id="owner-teams"/);
+
   assert.match(app, /ballerwatch-owner-token/);
+  assert.match(app, /\/web\/owner\/login/);
+  assert.match(app, /\/web\/owner\/password/);
   assert.match(app, /\/web\/owner\/pair/);
   assert.match(app, /\/web\/owner\/settings/);
-  assert.match(app, /headers: ownerHeaders\(\)/);
+  assert.match(app, /ownerLoginForm\.addEventListener\("submit", loginOwnerDevice\)/);
+  assert.match(app, /ownerPasswordForm\.addEventListener\("submit", saveOwnerPassword\)/);
+  assert.match(worker, /export async function createOwnerPasswordRecord/);
+  assert.match(worker, /export async function verifyOwnerPassword/);
+  assert.match(worker, /url\.pathname === "\/web\/owner\/login"/);
+  assert.match(worker, /url\.pathname === "\/web\/owner\/password"/);
   assert.match(worker, /source: "web-pwa-owner"/);
+
   assert.match(listener, /\/\?webpair/);
   assert.match(listener, /webPairCodeHash/);
 });
@@ -238,7 +252,8 @@ test("owner pairing code can authorize multiple devices until expiry", () => {
   assert.ok(pairFunction);
   assert.doesNotMatch(pairFunction[0], /dispatchWorkflow\(env, "listener\.yml"/);
   assert.doesNotMatch(pairFunction[0], /action: "consume-pair-code"/);
-  assert.match(pairFunction[0], /return issueOwnerToken\(env\)/);
+  assert.match(pairFunction[0], /issueOwnerToken\(env\)/);
+  assert.match(pairFunction[0], /passwordConfigured/);
 
   assert.match(html, /multiple devices during its 10-minute window/);
   assert.match(listener, /same code in BallerWatch Settings on multiple devices before it expires/);
@@ -286,9 +301,11 @@ test("cron-job.org is reserved for pickup and league while watchdog is retired",
 });
 
 
-test("weather release bootstrap stays notification-silent", () => {
+test("weather release bootstrap stays notification-silent and release-gated", () => {
   const workflow = fs.readFileSync(".github/workflows/weather-refresh.yml", "utf8");
-  assert.match(workflow, /push:[\s\S]*weather\/\*\*/);
+  assert.match(workflow, /release:\s*\n\s*types:\s*\[published\]/);
+  assert.doesNotMatch(workflow, /push:\s*\n\s*branches:\s*\[main\]/);
+  assert.match(workflow, /github\.event\.release\.tag_name/);
   assert.match(workflow, /node weather\/update\.mjs/);
   assert.match(workflow, /node shared\/runtime-state\.mjs push weather/);
   assert.doesNotMatch(workflow, /send-pending|sendMessage|telegram-notify|shared\/telegram/i);
@@ -506,6 +523,8 @@ test("match spotlight swipe uses connected neighboring cards like a carousel tra
   const css = fs.readFileSync("docs/styles.css", "utf8");
 
   assert.match(html, /id="spotlight-carousel"/);
+  assert.match(html, /id="spotlight-previous"/);
+  assert.match(html, /id="spotlight-next"/);
   assert.match(html, /class="spotlight-content"/);
   assert.match(app, /function spotlightModel/);
   assert.match(app, /function buildSpotlightTrainCard/);
@@ -542,6 +561,12 @@ test("match spotlight swipe uses connected neighboring cards like a carousel tra
   assert.match(css, /\.spotlight-card\.is-train-settling/);
   assert.match(css, /transition:\s*transform 260ms/);
   assert.match(css, /html\.spotlight-swipe-active[\s\S]*overscroll-behavior-x:\s*none;/);
+  assert.match(app, /function syncSpotlightEdgeControls/);
+  assert.match(app, /spotlightPrevious\.addEventListener\("click"/);
+  assert.match(app, /spotlightNext\.addEventListener\("click"/);
+  assert.match(app, /window\.requestAnimationFrame\(completeTrain\)/);
+  assert.match(css, /@media \(hover: hover\) and \(pointer: fine\)/);
+  assert.match(css, /\.spotlight-edge-control:not\(:disabled\):hover span/);
 });
 
 
@@ -563,4 +588,34 @@ test("v5.5 dashboard matches the iPhone-first demo direction", () => {
   assert.match(css, /\.calendar-day\[aria-selected="true"\]/);
   assert.match(css, /\.notification-dialog \{[\s\S]*position:\s*fixed;/);
   assert.match(css, /\.ask-card h2::before/);
+});
+
+
+test("production rollout is gated by GitHub Releases instead of main pushes", () => {
+  const pages = fs.readFileSync(".github/workflows/pages.yml", "utf8");
+  const worker = fs.readFileSync(".github/workflows/deploy-telegram-webhook.yml", "utf8");
+  const webRuntime = fs.readFileSync(".github/workflows/web-app.yml", "utf8");
+  const calendarBridge = fs.readFileSync(".github/workflows/deploy-apps-script.yml", "utf8");
+  const promote = fs.readFileSync(".github/workflows/promote-release.yml", "utf8");
+  const pickup = fs.readFileSync(".github/workflows/pickup.yml", "utf8");
+  const league = fs.readFileSync(".github/workflows/league.yml", "utf8");
+  const listener = fs.readFileSync(".github/workflows/listener.yml", "utf8");
+  const watchdog = fs.readFileSync(".github/workflows/watchdog.yml", "utf8");
+  const schedules = fs.readFileSync("infra/external-schedules.mjs", "utf8");
+
+  for (const workflow of [pages, worker, webRuntime, calendarBridge]) {
+    assert.match(workflow, /release:\s*\n\s*types:\s*\[published\]/);
+    assert.doesNotMatch(workflow, /push:\s*\n\s*branches:\s*\[main\]/);
+  }
+
+  assert.match(promote, /cron:\s*"37 17 \* \* \*"/);
+  assert.match(promote, /86400/);
+  assert.match(promote, /gh release create/);
+  assert.match(promote, /git\/refs\/heads\/production/);
+  assert.match(promote, /CRON_GITHUB_PAT/);
+
+  for (const workflow of [pickup, league, listener, watchdog]) {
+    assert.match(workflow, /ref:\s*production/);
+  }
+  assert.match(schedules, /BALLERWATCH_BRANCH \|\| "production"/);
 });
