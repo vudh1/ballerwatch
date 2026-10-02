@@ -630,6 +630,7 @@ test("production rollout is gated by GitHub Releases instead of main pushes", ()
   }
   assert.match(pages, /workflow_dispatch:/);
   assert.match(pages, /ref:\s*production/);
+  assert.doesNotMatch(pages, /push:\s*\n\s*branches:\s*\[main\]/);
 
   assert.match(promote, /cron:\s*"37 \* \* \* \*"/);
   assert.match(promote, /86400/);
