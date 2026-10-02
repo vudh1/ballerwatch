@@ -45,13 +45,13 @@ The hourly **Promote production release** workflow:
 5. advances `production` to that exact commit;
 6. Worker/Calendar/weather/web-runtime and Pages release listeners deploy the tagged version; Pages always checks out `production`, and its workflow can re-enable the Pages site if repository Pages activation is missing.
 
-A manual run skips the soak but still requires validation.
+A manual run skips the soak but still requires validation. Worker deployment is not considered healthy until the deployed runtime passes notification-silent readiness checks for health/config plus the runtime-backed next-game and calendar APIs.
 
 If a GitHub Release for the current version already exists, promotion is a no-op. This lets maintenance commits merge later without redeploying or inventing a version.
 
 ## Release credential
 
-Use `RELEASE_GITHUB_TOKEN` as a fine-grained repository token scoped only to this repository with **Contents: read/write**, **Workflows: read/write**, **Pages: read/write**, and **Administration: read/write**. GitHub requires workflow-write authorization when a release target modifies `.github/workflows/`; Pages + Administration write are required only so the Pages workflow can recreate/enable the Pages site if its repository-level activation is missing. Scheduler dispatches continue to use `CRON_GITHUB_PAT` separately.
+Use `RELEASE_GITHUB_TOKEN` as a fine-grained repository token scoped only to this repository with **Contents: read/write**, **Workflows: read/write**, **Pages: read/write**, and **Administration: read/write**. Contents access is also installed into the Worker as `GITHUB_CONTENTS_TOKEN` for encrypted `runtime-state` reads/writes. GitHub requires workflow-write authorization when a release target modifies `.github/workflows/`; Pages + Administration write are required only so the Pages workflow can recreate/enable the Pages site if its repository-level activation is missing. Scheduler dispatches continue to use `CRON_GITHUB_PAT` separately and must not be used as the PWA content credential.
 
 If neither credential can create the Release, promotion fails closed and `production` stays pinned.
 
