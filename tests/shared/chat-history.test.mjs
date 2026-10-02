@@ -7,7 +7,7 @@ import path from "node:path";
 import { recordChatExchange } from "../../shared/chat-history.mjs";
 import { decryptState } from "../../shared/state-crypto.mjs";
 
-test("encrypted chat history keeps the original question and answer while review stays sanitized", async (t) => {
+test("chat history and sanitized review projection are both encrypted at rest", async (t) => {
   const cwd = process.cwd();
   const oldKey = process.env.TRACKER_STATE_KEY;
   const oldGroq = process.env.GROQ_API_KEY;
@@ -46,8 +46,11 @@ test("encrypted chat history keeps the original question and answer while review
   assert.equal(decrypted.entries[0].kind, "negative_feedback");
 
   const reviewText = fs.readFileSync("state/chat-review.json", "utf8");
-  assert.doesNotMatch(reviewText, /Thursday pickup|Washington Park Soccer/);
-  const review = JSON.parse(reviewText);
+  assert.doesNotMatch(
+    reviewText,
+    /Thursday pickup|Washington Park Soccer|negative_feedback|signals/,
+  );
+  const review = decryptState(JSON.parse(reviewText));
   assert.equal(review.signals.length, 1);
   assert.equal(review.signals[0].kind, "negative_feedback");
 });
