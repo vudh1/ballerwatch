@@ -611,21 +611,61 @@ async function ownerSettingsRecord(env) {
   };
 }
 
-async function pairOwnerDevice(env, code) {
-  const normalized = cleanText(code, 12);
-  if (!/^\d{6}$/.test(normalized)) return null;
-  const { settings } = await ownerSettingsRecord(env);
-  const expiresAt = Date.parse(String(settings.webPairExpiresAt || ""));
-  if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) return null;
-  const expected = cleanText(settings.webPairCodeHash, 128);
-  if (!expected || expected !== await sha256Hex(normalized)) return null;
+export function normalizeWebPairCode(value) {
+  return String(value || "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 24);
+}
 
-  // Keep the temporary code valid until its existing expiry so the user can
-  // authorize more than one device without requesting a fresh code per device.
-  return {
-    ...(await issueOwnerToken(env)),
-    passwordConfigured: Boolean(settings.webOwnerPassword?.digest),
-  };
+async function currentOwnerAuthVersion(env) {
+  const record = await githubStateRecord(env, "state/listener.json");
+  const current = await listenerStateDocument(env, record.value);
+  return ownerAuthVersion(current.settings);
+}
+
+async function verifyOwnerCapability(env, token) {
+  return verifyOwnerToken(env, token, await currentOwnerAuthVersion(env));
+}
+
+async function pairOwnerDevice(env, code) {
+  const normalized = normalizeWebPairCode(code);
+  if (!/^[A-HJ-NP-Z2-9]{12}$/.test(normalized)) return null;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const record = await githubStateRecord(env, "state/listener.json");
+      const current = await listenerStateDocument(env, record.value);
+      const settings = current.settings;
+      const expiresAt = Date.parse(String(settings.webPairExpiresAt || ""));
+      if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) return null;
+      const expected = cleanText(settings.webPairCodeHash, 128);
+      if (!expected || expected !== await sha256Hex(normalized)) return null;
+
+      const nextSettings = { ...settings };
+      delete nextSettings.webPairCodeHash;
+      delete nextSettings.webPairExpiresAt;
+      nextSettings.webPairConsumedAt = new Date().toISOString();
+
+      await githubStatePut(
+        env,
+        "state/listener.json",
+        await encryptState({
+          lastUpdateId: current.lastUpdateId,
+          settings: nextSettings,
+        }, env),
+        record.sha,
+        "runtime(user): consume single-use web pairing code",
+      );
+      return {
+        ...(await issueOwnerToken(env, ownerAuthVersion(nextSettings))),
+        passwordConfigured: Boolean(nextSettings.webOwnerPassword?.digest),
+      };
+    } catch (error) {
+      if (attempt === 2) throw error;
+    }
+  }
+  return null;
 }
 
 async function ownerSettingsView(env) {
@@ -637,17 +677,20 @@ async function ownerSettingsView(env) {
   };
 }
 
-async function saveOwnerPassword(env, value) {
+async function saveOwnerPassword(env, value, { rotateAuth = true } = {}) {
   const passwordRecord = await createOwnerPasswordRecord(env, value);
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       const record = await githubStateRecord(env, "state/listener.json");
       const current = await listenerStateDocument(env, record.value);
+      const previousVersion = ownerAuthVersion(current.settings);
+      const authVersion = rotateAuth ? previousVersion + 1 : previousVersion;
       const next = {
         lastUpdateId: current.lastUpdateId,
         settings: {
           ...current.settings,
           webOwnerPassword: passwordRecord,
+          webAuthVersion: authVersion,
         },
       };
       await githubStatePut(
@@ -655,22 +698,56 @@ async function saveOwnerPassword(env, value) {
         "state/listener.json",
         await encryptState(next, env),
         record.sha,
-        "runtime(user): update web user password",
+        "runtime(user): update web user password and auth revision",
       );
-      return passwordRecord;
+      return { passwordRecord, authVersion };
     } catch (error) {
-      if (attempt === 1) throw error;
+      if (attempt === 2) throw error;
     }
   }
   throw new Error("Unable to update user password.");
 }
 
+async function rotateOwnerAuthVersion(env) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const record = await githubStateRecord(env, "state/listener.json");
+      const current = await listenerStateDocument(env, record.value);
+      const authVersion = ownerAuthVersion(current.settings) + 1;
+      await githubStatePut(
+        env,
+        "state/listener.json",
+        await encryptState({
+          lastUpdateId: current.lastUpdateId,
+          settings: {
+            ...current.settings,
+            webAuthVersion: authVersion,
+          },
+        }, env),
+        record.sha,
+        "runtime(user): revoke web user sessions",
+      );
+      return authVersion;
+    } catch (error) {
+      if (attempt === 2) throw error;
+    }
+  }
+  throw new Error("Unable to revoke user sessions.");
+}
+
 async function loginOwnerDevice(env, password) {
+  const normalizedPassword = String(password ?? "");
   const { settings } = await ownerSettingsRecord(env);
-  if (!(await verifyOwnerPassword(env, String(password ?? ""), settings.webOwnerPassword))) {
+  if (!(await verifyOwnerPassword(env, normalizedPassword, settings.webOwnerPassword))) {
     return null;
   }
-  return issueOwnerToken(env);
+
+  let authVersion = ownerAuthVersion(settings);
+  if (settings.webOwnerPassword?.v !== 2) {
+    const migrated = await saveOwnerPassword(env, normalizedPassword, { rotateAuth: false });
+    authVersion = migrated.authVersion;
+  }
+  return issueOwnerToken(env, authVersion);
 }
 
 export function normalizeOwnerSettingsInput(body) {
