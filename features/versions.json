@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "5.8.0",
+  "currentVersion": "5.8.1",
   "releases": [
+    {
+      "version": "5.8.1",
+      "date": "2026-10-03",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Runtime-state recovery and trustworthy live health",
+      "telegramAnnouncement": "BallerWatch 5.8.1 restores web game/calendar data and makes the Live indicator reflect real runtime readiness.",
+      "changes": [
+        "Separated GitHub runtime-state content access from workflow dispatch credentials so the Worker uses the dedicated release/content token for encrypted state reads and writes instead of the scheduler dispatch token.",
+        "Changed Worker health and web config readiness to fail when encrypted runtime-state cannot be loaded, rather than reporting a healthy shell while game data is unavailable.",
+        "Changed the web app Live indicator to require successful runtime-backed calendar and notification-board reads; failed data loads now remain visibly Offline.",
+        "Expanded Worker deployment smoke tests to verify the dedicated content credential plus live /health, /web/config, /web/next-game, /web/calendar, and expected PWA CORS behavior before a deployment is considered healthy.",
+        "Added regression coverage for credential separation, runtime-backed readiness, and truthful client health status."
+      ]
+    },
     {
       "version": "5.8.0",
       "date": "2026-10-03",
