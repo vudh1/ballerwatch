@@ -992,18 +992,16 @@ function installSpotlightSwipe() {
   };
 
   const settleBack = () => {
-    if (!train?.preview) {
-      resetGesture();
-      return;
-    }
-
     settling = true;
     current.classList.remove("is-train-dragging");
-    train.preview.classList.remove("is-train-dragging");
     current.classList.add("is-train-settling");
-    train.preview.classList.add("is-train-settling");
     current.style.transform = "translate3d(0, 0, 0)";
-    train.preview.style.transform = `translate3d(${train.baseOffset}px, 0, 0)`;
+
+    if (train?.preview) {
+      train.preview.classList.remove("is-train-dragging");
+      train.preview.classList.add("is-train-settling");
+      train.preview.style.transform = `translate3d(${train.baseOffset}px, 0, 0)`;
+    }
 
     window.setTimeout(resetGesture, 270);
   };
