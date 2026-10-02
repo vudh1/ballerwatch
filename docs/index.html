@@ -199,7 +199,7 @@
       <div class="section-heading">
         <div>
           <p class="eyebrow">SETTINGS</p>
-          <h2>Owner settings</h2>
+          <h2>User settings</h2>
         </div>
         <button class="icon-button" id="close-settings" type="button" aria-label="Close settings">×</button>
       </div>
@@ -207,9 +207,9 @@
       <section id="settings-pair-view">
         <p class="muted">Sign in to manage your private BallerWatch settings on this device.</p>
         <form id="owner-login-form" class="settings-form">
-          <label for="owner-login-password">Owner password</label>
+          <label for="owner-login-password">User password</label>
           <input id="owner-login-password" type="password" autocomplete="current-password"
-            maxlength="200" placeholder="Owner password" required>
+            maxlength="200" placeholder="User password" required>
           <button type="submit">Sign in</button>
         </form>
         <p class="hint" id="owner-login-status"></p>
@@ -218,7 +218,7 @@
           <summary>Use a pairing code instead</summary>
           <p class="hint">Pairing is only needed for first-time setup or recovery. One /webpair code can authorize multiple devices during its 10-minute window.</p>
           <form id="owner-pair-form" class="settings-form">
-            <label for="owner-pair-code">Owner pairing code</label>
+            <label for="owner-pair-code">User pairing code</label>
             <input id="owner-pair-code" inputmode="numeric" autocomplete="one-time-code"
               maxlength="6" pattern="[0-9]{6}" placeholder="6-digit code" required>
             <button type="submit">Pair device</button>
@@ -244,12 +244,12 @@
 
         <div class="settings-divider"></div>
         <form id="owner-password-form" class="settings-form">
-          <label for="owner-password-new">Owner sign-in password</label>
+          <label for="owner-password-new">User sign-in password</label>
           <input id="owner-password-new" type="password" autocomplete="new-password"
             minlength="12" maxlength="200" placeholder="At least 12 characters" required>
           <label for="owner-password-confirm">Confirm password</label>
           <input id="owner-password-confirm" type="password" autocomplete="new-password"
-            minlength="12" maxlength="200" placeholder="Repeat owner password" required>
+            minlength="12" maxlength="200" placeholder="Repeat user password" required>
           <button type="submit">Set or change password</button>
         </form>
         <p class="hint" id="owner-password-status"></p>
