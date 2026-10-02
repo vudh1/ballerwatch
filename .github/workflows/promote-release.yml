@@ -4,14 +4,10 @@ on:
   schedule:
     - cron: "37 * * * *"
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/promote-release.yml"
 
 permissions:
   contents: write
-  actions: write
+  actions: read
 
 concurrency:
   group: ballerwatch-production-promotion
@@ -30,20 +26,15 @@ jobs:
       - name: Resolve release candidate
         id: candidate
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.CRON_GITHUB_PAT }}
           EVENT_NAME: ${{ github.event_name }}
         shell: bash
         run: |
           set -euo pipefail
+          test -n "$GH_TOKEN" || { echo "::error::CRON_GITHUB_PAT is required to publish a release that can trigger deploy workflows."; exit 1; }
 
           git fetch --no-tags origin main
-          head_sha="$(git rev-parse FETCH_HEAD)"
-          sha="$head_sha"
-          if [ "$EVENT_NAME" = "push" ]; then
-            # One-time maintenance trigger: promote the commit that last
-            # changed the product release ledger, ignoring workflow-only commits.
-            sha="$(git log -1 --format=%H "$head_sha" -- features/versions.json)"
-          fi
+          sha="$(git rev-parse FETCH_HEAD)"
           git show "$sha:features/versions.json" > /tmp/ballerwatch-versions.json
 
           current_version="$(node -e 'const x=require("/tmp/ballerwatch-versions.json");process.stdout.write(String(x.currentVersion||""))')"
@@ -130,7 +121,7 @@ jobs:
       - name: Promote candidate and publish GitHub Release
         if: steps.candidate.outputs.eligible == 'true'
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.CRON_GITHUB_PAT }}
           SHA: ${{ steps.candidate.outputs.sha }}
           TAG: ${{ steps.candidate.outputs.tag }}
           RELEASE_STATE: ${{ steps.candidate.outputs.release_state }}
@@ -153,20 +144,8 @@ jobs:
             echo "- Release: **$TAG**"
             echo "- Commit: `$SHA`"
             echo "- Production branch now points to the same commit."
-            echo "- Deployment workflows will be dispatched from the promoted production ref."
+            echo "- Release-triggered deployment workflows will deploy this tagged version."
           } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Dispatch production deployments
-        if: steps.candidate.outputs.eligible == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          for workflow in             pages.yml             deploy-telegram-webhook.yml             web-app.yml             weather-refresh.yml             deploy-apps-script.yml             setup-cron.yml
-          do
-            gh workflow run "$workflow" --repo "$GITHUB_REPOSITORY" --ref main
-          done
 
       - name: Explain no-op promotion
         if: steps.candidate.outputs.eligible != 'true'
