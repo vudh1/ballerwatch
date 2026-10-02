@@ -1,7 +1,25 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "5.6.0",
+  "currentVersion": "5.7.0",
   "releases": [
+    {
+      "version": "5.7.0",
+      "date": "2026-10-02",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Release-gated rollout, desktop carousel controls, and owner sign-in",
+      "telegramAnnouncement": "BallerWatch 5.7 adds desktop carousel edge navigation, app-native owner sign-in, and a safer release-gated production rollout.",
+      "changes": [
+        "Added subtle previous/next controls to the desktop match carousel: moving the pointer onto an available card edge reveals a glass arrow, and one click advances the same connected-card train animation used by touch swipes.",
+        "Added app-native owner password sign-in for Settings so normal use on new devices no longer requires a /webpair code after the owner password is configured.",
+        "Kept /webpair as a first-time bootstrap and recovery option; paired devices can set or rotate the owner password from Settings.",
+        "Stores only a server-keyed salted password verifier inside encrypted runtime state; plaintext owner passwords are never persisted or sent through GitHub Actions.",
+        "Introduced a production branch and GitHub Release promotion gate so merging product code to main no longer deploys the Pages app, Worker, Calendar bridge, weather bootstrap, or web runtime immediately.",
+        "Added a daily production promoter that requires a green validation run and at least a 24-hour candidate soak before publishing the version's GitHub Release; manual promotion can publish the validated version immediately.",
+        "Pinned watcher, listener, watchdog, and external scheduler runtime execution to the promoted production branch so unreleased main code does not silently become production behavior.",
+        "Changed repository versioning policy so documentation-only changes, behavior-preserving refactors, tests, CI/workflow maintenance, formatting, and other internal housekeeping do not receive a new SemVer version."
+      ]
+    },
     {
       "version": "5.6.0",
       "date": "2026-10-02",
