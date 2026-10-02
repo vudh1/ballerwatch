@@ -475,6 +475,10 @@ test("match spotlight swipe uses connected neighboring cards like a carousel tra
   assert.match(html, /class="spotlight-content"/);
   assert.match(app, /function spotlightModel/);
   assert.match(app, /function buildSpotlightTrainCard/);
+  assert.match(app, /function syncSpotlightCardDimensions/);
+  assert.match(app, /--spotlight-card-height/);
+  assert.match(app, /Math\.ceil\(Math\.max\(\.\.\.heights\)\)/);
+  assert.match(app, /window\.addEventListener\("resize"/);
   assert.match(app, /function adjacentCalendarSelection/);
   assert.match(app, /function selectAdjacentCalendarGameDate/);
   assert.match(app, /function installSpotlightSwipe/);
@@ -495,6 +499,8 @@ test("match spotlight swipe uses connected neighboring cards like a carousel tra
   assert.match(css, /\/\* v5\.3\.2 connected-card carousel swipe \*\//);
   assert.match(css, /\.spotlight-carousel \{[\s\S]*overflow:\s*hidden;/);
   assert.match(css, /--spotlight-train-gap:\s*12px/);
+  assert.match(css, /height:\s*var\(--spotlight-card-height, auto\)/);
+  assert.match(css, /\.spotlight-measure-card \{[\s\S]*height:\s*auto !important;/);
   assert.match(css, /\.spotlight-train-card \{[\s\S]*position:\s*absolute;/);
   assert.match(css, /\.spotlight-card\.is-train-dragging/);
   assert.match(css, /\.spotlight-card\.is-train-settling/);
