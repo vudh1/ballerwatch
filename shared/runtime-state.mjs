@@ -101,27 +101,44 @@ function sealLocalRuntimeFile(file) {
 
 export function auditRuntimeStateBranch() {
   fetchStateBranch();
+  const canonical = new Set(ALL_RUNTIME_FILE_PATHS);
+  const branchFiles = git([
+    "ls-tree",
+    "-r",
+    "--name-only",
+    "FETCH_HEAD",
+  ])
+    .split("\n")
+    .map((file) => file.trim())
+    .filter(Boolean);
+
   const failures = [];
-  let count = 0;
-  for (const file of ALL_RUNTIME_FILE_PATHS) {
+  for (const file of branchFiles) {
+    // Unknown files are a privacy failure too: the snapshot branch is allowed
+    // to contain only the reviewed canonical runtime paths.
+    if (!canonical.has(file)) {
+      failures.push(file);
+      continue;
+    }
     const raw = readBranchFile(file);
-    if (typeof raw !== "string" || !raw) continue;
-    count += 1;
     try {
-      if (!isEncryptedStateEnvelope(parseRuntimeJson(file, raw))) {
+      if (!raw || !isEncryptedStateEnvelope(parseRuntimeJson(file, raw))) {
         failures.push(file);
       }
     } catch {
       failures.push(file);
     }
   }
+
   if (failures.length) {
     throw new Error(
       `Runtime-state encryption audit failed for: ${failures.join(", ")}`,
     );
   }
-  console.log(`Runtime-state encryption audit passed for ${count} file(s).`);
-  return count;
+  console.log(
+    `Runtime-state encryption audit passed for ${branchFiles.length} file(s).`,
+  );
+  return branchFiles.length;
 }
 
 export async function pullRuntimeState(scope) {
