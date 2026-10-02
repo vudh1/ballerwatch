@@ -239,7 +239,7 @@ Merging a product release to `main` therefore does **not** immediately change th
 
 1. the release code merges to `main` after validation/smoke;
 2. the automatic **Promote production release** workflow waits until the candidate has been on `main` for at least 24 hours;
-3. on its daily run, it verifies that the candidate commit has a successful **Validate code** run;
+3. it checks hourly and, on the first check after the 24-hour soak, verifies that the candidate commit has a successful **Validate code** run;
 4. it advances `production` to that exact commit and publishes the GitHub Release;
 5. the published Release triggers Pages/Worker/Calendar/web-runtime deployment from the tagged commit.
 
@@ -271,7 +271,7 @@ Runtime pushes retry on branch races so overlapping watcher/listener runs do not
 | State-changing Telegram command | Event-driven | GitHub listener |
 | Calendar sync | Only when league snapshot requires it | GitHub Action |
 
-Cloudflare Cron Triggers remain disabled. The only native GitHub `schedule:` is the six-hour watchdog/weather maintenance run.
+Cloudflare Cron Triggers remain disabled. Native GitHub schedules are limited to the six-hour watchdog/weather maintenance run and the hourly production-promotion eligibility check.
 
 ## Cloudflare outage behavior
 
