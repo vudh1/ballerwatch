@@ -1,12 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  createOwnerPasswordRecord,
   gamesOnDate,
   issueFeedbackToken,
   issueOwnerToken,
   nextGame,
+  normalizeOwnerPassword,
   resolveScheduleDate,
   verifyFeedbackToken,
+  verifyOwnerPassword,
   verifyOwnerToken,
 } from "../../../infra/telegram-webhook/worker.mjs";
 
@@ -95,4 +98,36 @@ test("owner tokens remain owner-only after feedback tokens are introduced", asyn
     await verifyFeedbackToken(env, issued.token, "question", "reply"),
     false,
   );
+});
+
+
+test("owner password records are server-keyed and verify only the exact password", async () => {
+  const env = { TRACKER_STATE_KEY: "test-owner-password-key" };
+  const record = await createOwnerPasswordRecord(env, "correct horse battery staple");
+
+  assert.equal(record.v, 1);
+  assert.match(record.salt, /^[A-Za-z0-9_-]+$/);
+  assert.match(record.digest, /^[A-Za-z0-9_-]+$/);
+  assert.equal(
+    await verifyOwnerPassword(env, "correct horse battery staple", record),
+    true,
+  );
+  assert.equal(
+    await verifyOwnerPassword(env, "correct horse battery staplex", record),
+    false,
+  );
+  assert.equal(
+    await verifyOwnerPassword(
+      { TRACKER_STATE_KEY: "different-owner-password-key" },
+      "correct horse battery staple",
+      record,
+    ),
+    false,
+  );
+});
+
+test("owner password validation enforces a meaningful minimum without trimming secrets", () => {
+  assert.equal(normalizeOwnerPassword("  twelve chars  "), "  twelve chars  ");
+  assert.throws(() => normalizeOwnerPassword("short"), /between 12 and 200/);
+  assert.throws(() => normalizeOwnerPassword("x".repeat(201)), /between 12 and 200/);
 });
