@@ -2,7 +2,7 @@ name: Promote production release
 
 on:
   schedule:
-    - cron: "37 17 * * *"
+    - cron: "37 * * * *"
   workflow_dispatch:
 
 permissions:
