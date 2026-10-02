@@ -1,9 +1,8 @@
 /**
- * Stores encrypted 48-hour owner conversation history for automated review.
+ * Stores encrypted 48-hour user conversation history for automated review.
  *
- * Documentation baseline: v5.4.0. The encrypted history retains the original owner question
- * and bot answer so rejected answers can be reproduced later. The readable review index remains
- * privacy-minimized and contains only sanitized engineering signals.
+ * Documentation baseline: v5.8.0. Both exact exchanges and the sanitized
+ * engineering-review projection are encrypted at rest on runtime-state.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -64,6 +63,13 @@ function safeReview(entries) {
   };
 }
 
+function writeReview(entries) {
+  fs.writeFileSync(
+    REVIEW_PATH,
+    JSON.stringify(encryptState(safeReview(entries)), null, 2) + "\n",
+  );
+}
+
 async function compactWithGroq(question, reply, hint = "") {
   if (!process.env.GROQ_API_KEY) return null;
   const controller = new AbortController();
@@ -84,7 +90,7 @@ async function compactWithGroq(question, reply, hint = "") {
           {
             role: "system",
             content: [
-              "Summarize one BallerWatch owner exchange for engineering review.",
+              "Summarize one BallerWatch user exchange for engineering review.",
               "Remove names, IDs, tokens, URLs, exact addresses, and other personal details.",
               "Do not quote the user.",
               "Classify as normal, bug_candidate, feature_candidate, or negative_feedback.",
@@ -157,7 +163,7 @@ export async function recordChatExchange({
   data.entries = prune([...prior, entry]);
   fs.mkdirSync(path.dirname(HISTORY_PATH), { recursive: true });
   fs.writeFileSync(HISTORY_PATH, JSON.stringify(encryptState(data), null, 2) + "\n");
-  fs.writeFileSync(REVIEW_PATH, JSON.stringify(safeReview(data.entries), null, 2) + "\n");
+  writeReview(data.entries);
   return entry;
 }
 
@@ -173,7 +179,7 @@ export function removeChatFeedback(externalId) {
   data.entries = after;
   fs.mkdirSync(path.dirname(HISTORY_PATH), { recursive: true });
   fs.writeFileSync(HISTORY_PATH, JSON.stringify(encryptState(data), null, 2) + "\n");
-  fs.writeFileSync(REVIEW_PATH, JSON.stringify(safeReview(data.entries), null, 2) + "\n");
+  writeReview(data.entries);
   return true;
 }
 
@@ -190,6 +196,6 @@ export function refreshChatReview() {
   data.entries = prune(data.entries || []);
   fs.mkdirSync(path.dirname(HISTORY_PATH), { recursive: true });
   fs.writeFileSync(HISTORY_PATH, JSON.stringify(encryptState(data), null, 2) + "\n");
-  fs.writeFileSync(REVIEW_PATH, JSON.stringify(safeReview(data.entries), null, 2) + "\n");
+  writeReview(data.entries);
   return data.entries.length;
 }
