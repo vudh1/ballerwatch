@@ -1870,8 +1870,19 @@ textarea {
 
 .spotlight-carousel .spotlight-card {
   width: 100%;
+  height: var(--spotlight-card-height, auto);
+  box-sizing: border-box;
   margin: 0;
   transform: translate3d(0, 0, 0);
+}
+
+.spotlight-measure-card {
+  height: auto !important;
+  min-height: 0 !important;
+  visibility: hidden;
+  pointer-events: none;
+  transform: none !important;
+  transition: none !important;
 }
 
 .spotlight-train-card {
