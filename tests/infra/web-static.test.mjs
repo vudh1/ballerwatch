@@ -613,9 +613,53 @@ test("production rollout is gated by GitHub Releases instead of main pushes", ()
   assert.match(promote, /gh release create/);
   assert.match(promote, /git\/refs\/heads\/production/);
   assert.match(promote, /CRON_GITHUB_PAT/);
+  assert.doesNotMatch(promote, /inputs\.target_ref|REQUESTED_REF/);
+  assert.doesNotMatch(promote, /inputs\.version|REQUESTED_VERSION/);
+  assert.match(promote, /git fetch --no-tags origin main/);
+
+  for (const workflow of [pages, worker, webRuntime, calendarBridge]) {
+    assert.doesNotMatch(workflow, /inputs\.release_ref/);
+    assert.match(workflow, /github\.event\.release\.tag_name \|\| 'production'/);
+  }
 
   for (const workflow of [pickup, league, listener, watchdog]) {
     assert.match(workflow, /ref:\s*production/);
   }
   assert.match(schedules, /BALLERWATCH_BRANCH \|\| "production"/);
+});
+
+
+test("web runtime and owner settings do not require Telegram credentials", () => {
+  const deploy = fs.readFileSync(".github/workflows/deploy-telegram-webhook.yml", "utf8");
+  const telegram = fs.readFileSync("shared/telegram.mjs", "utf8");
+  const worker = fs.readFileSync("infra/telegram-webhook/worker.mjs", "utf8");
+
+  const requiredBlock = deploy.match(
+    /- name: Verify required core secrets[\s\S]*?(?=\n      - name:)/,
+  )?.[0] || "";
+  assert.match(requiredBlock, /TRACKER_STATE_KEY/);
+  assert.match(requiredBlock, /CRON_GITHUB_PAT/);
+  assert.doesNotMatch(requiredBlock, /TELEGRAM_BOT_TOKEN|TELEGRAM_CHAT_ID/);
+
+  assert.match(deploy, /Telegram adapter disabled; PWA\/API operation remains enabled/);
+  assert.match(deploy, /TRACKER_STATE_KEY\+"\|ballerwatch-webhook-v2"/);
+  assert.match(telegram, /export function telegramConfigured/);
+  assert.match(telegram, /function requireTelegram/);
+  assert.doesNotMatch(telegram, /if \(!TOKEN\) throw/);
+  assert.doesNotMatch(telegram, /if \(!CHAT_ID\) throw/);
+  assert.match(worker, /telegramEnabled:Boolean\(env\.TELEGRAM_BOT_TOKEN && env\.TELEGRAM_CHAT_ID\)/);
+  assert.match(worker, /Telegram adapter disabled/);
+});
+
+
+test("repository policy reserves SemVer for product behavior changes", () => {
+  const agents = fs.readFileSync("AGENTS.md", "utf8");
+
+  assert.match(agents, /Version numbers represent \*\*actual product changes\*\*/);
+  assert.match(agents, /No SemVer bump/);
+  assert.match(agents, /documentation-only edits/);
+  assert.match(agents, /behavior-preserving refactors/);
+  assert.match(agents, /CI\/workflow maintenance/);
+  assert.match(agents, /published GitHub Release\/tag/);
+  assert.match(agents, /24 hours/);
 });
