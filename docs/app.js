@@ -50,6 +50,7 @@ const els = {
   nextGameShare: document.querySelector("#next-game-share"),
   nextGameHint: document.querySelector("#next-game-hint"),
   testNotification: document.querySelector("#test-notification"),
+  deleteAllNotifications: document.querySelector("#delete-all-notifications"),
   testNotificationStatus: document.querySelector("#test-notification-status"),
   calendarGrid: document.querySelector("#calendar-grid"),
   calendarGamePicker: document.querySelector("#calendar-game-picker"),
@@ -493,11 +494,43 @@ function markNotificationRead(item) {
   updateNotificationBadge(notificationViewState().unreadCount);
 }
 
-function deleteNotification(item) {
+function persistDeletedNotifications(items) {
   const deleted = storedNotificationIds(NOTIFICATION_DELETED_KEY);
-  deleted.add(notificationId(item));
+  for (const item of items) deleted.add(notificationId(item));
   saveNotificationIds(NOTIFICATION_DELETED_KEY, deleted);
+}
+
+function deleteNotification(item) {
+  persistDeletedNotifications([item]);
   renderBoard(currentBoardEntries);
+}
+
+function animateNotificationDelete(article, item) {
+  if (article.classList.contains("is-deleting")) return;
+  article.style.removeProperty("transform");
+  article.style.removeProperty("opacity");
+  void article.offsetWidth;
+  article.classList.add("is-deleting");
+  window.setTimeout(() => deleteNotification(item), 210);
+}
+
+function deleteAllNotifications() {
+  const { visible } = notificationViewState();
+  if (!visible.length) return;
+
+  els.deleteAllNotifications.disabled = true;
+  const notices = [...els.board.querySelectorAll(".notice")];
+  notices.forEach((article, index) => {
+    window.setTimeout(() => article.classList.add("is-deleting"), Math.min(index, 8) * 22);
+  });
+
+  const delay = 210 + Math.min(notices.length, 8) * 22;
+  window.setTimeout(() => {
+    persistDeletedNotifications(visible);
+    renderBoard(currentBoardEntries);
+    els.deleteAllNotifications.disabled = false;
+    els.testNotificationStatus.textContent = "Notifications cleared on this device.";
+  }, delay);
 }
 
 function openNotification(item) {
@@ -560,18 +593,38 @@ function renderBoard(entries) {
       touchStartX = touch.clientX;
       touchStartY = touch.clientY;
       deletedBySwipe = false;
+      article.classList.add("is-swiping");
     }, { passive: true });
+
+    article.addEventListener("touchmove", (event) => {
+      const touch = event.changedTouches?.[0];
+      if (!touch || touchStartX == null || touchStartY == null) return;
+      const deltaX = touch.clientX - touchStartX;
+      const deltaY = touch.clientY - touchStartY;
+      if (deltaX >= 0 || Math.abs(deltaX) <= Math.abs(deltaY)) return;
+      event.preventDefault();
+      const offset = Math.max(-110, deltaX);
+      const progress = Math.min(1, Math.abs(offset) / 110);
+      article.style.transform = `translateX(${offset}px)`;
+      article.style.opacity = String(1 - progress * 0.42);
+    }, { passive: false });
 
     article.addEventListener("touchend", (event) => {
       const touch = event.changedTouches?.[0];
       if (!touch || touchStartX == null || touchStartY == null) return;
       const deltaX = touch.clientX - touchStartX;
       const deltaY = touch.clientY - touchStartY;
+      article.classList.remove("is-swiping");
+
       if (deltaX < -64 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
         event.preventDefault();
         deletedBySwipe = true;
-        deleteNotification(item);
+        animateNotificationDelete(article, item);
+      } else {
+        article.style.removeProperty("transform");
+        article.style.removeProperty("opacity");
       }
+
       touchStartX = null;
       touchStartY = null;
     }, { passive: false });
@@ -920,33 +973,25 @@ async function loadNextGame() {
 
 async function shareNextGame() {
   if (!currentNextGame) return;
-  const destination =
-    currentNextGame.mapsQuery ||
-    currentNextGame.address ||
-    currentNextGame.location ||
-    "";
-  const maps = googleMapsUrl(destination);
+  const maps = googleMapsUrl(currentNextGame.mapsQuery);
+  const text = currentNextGame.shareText || currentNextGame.title || "BallerWatch game";
 
   try {
     if (navigator.share) {
-      els.nextGameHint.textContent =
-        "Choose Tesla in the share sheet to send this destination to your car.";
       await navigator.share({
-        title: "Send to Tesla",
-        text: destination || currentNextGame.title || "BallerWatch game",
+        title: "BallerWatch game",
+        text,
         ...(maps ? { url: maps } : {}),
       });
-      els.nextGameHint.textContent = "Destination shared.";
+      els.nextGameHint.textContent = "Shared.";
       return;
     }
 
-    await navigator.clipboard.writeText(destination || maps);
-    els.nextGameHint.textContent =
-      "Destination copied. Open Tesla → Locations to send it to your car.";
-    window.location.href = "https://ts.la/app";
+    await navigator.clipboard.writeText([text, maps].filter(Boolean).join("\n"));
+    els.nextGameHint.textContent = "Game details copied.";
   } catch (error) {
     if (error?.name !== "AbortError") {
-      els.nextGameHint.textContent = "Unable to share this destination.";
+      els.nextGameHint.textContent = "Unable to share from this device.";
     }
   }
 }
@@ -1269,6 +1314,7 @@ els.ownerSettingsForm.addEventListener("submit", saveOwnerSettings);
 els.ownerDisconnect.addEventListener("click", disconnectOwnerDevice);
 els.nextGameShare.addEventListener("click", shareNextGame);
 els.testNotification.addEventListener("click", scheduleTestNotification);
+els.deleteAllNotifications.addEventListener("click", deleteAllNotifications);
 els.closeNotifications.addEventListener("click", () => els.notificationDialog.close());
 els.closeNotificationReader.addEventListener("click", closeNotificationReader);
 els.refresh.addEventListener("click", loadBoard);
