@@ -40,27 +40,28 @@ After bootstrap, the normal flow is:
 3. receive a signed capability token stored on that device;
 4. edit the pickup RSVP display name or monitored league teams.
 
-The token is valid for up to 90 days and grants only the narrow Settings capability.
+The token is valid for up to 90 days and grants only the narrow Settings capability. It also carries a server-side authentication revision; password rotation or **Sign out all devices** advances that revision and invalidates earlier tokens immediately.
 
-The password itself is never stored. BallerWatch stores a random salt plus a server-keyed verifier inside encrypted runtime state.
+The password itself is never stored. BallerWatch stores a random salt plus a server-keyed verifier inside encrypted runtime state. Password verification and token signing use separate derived cryptographic domains.
 
 Current app API routes are:
 
 - `POST /web/user/login`
 - `GET|POST /web/user/settings`
 - `POST /web/user/password`
+- `POST /web/user/revoke`
 - `POST /web/user/pair`
 
-Pre-5.8 aliases/tokens remain accepted internally during migration so installed devices are not broken by the terminology change.
+Pre-5.8 route aliases remain accepted during migration. Pre-5.8.2 capability tokens are intentionally invalidated by the security key-domain upgrade and require a fresh password sign-in or recovery pairing.
 
 ### Pairing/recovery
 
 `/webpair` is no longer normal day-to-day sign-in. While Telegram is configured, it is a bootstrap/recovery root:
 
 1. request `/webpair`;
-2. enter the six-digit code under **Use a pairing code instead**;
-3. the same code can authorize multiple devices until its 10-minute expiry;
-4. set/rotate the user password for normal future sign-in.
+2. enter the 12-character code under **Use a pairing code instead**;
+3. the code is single-use and expires after 10 minutes; failed attempts are rate-limited;
+4. request a fresh code for another device, then set/rotate the user password for normal future sign-in.
 
 A future passkey/identity-provider flow can replace this recovery dependency without changing the Settings capability boundary.
 
@@ -99,11 +100,12 @@ Every canonical `runtime-state` file is a complete AES-GCM envelope in 5.8. Publ
 
 1. the service worker registers from the installed PWA;
 2. BallerWatch creates/loads its VAPID identity;
-3. browser subscriptions are persisted inside encrypted runtime state;
-4. pickup/league/version producers create only allowlisted public-safe board entries;
-5. GitHub Actions signals browser push services directly;
-6. the service worker fetches the newest board entry from the Worker;
-7. if that read fails, the notification falls back to generic BallerWatch text.
+3. the Worker validates the browser push provider, requires the trusted PWA origin, and issues a short-lived challenge bound to the endpoint;
+4. the PWA returns that challenge with the subscription, which is persisted inside encrypted runtime state;
+5. pickup/league/version producers create only allowlisted public-safe board entries;
+6. GitHub Actions revalidates the provider URL, resolves DNS and requires every address to be public, then sends with redirects disabled;
+7. the service worker fetches the newest board entry from the Worker;
+8. if that read fails, the notification falls back to generic BallerWatch text.
 
 Telegram is not in this delivery chain.
 
@@ -111,7 +113,7 @@ Telegram is not in this delivery chain.
 
 The bell popup keeps per-device read/delete state local to the browser. Opening an item uses the full-screen reader. Swipe-to-delete is local; **Delete all** does not delete server history.
 
-The Push switch reflects the actual browser subscription. If the VAPID application key changes (for example after a factory reset), the PWA drops the stale subscription and asks for a new one.
+The Push switch reflects the actual browser subscription. If the VAPID application key changes (for example after a factory reset), the PWA drops the stale subscription and asks for a new one. Notification clicks are clamped to the BallerWatch GitHub Pages origin/path; board content cannot navigate the service worker to an arbitrary site.
 
 ## Weather
 
