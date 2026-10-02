@@ -649,7 +649,7 @@ test("web runtime and owner settings do not require Telegram credentials", () =>
   assert.match(deploy, /process\.env\.TRACKER_STATE_KEY \|\| process\.env\.TELEGRAM_BOT_TOKEN/);
 
   assert.match(deploy, /Telegram adapter disabled; PWA\/API operation remains enabled/);
-  assert.match(deploy, /TRACKER_STATE_KEY\+"\|ballerwatch-webhook-v2"/);
+  assert.match(deploy, /process\.env\.STATE_KEY\+"\|ballerwatch-webhook-v2"/);
   assert.match(telegram, /export function telegramConfigured/);
   assert.match(telegram, /function requireTelegram/);
   assert.doesNotMatch(telegram, /if \(!TOKEN\) throw/);
