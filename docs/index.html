@@ -4,6 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#182235">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; connect-src 'self' https://ballerwatch-telegram.vudhone.workers.dev; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; upgrade-insecure-requests">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="BallerWatch">
@@ -11,7 +14,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
-  <link rel="stylesheet" href="./styles.css?v=5.8.1">
+  <link rel="stylesheet" href="./styles.css?v=5.8.2">
 </head>
 <body>
   <div class="status-bar-glass" aria-hidden="true"></div>
@@ -217,11 +220,12 @@
 
         <details class="settings-recovery">
           <summary>Use a pairing code instead</summary>
-          <p class="hint">Pairing is only needed for first-time setup or recovery. One /webpair code can authorize multiple devices during its 10-minute window.</p>
+          <p class="hint">Pairing is only needed for first-time setup or recovery. Each /webpair code is single-use and expires after 10 minutes.</p>
           <form id="owner-pair-form" class="settings-form">
             <label for="owner-pair-code">User pairing code</label>
-            <input id="owner-pair-code" inputmode="numeric" autocomplete="one-time-code"
-              maxlength="6" pattern="[0-9]{6}" placeholder="6-digit code" required>
+            <input id="owner-pair-code" inputmode="text" autocomplete="one-time-code"
+              autocapitalize="characters" spellcheck="false" maxlength="14"
+              pattern="[A-HJ-NP-Z2-9-]{12,14}" placeholder="XXXX-XXXX-XXXX" required>
             <button type="submit">Pair device</button>
           </form>
           <p class="hint" id="owner-pair-status"></p>
@@ -256,6 +260,7 @@
         <p class="hint" id="owner-password-status"></p>
         <p class="privacy-note">Once a password is set, new devices can sign in directly without a pairing code. Pairing remains available only as a recovery/bootstrap path.</p>
         <button class="subtle-action" id="owner-disconnect" type="button">Disconnect this device</button>
+        <button class="subtle-action" id="owner-revoke" type="button">Sign out all devices</button>
       </section>
     </div>
   </dialog>
@@ -275,6 +280,6 @@
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=5.8.1"></script>
+  <script type="module" src="./app.js?v=5.8.2"></script>
 </body>
 </html>

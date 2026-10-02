@@ -1,7 +1,25 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "5.8.1",
+  "currentVersion": "5.8.2",
   "releases": [
+    {
+      "version": "5.8.2",
+      "date": "2026-10-03",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Web Push SSRF closure and authentication hardening",
+      "telegramAnnouncement": "BallerWatch 5.8.2 hardens Web Push registration, recovery pairing, user sessions, browser policies, workflow dependencies, and cryptographic key separation.",
+      "changes": [
+        "Closed the delayed blind Web Push SSRF path by allowing only recognized browser push-service hosts, rejecting IP literals/userinfo/nonstandard ports, validating every DNS answer as public before GitHub Actions delivery, and disabling HTTP redirects.",
+        "Added a short-lived server-issued Web Push registration challenge bound to the normalized endpoint, exact PWA-origin checks, and registration rate limits before subscription events can enter encrypted runtime state.",
+        "Changed /webpair recovery from six numeric reusable digits to a 12-character high-entropy human-readable code that is single-use, expires after 10 minutes, and is protected by per-client failed-attempt limits.",
+        "Added server-side authentication revisions to the 90-day user capability tokens; password changes revoke prior sessions and Settings now includes an explicit Sign out all devices action.",
+        "Separated cryptographic domains for runtime encryption, user-token signing, feedback-token signing, password verification, and push-registration challenges; deployment transparently reads legacy encrypted state and reseals it under the new runtime key domain.",
+        "Added Worker security headers, a restrictive document CSP/referrer policy for the GitHub Pages PWA, and service-worker navigation checks that refuse notification destinations outside the BallerWatch Pages path.",
+        "Pinned every GitHub Actions dependency to a reviewed 40-character commit SHA instead of mutable major-version tags.",
+        "Added regression coverage for malicious push URLs, private/link-local addresses, redirect behavior, mixed DNS answers/rebinding, pairing entropy/single use, token revisions, key migration, security policies, service-worker navigation, and workflow pinning."
+      ]
+    },
     {
       "version": "5.8.1",
       "date": "2026-10-03",

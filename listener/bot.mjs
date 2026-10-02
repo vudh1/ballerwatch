@@ -35,32 +35,56 @@ function normalizeText(text) {
   return String(text || "").trim().replace(/\s+/g, " ");
 }
 
+const WEB_PAIR_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+export function normalizeWebPairCode(value) {
+  return String(value || "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
+}
+
+export function createWebPairCode() {
+  let code = "";
+  for (let index = 0; index < 12; index += 1) {
+    code += WEB_PAIR_ALPHABET[crypto.randomInt(0, WEB_PAIR_ALPHABET.length)];
+  }
+  return code;
+}
+
 function hashWebPairCode(code) {
-  return crypto.createHash("sha256").update(String(code || "")).digest("hex");
+  return crypto
+    .createHash("sha256")
+    .update(normalizeWebPairCode(code))
+    .digest("hex");
 }
 
 function handleWebPairCommand(text, settings) {
   if (!/^\/?webpair$/i.test(normalizeText(text))) return null;
-  const code = String(crypto.randomInt(100000, 1000000));
+  const code = createWebPairCode();
+  const displayCode = code.match(/.{1,4}/g).join("-");
+  const nextSettings = {
+    ...settings,
+    webPairCodeHash: hashWebPairCode(code),
+    webPairExpiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+  };
+  delete nextSettings.webPairConsumedAt;
   return {
-    settings: {
-      ...settings,
-      webPairCodeHash: hashWebPairCode(code),
-      webPairExpiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
-    },
+    settings: nextSettings,
     reply: [
-      `User pairing code: ${code}`,
-      "Expires in 10 minutes.",
-      "You can enter this same code in BallerWatch Settings on multiple devices before it expires.",
+      `User pairing code: ${displayCode}`,
+      "Single use. Expires in 10 minutes.",
+      "Request another /webpair code for a second device or recovery attempt.",
     ].join("\n"),
   };
 }
 
 function applyWebSettingsEvent(event, settings) {
   if (event?.action === "consume-pair-code") {
-    // Legacy Workers may still dispatch this during a rolling deploy.
-    // Pairing codes are intentionally reusable until expiry starting in v5.6.
-    return settings;
+    const next = { ...settings };
+    delete next.webPairCodeHash;
+    delete next.webPairExpiresAt;
+    next.webPairConsumedAt = new Date().toISOString();
+    return next;
   }
 
   const ownerRsvpName = normalizeText(event?.ownerName || "").slice(0, 120);

@@ -16,6 +16,7 @@ import {
   decryptState,
   encryptState,
   isEncryptedStateEnvelope,
+  isHardenedStateEnvelope,
 } from "./state-crypto.mjs";
 
 const STATE_BRANCH = String(process.env.BALLERWATCH_STATE_BRANCH || "runtime-state").trim();
@@ -91,11 +92,18 @@ function sealLocalRuntimeFile(file) {
   if (!fs.existsSync(file)) return false;
   const raw = fs.readFileSync(file, "utf8");
   const parsed = parseRuntimeJson(file, raw);
-  if (isEncryptedStateEnvelope(parsed)) return false;
+  if (isHardenedStateEnvelope(parsed)) return false;
 
-  const sealed = encryptState(legacyRuntimeValue(file, parsed));
+  const value = isEncryptedStateEnvelope(parsed)
+    ? decryptState(parsed)
+    : legacyRuntimeValue(file, parsed);
+  if (!value || typeof value !== "object") {
+    throw new Error(`Unable to decrypt runtime-state file during key migration: ${file}`);
+  }
+
+  const sealed = encryptState(value);
   fs.writeFileSync(file, JSON.stringify(sealed, null, 2) + "\n");
-  console.log(`Migrated ${file} to a complete encrypted runtime-state envelope.`);
+  console.log(`Resealed ${file} with the domain-separated runtime encryption key.`);
   return true;
 }
 
@@ -122,7 +130,7 @@ export function auditRuntimeStateBranch() {
     }
     const raw = readBranchFile(file);
     try {
-      if (!raw || !isEncryptedStateEnvelope(parseRuntimeJson(file, raw))) {
+      if (!raw || !isHardenedStateEnvelope(parseRuntimeJson(file, raw))) {
         failures.push(file);
       }
     } catch {
@@ -171,6 +179,7 @@ export async function pullRuntimeState(scope) {
     // Recovery applies only when the branch itself cannot be fetched.
     count = restoreFailoverState(scope);
     if (!count) throw new Error("Runtime-state branch unavailable and no encrypted backup exists.");
+    for (const file of files) sealLocalRuntimeFile(file);
     console.warn(`Used encrypted ${scope} Actions-cache backup while runtime-state is unavailable.`);
   }
 
@@ -186,8 +195,8 @@ function changedLocalFiles(scope) {
     if (!fs.existsSync(file)) continue;
     const raw = fs.readFileSync(file, "utf8");
     const parsed = parseRuntimeJson(file, raw);
-    if (!isEncryptedStateEnvelope(parsed)) {
-      throw new Error(`Refusing to persist unencrypted runtime-state file: ${file}`);
+    if (!isHardenedStateEnvelope(parsed)) {
+      throw new Error(`Refusing to persist runtime-state without the hardened encryption KDF: ${file}`);
     }
     if (blobSha(raw) !== String(baseline[file] || "")) changed.push({ file, raw });
   }

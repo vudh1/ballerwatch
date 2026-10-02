@@ -17,6 +17,8 @@ import { aiProviders, requestAiJson } from "../../shared/ai-provider.mjs";
 import { classifyIndexedIntent } from "../../shared/intent-index.mjs";
 import { ALL_RUNTIME_FILE_PATHS } from "../../shared/runtime-paths.mjs";
 import { DEFAULT_LEAGUE_TEAMS } from "../../shared/defaults.mjs";
+import { KEY_CONTEXT } from "../../shared/security-contexts.mjs";
+import { validWebPushEndpoint } from "../../shared/web-push-endpoint.mjs";
 
 const REPO = "vudh1/ballerwatch";
 const PRODUCTION_REF = "production";
@@ -59,22 +61,66 @@ async function sha256Hex(value) {
   return [...digest].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-async function ownerSigningKey(env) {
+function ownerMasterSecret(env) {
   const secret = cleanText(env.TRACKER_STATE_KEY || env.TELEGRAM_WEBHOOK_SECRET, 5000);
   if (!secret) throw new Error("User authentication key is unavailable.");
+  return new TextEncoder().encode(secret);
+}
+
+async function legacyOwnerSigningKey(env) {
   return crypto.subtle.importKey(
     "raw",
-    new TextEncoder().encode(secret),
+    ownerMasterSecret(env),
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign", "verify"],
   );
 }
 
-export async function issueOwnerToken(env) {
+async function derivedSigningKey(env, context) {
+  const derivationKey = await legacyOwnerSigningKey(env);
+  const derived = new Uint8Array(
+    await crypto.subtle.sign(
+      "HMAC",
+      derivationKey,
+      new TextEncoder().encode(context),
+    ),
+  );
+  return crypto.subtle.importKey(
+    "raw",
+    derived,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign", "verify"],
+  );
+}
+
+async function ownerSigningKey(env) {
+  return derivedSigningKey(env, KEY_CONTEXT.userTokenSigning);
+}
+
+async function feedbackSigningKey(env) {
+  return derivedSigningKey(env, KEY_CONTEXT.feedbackTokenSigning);
+}
+
+async function passwordSigningKey(env) {
+  return derivedSigningKey(env, KEY_CONTEXT.passwordVerifier);
+}
+
+async function pushChallengeSigningKey(env) {
+  return derivedSigningKey(env, KEY_CONTEXT.pushChallengeSigning);
+}
+
+function ownerAuthVersion(settings) {
+  const value = Number(settings?.webAuthVersion || 1);
+  return Number.isSafeInteger(value) && value >= 1 ? value : 1;
+}
+
+export async function issueOwnerToken(env, authVersion = 1) {
   const payload = {
-    v: 1,
+    v: 2,
     kind: "user",
+    rev: Math.max(1, Number(authVersion) || 1),
     exp: Date.now() + 90 * 24 * 60 * 60 * 1000,
     nonce: bytesB64Url(crypto.getRandomValues(new Uint8Array(18))),
   };
@@ -92,7 +138,7 @@ export async function issueOwnerToken(env) {
   };
 }
 
-export async function verifyOwnerToken(env, token) {
+export async function verifyOwnerToken(env, token, authVersion = 1) {
   const [encoded, signatureText, extra] = String(token || "").split(".");
   if (!encoded || !signatureText || extra) return false;
   try {
@@ -104,12 +150,12 @@ export async function verifyOwnerToken(env, token) {
     );
     if (!valid) return false;
     const payload = JSON.parse(new TextDecoder().decode(b64UrlBytes(encoded)));
-    const userKind = (
-      payload?.kind === undefined ||
-      payload?.kind === "owner" ||
-      payload?.kind === "user"
+    return (
+      payload?.v === 2 &&
+      payload?.kind === "user" &&
+      Number(payload?.rev) === Math.max(1, Number(authVersion) || 1) &&
+      Number(payload.exp) > Date.now()
     );
-    return payload?.v === 1 && userKind && Number(payload.exp) > Date.now();
   } catch {
     return false;
   }
@@ -124,9 +170,9 @@ export function normalizeOwnerPassword(value) {
   return password;
 }
 
-function ownerPasswordMessage(salt, password) {
+function ownerPasswordMessage(version, salt, password) {
   return new TextEncoder().encode(
-    `owner-password:v1:${String(salt || "")}:${String(password || "")}`,
+    `owner-password:v${version}:${String(salt || "")}:${String(password || "")}`,
   );
 }
 
@@ -136,12 +182,12 @@ export async function createOwnerPasswordRecord(env, value) {
   const digest = new Uint8Array(
     await crypto.subtle.sign(
       "HMAC",
-      await ownerSigningKey(env),
-      ownerPasswordMessage(salt, password),
+      await passwordSigningKey(env),
+      ownerPasswordMessage(2, salt, password),
     ),
   );
   return {
-    v: 1,
+    v: 2,
     salt,
     digest: bytesB64Url(digest),
     updatedAt: new Date().toISOString(),
@@ -150,7 +196,7 @@ export async function createOwnerPasswordRecord(env, value) {
 
 export async function verifyOwnerPassword(env, value, record) {
   if (
-    record?.v !== 1 ||
+    ![1, 2].includes(record?.v) ||
     !record?.salt ||
     !record?.digest ||
     typeof value !== "string"
@@ -158,37 +204,40 @@ export async function verifyOwnerPassword(env, value, record) {
     return false;
   }
   try {
+    const key = record.v === 2
+      ? await passwordSigningKey(env)
+      : await legacyOwnerSigningKey(env);
     return crypto.subtle.verify(
       "HMAC",
-      await ownerSigningKey(env),
+      key,
       b64UrlBytes(record.digest),
-      ownerPasswordMessage(record.salt, value),
+      ownerPasswordMessage(record.v, record.salt, value),
     );
   } catch {
     return false;
   }
 }
 
-async function ownerLoginRateRequest(request) {
+async function authRateRequest(request, namespace) {
   if (typeof caches === "undefined" || !caches.default) return null;
   const source = [
     request.headers.get("cf-connecting-ip") || "",
     request.headers.get("user-agent") || "",
   ].join("|");
-  const key = await sha256Hex(source || "unknown-owner-login");
-  return new Request(`https://ballerwatch.internal/owner-login/${key}`);
+  const key = await sha256Hex(source || "unknown-client");
+  return new Request(`https://ballerwatch.internal/${namespace}/${key}`);
 }
 
-async function ownerLoginAllowed(request) {
-  const cacheRequest = await ownerLoginRateRequest(request);
+async function authAttemptAllowed(request, namespace, limit) {
+  const cacheRequest = await authRateRequest(request, namespace);
   if (!cacheRequest) return true;
   const hit = await caches.default.match(cacheRequest);
   const failures = Number(await hit?.text().catch(() => "0") || 0);
-  return failures < 10;
+  return failures < limit;
 }
 
-async function recordOwnerLoginFailure(request) {
-  const cacheRequest = await ownerLoginRateRequest(request);
+async function recordAuthFailure(request, namespace) {
+  const cacheRequest = await authRateRequest(request, namespace);
   if (!cacheRequest) return;
   const hit = await caches.default.match(cacheRequest);
   const failures = Number(await hit?.text().catch(() => "0") || 0);
@@ -200,11 +249,42 @@ async function recordOwnerLoginFailure(request) {
   );
 }
 
-async function clearOwnerLoginFailures(request) {
-  const cacheRequest = await ownerLoginRateRequest(request);
+async function clearAuthFailures(request, namespace) {
+  const cacheRequest = await authRateRequest(request, namespace);
   if (cacheRequest) await caches.default.delete(cacheRequest);
 }
 
+async function ownerLoginAllowed(request) {
+  return authAttemptAllowed(request, "owner-login", 10);
+}
+
+async function recordOwnerLoginFailure(request) {
+  return recordAuthFailure(request, "owner-login");
+}
+
+async function clearOwnerLoginFailures(request) {
+  return clearAuthFailures(request, "owner-login");
+}
+
+async function ownerPairAllowed(request) {
+  return authAttemptAllowed(request, "owner-pair", 5);
+}
+
+async function recordOwnerPairFailure(request) {
+  return recordAuthFailure(request, "owner-pair");
+}
+
+async function clearOwnerPairFailures(request) {
+  return clearAuthFailures(request, "owner-pair");
+}
+
+async function pushRegistrationAllowed(request) {
+  return authAttemptAllowed(request, "push-registration", 20);
+}
+
+async function recordPushRegistrationFailure(request) {
+  return recordAuthFailure(request, "push-registration");
+}
 
 async function feedbackExchangeDigest(question, reply) {
   return sha256Hex(
@@ -214,7 +294,7 @@ async function feedbackExchangeDigest(question, reply) {
 
 export async function issueFeedbackToken(env, question, reply) {
   const payload = {
-    v: 1,
+    v: 2,
     kind: "feedback",
     exp: Date.now() + 48 * 60 * 60 * 1000,
     digest: await feedbackExchangeDigest(question, reply),
@@ -223,7 +303,7 @@ export async function issueFeedbackToken(env, question, reply) {
   const signature = new Uint8Array(
     await crypto.subtle.sign(
       "HMAC",
-      await ownerSigningKey(env),
+      await feedbackSigningKey(env),
       new TextEncoder().encode(encoded),
     ),
   );
@@ -236,20 +316,66 @@ export async function verifyFeedbackToken(env, token, question, reply) {
   try {
     const valid = await crypto.subtle.verify(
       "HMAC",
-      await ownerSigningKey(env),
+      await feedbackSigningKey(env),
       b64UrlBytes(signatureText),
       new TextEncoder().encode(encoded),
     );
     if (!valid) return false;
     const payload = JSON.parse(new TextDecoder().decode(b64UrlBytes(encoded)));
     if (
-      payload?.v !== 1 ||
+      payload?.v !== 2 ||
       payload?.kind !== "feedback" ||
       Number(payload.exp) <= Date.now()
     ) {
       return false;
     }
     return payload.digest === await feedbackExchangeDigest(question, reply);
+  } catch {
+    return false;
+  }
+}
+
+export async function issuePushRegistrationChallenge(env, endpoint) {
+  const normalized = validWebPushEndpoint(endpoint);
+  if (!normalized) throw new Error("Invalid Web Push endpoint.");
+  const payload = {
+    v: 1,
+    kind: "push-registration",
+    exp: Date.now() + 5 * 60 * 1000,
+    digest: await sha256Hex(normalized),
+    nonce: bytesB64Url(crypto.getRandomValues(new Uint8Array(12))),
+  };
+  const encoded = bytesB64Url(new TextEncoder().encode(JSON.stringify(payload)));
+  const signature = new Uint8Array(
+    await crypto.subtle.sign(
+      "HMAC",
+      await pushChallengeSigningKey(env),
+      new TextEncoder().encode(encoded),
+    ),
+  );
+  return `${encoded}.${bytesB64Url(signature)}`;
+}
+
+export async function verifyPushRegistrationChallenge(env, token, endpoint) {
+  const normalized = validWebPushEndpoint(endpoint);
+  if (!normalized) return false;
+  const [encoded, signatureText, extra] = String(token || "").split(".");
+  if (!encoded || !signatureText || extra) return false;
+  try {
+    const valid = await crypto.subtle.verify(
+      "HMAC",
+      await pushChallengeSigningKey(env),
+      b64UrlBytes(signatureText),
+      new TextEncoder().encode(encoded),
+    );
+    if (!valid) return false;
+    const payload = JSON.parse(new TextDecoder().decode(b64UrlBytes(encoded)));
+    return (
+      payload?.v === 1 &&
+      payload?.kind === "push-registration" &&
+      Number(payload.exp) > Date.now() &&
+      payload.digest === await sha256Hex(normalized)
+    );
   } catch {
     return false;
   }
@@ -278,20 +404,46 @@ function bytesB64(value) {
   return btoa(binary);
 }
 
-async function stateKey(env) {
+function stateMasterSecret(env) {
   const source = cleanText(env.TRACKER_STATE_KEY || env.TELEGRAM_BOT_TOKEN, 5000);
   if (!source) throw new Error("State decryption key is unavailable.");
-  return crypto.subtle.digest("SHA-256", new TextEncoder().encode(source));
+  return new TextEncoder().encode(source);
+}
+
+async function legacyStateKeyBytes(env) {
+  return crypto.subtle.digest("SHA-256", stateMasterSecret(env));
+}
+
+async function hardenedStateKeyBytes(env) {
+  const master = await crypto.subtle.importKey(
+    "raw",
+    stateMasterSecret(env),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  return crypto.subtle.sign(
+    "HMAC",
+    master,
+    new TextEncoder().encode(KEY_CONTEXT.stateEncryption),
+  );
+}
+
+async function stateCryptoKey(env, hardened = true, usage = "decrypt") {
+  const bytes = hardened
+    ? await hardenedStateKeyBytes(env)
+    : await legacyStateKeyBytes(env);
+  return crypto.subtle.importKey(
+    "raw",
+    bytes,
+    { name: "AES-GCM" },
+    false,
+    [usage],
+  );
 }
 
 async function encryptState(value, env) {
-  const key = await crypto.subtle.importKey(
-    "raw",
-    await stateKey(env),
-    { name: "AES-GCM" },
-    false,
-    ["encrypt"],
-  );
+  const key = await stateCryptoKey(env, true, "encrypt");
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const encrypted = new Uint8Array(await crypto.subtle.encrypt(
     { name: "AES-GCM", iv, tagLength: 128 },
@@ -302,6 +454,7 @@ async function encryptState(value, env) {
   const data = encrypted.slice(0, encrypted.length - 16);
   return {
     v: 1,
+    kdf: "hmac-sha256-v1",
     iv: bytesB64(iv),
     tag: bytesB64(tag),
     data: bytesB64(data),
@@ -309,14 +462,16 @@ async function encryptState(value, env) {
 }
 
 async function decryptState(payload, env) {
-  if (!payload || payload.v !== 1) return null;
+  if (
+    !payload ||
+    payload.v !== 1 ||
+    (payload.kdf !== undefined && payload.kdf !== "hmac-sha256-v1")
+  ) return null;
   try {
-    const key = await crypto.subtle.importKey(
-      "raw",
-      await stateKey(env),
-      { name: "AES-GCM" },
-      false,
-      ["decrypt"],
+    const key = await stateCryptoKey(
+      env,
+      payload.kdf === "hmac-sha256-v1",
+      "decrypt",
     );
     const ciphertext = b64Bytes(payload.data);
     const tag = b64Bytes(payload.tag);
@@ -456,21 +611,61 @@ async function ownerSettingsRecord(env) {
   };
 }
 
-async function pairOwnerDevice(env, code) {
-  const normalized = cleanText(code, 12);
-  if (!/^\d{6}$/.test(normalized)) return null;
-  const { settings } = await ownerSettingsRecord(env);
-  const expiresAt = Date.parse(String(settings.webPairExpiresAt || ""));
-  if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) return null;
-  const expected = cleanText(settings.webPairCodeHash, 128);
-  if (!expected || expected !== await sha256Hex(normalized)) return null;
+export function normalizeWebPairCode(value) {
+  return String(value || "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 24);
+}
 
-  // Keep the temporary code valid until its existing expiry so the user can
-  // authorize more than one device without requesting a fresh code per device.
-  return {
-    ...(await issueOwnerToken(env)),
-    passwordConfigured: Boolean(settings.webOwnerPassword?.digest),
-  };
+async function currentOwnerAuthVersion(env) {
+  const record = await githubStateRecord(env, "state/listener.json");
+  const current = await listenerStateDocument(env, record.value);
+  return ownerAuthVersion(current.settings);
+}
+
+async function verifyOwnerCapability(env, token) {
+  return verifyOwnerToken(env, token, await currentOwnerAuthVersion(env));
+}
+
+async function pairOwnerDevice(env, code) {
+  const normalized = normalizeWebPairCode(code);
+  if (!/^[A-HJ-NP-Z2-9]{12}$/.test(normalized)) return null;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const record = await githubStateRecord(env, "state/listener.json");
+      const current = await listenerStateDocument(env, record.value);
+      const settings = current.settings;
+      const expiresAt = Date.parse(String(settings.webPairExpiresAt || ""));
+      if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) return null;
+      const expected = cleanText(settings.webPairCodeHash, 128);
+      if (!expected || expected !== await sha256Hex(normalized)) return null;
+
+      const nextSettings = { ...settings };
+      delete nextSettings.webPairCodeHash;
+      delete nextSettings.webPairExpiresAt;
+      nextSettings.webPairConsumedAt = new Date().toISOString();
+
+      await githubStatePut(
+        env,
+        "state/listener.json",
+        await encryptState({
+          lastUpdateId: current.lastUpdateId,
+          settings: nextSettings,
+        }, env),
+        record.sha,
+        "runtime(user): consume single-use web pairing code",
+      );
+      return {
+        ...(await issueOwnerToken(env, ownerAuthVersion(nextSettings))),
+        passwordConfigured: Boolean(nextSettings.webOwnerPassword?.digest),
+      };
+    } catch (error) {
+      if (attempt === 2) throw error;
+    }
+  }
+  return null;
 }
 
 async function ownerSettingsView(env) {
@@ -482,17 +677,20 @@ async function ownerSettingsView(env) {
   };
 }
 
-async function saveOwnerPassword(env, value) {
+async function saveOwnerPassword(env, value, { rotateAuth = true } = {}) {
   const passwordRecord = await createOwnerPasswordRecord(env, value);
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       const record = await githubStateRecord(env, "state/listener.json");
       const current = await listenerStateDocument(env, record.value);
+      const previousVersion = ownerAuthVersion(current.settings);
+      const authVersion = rotateAuth ? previousVersion + 1 : previousVersion;
       const next = {
         lastUpdateId: current.lastUpdateId,
         settings: {
           ...current.settings,
           webOwnerPassword: passwordRecord,
+          webAuthVersion: authVersion,
         },
       };
       await githubStatePut(
@@ -500,22 +698,56 @@ async function saveOwnerPassword(env, value) {
         "state/listener.json",
         await encryptState(next, env),
         record.sha,
-        "runtime(user): update web user password",
+        "runtime(user): update web user password and auth revision",
       );
-      return passwordRecord;
+      return { passwordRecord, authVersion };
     } catch (error) {
-      if (attempt === 1) throw error;
+      if (attempt === 2) throw error;
     }
   }
   throw new Error("Unable to update user password.");
 }
 
+async function rotateOwnerAuthVersion(env) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const record = await githubStateRecord(env, "state/listener.json");
+      const current = await listenerStateDocument(env, record.value);
+      const authVersion = ownerAuthVersion(current.settings) + 1;
+      await githubStatePut(
+        env,
+        "state/listener.json",
+        await encryptState({
+          lastUpdateId: current.lastUpdateId,
+          settings: {
+            ...current.settings,
+            webAuthVersion: authVersion,
+          },
+        }, env),
+        record.sha,
+        "runtime(user): revoke web user sessions",
+      );
+      return authVersion;
+    } catch (error) {
+      if (attempt === 2) throw error;
+    }
+  }
+  throw new Error("Unable to revoke user sessions.");
+}
+
 async function loginOwnerDevice(env, password) {
+  const normalizedPassword = String(password ?? "");
   const { settings } = await ownerSettingsRecord(env);
-  if (!(await verifyOwnerPassword(env, String(password ?? ""), settings.webOwnerPassword))) {
+  if (!(await verifyOwnerPassword(env, normalizedPassword, settings.webOwnerPassword))) {
     return null;
   }
-  return issueOwnerToken(env);
+
+  let authVersion = ownerAuthVersion(settings);
+  if (settings.webOwnerPassword?.v !== 2) {
+    const migrated = await saveOwnerPassword(env, normalizedPassword, { rotateAuth: false });
+    authVersion = migrated.authVersion;
+  }
+  return issueOwnerToken(env, authVersion);
 }
 
 export function normalizeOwnerSettingsInput(body) {
@@ -1337,14 +1569,19 @@ async function fastReply(env, message) {
 }
 
 
-function webCorsHeaders(request) {
+function webRequestOriginAllowed(request) {
   const origin = request.headers.get("origin") || "";
-  const allowed =
+  return (
     origin === "https://vudh1.github.io" ||
     origin === "http://localhost" ||
-    origin.startsWith("http://localhost:");
+    origin.startsWith("http://localhost:")
+  );
+}
+
+function webCorsHeaders(request) {
+  const origin = request.headers.get("origin") || "";
   return {
-    "access-control-allow-origin": allowed ? origin : "https://vudh1.github.io",
+    ...(webRequestOriginAllowed(request) ? { "access-control-allow-origin": origin } : {}),
     "access-control-allow-methods": "GET,POST,OPTIONS",
     "access-control-allow-headers": "content-type, authorization",
     "access-control-max-age": "86400",
@@ -1352,9 +1589,25 @@ function webCorsHeaders(request) {
   };
 }
 
+function webSecurityHeaders() {
+  return {
+    "content-security-policy":
+      "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY",
+    "referrer-policy": "no-referrer",
+    "permissions-policy":
+      "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()",
+  };
+}
+
+function webResponseHeaders(request) {
+  return { ...webCorsHeaders(request), ...webSecurityHeaders() };
+}
+
 function webJson(request, value, init = {}) {
   const headers = new Headers(init.headers || {});
-  for (const [key, val] of Object.entries(webCorsHeaders(request))) headers.set(key, val);
+  for (const [key, val] of Object.entries(webResponseHeaders(request))) headers.set(key, val);
   headers.set("content-type", "application/json; charset=utf-8");
   headers.set("cache-control", "no-store");
   return new Response(JSON.stringify(value), { ...init, headers });
@@ -1726,15 +1979,15 @@ async function webBoard(env, limit = 30) {
 }
 
 export function validWebSubscription(value) {
-  const endpoint = cleanText(value?.endpoint, 5000);
-  if (!endpoint.startsWith("https://")) return null;
+  const endpoint = validWebPushEndpoint(value?.endpoint);
+  if (!endpoint) return null;
+  const p256dh = cleanText(value?.keys?.p256dh, 500);
+  const auth = cleanText(value?.keys?.auth, 500);
+  if (!p256dh || !auth) return null;
   return {
     endpoint,
     expirationTime: value?.expirationTime ?? null,
-    keys: {
-      p256dh: cleanText(value?.keys?.p256dh, 500),
-      auth: cleanText(value?.keys?.auth, 500),
-    },
+    keys: { p256dh, auth },
   };
 }
 
@@ -1952,7 +2205,7 @@ export default {
       }
     }
     if (request.method === "OPTIONS" && url.pathname.startsWith("/web/")) {
-      return new Response(null, { status: 204, headers: webCorsHeaders(request) });
+      return new Response(null, { status: 204, headers: webResponseHeaders(request) });
     }
     if (request.method === "GET" && url.pathname === "/web/config") {
       try {
@@ -2015,6 +2268,14 @@ export default {
     }
 
     if (request.method === "POST" && userRoute(url.pathname, "pair")) {
+      if (!(await ownerPairAllowed(request))) {
+        return webJson(
+          request,
+          { ok: false, error: "Too many pairing attempts. Request a new /webpair code and try again later." },
+          { status: 429 },
+        );
+      }
+
       let body;
       try { body = await request.json(); }
       catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
@@ -2022,12 +2283,14 @@ export default {
       try {
         const paired = await pairOwnerDevice(env, body?.code);
         if (!paired) {
+          await recordOwnerPairFailure(request);
           return webJson(
             request,
-            { ok: false, error: "Pairing code is invalid or expired. Request a new /webpair code." },
+            { ok: false, error: "Pairing code is invalid, expired, or already used. Request a new /webpair code." },
             { status: 401 },
           );
         }
+        await clearOwnerPairFailures(request);
         return webJson(request, { ok: true, ...paired });
       } catch (error) {
         console.error("User pairing failed", error);
@@ -2078,7 +2341,7 @@ export default {
     }
 
     if (request.method === "POST" && userRoute(url.pathname, "password")) {
-      if (!(await verifyOwnerToken(env, bearerToken(request)))) {
+      if (!(await verifyOwnerCapability(env, bearerToken(request)).catch(() => false))) {
         return webJson(request, { ok: false, error: "User sign-in is required." }, { status: 401 });
       }
 
@@ -2087,11 +2350,12 @@ export default {
       catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
 
       try {
-        await saveOwnerPassword(env, body?.password);
+        const saved = await saveOwnerPassword(env, body?.password);
         return webJson(request, {
           ok: true,
           passwordConfigured: true,
-          message: "User password saved. New devices can sign in directly.",
+          ...(await issueOwnerToken(env, saved.authVersion)),
+          message: "User password saved. Other signed-in devices were revoked.",
         });
       } catch (error) {
         const message = cleanText(error?.message, 200);
@@ -2107,12 +2371,32 @@ export default {
       }
     }
 
+    if (request.method === "POST" && userRoute(url.pathname, "revoke")) {
+      if (!(await verifyOwnerCapability(env, bearerToken(request)).catch(() => false))) {
+        return webJson(request, { ok: false, error: "User sign-in is required." }, { status: 401 });
+      }
+      try {
+        await rotateOwnerAuthVersion(env);
+        return webJson(request, {
+          ok: true,
+          revoked: true,
+          message: "All signed-in devices were revoked.",
+        });
+      } catch {
+        return webJson(
+          request,
+          { ok: false, error: "Unable to revoke user sessions right now." },
+          { status: 503 },
+        );
+      }
+    }
+
     if (
       (request.method === "GET" || request.method === "POST") &&
       userRoute(url.pathname, "settings")
     ) {
       const token = bearerToken(request);
-      if (!(await verifyOwnerToken(env, token))) {
+      if (!(await verifyOwnerCapability(env, token).catch(() => false))) {
         return webJson(request, { ok: false, error: "User sign-in is required." }, { status: 401 });
       }
 
@@ -2146,7 +2430,7 @@ export default {
 
       const question = retainPrivateText(body?.question, 4000);
       const reply = retainPrivateText(body?.reply, 12000);
-      const userAuthorized = await verifyOwnerToken(env, bearerToken(request));
+      const userAuthorized = await verifyOwnerCapability(env, bearerToken(request)).catch(() => false);
       const feedbackAuthorized = await verifyFeedbackToken(
         env,
         body?.feedbackToken,
@@ -2233,7 +2517,7 @@ export default {
         ? await issueFeedbackToken(env, body?.question, answer.reply)
         : "";
       const token = bearerToken(request);
-      if (await verifyOwnerToken(env, token)) {
+      if (await verifyOwnerCapability(env, token).catch(() => false)) {
         const history = {
           question: cleanText(body?.question, 600),
           reply: cleanText(answer?.reply || answer?.error, 1200),
@@ -2256,16 +2540,62 @@ export default {
         { status: answer.ok ? 200 : 400 },
       );
     }
+    if (request.method === "POST" && url.pathname === "/web/push/challenge") {
+      if (!webRequestOriginAllowed(request)) {
+        return webJson(request, { ok: false, error: "Untrusted Web Push origin." }, { status: 403 });
+      }
+      if (!(await pushRegistrationAllowed(request))) {
+        return webJson(
+          request,
+          { ok: false, error: "Too many Web Push registration attempts. Try again later." },
+          { status: 429 },
+        );
+      }
+
+      let body;
+      try { body = await request.json(); }
+      catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
+      const endpoint = validWebPushEndpoint(body?.endpoint);
+      if (!endpoint) {
+        await recordPushRegistrationFailure(request);
+        return webJson(request, { ok: false, error: "Invalid Web Push endpoint." }, { status: 400 });
+      }
+      return webJson(request, {
+        ok: true,
+        challenge: await issuePushRegistrationChallenge(env, endpoint),
+        expiresInSeconds: 300,
+      });
+    }
+
     if (
       request.method === "POST" &&
       (url.pathname === "/web/push/subscribe" || url.pathname === "/web/push/unsubscribe")
     ) {
+      if (!webRequestOriginAllowed(request)) {
+        return webJson(request, { ok: false, error: "Untrusted Web Push origin." }, { status: 403 });
+      }
+      if (!(await pushRegistrationAllowed(request))) {
+        return webJson(
+          request,
+          { ok: false, error: "Too many Web Push registration attempts. Try again later." },
+          { status: 429 },
+        );
+      }
+
       let body;
       try { body = await request.json(); }
       catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
       const subscription = validWebSubscription(body?.subscription);
-      if (!subscription) {
-        return webJson(request, { ok: false, error: "Invalid Web Push subscription." }, { status: 400 });
+      if (
+        !subscription ||
+        !(await verifyPushRegistrationChallenge(env, body?.challenge, subscription?.endpoint))
+      ) {
+        await recordPushRegistrationFailure(request);
+        return webJson(
+          request,
+          { ok: false, error: "Invalid or expired Web Push registration challenge." },
+          { status: 400 },
+        );
       }
       const action = url.pathname.endsWith("/unsubscribe") ? "unsubscribe" : "subscribe";
       await dispatchWebRegistration(env, action, subscription);

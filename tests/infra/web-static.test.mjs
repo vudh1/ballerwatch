@@ -16,13 +16,13 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=5\.8\.1/);
-  assert.match(html, /app\.js\?v=5\.8\.1/);
+  assert.match(html, /styles\.css\?v=5\.8\.2/);
+  assert.match(html, /app\.js\?v=5\.8\.2/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v5-8-1-shell/);
+  assert.match(sw, /ballerwatch-v5-8-2-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -67,7 +67,7 @@ test("Home Screen install card is removed in standalone mode and notifications u
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=5\.8\.1/);
+  assert.match(app, /sw\.js\?v=5\.8\.2/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -141,7 +141,8 @@ test("question box supports slash commands and autosuggestions", () => {
 test("app-facing copy mentions Telegram only for the explicit footer shortcut", () => {
   const html = fs.readFileSync("docs/index.html", "utf8");
   const manifest = fs.readFileSync("docs/manifest.webmanifest", "utf8");
-  const withoutFooterShortcut = html.replace(
+  const body = html.slice(html.indexOf("<body"));
+  const withoutFooterShortcut = body.replace(
     /<a href="https:\/\/t\.me\/ttf_rsvp_tracker_bot"[^>]*>Telegram<\/a>/,
     "",
   );
@@ -250,30 +251,23 @@ test("mobile header keeps settings and bell on the same row", () => {
 });
 
 
-test("owner pairing code can authorize multiple devices until expiry", () => {
+test("user pairing codes are high-entropy, attempt-limited, and single-use", () => {
   const html = fs.readFileSync("docs/index.html", "utf8");
   const worker = fs.readFileSync("infra/telegram-webhook/worker.mjs", "utf8");
   const listener = fs.readFileSync("listener/bot.mjs", "utf8");
 
-  const pairFunction = worker.match(/async function pairOwnerDevice[\s\S]*?\n}\n/);
-  assert.ok(pairFunction);
-  assert.doesNotMatch(pairFunction[0], /dispatchWorkflow\(env, "listener\.yml"/);
-  assert.doesNotMatch(pairFunction[0], /action: "consume-pair-code"/);
-  assert.match(pairFunction[0], /issueOwnerToken\(env\)/);
-  assert.match(pairFunction[0], /passwordConfigured/);
-
-  assert.match(html, /multiple devices during its 10-minute window/);
-  assert.match(listener, /same code in BallerWatch Settings on multiple devices before it expires/);
-  assert.match(
-    listener,
-    /event\?\.action === "consume-pair-code"[\s\S]*Pairing codes are intentionally reusable until expiry[\s\S]*return settings;/,
-  );
-  assert.doesNotMatch(
-    listener.match(/if \(event\?\.action === "consume-pair-code"\)[\s\S]*?\n  }/)?.[0] || "",
-    /webPairCodeHash:\s*""/,
-  );
-  assert.match(worker, /Pairing service is temporarily unavailable/);
-  assert.match(worker, /webJson\([\s\S]*status: 503/);
+  assert.match(html, /single-use and expires after 10 minutes/);
+  assert.match(html, /placeholder="XXXX-XXXX-XXXX"/);
+  assert.match(listener, /WEB_PAIR_ALPHABET/);
+  assert.match(listener, /for \(let index = 0; index < 12; index \+= 1\)/);
+  assert.match(listener, /Single use\. Expires in 10 minutes\./);
+  assert.match(worker, /\^\[A-HJ-NP-Z2-9\]\{12\}\$/);
+  assert.match(worker, /delete nextSettings\.webPairCodeHash/);
+  assert.match(worker, /delete nextSettings\.webPairExpiresAt/);
+  assert.match(worker, /ownerPairAllowed\(request\)/);
+  assert.match(worker, /recordOwnerPairFailure\(request\)/);
+  assert.match(worker, /issueOwnerToken\(env, ownerAuthVersion\(nextSettings\)\)/);
+  assert.match(worker, /Pairing code is invalid, expired, or already used/);
 });
 
 
@@ -775,4 +769,50 @@ test("external cron repair is manual-only because Worker deploy owns normal sync
   assert.match(repair, /workflow_dispatch:/);
   assert.doesNotMatch(repair, /release:\s*\n\s*types:/);
   assert.match(deploy, /Ensure primary GitHub schedules stay enabled/);
+});
+
+
+test("GitHub Actions dependencies are pinned to reviewed commit SHAs", () => {
+  const workflowDir = ".github/workflows";
+  const workflows = fs.readdirSync(workflowDir)
+    .filter((name) => name.endsWith(".yml") || name.endsWith(".yaml"));
+  const unpinned = [];
+  for (const name of workflows) {
+    const source = fs.readFileSync(`${workflowDir}/${name}`, "utf8");
+    for (const match of source.matchAll(/uses:\s*([^\s#]+)@([^\s#]+)/g)) {
+      if (!/^[0-9a-f]{40}$/i.test(match[2])) {
+        unpinned.push(`${name}: ${match[0]}`);
+      }
+    }
+  }
+  assert.deepEqual(unpinned, []);
+});
+
+test("PWA declares restrictive document policy and confines notification navigation", () => {
+  const html = fs.readFileSync("docs/index.html", "utf8");
+  const sw = fs.readFileSync("docs/sw.js", "utf8");
+  assert.match(html, /http-equiv="Content-Security-Policy"/);
+  assert.match(html, /script-src 'self'/);
+  assert.match(html, /object-src 'none'/);
+  assert.match(html, /base-uri 'none'/);
+  assert.match(html, /name="referrer" content="no-referrer"/);
+  assert.match(sw, /function safeAppUrl/);
+  assert.match(sw, /url\.origin !== new URL\(APP_URL\)\.origin/);
+  assert.match(sw, /url\.pathname\.startsWith\("\/ballerwatch\/"\)/);
+  assert.match(sw, /clients\.openWindow\(target\)/);
+});
+
+test("Worker web API sets defense-in-depth security headers and protects push registration", () => {
+  const worker = fs.readFileSync("infra/telegram-webhook/worker.mjs", "utf8");
+  assert.match(worker, /"content-security-policy"/);
+  assert.match(worker, /frame-ancestors 'none'/);
+  assert.match(worker, /"x-content-type-options": "nosniff"/);
+  assert.match(worker, /"x-frame-options": "DENY"/);
+  assert.match(worker, /"referrer-policy": "no-referrer"/);
+  assert.match(worker, /"permissions-policy"/);
+  assert.match(worker, /\/web\/push\/challenge/);
+  assert.match(worker, /verifyPushRegistrationChallenge/);
+  assert.match(worker, /webRequestOriginAllowed/);
+  assert.match(worker, /ownerPairAllowed/);
+  assert.match(worker, /rotateOwnerAuthVersion/);
 });

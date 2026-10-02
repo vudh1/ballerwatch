@@ -105,7 +105,7 @@ test("user password records are server-keyed and verify only the exact password"
   const env = { TRACKER_STATE_KEY: "test-owner-password-key" };
   const record = await createOwnerPasswordRecord(env, "correct horse battery staple");
 
-  assert.equal(record.v, 1);
+  assert.equal(record.v, 2);
   assert.match(record.salt, /^[A-Za-z0-9_-]+$/);
   assert.match(record.digest, /^[A-Za-z0-9_-]+$/);
   assert.equal(
