@@ -1,7 +1,25 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "5.2.1",
+  "currentVersion": "5.3.0",
   "releases": [
+    {
+      "version": "5.3.0",
+      "date": "2026-10-02",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Swipe navigation between calendar game dates",
+      "telegramAnnouncement": "BallerWatch match cards can now be swiped left or right to move between game dates while the 14-day calendar highlight stays synchronized.",
+      "changes": [
+        "Added horizontal swipe navigation to the main match spotlight on touch devices.",
+        "Swipe left selects the next date in the 14-day calendar that has a published game; swipe right selects the previous game date.",
+        "Empty dates are skipped so swipe navigation mirrors the existing clickable game-date behavior rather than showing blank match cards.",
+        "The selected calendar highlight and same-day multi-match picker stay synchronized with the swiped-to match.",
+        "Horizontal dragging follows the finger and transitions the newly selected match back into place; vertical scrolling remains available.",
+        "Swipes that start on interactive Directions or Share controls are ignored so normal button taps remain reliable.",
+        "Added regression coverage for swipe direction, game-date selection, calendar highlight synchronization, and touch behavior.",
+        "Bumped the installed PWA shell and service-worker cache to 5.3.0."
+      ]
+    },
     {
       "version": "5.2.1",
       "date": "2026-10-02",
