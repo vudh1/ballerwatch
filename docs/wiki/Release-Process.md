@@ -2,6 +2,8 @@
 
 BallerWatch separates **merging** from **production promotion**.
 
+All repository changes are branch-first. Create the working branch from the latest `main`, do the work there, and merge through a PR only after verification. Do not commit maintenance, release, documentation, workflow, or product changes directly to `main`.
+
 ## Build the product release
 
 1. Create `release/<next-version>` from current `main`.
@@ -16,6 +18,19 @@ BallerWatch separates **merging** from **production promotion**.
 10. **Squash merge** to `main`.
 
 The release branch can contain detailed implementation commits; `main` receives one product-release commit.
+
+## Maintenance changes
+
+Maintenance follows the same branch-first rule without inventing a product release:
+
+1. Update local context from the latest `main`.
+2. Create `maintenance/<topic>` (or `fix/<topic>` for a focused fix) from that exact `main`.
+3. Make and verify the maintenance changes on that branch.
+4. Open a PR to `main`.
+5. Merge only when the branch is complete and the relevant checks are green.
+6. Delete the merged working branch when practical.
+
+Do not bump `features/versions.json` for documentation-only edits, behavior-preserving refactors, CI/workflow housekeeping, or other non-product maintenance.
 
 ## Promote production
 
