@@ -36,7 +36,7 @@ If a GitHub Release for the current version already exists, promotion is a no-op
 
 ## Release credential
 
-Prefer `RELEASE_GITHUB_TOKEN` as a fine-grained repository token with **Contents: read/write**. `CRON_GITHUB_PAT` remains a compatibility fallback.
+Use `RELEASE_GITHUB_TOKEN` as a fine-grained repository token with **Contents: read/write** and **Workflows: read/write**. GitHub requires workflow-write authorization when the release target modifies `.github/workflows/`. Scheduler dispatches continue to use `CRON_GITHUB_PAT` separately.
 
 If neither credential can create the Release, promotion fails closed and `production` stays pinned.
 
