@@ -190,7 +190,7 @@ Maintenance work—docs, comments, behavior-preserving refactors, test-only chan
 
 ### GitHub Release credential
 
-Prefer a fine-grained repository secret named `RELEASE_GITHUB_TOKEN` with **Contents: read/write** for Release/tag publication. `CRON_GITHUB_PAT` remains the compatibility fallback for existing scheduler dispatches.
+Use a fine-grained repository secret named `RELEASE_GITHUB_TOKEN` with **Contents: read/write** and **Workflows: read/write**. The workflow permission is required when the tagged product commit changes files under `.github/workflows/`. `CRON_GITHUB_PAT` remains separate for scheduler dispatches.
 
 Promotion fails closed if the available credential cannot publish the GitHub Release; it should not silently move production without the release record.
 
