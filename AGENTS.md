@@ -95,7 +95,7 @@ Version numbers represent **actual product changes**, not repository activity.
 - PATCH: a backward-compatible user-visible bug fix, reliability/privacy/security behavior change, or production compatibility fix.
 - MINOR: a new backward-compatible product capability.
 - MAJOR: an intentional breaking product change.
-- **No SemVer bump** for documentation-only edits, code refactors with unchanged behavior, formatting/comments, test-only changes, CI/workflow maintenance, dependency/tooling maintenance, or other internal housekeeping that does not change the product's production behavior.
+- **No SemVer bump** for documentation-only edits, behavior-preserving refactors, formatting/comments, test-only changes, CI/workflow maintenance, dependency/tooling maintenance, or other internal housekeeping that does not change the product's production behavior.
 - Maintenance changes that keep the same version must not add a duplicate release-ledger entry or publish a new GitHub Release.
 - When a maintenance change intentionally changes production behavior, classify that behavior change normally as PATCH/MINOR/MAJOR.
 
