@@ -1,7 +1,24 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "5.2.0",
+  "currentVersion": "5.2.1",
   "releases": [
+    {
+      "version": "5.2.1",
+      "date": "2026-10-02",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Notification popup and sharing polish",
+      "telegramAnnouncement": "BallerWatch now uses generic Share, keeps the notification popup contained on iPhone, animates swipe-to-delete, and adds a subtle local Delete all action.",
+      "changes": [
+        "Changed Send to Tesla back to a generic Share action so the iOS share sheet can expose whichever apps are actually available, including Tesla when present.",
+        "Restored full game details plus the map link in the native share payload and clipboard fallback.",
+        "Bound the notification dialog and made the history list independently scrollable so long notification history cannot overflow the popup controls.",
+        "Added interactive swipe-left motion that follows the finger, then slides and collapses the notification before local deletion.",
+        "Added a subtle Delete all action beside Send test that clears notification history only on the current device.",
+        "Added regression coverage for generic sharing, bounded notification layout, animated swipe deletion, and local Delete all.",
+        "Bumped the installed PWA shell and service-worker cache to 5.2.1."
+      ]
+    },
     {
       "version": "5.2.0",
       "date": "2026-10-02",
