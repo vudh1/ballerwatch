@@ -49,10 +49,10 @@ Merging to `main` does **not** deploy production. Production is release-gated:
 
 - `production` points to the latest promoted release commit.
 - A published GitHub Release/tag such as `v5.7.0` is the production promotion event.
-- Release publication uses the dedicated `RELEASE_GITHUB_TOKEN`. Grant repository **Contents: read/write** and **Workflows: read/write** because a product release may target a commit that changes `.github/workflows/`. If the token cannot create the Release, fail closed rather than moving production without a release record.
+- Release publication uses the dedicated `RELEASE_GITHUB_TOKEN`. Scope it only to this repository and grant **Contents: read/write**, **Workflows: read/write**, **Pages: read/write**, and **Administration: read/write**. Workflow write is needed when a product release targets workflow changes; Pages + Administration write are used only to recreate/enable GitHub Pages if repository-level Pages activation is missing. If the token cannot create the Release or recover Pages activation, fail closed rather than silently claiming a deployment succeeded.
 - The **Promote production release** workflow checks the candidate on `main`, requires successful validation, waits at least 24 hours, checks eligibility hourly, then advances `production` and publishes the GitHub Release on the first eligible check.
 - The same workflow may be manually run to promote a product version immediately; manual promotion skips the 24-hour soak but still requires validation.
-- Worker, Calendar-bridge bootstrap, weather bootstrap, and web-runtime deployments listen to the published Release. Pages is explicitly dispatched by the promoter after publication and checks out `production`; it does not deploy from ordinary pushes to `main`.
+- Worker, Calendar-bridge bootstrap, weather bootstrap, web-runtime, and Pages deployments listen to the published Release. Pages checks out `production`; a path-scoped `main` push trigger exists only to bootstrap/recover changes to the Pages workflow itself, never to deploy unreleased product code.
 - Scheduled/dispatch runtime workflows execute code from `production`, so unreleased `main` code does not silently become runtime behavior.
 - If a GitHub Release for the current version already exists, the promoter is a no-op. This is how maintenance commits can merge without creating another rollout.
 
