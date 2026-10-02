@@ -49,7 +49,7 @@ function handleWebPairCommand(text, settings) {
       webPairExpiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
     },
     reply: [
-      `Owner pairing code: ${code}`,
+      `User pairing code: ${code}`,
       "Expires in 10 minutes.",
       "You can enter this same code in BallerWatch Settings on multiple devices before it expires.",
     ].join("\n"),
@@ -86,6 +86,7 @@ function applyWebSettingsEvent(event, settings) {
 }
 
 function historySource(event) {
+  if (event?.source === "web-pwa-user") return "web-pwa-user";
   if (event?.source === "web-pwa-owner") return "web-pwa-owner";
   if (event?.source === "web-pwa-feedback") return "web-pwa-feedback";
   return "cloudflare-fast-path";
@@ -706,35 +707,35 @@ function effectiveOwnerName(settings) {
 
 function ownerNameReply(settings) {
   if (normalizeText(settings?.ownerRsvpName || "")) {
-    return "Pickup RSVP/owner name: using encrypted Telegram override.";
+    return "Pickup RSVP/user name: using encrypted Telegram override.";
   }
   if (normalizeText(process.env.OWNER_RSVP_NAME || "")) {
-    return "Pickup RSVP/owner name: using default GitHub Secret.";
+    return "Pickup RSVP/user name: using default GitHub Secret.";
   }
-  return "Pickup RSVP/owner name is not configured yet.";
+  return "Pickup RSVP/user name is not configured yet.";
 }
 
 function parseOwnerNameCommand(text) {
   const clean = normalizeText(text);
 
   if (
-    /\b(?:what|which)\s+(?:is\s+)?(?:my\s+)?(?:owner|rsvp)\s+name\b/i.test(clean) ||
-    /^\/?owner\s+name$/i.test(clean)
+    /\b(?:what|which)\s+(?:is\s+)?(?:my\s+)?(?:user|owner|rsvp)\s+name\b/i.test(clean) ||
+    /^\/?(?:user|owner)\s+name$/i.test(clean)
   ) {
     return { action: "show" };
   }
 
   let match = clean.match(
-    /^(?:set|change|update)\s+(?:my\s+)?(?:owner|rsvp)\s+name\s+(?:to\s+)?(.+)$/i,
+    /^(?:set|change|update)\s+(?:my\s+)?(?:user|owner|rsvp)\s+name\s+(?:to\s+)?(.+)$/i,
   );
   if (match) return { action: "set", name: normalizeText(match[1]) };
 
   match = clean.match(
-    /^(?:my\s+)?(?:owner|rsvp)\s+name\s+(?:is\s+)?(.+)$/i,
+    /^(?:my\s+)?(?:user|owner|rsvp)\s+name\s+(?:is\s+)?(.+)$/i,
   );
   if (match) return { action: "set", name: normalizeText(match[1]) };
 
-  if (/^(?:remove|clear|unset)\s+(?:my\s+)?(?:owner|rsvp)\s+name$/i.test(clean)) {
+  if (/^(?:remove|clear|unset)\s+(?:my\s+)?(?:user|owner|rsvp)\s+name$/i.test(clean)) {
     return { action: "clear" };
   }
 
@@ -813,7 +814,7 @@ function setupPrompt(field) {
   if (field === "ownerRsvpName") {
     return [
       "I need your exact pickup RSVP display name so I can identify your RSVP/waitlist status.",
-      "Reply with: owner name <your exact RSVP name>",
+      "Reply with: user name <your exact RSVP name>",
       "It will be stored encrypted in the repo.",
     ].join("\n");
   }
@@ -850,7 +851,7 @@ function handleOwnerNameCommand(command, settings) {
         lastOwnerNameReminderAt: "",
       },
       reply: process.env.OWNER_RSVP_NAME
-        ? "Cleared the encrypted owner-name override. Using the default GitHub Secret again."
+        ? "Cleared the encrypted user-name override. Using the default GitHub Secret again."
         : ["Cleared your pickup RSVP/owner name.", setupPrompt("ownerRsvpName")].join("\n"),
     };
   }
@@ -860,7 +861,7 @@ function handleOwnerNameCommand(command, settings) {
     if (!name) {
       return {
         settings,
-        reply: "Tell me the exact RSVP display name, for example: owner name Alex Smith",
+        reply: "Tell me the exact RSVP display name, for example: user name Alex Smith",
       };
     }
     return {
@@ -1010,16 +1011,16 @@ function setupStatusReply(settings) {
   const missing = missingSetup(settings);
   const lines = [
     "BallerWatch setup:",
-    `• Pickup RSVP/owner name: ${ownerName ? (settings.ownerRsvpName ? "encrypted override" : "default secret") : "missing"}`,
+    `• Pickup RSVP/user name: ${ownerName ? (settings.ownerRsvpName ? "encrypted override" : "default secret") : "missing"}`,
     `• RSVP endpoint: ${endpoint ? (settings.pickupEndpointOverride ? "encrypted override" : "default secret") : "missing"}`,
     `• League teams: ${teams.length ? `${teams.length} configured` : "missing"}`,
   ];
 
   const ownerValidity = ownerNameValidity(settings);
   if (ownerValidity.status === "not-found") {
-    lines.push("⚠️ Configured owner name is not found in current RSVP participant/waitlist data.");
+    lines.push("⚠️ Configured user name is not found in current RSVP participant/waitlist data.");
   } else if (ownerValidity.status === "valid") {
-    lines.push("• Owner name match: verified in current RSVP data");
+    lines.push("• User name match: verified in current RSVP data");
   }
 
   if (!missing.length) {
@@ -1318,12 +1319,12 @@ async function handleMessage(text, settings) {
         "• /feature <request>",
         "• reply 👎 to a bot answer to queue it for review",
         "• what information do you still need from me?",
-        "• what is my owner name?",
+        "• what is my user name?",
         "• what is the RSVP endpoint?",
         "• set RSVP endpoint https://...",
         "• clear RSVP endpoint override",
-        "• owner name <exact RSVP display name>",
-        "• change owner name to <new name>",
+        "• user name <exact RSVP display name>",
+        "• change user name to <new name>",
         "• add league team <name>",
         "• rename league team <old> to <new>",
         "• remove league team <name>",
@@ -1385,7 +1386,7 @@ async function main() {
     const event = JSON.parse(Buffer.from(webSettingsEventB64, "base64").toString("utf8"));
     settings = applyWebSettingsEvent(event, settings);
     saveBotState(state.lastUpdateId || 0, settings);
-    console.log("Applied authenticated web owner settings.");
+    console.log("Applied authenticated web user settings.");
     return;
   }
 
@@ -1417,7 +1418,7 @@ async function main() {
   }
 
   // Unsolicited reminders and release notices are intentionally disabled here.
-  // The listener only replies to the owner's current Telegram input.
+  // The listener only replies to the authenticated user's current Telegram input.
   let updates;
   try {
     updates = [JSON.parse(Buffer.from(injectedUpdate, "base64").toString("utf8"))];
