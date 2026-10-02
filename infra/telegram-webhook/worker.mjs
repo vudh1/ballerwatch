@@ -1,7 +1,7 @@
 /**
  * Routes Telegram webhooks, edge Q&A, runtime-state APIs, health checks, and scheduled edge work.
  *
- * Updated v5.0.0: adds a public-safe 14-day game/weather calendar while preserving owner pairing, anonymous-read privacy, and encrypted runtime state.
+ * Updated v5.4.0: preserves exact owner review exchanges only inside encrypted runtime state, keeps readable review signals sanitized, and routes common weekday match-detail questions deterministically.
  */
 import {
   fetchPickupSnapshot,
