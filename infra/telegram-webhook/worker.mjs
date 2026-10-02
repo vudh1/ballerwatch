@@ -1797,6 +1797,39 @@ export default {
       try { body = await request.json(); }
       catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
 
+      const action = cleanText(body?.action || "mark", 20).toLowerCase();
+      const feedbackId = cleanText(body?.feedbackId, 120);
+      if (!/^[A-Za-z0-9._:-]{8,120}$/.test(feedbackId)) {
+        return webJson(
+          request,
+          { ok: false, error: "Feedback identifier is invalid." },
+          { status: 400 },
+        );
+      }
+
+      if (action === "cancel") {
+        await dispatchWorkflow(env, "listener.yml", {
+          history_event_b64: base64Json({
+            action: "cancel-feedback",
+            feedbackId,
+            source: "web-pwa-feedback",
+          }),
+        });
+        return webJson(
+          request,
+          { ok: true, status: "cancellation-queued" },
+          { status: 202 },
+        );
+      }
+
+      if (action !== "mark") {
+        return webJson(
+          request,
+          { ok: false, error: "Unsupported feedback action." },
+          { status: 400 },
+        );
+      }
+
       const question = cleanText(body?.question, 600);
       const reply = cleanText(body?.reply, 1200);
       if (!question || !reply) {
@@ -1809,6 +1842,8 @@ export default {
 
       await dispatchWorkflow(env, "listener.yml", {
         history_event_b64: base64Json({
+          action: "mark-feedback",
+          feedbackId,
           question,
           reply,
           hint: "negative_feedback",
