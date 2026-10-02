@@ -170,9 +170,9 @@ export function normalizeOwnerPassword(value) {
   return password;
 }
 
-function ownerPasswordMessage(salt, password) {
+function ownerPasswordMessage(version, salt, password) {
   return new TextEncoder().encode(
-    `owner-password:v1:${String(salt || "")}:${String(password || "")}`,
+    `owner-password:v${version}:${String(salt || "")}:${String(password || "")}`,
   );
 }
 
@@ -182,12 +182,12 @@ export async function createOwnerPasswordRecord(env, value) {
   const digest = new Uint8Array(
     await crypto.subtle.sign(
       "HMAC",
-      await ownerSigningKey(env),
-      ownerPasswordMessage(salt, password),
+      await passwordSigningKey(env),
+      ownerPasswordMessage(2, salt, password),
     ),
   );
   return {
-    v: 1,
+    v: 2,
     salt,
     digest: bytesB64Url(digest),
     updatedAt: new Date().toISOString(),
@@ -196,7 +196,7 @@ export async function createOwnerPasswordRecord(env, value) {
 
 export async function verifyOwnerPassword(env, value, record) {
   if (
-    record?.v !== 1 ||
+    ![1, 2].includes(record?.v) ||
     !record?.salt ||
     !record?.digest ||
     typeof value !== "string"
@@ -204,11 +204,14 @@ export async function verifyOwnerPassword(env, value, record) {
     return false;
   }
   try {
+    const key = record.v === 2
+      ? await passwordSigningKey(env)
+      : await legacyOwnerSigningKey(env);
     return crypto.subtle.verify(
       "HMAC",
-      await ownerSigningKey(env),
+      key,
       b64UrlBytes(record.digest),
-      ownerPasswordMessage(record.salt, value),
+      ownerPasswordMessage(record.v, record.salt, value),
     );
   } catch {
     return false;
