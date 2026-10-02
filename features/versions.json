@@ -1,7 +1,23 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "5.0.1",
+  "currentVersion": "5.1.0",
   "releases": [
+    {
+      "version": "5.1.0",
+      "date": "2026-10-01",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Liquid Glass match spotlight",
+      "telegramAnnouncement": "BallerWatch now uses a Liquid Glass-style interface, and tapping a game day reuses the main match spotlight for the selected game.",
+      "changes": [
+        "Reworked the PWA visual system with translucent glass surfaces, backdrop blur, specular highlights, softer depth, glass controls, and a non-blur fallback.",
+        "Calendar game-day taps now update the existing top match spotlight with the selected game, weather, field, Directions, and Share instead of rendering a second detail section.",
+        "Disabled interaction on empty calendar days so the main spotlight always represents a real published game.",
+        "Added a compact pill selector only when multiple games occur on the same date; selecting a pill updates the same spotlight.",
+        "Preserved the default next-game spotlight on initial load and visually distinguishes a calendar-selected match.",
+        "Bumped versioned PWA assets and service-worker cache so installed Home Screen clients refresh to the redesigned interface."
+      ]
+    },
     {
       "version": "5.0.1",
       "date": "2026-10-01",
