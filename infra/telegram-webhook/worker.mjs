@@ -2268,6 +2268,14 @@ export default {
     }
 
     if (request.method === "POST" && userRoute(url.pathname, "pair")) {
+      if (!(await ownerPairAllowed(request))) {
+        return webJson(
+          request,
+          { ok: false, error: "Too many pairing attempts. Request a new /webpair code and try again later." },
+          { status: 429 },
+        );
+      }
+
       let body;
       try { body = await request.json(); }
       catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
@@ -2275,12 +2283,14 @@ export default {
       try {
         const paired = await pairOwnerDevice(env, body?.code);
         if (!paired) {
+          await recordOwnerPairFailure(request);
           return webJson(
             request,
-            { ok: false, error: "Pairing code is invalid or expired. Request a new /webpair code." },
+            { ok: false, error: "Pairing code is invalid, expired, or already used. Request a new /webpair code." },
             { status: 401 },
           );
         }
+        await clearOwnerPairFailures(request);
         return webJson(request, { ok: true, ...paired });
       } catch (error) {
         console.error("User pairing failed", error);
@@ -2331,7 +2341,7 @@ export default {
     }
 
     if (request.method === "POST" && userRoute(url.pathname, "password")) {
-      if (!(await verifyOwnerToken(env, bearerToken(request)))) {
+      if (!(await verifyOwnerCapability(env, bearerToken(request)).catch(() => false))) {
         return webJson(request, { ok: false, error: "User sign-in is required." }, { status: 401 });
       }
 
@@ -2340,11 +2350,12 @@ export default {
       catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
 
       try {
-        await saveOwnerPassword(env, body?.password);
+        const saved = await saveOwnerPassword(env, body?.password);
         return webJson(request, {
           ok: true,
           passwordConfigured: true,
-          message: "User password saved. New devices can sign in directly.",
+          ...(await issueOwnerToken(env, saved.authVersion)),
+          message: "User password saved. Other signed-in devices were revoked.",
         });
       } catch (error) {
         const message = cleanText(error?.message, 200);
@@ -2360,12 +2371,32 @@ export default {
       }
     }
 
+    if (request.method === "POST" && userRoute(url.pathname, "revoke")) {
+      if (!(await verifyOwnerCapability(env, bearerToken(request)).catch(() => false))) {
+        return webJson(request, { ok: false, error: "User sign-in is required." }, { status: 401 });
+      }
+      try {
+        await rotateOwnerAuthVersion(env);
+        return webJson(request, {
+          ok: true,
+          revoked: true,
+          message: "All signed-in devices were revoked.",
+        });
+      } catch {
+        return webJson(
+          request,
+          { ok: false, error: "Unable to revoke user sessions right now." },
+          { status: 503 },
+        );
+      }
+    }
+
     if (
       (request.method === "GET" || request.method === "POST") &&
       userRoute(url.pathname, "settings")
     ) {
       const token = bearerToken(request);
-      if (!(await verifyOwnerToken(env, token))) {
+      if (!(await verifyOwnerCapability(env, token).catch(() => false))) {
         return webJson(request, { ok: false, error: "User sign-in is required." }, { status: 401 });
       }
 
@@ -2399,7 +2430,7 @@ export default {
 
       const question = retainPrivateText(body?.question, 4000);
       const reply = retainPrivateText(body?.reply, 12000);
-      const userAuthorized = await verifyOwnerToken(env, bearerToken(request));
+      const userAuthorized = await verifyOwnerCapability(env, bearerToken(request)).catch(() => false);
       const feedbackAuthorized = await verifyFeedbackToken(
         env,
         body?.feedbackToken,
@@ -2486,7 +2517,7 @@ export default {
         ? await issueFeedbackToken(env, body?.question, answer.reply)
         : "";
       const token = bearerToken(request);
-      if (await verifyOwnerToken(env, token)) {
+      if (await verifyOwnerCapability(env, token).catch(() => false)) {
         const history = {
           question: cleanText(body?.question, 600),
           reply: cleanText(answer?.reply || answer?.error, 1200),
