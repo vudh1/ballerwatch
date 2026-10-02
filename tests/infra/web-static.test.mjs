@@ -655,7 +655,7 @@ test("production rollout is gated by GitHub Releases instead of main pushes", ()
 });
 
 
-test("web runtime and owner settings do not require Telegram credentials", () => {
+test("web runtime and user settings do not require Telegram credentials", () => {
   const deploy = fs.readFileSync(".github/workflows/deploy-telegram-webhook.yml", "utf8");
   const telegram = fs.readFileSync("shared/telegram.mjs", "utf8");
   const worker = fs.readFileSync("infra/telegram-webhook/worker.mjs", "utf8");
