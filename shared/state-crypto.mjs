@@ -1,7 +1,8 @@
 /**
- * Defines the AES-GCM state-encryption boundary shared by GitHub runtime modules.
+ * Defines and identifies the AES-GCM envelope used by every runtime-state file.
  *
- * Documentation baseline: v2.3.0. Runtime/private data must never be committed to Git.
+ * Documentation baseline: v5.8.0. Runtime/private data must never be committed
+ * to Git outside a complete authenticated-encryption envelope.
  */
 import crypto from "node:crypto";
 
