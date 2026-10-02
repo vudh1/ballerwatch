@@ -58,8 +58,8 @@ function handleWebPairCommand(text, settings) {
 
 function applyWebSettingsEvent(event, settings) {
   if (event?.action === "consume-pair-code") {
-    // Legacy Workers may still dispatch this during a rolling deploy. Pairing
-    // codes are intentionally reusable until expiry starting in v5.6.
+    // Legacy Workers may still dispatch this during a rolling deploy.
+    // Pairing codes are intentionally reusable until expiry starting in v5.6.
     return settings;
   }
 
