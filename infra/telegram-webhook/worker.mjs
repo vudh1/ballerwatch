@@ -61,22 +61,66 @@ async function sha256Hex(value) {
   return [...digest].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-async function ownerSigningKey(env) {
+function ownerMasterSecret(env) {
   const secret = cleanText(env.TRACKER_STATE_KEY || env.TELEGRAM_WEBHOOK_SECRET, 5000);
   if (!secret) throw new Error("User authentication key is unavailable.");
+  return new TextEncoder().encode(secret);
+}
+
+async function legacyOwnerSigningKey(env) {
   return crypto.subtle.importKey(
     "raw",
-    new TextEncoder().encode(secret),
+    ownerMasterSecret(env),
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign", "verify"],
   );
 }
 
-export async function issueOwnerToken(env) {
+async function derivedSigningKey(env, context) {
+  const derivationKey = await legacyOwnerSigningKey(env);
+  const derived = new Uint8Array(
+    await crypto.subtle.sign(
+      "HMAC",
+      derivationKey,
+      new TextEncoder().encode(context),
+    ),
+  );
+  return crypto.subtle.importKey(
+    "raw",
+    derived,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign", "verify"],
+  );
+}
+
+async function ownerSigningKey(env) {
+  return derivedSigningKey(env, KEY_CONTEXT.userTokenSigning);
+}
+
+async function feedbackSigningKey(env) {
+  return derivedSigningKey(env, KEY_CONTEXT.feedbackTokenSigning);
+}
+
+async function passwordSigningKey(env) {
+  return derivedSigningKey(env, KEY_CONTEXT.passwordVerifier);
+}
+
+async function pushChallengeSigningKey(env) {
+  return derivedSigningKey(env, KEY_CONTEXT.pushChallengeSigning);
+}
+
+function ownerAuthVersion(settings) {
+  const value = Number(settings?.webAuthVersion || 1);
+  return Number.isSafeInteger(value) && value >= 1 ? value : 1;
+}
+
+export async function issueOwnerToken(env, authVersion = 1) {
   const payload = {
-    v: 1,
+    v: 2,
     kind: "user",
+    rev: Math.max(1, Number(authVersion) || 1),
     exp: Date.now() + 90 * 24 * 60 * 60 * 1000,
     nonce: bytesB64Url(crypto.getRandomValues(new Uint8Array(18))),
   };
@@ -94,7 +138,7 @@ export async function issueOwnerToken(env) {
   };
 }
 
-export async function verifyOwnerToken(env, token) {
+export async function verifyOwnerToken(env, token, authVersion = 1) {
   const [encoded, signatureText, extra] = String(token || "").split(".");
   if (!encoded || !signatureText || extra) return false;
   try {
@@ -106,12 +150,12 @@ export async function verifyOwnerToken(env, token) {
     );
     if (!valid) return false;
     const payload = JSON.parse(new TextDecoder().decode(b64UrlBytes(encoded)));
-    const userKind = (
-      payload?.kind === undefined ||
-      payload?.kind === "owner" ||
-      payload?.kind === "user"
+    return (
+      payload?.v === 2 &&
+      payload?.kind === "user" &&
+      Number(payload?.rev) === Math.max(1, Number(authVersion) || 1) &&
+      Number(payload.exp) > Date.now()
     );
-    return payload?.v === 1 && userKind && Number(payload.exp) > Date.now();
   } catch {
     return false;
   }
