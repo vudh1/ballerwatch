@@ -1,7 +1,25 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "5.5.0",
+  "currentVersion": "5.6.0",
   "releases": [
+    {
+      "version": "5.6.0",
+      "date": "2026-10-02",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Frictionless feedback and multi-device pairing",
+      "telegramAnnouncement": "BallerWatch 5.6 makes wrong-answer feedback one tap on mobile without opening Settings, lets one /webpair code authorize multiple devices for 10 minutes, and restores autocomplete as a floating dropdown.",
+      "changes": [
+        "Decoupled wrong-answer feedback from owner settings: each successful web answer now carries a short-lived signed feedback token scoped to that exact question/answer, so marking an answer wrong does not grant or require owner-settings access.",
+        "Added a visible one-tap Wrong answer / Undo wrong answer control for mobile while retaining desktop double-click as a shortcut.",
+        "Prevented long-press selection/copy on the answer surface and used touch-action manipulation so the feedback interaction does not require globally disabling pinch zoom.",
+        "Changed /webpair codes from single-use to reusable for multiple devices until their existing 10-minute expiry; each paired device still receives its own independent 90-day signed owner token.",
+        "Stopped wrong-answer feedback from opening the owner/team Settings dialog on unpaired or expired devices; expired feedback authorization now asks the user to re-ask the question instead.",
+        "Changed Ask BallerWatch autocomplete back to a floating glass overlay under the input, with bounded scrolling, so suggestions no longer stretch or squeeze the Ask card.",
+        "Updated privacy documentation: anonymous Q&A is still not retained by default; the exact exchange is retained encrypted for up to 48 hours only if the visitor explicitly marks that answer wrong.",
+        "Bumped the installed PWA shell and service-worker cache to 5.6.0."
+      ]
+    },
     {
       "version": "5.5.0",
       "date": "2026-10-02",
