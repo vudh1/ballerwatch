@@ -35,6 +35,7 @@ const els = {
   ownerPasswordConfirm: document.querySelector("#owner-password-confirm"),
   ownerPasswordStatus: document.querySelector("#owner-password-status"),
   ownerDisconnect: document.querySelector("#owner-disconnect"),
+  ownerRevoke: document.querySelector("#owner-revoke"),
   notificationBadge: document.querySelector("#notification-badge"),
   notificationDialog: document.querySelector("#notification-dialog"),
   closeNotifications: document.querySelector("#close-notifications"),
@@ -460,10 +461,11 @@ async function saveOwnerPassword(event) {
       headers: ownerHeaders(),
       body: JSON.stringify({ password }),
     });
+    if (payload.token) localStorage.setItem(OWNER_TOKEN_KEY, payload.token);
     els.ownerPasswordNew.value = "";
     els.ownerPasswordConfirm.value = "";
     els.ownerPasswordStatus.textContent = payload.message ||
-      "User password saved. New devices can now sign in directly.";
+      "User password saved. Other signed-in devices were revoked.";
   } catch (error) {
     if (error.status === 401) {
       localStorage.removeItem(OWNER_TOKEN_KEY);
@@ -479,6 +481,29 @@ async function saveOwnerPassword(event) {
 function disconnectOwnerDevice() {
   localStorage.removeItem(OWNER_TOKEN_KEY);
   showPairSettings("This device is signed out of private settings.");
+}
+
+async function revokeOwnerDevices() {
+  els.ownerRevoke.disabled = true;
+  els.ownerSettingsStatus.textContent = "Signing out all devices…";
+  try {
+    await api("/web/user/revoke", {
+      method: "POST",
+      headers: ownerHeaders(),
+      body: "{}",
+    });
+    localStorage.removeItem(OWNER_TOKEN_KEY);
+    showPairSettings("All signed-in devices were revoked. Sign in again when needed.");
+  } catch (error) {
+    if (error.status === 401) {
+      localStorage.removeItem(OWNER_TOKEN_KEY);
+      showPairSettings("This sign-in has expired. Sign in again.");
+    } else {
+      els.ownerSettingsStatus.textContent = error.message;
+    }
+  } finally {
+    els.ownerRevoke.disabled = false;
+  }
 }
 
 function setSystemState(state) {
@@ -1579,9 +1604,17 @@ async function enablePush() {
         applicationServerKey: urlBase64ToUint8Array(config.push.applicationServerKey),
       });
     }
+    const serialized = subscription.toJSON();
+    const challenge = await api("/web/push/challenge", {
+      method: "POST",
+      body: JSON.stringify({ endpoint: serialized.endpoint }),
+    });
     await api("/web/push/subscribe", {
       method: "POST",
-      body: JSON.stringify({ subscription: subscription.toJSON() }),
+      body: JSON.stringify({
+        subscription: serialized,
+        challenge: challenge.challenge,
+      }),
     });
   } catch (error) {
     els.bellPushStatus.title = error.message;
@@ -1594,10 +1627,20 @@ async function disablePush() {
   try {
     const subscription = await currentSubscription();
     if (!subscription) return;
-    await api("/web/push/unsubscribe", {
+    const serialized = subscription.toJSON();
+    const challenge = await api("/web/push/challenge", {
       method: "POST",
-      body: JSON.stringify({ subscription: subscription.toJSON() }),
+      body: JSON.stringify({ endpoint: serialized.endpoint }),
     }).catch(() => null);
+    if (challenge?.challenge) {
+      await api("/web/push/unsubscribe", {
+        method: "POST",
+        body: JSON.stringify({
+          subscription: serialized,
+          challenge: challenge.challenge,
+        }),
+      }).catch(() => null);
+    }
     await subscription.unsubscribe();
   } finally {
     await updatePushStatus();
@@ -1773,6 +1816,7 @@ els.ownerPairForm.addEventListener("submit", pairOwnerDevice);
 els.ownerSettingsForm.addEventListener("submit", saveOwnerSettings);
 els.ownerPasswordForm.addEventListener("submit", saveOwnerPassword);
 els.ownerDisconnect.addEventListener("click", disconnectOwnerDevice);
+els.ownerRevoke.addEventListener("click", revokeOwnerDevices);
 els.nextGameShare.addEventListener("click", shareNextGame);
 els.testNotification.addEventListener("click", scheduleTestNotification);
 els.deleteAllNotifications.addEventListener("click", deleteAllNotifications);
