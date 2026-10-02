@@ -8,6 +8,18 @@ const SHELL = [
   "./icon.svg",
 ];
 const API = "https://ballerwatch-telegram.vudhone.workers.dev";
+const APP_URL = "https://vudh1.github.io/ballerwatch/";
+
+function safeAppUrl(value) {
+  try {
+    const url = new URL(String(value || APP_URL), APP_URL);
+    if (url.origin !== new URL(APP_URL).origin) return APP_URL;
+    if (!url.pathname.startsWith("/ballerwatch/")) return APP_URL;
+    return url.href;
+  } catch {
+    return APP_URL;
+  }
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)));
@@ -80,7 +92,7 @@ self.addEventListener("push", (event) => {
       badge: "./icon.svg",
       tag: entry?.tag || "ballerwatch-update",
       renotify: true,
-      data: { url: entry?.url || "https://vudh1.github.io/ballerwatch/" },
+      data: { url: safeAppUrl(entry?.url) },
     };
     await self.registration.showNotification(title, options);
   })());
@@ -89,9 +101,9 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   event.waitUntil((async () => {
-    const target = event.notification.data?.url || "https://vudh1.github.io/ballerwatch/";
+    const target = safeAppUrl(event.notification.data?.url);
     const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-    const existing = windows.find((client) => client.url.startsWith("https://vudh1.github.io/ballerwatch/"));
+    const existing = windows.find((client) => client.url.startsWith(APP_URL));
     if (existing) {
       await existing.focus();
       existing.navigate(target);
