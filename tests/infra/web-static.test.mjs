@@ -146,7 +146,7 @@ test("app-facing copy mentions Telegram only for the explicit footer shortcut", 
 });
 
 
-test("owner settings support app-native password sign-in with pairing as recovery", () => {
+test("user settings support app-native password sign-in with pairing as recovery", () => {
   const html = fs.readFileSync("docs/index.html", "utf8");
   const app = fs.readFileSync("docs/app.js", "utf8");
   const worker = fs.readFileSync("infra/telegram-webhook/worker.mjs", "utf8");
@@ -161,19 +161,22 @@ test("owner settings support app-native password sign-in with pairing as recover
   assert.match(html, /id="owner-pair-form"/);
   assert.match(html, /id="owner-name"/);
   assert.match(html, /id="owner-teams"/);
+  assert.match(html, />User settings</);
+  assert.match(html, />User password</);
+  assert.doesNotMatch(html, />Owner settings</);
 
   assert.match(app, /ballerwatch-owner-token/);
-  assert.match(app, /\/web\/owner\/login/);
-  assert.match(app, /\/web\/owner\/password/);
-  assert.match(app, /\/web\/owner\/pair/);
-  assert.match(app, /\/web\/owner\/settings/);
+  assert.match(app, /\/web\/user\/login/);
+  assert.match(app, /\/web\/user\/password/);
+  assert.match(app, /\/web\/user\/pair/);
+  assert.match(app, /\/web\/user\/settings/);
   assert.match(app, /ownerLoginForm\.addEventListener\("submit", loginOwnerDevice\)/);
   assert.match(app, /ownerPasswordForm\.addEventListener\("submit", saveOwnerPassword\)/);
   assert.match(worker, /export async function createOwnerPasswordRecord/);
   assert.match(worker, /export async function verifyOwnerPassword/);
-  assert.match(worker, /url\.pathname === "\/web\/owner\/login"/);
-  assert.match(worker, /url\.pathname === "\/web\/owner\/password"/);
-  assert.match(worker, /source: "web-pwa-owner"/);
+  assert.match(worker, /userRoute\(url\.pathname, "login"\)/);
+  assert.match(worker, /userRoute\(url\.pathname, "password"\)/);
+  assert.match(worker, /source: "web-pwa-user"/);
 
   assert.match(listener, /\/\?webpair/);
   assert.match(listener, /webPairCodeHash/);
@@ -188,7 +191,7 @@ test("notification test control is deliberately subtle", () => {
 });
 
 
-test("answer feedback is one-tap, answer-scoped, and does not open owner settings", () => {
+test("answer feedback is one-tap, answer-scoped, and does not open user settings", () => {
   const html = fs.readFileSync("docs/index.html", "utf8");
   const app = fs.readFileSync("docs/app.js", "utf8");
   const css = fs.readFileSync("docs/styles.css", "utf8");
@@ -566,6 +569,12 @@ test("match spotlight swipe uses connected neighboring cards like a carousel tra
   assert.match(app, /spotlightNext\.addEventListener\("click"/);
   assert.match(app, /window\.requestAnimationFrame\(completeTrain\)/);
   assert.match(css, /@media \(hover: hover\) and \(pointer: fine\)/);
+  assert.match(css, /\.spotlight-edge-control \{[\s\S]*width:\s*min\(5\.5rem, 18%\)/);
+  assert.match(css, /\.spotlight-edge-control::before/);
+  assert.match(css, /backdrop-filter:\s*blur\(7px\)/);
+  assert.match(css, /\.spotlight-edge-control span \{[\s\S]*border:\s*0;/);
+  assert.match(css, /\.spotlight-edge-control span \{[\s\S]*background:\s*transparent;/);
+  assert.match(css, /\.spotlight-edge-control:not\(:disabled\):hover::before/);
   assert.match(css, /\.spotlight-edge-control:not\(:disabled\):hover span/);
 });
 
@@ -588,6 +597,18 @@ test("v5.5 dashboard matches the iPhone-first demo direction", () => {
   assert.match(css, /\.calendar-day\[aria-selected="true"\]/);
   assert.match(css, /\.notification-dialog \{[\s\S]*position:\s*fixed;/);
   assert.match(css, /\.ask-card h2::before/);
+});
+
+test("installed iPhone mode adds a blurred status-area separation layer", () => {
+  const html = fs.readFileSync("docs/index.html", "utf8");
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  const css = fs.readFileSync("docs/styles.css", "utf8");
+
+  assert.match(html, /class="status-bar-glass"/);
+  assert.match(app, /classList\.toggle\("is-standalone", standalone\(\)\)/);
+  assert.match(css, /html\.is-standalone \.status-bar-glass/);
+  assert.match(css, /height:\s*calc\(env\(safe-area-inset-top\) \+ 0\.7rem\)/);
+  assert.match(css, /-webkit-backdrop-filter:\s*blur\(22px\)/);
 });
 
 
@@ -616,6 +637,7 @@ test("production rollout is gated by GitHub Releases instead of main pushes", ()
   assert.match(promote, /--draft=false/);
   assert.match(promote, /release_state/);
   assert.match(promote, /git\/refs\/heads\/production/);
+  assert.match(promote, /RELEASE_GITHUB_TOKEN/);
   assert.match(promote, /CRON_GITHUB_PAT/);
   assert.doesNotMatch(promote, /inputs\.target_ref|REQUESTED_REF/);
   assert.doesNotMatch(promote, /inputs\.version|REQUESTED_VERSION/);
@@ -669,4 +691,33 @@ test("repository policy reserves SemVer for product behavior changes", () => {
   assert.match(agents, /CI\/workflow maintenance/);
   assert.match(agents, /published GitHub Release\/tag/);
   assert.match(agents, /24 hours/);
+});
+
+
+test("runtime deployment migrates every scope and audits full branch encryption", () => {
+  const deploy = fs.readFileSync(".github/workflows/deploy-telegram-webhook.yml", "utf8");
+  const watchdog = fs.readFileSync(".github/workflows/watchdog.yml", "utf8");
+
+  assert.match(deploy, /for scope in listener pickup league watchdog weather web/);
+  assert.match(deploy, /node shared\/runtime-state\.mjs audit/);
+  assert.match(watchdog, /Audit runtime-state encryption/);
+  assert.match(watchdog, /node shared\/runtime-state\.mjs audit/);
+});
+
+test("retired watchdog dispatches skip before runner allocation", () => {
+  const workflow = fs.readFileSync(".github/workflows/watchdog.yml", "utf8");
+  assert.match(
+    workflow,
+    /if: \$\{\{ github\.event_name == 'schedule' \|\| inputs\.external_fallback == true \}\}/,
+  );
+});
+
+test("external cron repair is manual-only because Worker deploy owns normal sync", () => {
+  const repair = fs.readFileSync(".github/workflows/setup-cron.yml", "utf8");
+  const deploy = fs.readFileSync(".github/workflows/deploy-telegram-webhook.yml", "utf8");
+
+  assert.match(repair, /^name: Repair external cron schedules/m);
+  assert.match(repair, /workflow_dispatch:/);
+  assert.doesNotMatch(repair, /release:\s*\n\s*types:/);
+  assert.match(deploy, /Ensure primary GitHub schedules stay enabled/);
 });
