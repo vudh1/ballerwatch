@@ -49,7 +49,9 @@ test("GitHub Pages workflow self-recovers missing Pages activation", () => {
   assert.match(workflow, /Enable GitHub Pages when missing/);
   assert.match(workflow, /enablement:\s*true/);
   assert.match(workflow, /secrets\.RELEASE_GITHUB_TOKEN/);
-  assert.match(workflow, /release:\s*\n\s*types:\s*\[published\]/);
+  assert.doesNotMatch(workflow, /release:\s*\n\s*types:\s*\[published\]/);
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.match(workflow, /ref:\s*production/);
 });
 
 
