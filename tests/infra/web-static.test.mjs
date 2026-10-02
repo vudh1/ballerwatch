@@ -16,13 +16,13 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=5\.1\.4/);
-  assert.match(html, /app\.js\?v=5\.1\.4/);
+  assert.match(html, /styles\.css\?v=5\.1\.5/);
+  assert.match(html, /app\.js\?v=5\.1\.5/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v5-1-4-shell/);
+  assert.match(sw, /ballerwatch-v5-1-5-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -63,7 +63,7 @@ test("Home Screen install card is removed in standalone mode and notifications u
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=5\.1\.4/);
+  assert.match(app, /sw\.js\?v=5\.1\.5/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -363,4 +363,25 @@ test("weather refresh is immediate only for schedule-relevant changes", () => {
   assert.match(leagueWorkflow, /Refresh weather after league schedule change/);
   assert.match(leagueWorkflow, /needsCalendar == 'true'/);
   assert.doesNotMatch(relevance, /reserved|capacity|players|waitlist/);
+});
+
+
+test("installed app does not interrupt first-load hydration for a service-worker update", () => {
+  const app = fs.readFileSync("docs/app.js", "utf8");
+
+  assert.match(app, /let initialLoadComplete = false/);
+  assert.match(app, /let appRefreshDeferred = false/);
+  assert.match(
+    app,
+    /if \(!initialLoadComplete\) \{\s*appRefreshDeferred = true;\s*return;\s*\}/,
+  );
+  assert.match(
+    app,
+    /await Promise\.all\(\[\s*registerServiceWorker\(\)\.catch\(\(\) => null\),\s*loadConfig\(\),\s*loadBoard\(\),\s*loadCalendar\(\),\s*\]\);/,
+  );
+  assert.match(app, /initialLoadComplete = true/);
+  assert.match(
+    app,
+    /if \(appRefreshDeferred && initialLoadComplete\) \{\s*window\.location\.reload\(\);\s*return;\s*\}/,
+  );
 });

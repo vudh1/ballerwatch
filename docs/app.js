@@ -58,6 +58,8 @@ let selectedCalendarDate = "";
 let selectedCalendarGameId = "";
 let serviceWorkerRegistration = null;
 let liveRefreshInFlight = false;
+let initialLoadComplete = false;
+let appRefreshDeferred = false;
 let activeSuggestionIndex = -1;
 let lastAnswerExchange = null;
 let feedbackSubmitted = false;
@@ -397,11 +399,15 @@ async function registerServiceWorker() {
   let refreshing = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (refreshing) return;
+    if (!initialLoadComplete) {
+      appRefreshDeferred = true;
+      return;
+    }
     refreshing = true;
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=5.1.4", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=5.1.5", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -1154,13 +1160,22 @@ window.addEventListener("online", () => {
 window.addEventListener("offline", () => setSystemState("offline"));
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState !== "visible") return;
+  if (appRefreshDeferred && initialLoadComplete) {
+    window.location.reload();
+    return;
+  }
   refreshLiveData().catch(() => null);
   checkForAppUpdate().catch(() => null);
 });
 
 applyInstallState();
-await registerServiceWorker().catch(() => null);
-await Promise.all([loadConfig(), loadBoard(), loadCalendar()]);
+await Promise.all([
+  registerServiceWorker().catch(() => null),
+  loadConfig(),
+  loadBoard(),
+  loadCalendar(),
+]);
+initialLoadComplete = true;
 await updatePushStatus();
 
 window.setInterval(() => {

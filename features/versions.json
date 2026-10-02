@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "5.1.4",
+  "currentVersion": "5.1.5",
   "releases": [
+    {
+      "version": "5.1.5",
+      "date": "2026-10-02",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Reliable first launch after PWA releases",
+      "telegramAnnouncement": "BallerWatch no longer gets stuck on loading placeholders on the first Home Screen launch after a release; live data now loads without the service-worker update race.",
+      "changes": [
+        "Diagnosed the first-launch placeholder state as a startup race: service-worker registration/update could delay live data hydration, while controllerchange could reload the page before initialization finished.",
+        "Run service-worker registration and config, notification-board, and calendar hydration concurrently so slow iOS service-worker work cannot block visible match data.",
+        "If a new worker takes control during initial startup, defer the forced reload instead of interrupting hydration; the current screen finishes loading and the update is picked up on a later foreground or launch.",
+        "Preserve automatic reload behavior for service-worker updates discovered after initial startup.",
+        "Added regression coverage for the first-load update handoff and bumped the installed PWA shell."
+      ]
+    },
     {
       "version": "5.1.4",
       "date": "2026-10-02",
