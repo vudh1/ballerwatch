@@ -1,7 +1,25 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "5.1.5",
+  "currentVersion": "5.2.0",
   "releases": [
+    {
+      "version": "5.2.0",
+      "date": "2026-10-02",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Notification inbox and Tesla destination sharing",
+      "telegramAnnouncement": "BallerWatch now has compact unread notifications with full-screen reading and swipe-to-delete, a smaller push toggle, Tesla destination sharing, and a Telegram footer shortcut.",
+      "changes": [
+        "Changed the notification popup into a compact inbox with truncated previews and stable local per-device read/deleted state.",
+        "Opening a notification marks it read, opens a full-screen reader, and immediately decreases the bell badge because the badge now counts only unread non-deleted entries.",
+        "Added swipe-left deletion that hides a notification locally on the current device without mutating the shared public notification-board history.",
+        "Moved Web Push enable/disable into a smaller On/Off slider beside Refresh in the notification header while retaining the local notification test.",
+        "Changed the match Share action to Send to Tesla and optimized the iOS share payload for Tesla's supported Share-to-car flow; clipboard/Tesla-app fallback is used when native sharing is unavailable.",
+        "Added a Telegram footer shortcut beside GitHub and Wiki.",
+        "Added regression coverage for unread counts, full-screen notification reading, swipe deletion, compact push controls, Tesla sharing, and the Telegram shortcut.",
+        "Bumped the installed PWA shell and service-worker cache to 5.2.0."
+      ]
+    },
     {
       "version": "5.1.5",
       "date": "2026-10-02",
