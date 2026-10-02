@@ -1,7 +1,8 @@
 /**
- * Loads and stores encrypted Telegram bot settings inside temporary runtime state.
+ * Loads and stores BallerWatch user/runtime settings behind one AES-GCM envelope.
  *
- * Documentation baseline: v2.3.0. Runtime/private data must never be committed to Git.
+ * Documentation baseline: v5.8.0. Legacy nested-encryption files remain readable
+ * during migration, but every new write encrypts the complete runtime document.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -30,9 +31,22 @@ function defaults() {
 export function loadBotState() {
   try {
     const raw = JSON.parse(fs.readFileSync(STATE_PATH, "utf8"));
+    const current = decryptState(raw);
+    if (current && typeof current === "object") {
+      return {
+        lastUpdateId: Number(current.lastUpdateId || 0),
+        settings: current.settings && typeof current.settings === "object"
+          ? { ...defaults(), ...current.settings }
+          : defaults(),
+      };
+    }
+
+    // v5.7 and older exposed lastUpdateId while encrypting only settings.
+    // Keep this read path solely so a production migration can re-seal the
+    // complete document without losing an in-flight update cursor.
     return {
       lastUpdateId: Number(raw.lastUpdateId || 0),
-      settings: decryptState(raw.settings) || defaults(),
+      settings: { ...defaults(), ...(decryptState(raw.settings) || {}) },
     };
   } catch {
     return { lastUpdateId: 0, settings: defaults() };
@@ -53,7 +67,7 @@ export function saveBotState(lastUpdateId, settings) {
   fs.writeFileSync(
     STATE_PATH,
     JSON.stringify(
-      { lastUpdateId: nextId, settings: encryptState(settings) },
+      encryptState({ lastUpdateId: nextId, settings }),
       null,
       2,
     ) + "\n",
