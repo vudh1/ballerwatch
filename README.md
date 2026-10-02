@@ -4,15 +4,15 @@ BallerWatch is a small soccer automation system for pickup games and Seattle RAT
 
 It uses Telegram and an installable GitHub Pages web app for questions and alerts, Cloudflare Workers for the webhook/read-only API path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Gemini Flash with Groq fallback for bounded AI assistance, standards-based Web Push for a Telegram-independent notification channel, and Google Calendar for league match sync.
 
-**Current version: 5.4.2**
+**Current version: 5.5.0**
 
 ## Recent changes
 
+- **5.5.x — iPhone-first dashboard refresh.** Reworked the web app around the approved demo direction with a larger glass header, date-first match spotlight, RSVP progress, brighter calendar selection, an integrated Ask panel, and a floating notification popover.
 - **5.4.x — Review fidelity + answer reliability.** Exact owner Q&A stays encrypted for 48 hours while readable review signals remain sanitized; weekday time/location questions are deterministic, and match-card/notification layouts are tighter.
 - **5.3.x — Connected match carousel.** Swipe between game dates with equal-size connected cards, stronger match-window weather verification, and duplicate pickup/notification suppression.
 - **5.2.x — Notification inbox + sharing.** Added unread/full-screen notification handling, swipe-to-delete, local Delete all, compact push controls, and generic native game sharing.
-- **5.1.x — Liquid Glass + live refresh.** Introduced the polished mobile dashboard, calendar selection, pickup capacity, weather fallbacks, automatic data/app refresh, and reliable first launch after releases.
-- **5.0.x — 14-day match dashboard.** Added the two-week game calendar, match-window weather, next-game spotlight, and a leaner monitoring schedule.
+- **5.1.x — Liquid Glass + live refresh.** Introduced the mobile dashboard, calendar selection, pickup capacity, weather fallbacks, automatic data/app refresh, and reliable first launch after releases.
 
 Full release history and Telegram announcement text live in `features/versions.json`.
 
@@ -102,7 +102,7 @@ The v3 PWA is published at:
 
 It provides:
 
-- an installable Home Screen app shell with a translucent Liquid Glass-inspired dashboard;
+- an installable iPhone-first Home Screen dashboard with larger frosted-glass surfaces, a date-first match spotlight, RSVP progress, and polished mobile controls;
 - a redesigned match dashboard with a next-game spotlight, Google Maps directions, and native device sharing;
 - a compact 14-day game calendar for pickup and monitored RATS teams, synchronized with left/right swipe navigation on the match spotlight;
 - match-window weather showing condition, temperature, and the maximum rain probability during the scheduled game window;

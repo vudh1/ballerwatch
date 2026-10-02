@@ -1,7 +1,23 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "5.4.2",
+  "currentVersion": "5.5.0",
   "releases": [
+    {
+      "version": "5.5.0",
+      "date": "2026-10-02",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "iPhone-first BallerWatch dashboard refresh",
+      "telegramAnnouncement": "BallerWatch 5.5 brings a new iPhone-first glass dashboard with a larger match spotlight, RSVP progress, brighter calendar selection, a polished Ask panel, and a floating notification inbox.",
+      "changes": [
+        "Reworked the PWA visual system to match the approved iPhone-first demo direction while preserving the existing public/private behavior and interaction model.",
+        "Made the match spotlight date-first, added a dedicated pickup RSVP progress bar with spots-left status, strengthened weather presentation, and kept Directions/Share as large pill actions.",
+        "Restyled the 14-day calendar with brighter selected dates, clearer game indicators, and more compact glass tiles while preserving connected swipe navigation.",
+        "Refreshed Ask BallerWatch with a rounded search control, integrated answer surface, and stronger mobile hierarchy without changing Q&A routing or feedback behavior.",
+        "Changed the notification inbox into a floating frosted-glass popover while preserving unread tracking, push controls, full-screen reading, and swipe deletion.",
+        "Bumped the installed PWA shell and service-worker cache to 5.5.0 so existing Home Screen clients refresh to the new interface."
+      ]
+    },
     {
       "version": "5.4.2",
       "date": "2026-10-02",

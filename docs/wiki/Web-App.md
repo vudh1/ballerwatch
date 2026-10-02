@@ -8,7 +8,7 @@ The web app is a public-safe BallerWatch surface with an optional owner-paired s
 
 ## What the web app does
 
-- uses a redesigned dashboard with a next-game spotlight, Google Maps directions, and native device sharing;
+- uses an iPhone-first frosted-glass dashboard with a date-first next-game spotlight, pickup RSVP progress, Google Maps directions, and native device sharing;
 - shows a compact 14-day calendar for published pickup games and monitored RATS matches;
 - shows match-window weather (condition, temperature, and maximum rain probability during the game window), refreshed about every six hours;
 - shows recent pickup, RATS schedule, and version updates in a compact notification inbox behind the top-right bell; unread state and deletions are stored locally per device;
@@ -77,11 +77,15 @@ Weather is computed from the actual scheduled game window rather than a generic 
 
 Recurring venues use cached coordinates. Only new public field names/addresses are geocoded. The app credits **Open-Meteo** for forecast data and **OpenStreetMap contributors** for geocoding data.
 
-## Liquid Glass dashboard
+## iPhone-first glass dashboard
 
-The v5.1 interface uses translucent, layered surfaces with backdrop blur, soft edge highlights, and depth while keeping strong text contrast for outdoor/mobile use. Browsers without backdrop-filter support fall back to opaque dark surfaces.
+Version 5.5 keeps the Liquid Glass foundation but moves the PWA closer to the approved mobile demo direction. The header gives the BallerWatch name more prominence beside circular notification/settings controls. The match spotlight uses a date-first hierarchy, a dedicated pickup RSVP progress bar with spots-left status, a compact match-window weather chip, and large pill-shaped Directions/Share actions. The 14-day calendar uses brighter selected-date treatment and clearer match indicators, while Ask BallerWatch uses one rounded mobile input/result surface.
 
-The top match spotlight is also the single detail surface for the 14-day calendar. Initial load shows the next game. Tapping a game day changes that same spotlight to **Selected game** with its match-window weather, field/location, Directions, and Share controls. The spotlight can also be swiped horizontally: left selects the next date with a game, right selects the previous game date, and the selected calendar cell updates at the same time. Swipe navigation uses a connected-card carousel: the current full glass card and the adjacent match card are both present on one horizontal track with a small gap. All game cards use one shared height equal to the tallest clean rendered match card at the current viewport width, so the carousel never changes dimensions between matches without being inflated by temporary hint/error text; sizing is recomputed after data refreshes and screen-width changes. Dragging moves both cards together, and releasing completes the same motion so the incoming card naturally replaces the outgoing one. Horizontal page overscroll is suppressed while the gesture is active. Empty days are skipped rather than becoming empty spotlight pages. If more than one match exists on a date, the calendar shows a compact selector and each choice updates the same spotlight.
+The top match spotlight remains the single detail surface for the 14-day calendar. Initial load shows the next game. Tapping a game day changes that same spotlight to **Selected game** with its match-window weather, field/location, Directions, Share, and pickup capacity when available. The spotlight can also be swiped horizontally: left selects the next date with a game, right selects the previous game date, and the selected calendar cell updates at the same time.
+
+Swipe navigation still uses the connected-card carousel: the current full glass card and adjacent match card share one horizontal track with a small gap. All game cards use one shared height equal to the tallest clean rendered match card at the current viewport width, so the carousel does not resize between matches or become inflated by temporary hint/error text. Sizing is recomputed after data refreshes and screen-width changes. Empty days are skipped, and dates with multiple matches keep the compact match selector.
+
+The visual refresh does not change the privacy or capability boundary: anonymous web use remains read-only, owner settings still require pairing, and notification/Q&A behavior stays within the existing public-safe and encrypted-review rules.
 
 ## Next game and notification test
 
