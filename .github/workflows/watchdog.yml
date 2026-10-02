@@ -21,6 +21,9 @@ concurrency:
 
 jobs:
   verify:
+    # Scheduled maintenance is always valid. A manual/fallback run must be
+    # explicit so a retired external dispatcher cannot allocate a runner.
+    if: ${{ github.event_name == 'schedule' || inputs.external_fallback == true }}
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
@@ -50,6 +53,9 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
         run: node shared/runtime-state.mjs pull weather
+
+      - name: Audit runtime-state encryption
+        run: node shared/runtime-state.mjs audit
 
       - name: Refresh 14-day match weather
         env:
