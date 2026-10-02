@@ -2,6 +2,8 @@
 
 BallerWatch separates **merging** from **production promotion**.
 
+All repository changes are branch-first. Create the working branch from the latest `main`, do the work there, and merge through a PR only after verification. Do not commit maintenance, release, documentation, workflow, or product changes directly to `main`.
+
 ## Build the product release
 
 1. Create `release/<next-version>` from current `main`.
@@ -17,6 +19,19 @@ BallerWatch separates **merging** from **production promotion**.
 
 The release branch can contain detailed implementation commits; `main` receives one product-release commit.
 
+## Maintenance changes
+
+Maintenance follows the same branch-first rule without inventing a product release:
+
+1. Update local context from the latest `main`.
+2. Create `maintenance/<topic>` (or `fix/<topic>` for a focused fix) from that exact `main`.
+3. Make and verify the maintenance changes on that branch.
+4. Open a PR to `main`.
+5. Merge only when the branch is complete and the relevant checks are green.
+6. Delete the merged working branch when practical.
+
+Do not bump `features/versions.json` for documentation-only edits, behavior-preserving refactors, CI/workflow housekeeping, or other non-product maintenance.
+
 ## Promote production
 
 `main` is integration. `production` is what live runtime/deploy workflows execute.
@@ -28,7 +43,7 @@ The hourly **Promote production release** workflow:
 3. on the automatic path, waits until the candidate has soaked for at least 24 hours;
 4. creates/publishes the GitHub Release/tag;
 5. advances `production` to that exact commit;
-6. release-triggered deploy workflows deploy the tagged version.
+6. Worker/Calendar/weather/web-runtime release listeners deploy the tagged version, while the promoter explicitly dispatches Pages from `production` to satisfy the GitHub Pages environment boundary.
 
 A manual run skips the soak but still requires validation.
 
@@ -36,10 +51,10 @@ If a GitHub Release for the current version already exists, promotion is a no-op
 
 ## Release credential
 
-Prefer `RELEASE_GITHUB_TOKEN` as a fine-grained repository token with **Contents: read/write**. `CRON_GITHUB_PAT` remains a compatibility fallback.
+Use `RELEASE_GITHUB_TOKEN` as a fine-grained repository token with **Contents: read/write** and **Workflows: read/write**. GitHub requires workflow-write authorization when the release target modifies `.github/workflows/`. Scheduler dispatches continue to use `CRON_GITHUB_PAT` separately.
 
 If neither credential can create the Release, promotion fails closed and `production` stays pinned.
 
 ## Branch cleanup
 
-After merge, **Cleanup merged release branches** deletes closed stale `release/*` and `fix/*` branches. `main`, `production`, and `runtime-state` are durable branches and must remain.
+After merge, **Cleanup merged working branches** deletes closed stale `release/*`, `maintenance/*`, and `fix/*` branches. `main`, `production`, and `runtime-state` are durable branches and must remain.

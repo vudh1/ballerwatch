@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
-  actions: read
+  contents: read
+  actions: write
 
 concurrency:
   group: ballerwatch-production-promotion
@@ -26,15 +26,21 @@ jobs:
       - name: Resolve release candidate
         id: candidate
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || secrets.CRON_GITHUB_PAT }}
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
           EVENT_NAME: ${{ github.event_name }}
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$GH_TOKEN" || { echo "::error::RELEASE_GITHUB_TOKEN (preferred) or CRON_GITHUB_PAT with Contents read/write is required to publish GitHub Releases."; exit 1; }
-
+          test -n "$GH_TOKEN" || {
+            echo "::error::RELEASE_GITHUB_TOKEN is not available to this workflow.";
+            exit 1;
+          }
           git fetch --no-tags origin main
-          sha="$(git rev-parse FETCH_HEAD)"
+          head_sha="$(git rev-parse FETCH_HEAD)"
+          # Product versions are tied to the commit that last changed the release
+          # ledger. Later docs/refactor/CI maintenance on main must not silently
+          # become part of an already-versioned production release.
+          sha="$(git log -1 --format=%H "$head_sha" -- features/versions.json)"
           git show "$sha:features/versions.json" > /tmp/ballerwatch-versions.json
 
           current_version="$(node -e 'const x=require("/tmp/ballerwatch-versions.json");process.stdout.write(String(x.currentVersion||""))')"
@@ -121,7 +127,7 @@ jobs:
       - name: Promote candidate and publish GitHub Release
         if: steps.candidate.outputs.eligible == 'true'
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || secrets.CRON_GITHUB_PAT }}
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
           SHA: ${{ steps.candidate.outputs.sha }}
           TAG: ${{ steps.candidate.outputs.tag }}
           RELEASE_STATE: ${{ steps.candidate.outputs.release_state }}
@@ -146,6 +152,12 @@ jobs:
             echo "- Production branch now points to the same commit."
             echo "- Release-triggered deployment workflows will deploy this tagged version."
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Deploy Pages from promoted production
+        if: steps.candidate.outputs.eligible == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref main
 
       - name: Explain no-op promotion
         if: steps.candidate.outputs.eligible != 'true'

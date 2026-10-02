@@ -24,7 +24,13 @@ Always read the current `README.md`, this file, and `features/versions.json` fro
 
 ## Release workflow
 
-Product releases use one release branch per target version, named `release/<version>`. Pure maintenance does not need a release branch unless it is the safest way to review the change.
+Every repository change starts on a dedicated branch created from the latest `main`. Do not commit directly to `main`.
+
+- Product releases use `release/<version>`.
+- Internal maintenance uses `maintenance/<topic>`.
+- Targeted fixes use `fix/<topic>`.
+
+Keep implementation commits on the working branch, open a PR back to `main`, and merge only after the work is complete and the relevant checks/review are green.
 
 The default product-release process is:
 
@@ -43,14 +49,14 @@ Merging to `main` does **not** deploy production. Production is release-gated:
 
 - `production` points to the latest promoted release commit.
 - A published GitHub Release/tag such as `v5.7.0` is the production promotion event.
-- Release publication should use a dedicated `RELEASE_GITHUB_TOKEN` with repository Contents read/write when available; `CRON_GITHUB_PAT` is only the compatibility fallback. If neither credential can create Releases, fail closed rather than moving production without a release record.
+- Release publication uses the dedicated `RELEASE_GITHUB_TOKEN`. Grant repository **Contents: read/write** and **Workflows: read/write** because a product release may target a commit that changes `.github/workflows/`. If the token cannot create the Release, fail closed rather than moving production without a release record.
 - The **Promote production release** workflow checks the candidate on `main`, requires successful validation, waits at least 24 hours, checks eligibility hourly, then advances `production` and publishes the GitHub Release on the first eligible check.
 - The same workflow may be manually run to promote a product version immediately; manual promotion skips the 24-hour soak but still requires validation.
-- Pages, Worker, Calendar-bridge bootstrap, weather bootstrap, and web-runtime deployment workflows listen to published releases rather than pushes to `main`.
+- Worker, Calendar-bridge bootstrap, weather bootstrap, and web-runtime deployments listen to the published Release. Pages is explicitly dispatched by the promoter after publication and checks out `production`; it does not deploy from ordinary pushes to `main`.
 - Scheduled/dispatch runtime workflows execute code from `production`, so unreleased `main` code does not silently become runtime behavior.
 - If a GitHub Release for the current version already exists, the promoter is a no-op. This is how maintenance commits can merge without creating another rollout.
 
-Direct commits to `main` remain permitted for emergencies or explicit user-directed maintenance, but normal reviewed changes should still use a PR. Product release commits should remain easy to identify; maintenance commits may exist between them without inventing a new product version.
+Do not commit directly to `main` for maintenance, releases, documentation, workflow changes, or product code. Start from the latest `main` on a dedicated branch and merge through a PR only after verification. Product release commits should remain easy to identify; maintenance commits may exist between releases without inventing a new product version.
 
 ## Notification policy
 

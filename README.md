@@ -182,7 +182,7 @@ For a product release:
 5. update the version ledger/docs only after implementation is green;
 6. mark the PR ready and squash merge;
 7. leave the candidate on `main` for the default 24-hour soak;
-8. the hourly **Promote production release** check validates the candidate, advances `production`, publishes the GitHub Release/tag, and release-triggered deploy workflows use that exact version.
+8. the hourly **Promote production release** check validates the candidate, advances `production`, publishes the GitHub Release/tag, triggers the release-driven runtime deploys, and explicitly dispatches Pages from the promoted `production` ref.
 
 A manual promotion skips the soak but not validation.
 
@@ -190,7 +190,7 @@ Maintenance work—docs, comments, behavior-preserving refactors, test-only chan
 
 ### GitHub Release credential
 
-Prefer a fine-grained repository secret named `RELEASE_GITHUB_TOKEN` with **Contents: read/write** for Release/tag publication. `CRON_GITHUB_PAT` remains the compatibility fallback for existing scheduler dispatches.
+Use a fine-grained repository secret named `RELEASE_GITHUB_TOKEN` with **Contents: read/write** and **Workflows: read/write**. The workflow permission is required when the tagged product commit changes files under `.github/workflows/`. `CRON_GITHUB_PAT` remains separate for scheduler dispatches.
 
 Promotion fails closed if the available credential cannot publish the GitHub Release; it should not silently move production without the release record.
 
@@ -203,7 +203,7 @@ The workflow set is intentionally split by failure domain rather than by file co
 | **Validate code** | style, syntax, unit tests, Worker bundle, version ledger, privacy audit |
 | **Manual smoke test** | notification-silent live-source validation |
 | **Promote production release** | 24-hour/manual promotion gate and GitHub Release publication |
-| **Deploy GitHub Pages app** | static PWA deployment |
+| **Deploy GitHub Pages app** | static PWA deployment from `production`, dispatched after Release publication |
 | **Deploy BallerWatch Worker** | Worker deploy, runtime-state migration/audit, optional Telegram setup, normal external-scheduler sync |
 | **Deploy Calendar bridge** | Apps Script Calendar bridge |
 | **Web app runtime** | VAPID/push-registration runtime initialization |
