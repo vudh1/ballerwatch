@@ -776,3 +776,49 @@ test("external cron repair is manual-only because Worker deploy owns normal sync
   assert.doesNotMatch(repair, /release:\s*\n\s*types:/);
   assert.match(deploy, /Ensure primary GitHub schedules stay enabled/);
 });
+
+
+test("GitHub Actions dependencies are pinned to reviewed commit SHAs", () => {
+  const workflowDir = ".github/workflows";
+  const workflows = fs.readdirSync(workflowDir)
+    .filter((name) => name.endsWith(".yml") || name.endsWith(".yaml"));
+  const unpinned = [];
+  for (const name of workflows) {
+    const source = fs.readFileSync(`${workflowDir}/${name}`, "utf8");
+    for (const match of source.matchAll(/uses:\s*([^\s#]+)@([^\s#]+)/g)) {
+      if (!/^[0-9a-f]{40}$/i.test(match[2])) {
+        unpinned.push(`${name}: ${match[0]}`);
+      }
+    }
+  }
+  assert.deepEqual(unpinned, []);
+});
+
+test("PWA declares restrictive document policy and confines notification navigation", () => {
+  const html = fs.readFileSync("docs/index.html", "utf8");
+  const sw = fs.readFileSync("docs/sw.js", "utf8");
+  assert.match(html, /http-equiv="Content-Security-Policy"/);
+  assert.match(html, /script-src 'self'/);
+  assert.match(html, /object-src 'none'/);
+  assert.match(html, /base-uri 'none'/);
+  assert.match(html, /name="referrer" content="no-referrer"/);
+  assert.match(sw, /function safeAppUrl/);
+  assert.match(sw, /url\.origin !== new URL\(APP_URL\)\.origin/);
+  assert.match(sw, /url\.pathname\.startsWith\("\/ballerwatch\/"\)/);
+  assert.match(sw, /clients\.openWindow\(target\)/);
+});
+
+test("Worker web API sets defense-in-depth security headers and protects push registration", () => {
+  const worker = fs.readFileSync("infra/telegram-webhook/worker.mjs", "utf8");
+  assert.match(worker, /"content-security-policy"/);
+  assert.match(worker, /frame-ancestors 'none'/);
+  assert.match(worker, /"x-content-type-options": "nosniff"/);
+  assert.match(worker, /"x-frame-options": "DENY"/);
+  assert.match(worker, /"referrer-policy": "no-referrer"/);
+  assert.match(worker, /"permissions-policy"/);
+  assert.match(worker, /\/web\/push\/challenge/);
+  assert.match(worker, /verifyPushRegistrationChallenge/);
+  assert.match(worker, /webRequestOriginAllowed/);
+  assert.match(worker, /ownerPairAllowed/);
+  assert.match(worker, /rotateOwnerAuthVersion/);
+});
