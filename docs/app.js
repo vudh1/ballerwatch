@@ -1798,6 +1798,7 @@ document.addEventListener("visibilitychange", () => {
   checkForAppUpdate().catch(() => null);
 });
 
+document.documentElement.classList.toggle("is-standalone", standalone());
 applyInstallState();
 await Promise.all([
   registerServiceWorker().catch(() => null),
