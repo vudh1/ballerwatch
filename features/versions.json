@@ -1,7 +1,27 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "5.3.5",
+  "currentVersion": "5.4.0",
   "releases": [
+    {
+      "version": "5.4.0",
+      "date": "2026-10-02",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Compact carousel, exact review source, and review-driven fixes",
+      "telegramAnnouncement": "BallerWatch now sizes match cards from the true tallest match, contains long opened notifications, retains exact encrypted review Q&A, and answers weekday time/location questions deterministically.",
+      "changes": [
+        "Changed equal carousel sizing to measure only clean rendered match cards, excluding transient hint/error text that could make every card unnecessarily tall.",
+        "Kept every outgoing/incoming carousel card at the same width and true tallest-match height for the current viewport.",
+        "Contained the full-screen notification reader horizontally and made long URLs/unbroken notification text wrap inside the individual opened notification card.",
+        "Changed encrypted 48-hour owner chat history to retain the original question and original bot answer as the review source; Groq summaries/classifications remain separate metadata only.",
+        "Kept state/chat-review.json privacy-minimized and readable with only sanitized engineering signals, never raw question/answer text.",
+        "Expanded authenticated web feedback capture limits and preserved original whitespace/text before encrypted persistence.",
+        "Fixed the runtime-state negative-feedback issue where weekday time/location questions such as 'Thursday time' could fall through to a broad AI schedule answer; both Telegram/listener and Worker fast paths now route them deterministically to pickup details first.",
+        "Re-audited weather behavior: Open-Meteo uses America/Los_Angeles hourly data and only slots overlapping the actual match start/end window are summarized; existing regression tests reject whole-day/out-of-window rain spikes and cover overnight matches.",
+        "Rechecked runtime-state request indexes: there are no open explicit feature requests, and the single readable negative-feedback signal is addressed by this release.",
+        "Bumped the installed PWA shell and service-worker cache to 5.4.0."
+      ]
+    },
     {
       "version": "5.3.5",
       "date": "2026-10-02",
