@@ -22,7 +22,7 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v5-1-4-shell/);
+  assert.match(sw, /ballerwatch-v5-1-5-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -343,7 +343,7 @@ test("calendar refresh preserves an explicitly selected future game", () => {
 
 test("autocomplete stays in document flow instead of overlapping following content", () => {
   const css = fs.readFileSync("docs/styles.css", "utf8");
-  assert.match(css, /\/\* v5\.1\.5 interaction polish \*\//);
+  assert.match(css, /\/\* v5\.1\.4 interaction polish \*\//);
   assert.match(css, /\.question-suggestions \{[\s\S]*position:\s*static;/);
   assert.match(css, /\.ask-card \.question-row \{[\s\S]*align-items:\s*start;/);
   assert.match(css, /\.ask-card \.question-row > button \{[\s\S]*align-self:\s*start;/);
