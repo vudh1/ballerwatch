@@ -182,7 +182,7 @@ For a product release:
 5. update the version ledger/docs only after implementation is green;
 6. mark the PR ready and squash merge;
 7. leave the candidate on `main` for the default 24-hour soak;
-8. the hourly **Promote production release** check validates the candidate, advances `production`, publishes the GitHub Release/tag, and triggers the release-driven runtime deploys; Pages deploys the promoted `production` ref.
+8. the hourly **Promote production release** check validates the candidate, advances `production`, publishes the GitHub Release/tag, triggers release-driven runtime deploys, and dispatches Pages from the `main` workflow context while Pages checks out the promoted `production` ref.
 
 A manual promotion skips the soak but not validation.
 
@@ -202,7 +202,7 @@ The workflow set is intentionally split by failure domain rather than by file co
 | --- | --- |
 | **Validate code** | style, syntax, unit tests, Worker bundle, version ledger, privacy audit |
 | **Manual smoke test** | notification-silent live-source validation |
-| **Promote production release** | 24-hour/manual promotion gate and GitHub Release publication |
+| **Promote production release** | 24-hour/manual promotion gate, GitHub Release publication, and main-context Pages dispatch |
 | **Deploy GitHub Pages app** | static PWA deployment from `production`, dispatched after Release publication |
 | **Deploy BallerWatch Worker** | Worker deploy, runtime-state migration/audit, live PWA readiness smoke, optional Telegram setup, normal external-scheduler sync |
 | **Deploy Calendar bridge** | Apps Script Calendar bridge |
