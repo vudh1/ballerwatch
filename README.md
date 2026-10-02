@@ -4,10 +4,11 @@ BallerWatch is a small soccer automation system for pickup games and Seattle RAT
 
 It uses Telegram and an installable GitHub Pages web app for questions and alerts, Cloudflare Workers for the webhook/read-only API path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Gemini Flash with Groq fallback for bounded AI assistance, standards-based Web Push for a Telegram-independent notification channel, and Google Calendar for league match sync.
 
-**Current version: 5.1.5**
+**Current version: 5.2.0**
 
 ## Recent changes
 
+- **5.2.0** — Notification inbox with unread state/full-screen reading/swipe delete, compact push controls, Tesla destination sharing, and a Telegram footer shortcut.
 - **5.1.5** — Prevent first-launch placeholder hangs during PWA release updates by hydrating live data without a startup reload race.
 - **5.1.3** — Expire completed matches by Pacific end time, pulse the Live indicator, and auto-refresh both live data and installed app updates.
 - **5.1.2** — Restore league weather when exact venue geocoding fails and show pickup RSVP capacity in the match spotlight.
@@ -105,14 +106,15 @@ The v3 PWA is published at:
 It provides:
 
 - an installable Home Screen app shell with a translucent Liquid Glass-inspired dashboard;
-- a redesigned match dashboard with a next-game spotlight, Google Maps directions, and native share;
+- a redesigned match dashboard with a next-game spotlight, Google Maps directions, and Tesla-focused destination sharing;
 - a compact 14-day game calendar for pickup and monitored RATS teams;
 - match-window weather showing condition, temperature, and the maximum rain probability during the scheduled game window;
-- a recent notification panel behind the top-right bell;
+- a compact notification inbox behind the top-right bell with unread counts, full-screen reading, and per-device swipe-to-delete;
 - one-question/one-answer Q&A with slash commands and Google-style full-sentence autocomplete; paired-owner questions join the same privacy-minimized 48-hour review history while anonymous web questions are not retained;
 - owner-paired long-press feedback on an answer to mark it wrong for the next engineering review;
-- Web Push controls inside the notification bell for pickup, real RATS schedule-change, and version notifications;
+- a compact Web Push On/Off control beside notification Refresh for pickup, real RATS schedule-change, and version notifications;
 - a manual local notification test for confirming iPhone notification display while the app is closed.
+- a Telegram footer shortcut beside GitHub and Wiki.
 
 On iPhone, open the site in Safari, choose **Share → Add to Home Screen**, open the installed BallerWatch app, then use the notification bell to turn Push notifications on.
 

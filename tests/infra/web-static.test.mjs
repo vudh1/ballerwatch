@@ -16,13 +16,13 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=5\.1\.5/);
-  assert.match(html, /app\.js\?v=5\.1\.5/);
+  assert.match(html, /styles\.css\?v=5\.2\.0/);
+  assert.match(html, /app\.js\?v=5\.2\.0/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v5-1-5-shell/);
+  assert.match(sw, /ballerwatch-v5-2-0-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -63,7 +63,7 @@ test("Home Screen install card is removed in standalone mode and notifications u
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=5\.1\.5/);
+  assert.match(app, /sw\.js\?v=5\.2\.0/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -134,10 +134,14 @@ test("question box supports slash commands and autosuggestions", () => {
   assert.match(app, /activeSuggestionIndex/);
 });
 
-test("app-facing copy does not mention Telegram", () => {
+test("app-facing copy mentions Telegram only for the explicit footer shortcut", () => {
   const html = fs.readFileSync("docs/index.html", "utf8");
   const manifest = fs.readFileSync("docs/manifest.webmanifest", "utf8");
-  assert.doesNotMatch(html, /Telegram/i);
+  const withoutFooterShortcut = html.replace(
+    /<a href="https:\/\/t\.me\/ttf_rsvp_tracker_bot"[^>]*>Telegram<\/a>/,
+    "",
+  );
+  assert.doesNotMatch(withoutFooterShortcut, /Telegram/i);
   assert.doesNotMatch(manifest, /Telegram/i);
 });
 
@@ -384,4 +388,53 @@ test("installed app does not interrupt first-load hydration for a service-worker
     app,
     /if \(appRefreshDeferred && initialLoadComplete\) \{\s*window\.location\.reload\(\);\s*return;\s*\}/,
   );
+});
+
+
+test("notification inbox tracks unread state, opens full-screen detail, and supports swipe delete", () => {
+  const html = fs.readFileSync("docs/index.html", "utf8");
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  const css = fs.readFileSync("docs/styles.css", "utf8");
+
+  assert.match(html, /id="notification-reader"/);
+  assert.match(html, /class="push-compact"/);
+  assert.match(app, /NOTIFICATION_READ_KEY/);
+  assert.match(app, /NOTIFICATION_DELETED_KEY/);
+  assert.match(app, /function markNotificationRead/);
+  assert.match(app, /function deleteNotification/);
+  assert.match(app, /function openNotification/);
+  assert.match(app, /deltaX < -64/);
+  assert.match(app, /touchend/);
+  assert.match(app, /unreadCount/);
+  assert.match(css, /-webkit-line-clamp:\s*2/);
+  assert.match(css, /\.notification-reader \{/);
+  assert.match(css, /height:\s*100dvh/);
+});
+
+test("notification push control is compact and only displays On or Off", () => {
+  const html = fs.readFileSync("docs/index.html", "utf8");
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  const css = fs.readFileSync("docs/styles.css", "utf8");
+
+  assert.match(html, /class="push-compact"/);
+  assert.doesNotMatch(html, /class="notification-push-row"/);
+  assert.match(app, /textContent = enabled \? "On" : "Off"/);
+  assert.match(css, /\.switch-compact \.switch-track/);
+  assert.match(css, /width:\s*2\.15rem/);
+});
+
+test("next-game destination sharing is Tesla-focused", () => {
+  const html = fs.readFileSync("docs/index.html", "utf8");
+  const app = fs.readFileSync("docs/app.js", "utf8");
+
+  assert.match(html, />Send to Tesla<\/button>/);
+  assert.match(app, /title: "Send to Tesla"/);
+  assert.match(app, /Choose Tesla in the share sheet/);
+  assert.match(app, /https:\/\/ts\.la\/app/);
+});
+
+test("footer offers a Telegram app shortcut", () => {
+  const html = fs.readFileSync("docs/index.html", "utf8");
+  assert.match(html, /https:\/\/t\.me\/ttf_rsvp_tracker_bot/);
+  assert.match(html, />Telegram<\/a>/);
 });

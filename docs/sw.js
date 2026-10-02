@@ -1,9 +1,9 @@
-const CACHE = "ballerwatch-v5-1-5-shell";
+const CACHE = "ballerwatch-v5-2-0-shell";
 const SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=5.1.5",
-  "./app.js?v=5.1.5",
+  "./styles.css?v=5.2.0",
+  "./app.js?v=5.2.0",
   "./manifest.webmanifest",
   "./icon.svg",
 ];
