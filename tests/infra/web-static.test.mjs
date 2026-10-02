@@ -16,13 +16,13 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=5\.3\.2/);
-  assert.match(html, /app\.js\?v=5\.3\.2/);
+  assert.match(html, /styles\.css\?v=5\.3\.3/);
+  assert.match(html, /app\.js\?v=5\.3\.3/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v5-3-2-shell/);
+  assert.match(sw, /ballerwatch-v5-3-3-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -63,7 +63,7 @@ test("Home Screen install card is removed in standalone mode and notifications u
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=5\.3\.2/);
+  assert.match(app, /sw\.js\?v=5\.3\.3/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -496,7 +496,7 @@ test("match spotlight swipe uses connected neighboring cards like a carousel tra
   );
   assert.match(app, /renderCalendarGamePicker\(games, game\.id \|\| ""\)/);
   assert.match(app, /event\.target\.closest\?\.\("a, button"\)/);
-  assert.match(css, /\/\* v5\.3\.2 connected-card carousel swipe \*\//);
+  assert.match(css, /\/\* v5\.3\.3 connected-card carousel swipe \*\//);
   assert.match(css, /\.spotlight-carousel \{[\s\S]*overflow:\s*hidden;/);
   assert.match(css, /--spotlight-train-gap:\s*12px/);
   assert.match(css, /height:\s*var\(--spotlight-card-height, auto\)/);
