@@ -160,6 +160,25 @@ test("builds RFC 8292 VAPID authorization and disables redirects", async (t) => 
   assert.equal(loadWebPushState().subscriptions.length, 0);
 });
 
+test("redirect responses fail closed without following or rewriting the target", async (t) => {
+  inTempDir(t);
+  writeSubscriptionState({ endpoint: MOZILLA_ENDPOINT });
+  let calls = 0;
+
+  const result = await sendWebPushSignals({
+    resolveHost: async () => [{ address: "34.120.0.1", family: 4 }],
+    fetchImpl: async (_url, options) => {
+      calls += 1;
+      assert.equal(options.redirect, "error");
+      throw new TypeError("redirect mode is set to error");
+    },
+  });
+
+  assert.equal(calls, 1);
+  assert.deepEqual(result, { sent: 0, stale: 0, failed: 1 });
+  assert.equal(loadWebPushState().subscriptions.length, 1);
+});
+
 test("rejects unsafe DNS answers before any outbound request", async (t) => {
   inTempDir(t);
   writeSubscriptionState({ endpoint: MOZILLA_ENDPOINT });
