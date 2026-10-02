@@ -33,6 +33,7 @@ const els = {
   installHelp: document.querySelector("#install-help"),
   installDialog: document.querySelector("#install-dialog"),
   nextGameCard: document.querySelector("#next-game-card"),
+  spotlightLabel: document.querySelector("#spotlight-label"),
   nextGameTitle: document.querySelector("#next-game-title"),
   nextGameType: document.querySelector("#next-game-type"),
   nextGameMeta: document.querySelector("#next-game-meta"),
@@ -45,7 +46,7 @@ const els = {
   testNotification: document.querySelector("#test-notification"),
   testNotificationStatus: document.querySelector("#test-notification-status"),
   calendarGrid: document.querySelector("#calendar-grid"),
-  calendarDetail: document.querySelector("#calendar-detail"),
+  calendarGamePicker: document.querySelector("#calendar-game-picker"),
   calendarUpdated: document.querySelector("#calendar-updated"),
 };
 
@@ -386,7 +387,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=5.0.0", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=5.1.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -482,7 +483,8 @@ function weatherSummary(weather, stale = false) {
   return parts.join("  ");
 }
 
-function renderNextGame(game) {
+function renderNextGame(game, label = "NEXT GAME") {
+  els.spotlightLabel.textContent = label;
   currentNextGame = game
     ? {
         ...game,
@@ -553,86 +555,56 @@ function gameWeatherRank(game) {
   return Number(game?.weather?.rainProbability ?? -1);
 }
 
-function renderCalendarDetail(date) {
+function renderCalendarGamePicker(games, selectedId = "") {
+  els.calendarGamePicker.replaceChildren();
+
+  if (!Array.isArray(games) || games.length <= 1) {
+    els.calendarGamePicker.hidden = true;
+    return;
+  }
+
+  els.calendarGamePicker.hidden = false;
+  for (const game of games) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "calendar-game-choice";
+    button.dataset.gameId = game.id || "";
+    button.setAttribute("aria-pressed", String(game.id === selectedId));
+
+    const title = document.createElement("strong");
+    title.textContent = game.title || "Game";
+    const time = document.createElement("span");
+    time.textContent = game.time || "";
+    button.append(title, time);
+
+    button.addEventListener("click", () => {
+      for (const item of els.calendarGamePicker.querySelectorAll(".calendar-game-choice")) {
+        item.setAttribute("aria-pressed", String(item === button));
+      }
+      renderNextGame(game, "SELECTED GAME");
+      els.nextGameCard.classList.add("spotlight-selected");
+    });
+    els.calendarGamePicker.append(button);
+  }
+}
+
+function selectCalendarDate(date, { scrollToSpotlight = false } = {}) {
   if (!currentCalendar) return;
+  const games = (currentCalendar.games || []).filter((game) => game.date === date);
+  if (!games.length) return;
+
   selectedCalendarDate = date;
   for (const button of els.calendarGrid.querySelectorAll(".calendar-day")) {
     button.setAttribute("aria-selected", String(button.dataset.date === date));
   }
 
-  els.calendarDetail.replaceChildren();
-  const heading = document.createElement("div");
-  heading.className = "calendar-detail-heading";
-  const title = document.createElement("h3");
-  title.textContent = dateDisplay(date, {
-    weekday: "long",
-    month: "short",
-    day: "numeric",
-  });
-  heading.append(title);
-  els.calendarDetail.append(heading);
+  const game = games[0];
+  renderCalendarGamePicker(games, game.id || "");
+  renderNextGame(game, "SELECTED GAME");
+  els.nextGameCard.classList.add("spotlight-selected");
 
-  const games = (currentCalendar.games || []).filter((game) => game.date === date);
-  if (!games.length) {
-    const empty = document.createElement("p");
-    empty.className = "calendar-empty";
-    empty.textContent = "No game scheduled.";
-    els.calendarDetail.append(empty);
-    return;
-  }
-
-  for (const game of games) {
-    const article = document.createElement("article");
-    article.className = "calendar-game";
-
-    const main = document.createElement("div");
-    main.className = "calendar-game-main";
-
-    const gameTitle = document.createElement("strong");
-    gameTitle.textContent = game.title || "Game";
-
-    const meta = document.createElement("span");
-    meta.textContent = [game.time, game.location].filter(Boolean).join(" · ");
-
-    main.append(gameTitle, meta);
-
-    if (game.kind === "pickup" && game.reserved != null) {
-      const count = document.createElement("span");
-      count.className = "calendar-game-count";
-      count.textContent = game.capacity == null
-        ? `${game.reserved} reserved`
-        : `${game.reserved}/${game.capacity} reserved`;
-      main.append(count);
-    }
-    if (game.jerseyColor) {
-      const jersey = document.createElement("span");
-      jersey.className = "calendar-game-count";
-      jersey.textContent = `${game.jerseyColor} jersey`;
-      main.append(jersey);
-    }
-
-    const side = document.createElement("div");
-    side.className = "calendar-game-side";
-    const weather = document.createElement("span");
-    weather.className = "calendar-game-weather";
-    weather.textContent = game.weather
-      ? weatherSummary(game.weather, game.weatherStale)
-      : "Weather pending";
-    side.append(weather);
-
-    const directions = googleMapsUrl(game.mapsQuery);
-    if (directions) {
-      const link = document.createElement("a");
-      link.className = "calendar-directions";
-      link.href = directions;
-      link.target = "_blank";
-      link.rel = "noopener";
-      link.textContent = "Directions";
-      side.append(link);
-    }
-
-    article.append(main, side);
-    els.calendarDetail.append(article);
+  if (scrollToSpotlight) {
+    els.nextGameCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 }
 
@@ -641,7 +613,7 @@ function renderCalendar(calendar) {
   els.calendarGrid.replaceChildren();
 
   if (!calendar?.startDate) {
-    els.calendarDetail.textContent = "Calendar unavailable.";
+    els.calendarGamePicker.hidden = true;
     els.calendarUpdated.textContent = "Weather unavailable";
     return;
   }
@@ -675,6 +647,7 @@ function renderCalendar(calendar) {
     button.type = "button";
     button.className = "calendar-day";
     button.dataset.date = date;
+    button.disabled = games.length === 0;
     button.setAttribute("aria-selected", String(date === selectedCalendarDate));
 
     const weekday = document.createElement("span");
@@ -701,12 +674,23 @@ function renderCalendar(calendar) {
       button.append(weather);
     }
 
-    button.addEventListener("click", () => renderCalendarDetail(date));
+    button.addEventListener("click", () => selectCalendarDate(date, { scrollToSpotlight: true }));
     els.calendarGrid.append(button);
   }
 
-  renderCalendarDetail(selectedCalendarDate);
-  renderNextGame((calendar.games || [])[0] || null);
+  const firstGame = (calendar.games || [])[0] || null;
+  if (firstGame) {
+    selectedCalendarDate = firstGame.date;
+    renderCalendarGamePicker(
+      (calendar.games || []).filter((game) => game.date === firstGame.date),
+      firstGame.id || "",
+    );
+    renderNextGame(firstGame, "NEXT GAME");
+    els.nextGameCard.classList.remove("spotlight-selected");
+  } else {
+    els.calendarGamePicker.hidden = true;
+    renderNextGame(null, "NEXT GAME");
+  }
 }
 
 async function loadCalendar() {
@@ -716,7 +700,7 @@ async function loadCalendar() {
   } catch (error) {
     currentCalendar = null;
     els.calendarGrid.replaceChildren();
-    els.calendarDetail.textContent = error.message;
+    els.calendarGamePicker.hidden = true;
     els.calendarUpdated.textContent = "Calendar offline";
     await loadNextGame();
   }
