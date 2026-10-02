@@ -3,7 +3,6 @@ name: Validate code
 on:
   push:
     paths:
-      - "listener/**"
       - "pickup/**"
       - "league/**"
       - "shared/**"
@@ -51,7 +50,7 @@ jobs:
           done < <(find tests -name '*.test.mjs' -print0 | sort -z)
 
       - name: Bundle Cloudflare Worker
-        working-directory: infra/telegram-webhook
+        working-directory: infra/web-worker
         run: npx --yes wrangler@4.145.0 deploy --dry-run --outdir /tmp/ballerwatch-worker
 
       - name: Validate release history
