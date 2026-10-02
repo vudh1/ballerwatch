@@ -263,7 +263,7 @@ async function feedbackExchangeDigest(question, reply) {
 
 export async function issueFeedbackToken(env, question, reply) {
   const payload = {
-    v: 1,
+    v: 2,
     kind: "feedback",
     exp: Date.now() + 48 * 60 * 60 * 1000,
     digest: await feedbackExchangeDigest(question, reply),
@@ -272,7 +272,7 @@ export async function issueFeedbackToken(env, question, reply) {
   const signature = new Uint8Array(
     await crypto.subtle.sign(
       "HMAC",
-      await ownerSigningKey(env),
+      await feedbackSigningKey(env),
       new TextEncoder().encode(encoded),
     ),
   );
@@ -285,20 +285,66 @@ export async function verifyFeedbackToken(env, token, question, reply) {
   try {
     const valid = await crypto.subtle.verify(
       "HMAC",
-      await ownerSigningKey(env),
+      await feedbackSigningKey(env),
       b64UrlBytes(signatureText),
       new TextEncoder().encode(encoded),
     );
     if (!valid) return false;
     const payload = JSON.parse(new TextDecoder().decode(b64UrlBytes(encoded)));
     if (
-      payload?.v !== 1 ||
+      payload?.v !== 2 ||
       payload?.kind !== "feedback" ||
       Number(payload.exp) <= Date.now()
     ) {
       return false;
     }
     return payload.digest === await feedbackExchangeDigest(question, reply);
+  } catch {
+    return false;
+  }
+}
+
+export async function issuePushRegistrationChallenge(env, endpoint) {
+  const normalized = validWebPushEndpoint(endpoint);
+  if (!normalized) throw new Error("Invalid Web Push endpoint.");
+  const payload = {
+    v: 1,
+    kind: "push-registration",
+    exp: Date.now() + 5 * 60 * 1000,
+    digest: await sha256Hex(normalized),
+    nonce: bytesB64Url(crypto.getRandomValues(new Uint8Array(12))),
+  };
+  const encoded = bytesB64Url(new TextEncoder().encode(JSON.stringify(payload)));
+  const signature = new Uint8Array(
+    await crypto.subtle.sign(
+      "HMAC",
+      await pushChallengeSigningKey(env),
+      new TextEncoder().encode(encoded),
+    ),
+  );
+  return `${encoded}.${bytesB64Url(signature)}`;
+}
+
+export async function verifyPushRegistrationChallenge(env, token, endpoint) {
+  const normalized = validWebPushEndpoint(endpoint);
+  if (!normalized) return false;
+  const [encoded, signatureText, extra] = String(token || "").split(".");
+  if (!encoded || !signatureText || extra) return false;
+  try {
+    const valid = await crypto.subtle.verify(
+      "HMAC",
+      await pushChallengeSigningKey(env),
+      b64UrlBytes(signatureText),
+      new TextEncoder().encode(encoded),
+    );
+    if (!valid) return false;
+    const payload = JSON.parse(new TextDecoder().decode(b64UrlBytes(encoded)));
+    return (
+      payload?.v === 1 &&
+      payload?.kind === "push-registration" &&
+      Number(payload.exp) > Date.now() &&
+      payload.digest === await sha256Hex(normalized)
+    );
   } catch {
     return false;
   }
