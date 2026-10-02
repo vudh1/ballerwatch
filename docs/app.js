@@ -2,6 +2,7 @@ const API = "https://ballerwatch-telegram.vudhone.workers.dev";
 
 const els = {
   system: document.querySelector("#system-status"),
+  systemLine: document.querySelector(".system-line"),
   version: document.querySelector("#version"),
   board: document.querySelector("#board"),
   refresh: document.querySelector("#refresh-board"),
@@ -54,6 +55,9 @@ let config = null;
 let currentNextGame = null;
 let currentCalendar = null;
 let selectedCalendarDate = "";
+let selectedCalendarGameId = "";
+let serviceWorkerRegistration = null;
+let liveRefreshInFlight = false;
 let activeSuggestionIndex = -1;
 let lastAnswerExchange = null;
 let feedbackSubmitted = false;
@@ -61,6 +65,8 @@ let answerHoldTimer = null;
 let answerHoldStart = null;
 
 const OWNER_TOKEN_KEY = "ballerwatch-owner-token";
+const LIVE_DATA_REFRESH_MS = 60_000;
+const APP_UPDATE_CHECK_MS = 5 * 60_000;
 
 const COMMAND_SUGGESTIONS = [
   { value: "/today", label: "/today", description: "Today's games" },
@@ -377,6 +383,14 @@ function disconnectOwnerDevice() {
   showPairSettings("This device is disconnected from private settings.");
 }
 
+function setSystemState(state) {
+  const live = state === "live";
+  els.system.textContent = live ? "Live" : "Offline";
+  els.system.style.color = live ? "#86efac" : "#fde68a";
+  els.systemLine?.classList.toggle("is-live", live);
+  els.systemLine?.classList.toggle("is-offline", !live);
+}
+
 async function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return null;
 
@@ -387,10 +401,11 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=5.1.2", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=5.1.3", {
     scope: "./",
     updateViaCache: "none",
   });
+  serviceWorkerRegistration = registration;
   await registration.update().catch(() => null);
   return registration;
 }
@@ -398,12 +413,10 @@ async function registerServiceWorker() {
 async function loadConfig() {
   try {
     config = await api("/web/config");
-    els.system.textContent = "Live";
-    els.system.style.color = "#86efac";
+    setSystemState("live");
     els.version.textContent = `BallerWatch v${config.version}`;
   } catch {
-    els.system.textContent = "Offline";
-    els.system.style.color = "#fde68a";
+    setSystemState("offline");
   }
 }
 
@@ -601,6 +614,7 @@ function renderCalendarGamePicker(games, selectedId = "") {
     button.append(title, time);
 
     button.addEventListener("click", () => {
+      selectedCalendarGameId = game.id || "";
       for (const item of els.calendarGamePicker.querySelectorAll(".calendar-game-choice")) {
         item.setAttribute("aria-pressed", String(item === button));
       }
@@ -622,6 +636,7 @@ function selectCalendarDate(date, { scrollToSpotlight = false } = {}) {
   }
 
   const game = games[0];
+  selectedCalendarGameId = game.id || "";
   renderCalendarGamePicker(games, game.id || "");
   renderNextGame(game, "SELECTED GAME");
   els.nextGameCard.classList.add("spotlight-selected");
@@ -701,16 +716,29 @@ function renderCalendar(calendar) {
     els.calendarGrid.append(button);
   }
 
-  const firstGame = (calendar.games || [])[0] || null;
-  if (firstGame) {
+  const availableGames = calendar.games || [];
+  const selectedGame = selectedCalendarGameId
+    ? availableGames.find((game) => game.id === selectedCalendarGameId)
+    : null;
+  const firstGame = availableGames[0] || null;
+
+  if (selectedGame) {
+    selectedCalendarDate = selectedGame.date;
+    const sameDay = availableGames.filter((game) => game.date === selectedGame.date);
+    renderCalendarGamePicker(sameDay, selectedGame.id || "");
+    renderNextGame(selectedGame, "SELECTED GAME");
+    els.nextGameCard.classList.add("spotlight-selected");
+  } else if (firstGame) {
+    selectedCalendarGameId = "";
     selectedCalendarDate = firstGame.date;
     renderCalendarGamePicker(
-      (calendar.games || []).filter((game) => game.date === firstGame.date),
+      availableGames.filter((game) => game.date === firstGame.date),
       firstGame.id || "",
     );
     renderNextGame(firstGame, "NEXT GAME");
     els.nextGameCard.classList.remove("spotlight-selected");
   } else {
+    selectedCalendarGameId = "";
     els.calendarGamePicker.hidden = true;
     renderNextGame(null, "NEXT GAME");
   }
@@ -727,6 +755,27 @@ async function loadCalendar() {
     els.calendarUpdated.textContent = "Calendar offline";
     await loadNextGame();
   }
+}
+
+async function refreshLiveData() {
+  if (liveRefreshInFlight || document.hidden) return;
+  liveRefreshInFlight = true;
+  try {
+    await Promise.all([loadCalendar(), loadBoard()]);
+    setSystemState("live");
+  } catch {
+    setSystemState("offline");
+  } finally {
+    liveRefreshInFlight = false;
+  }
+}
+
+async function checkForAppUpdate() {
+  const registration = serviceWorkerRegistration ||
+    await navigator.serviceWorker?.getRegistration("./").catch(() => null);
+  if (!registration) return;
+  serviceWorkerRegistration = registration;
+  await registration.update().catch(() => null);
 }
 
 async function loadNextGame() {
@@ -1077,10 +1126,29 @@ els.bellPushToggle.addEventListener("change", async () => {
 });
 els.installHelp?.addEventListener("click", () => els.installDialog.showModal());
 
-window.addEventListener("online", () => { els.system.textContent = "Live"; });
-window.addEventListener("offline", () => { els.system.textContent = "Offline"; });
+window.addEventListener("online", () => {
+  setSystemState("live");
+  refreshLiveData().catch(() => null);
+  checkForAppUpdate().catch(() => null);
+});
+window.addEventListener("offline", () => setSystemState("offline"));
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") return;
+  refreshLiveData().catch(() => null);
+  checkForAppUpdate().catch(() => null);
+});
 
 applyInstallState();
 await registerServiceWorker().catch(() => null);
 await Promise.all([loadConfig(), loadBoard(), loadCalendar()]);
 await updatePushStatus();
+
+window.setInterval(() => {
+  refreshLiveData().catch(() => null);
+}, LIVE_DATA_REFRESH_MS);
+
+window.setInterval(() => {
+  if (document.visibilityState === "visible") {
+    checkForAppUpdate().catch(() => null);
+  }
+}, APP_UPDATE_CHECK_MS);

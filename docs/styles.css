@@ -1454,3 +1454,40 @@ textarea {
     font-size: var(--type-caption);
   }
 }
+
+
+/* v5.1.3 live presence */
+.system-line.is-live .system-dot {
+  animation: ballerwatch-live-pulse 1.35s ease-in-out infinite;
+}
+
+.system-line.is-live #system-status {
+  color: #86efac;
+}
+
+.system-line.is-offline .system-dot {
+  animation: none;
+  background: #fbbf24;
+  box-shadow: none;
+}
+
+@keyframes ballerwatch-live-pulse {
+  0%, 100% {
+    opacity: 0.42;
+    transform: scale(0.82);
+    box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.05);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+    box-shadow:
+      0 0 0 4px rgba(52, 211, 153, 0.10),
+      0 0 12px rgba(52, 211, 153, 0.34);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .system-line.is-live .system-dot {
+    animation-duration: 2.4s;
+  }
+}

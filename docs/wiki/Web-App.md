@@ -172,3 +172,18 @@ BallerWatch prefers weather from the exact geocoded match venue. Some RATS field
 Pickup matches do not use the city fallback because their private field/address state is expected to provide a resolvable booked location.
 
 Pickup spotlight details also show the live RSVP load as **reserved / capacity** when both values are available.
+
+
+## Automatic live refresh
+
+BallerWatch treats **Next Game** as a live upcoming-game view, not a date-only list. A game remains eligible through its published match window and is removed as soon as its Pacific end time passes. League matches use the normalized two-hour RATS window; pickup matches use the published end time and retain the existing three-hour fallback only when an end time is missing.
+
+While the PWA is open:
+
+- calendar and notification-board data refresh every 60 seconds;
+- returning to the foreground refreshes immediately;
+- reconnecting after being offline refreshes immediately;
+- the service worker checks for a newer deployed app shell every five minutes and whenever the app returns to the foreground;
+- when a new service worker takes control, the PWA reloads itself automatically.
+
+The green **Live** indicator pulses while online. Explicitly selected future calendar games stay selected across automatic data refreshes.
