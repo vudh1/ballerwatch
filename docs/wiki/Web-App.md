@@ -208,3 +208,8 @@ For paired-owner Q&A, double-tap/double-click an answer to mark it wrong for the
 ## Question autocomplete layout
 
 Autocomplete suggestions stay inside the Ask section's normal document flow. Opening the suggestion list expands the card and pushes following content down rather than floating text over other UI.
+
+
+### Duplicate notification suppression
+
+Pickup watcher refreshes may run every two minutes, but unchanged pickup state no longer creates a new notification. A new pickup notification requires a meaningful change such as RSVP/capacity, roster, location, primary-match selection, or owner-status change. The web notification layer also suppresses exact duplicates with the same tag, title, body, and URL so an identical board item cannot create another Web Push event.
