@@ -43,7 +43,7 @@ The hourly **Promote production release** workflow:
 3. on the automatic path, waits until the candidate has soaked for at least 24 hours;
 4. creates/publishes the GitHub Release/tag;
 5. advances `production` to that exact commit;
-6. Worker/Calendar/weather/web-runtime release listeners deploy the tagged version, while the promoter explicitly dispatches Pages from `production` to satisfy the GitHub Pages environment boundary.
+6. Worker/Calendar/weather/web-runtime and Pages release listeners deploy the tagged version; Pages always checks out `production`, and its workflow can re-enable the Pages site if repository Pages activation is missing.
 
 A manual run skips the soak but still requires validation.
 
@@ -51,7 +51,7 @@ If a GitHub Release for the current version already exists, promotion is a no-op
 
 ## Release credential
 
-Use `RELEASE_GITHUB_TOKEN` as a fine-grained repository token with **Contents: read/write** and **Workflows: read/write**. GitHub requires workflow-write authorization when the release target modifies `.github/workflows/`. Scheduler dispatches continue to use `CRON_GITHUB_PAT` separately.
+Use `RELEASE_GITHUB_TOKEN` as a fine-grained repository token scoped only to this repository with **Contents: read/write**, **Workflows: read/write**, **Pages: read/write**, and **Administration: read/write**. GitHub requires workflow-write authorization when a release target modifies `.github/workflows/`; Pages + Administration write are required only so the Pages workflow can recreate/enable the Pages site if its repository-level activation is missing. Scheduler dispatches continue to use `CRON_GITHUB_PAT` separately.
 
 If neither credential can create the Release, promotion fails closed and `production` stays pinned.
 
