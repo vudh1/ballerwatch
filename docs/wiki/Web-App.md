@@ -1,4 +1,4 @@
-# Web App and Push Fallback
+# Web App, Owner Settings, and Push
 
 BallerWatch v3 adds an installable Progressive Web App (PWA) at:
 
@@ -70,7 +70,7 @@ The password itself is never stored. BallerWatch keeps only a random salt plus a
 4. The same temporary code may authorize multiple devices until it expires.
 5. Once authenticated, set or rotate the owner password from Settings so future devices can sign in directly.
 
-Pairing is therefore no longer the normal day-to-day Settings flow. It remains a recovery root until BallerWatch gains a Telegram-independent recovery mechanism such as a passkey or another owner identity provider.
+Pairing is therefore no longer the normal day-to-day Settings flow. While Telegram remains configured it is a recovery root; after an owner password has been set, normal web Settings/Q&A/Web Push operation does not require Telegram. A future passkey or other owner identity provider can replace `/webpair` for Telegram-independent recovery as well.
 
 After authentication, Settings displays the pickup RSVP name and current monitored league teams. Saving changes uses the existing encrypted runtime/listener path; the public repository never receives plaintext private settings. Disconnecting removes the local token from that device only. Rotating the runtime signing key invalidates existing device tokens.
 
@@ -123,6 +123,8 @@ The PWA uses standards-based Web Push without adding a new database or third-par
 
 This means delivery does not depend on Telegram. Once a device is subscribed, GitHub Actions sends the push signal directly to the browser push service.
 
+The Cloudflare Worker also treats Telegram as optional infrastructure in 5.7. Core PWA routes, owner password authentication, encrypted runtime access, and Web Push remain deployable with no Telegram bot/chat credentials. The `/telegram` route simply stays disabled when that adapter is not configured.
+
 ## Privacy boundary
 
 The GitHub Pages site is public, so web-visible data is deliberately narrower than the private Telegram bot.
@@ -155,6 +157,10 @@ The Worker endpoints used by the PWA are:
 - `GET /web/next-game`
 - `GET /web/board`
 - `POST /web/ask`
+- `POST /web/owner/login`
+- `GET|POST /web/owner/settings`
+- `POST /web/owner/password`
+- `POST /web/owner/pair` (bootstrap/recovery)
 - `POST /web/push/subscribe`
 - `POST /web/push/unsubscribe`
 
