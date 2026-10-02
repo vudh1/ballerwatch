@@ -2,7 +2,7 @@
 
 BallerWatch is a small soccer operations app for pickup games and Seattle RATS league matches. The installable web app is the primary user surface; Telegram is an optional messaging/recovery adapter.
 
-**Current source version: 5.8.1**
+**Current source version: 5.8.2**
 
 **Production source of truth:** the commit pointed to by `production` and the corresponding published GitHub Release. `main` may be newer without changing the live app.
 
@@ -19,7 +19,7 @@ BallerWatch is a small soccer operations app for pickup games and Seattle RATS l
 
 ## Recent changes
 
-- **5.8.x — User-first settings + runtime reliability hardening.** Settings uses user-facing language, every `runtime-state` file is a complete AES-GCM envelope, PWA health now reflects real runtime-state readiness, and the Worker uses separate GitHub content/dispatch credentials so scheduler-token failures cannot silently take game data offline.
+- **5.8.x — User-first settings + security/runtime hardening.** Settings uses user-facing language, runtime state is fully encrypted with separated key domains, Web Push registration/delivery is SSRF-hardened, user sessions are revocable, PWA health reflects real runtime readiness, and GitHub workflow dependencies are commit-pinned.
 - **5.7.x — Release-gated rollout + standalone sign-in.** Added app-native password sign-in, desktop click navigation, and a separate `production` branch so merging to `main` no longer means immediate deployment.
 - **5.6.x — Frictionless feedback + multi-device recovery.** Wrong-answer feedback became answer-scoped and one-tap; pairing codes became reusable across multiple devices for their 10-minute lifetime.
 - **5.5.x — iPhone-first dashboard.** Reworked the app around the glass dashboard, larger match spotlight, RSVP progress, calendar selection, Ask panel, and notification popover.
@@ -94,11 +94,11 @@ After initial setup, the normal flow is **User password → Sign in**. Each devi
 `/webpair` remains a bootstrap/recovery mechanism while Telegram is configured:
 
 1. request `/webpair`;
-2. enter the six-digit code in **Settings → Use a pairing code instead**;
-3. the same code can authorize multiple devices until its 10-minute expiry;
+2. enter the 12-character code in **Settings → Use a pairing code instead**;
+3. the code can be used once and expires after 10 minutes; request a new code for another device;
 4. set or rotate the user password so future devices can sign in directly.
 
-Existing pre-5.8 device tokens and legacy API aliases remain accepted during migration, but current app copy and current API calls use **user** terminology.
+User capability tokens are signed for up to 90 days but carry a server-side authentication revision. Changing the password or using **Sign out all devices** advances that revision and invalidates earlier tokens. Legacy pre-5.8.2 capability tokens are intentionally rejected after this security upgrade.
 
 ## Privacy and runtime storage
 
@@ -124,7 +124,8 @@ In 5.8, **every canonical runtime file is stored as one authenticated AES-256-GC
 `shared/runtime-state.mjs` enforces this boundary. It:
 
 - migrates legacy partial/readable runtime formats during deployment;
-- refuses to persist a canonical file that is not an encrypted envelope;
+- transparently reads legacy encrypted envelopes and reseals them under a dedicated runtime-encryption key domain;
+- refuses to persist a canonical file that is not an encrypted envelope using the current hardened KDF;
 - audits the whole runtime branch during Worker deployment and the six-hour watchdog run;
 - keeps `runtime-state` as a one-snapshot parentless branch rather than an accumulating readable history.
 
@@ -144,6 +145,18 @@ Anonymous public-web questions are not retained by default.
 ### Temporary plaintext
 
 GitHub runners or one Worker invocation may temporarily hold decrypted data in memory/local ephemeral files while doing authorized work. Workflows clean transient runtime paths after use. Tests use synthetic/encrypted fixtures and must never upload decrypted runtime artifacts.
+
+### Web Push network boundary
+
+Browser push subscriptions are accepted only for recognized Web Push providers. Subscription URLs must be HTTPS with no userinfo, IP literal, unusual port, or unrecognized host. Before a GitHub Actions runner sends a push signal, DNS is resolved and every returned address must be public; redirects are disabled. The PWA must also obtain a short-lived server challenge bound to the exact push endpoint before registering or unregistering it.
+
+This prevents an arbitrary subscription URL from turning the runner into a delayed network probe.
+
+### Browser policy boundary
+
+The Cloudflare Worker API sends CSP, anti-framing, `X-Content-Type-Options`, Referrer-Policy, and Permissions-Policy headers. The GitHub Pages document additionally declares a restrictive CSP and no-referrer policy, and the service worker only opens URLs inside the BallerWatch Pages path.
+
+GitHub Pages does not provide repository-controlled custom response headers, so anti-framing, `X-Content-Type-Options`, and Permissions-Policy cannot be enforced as HTTP response headers on the static Pages document itself. Those controls are enforced on the Worker API and documented rather than falsely claimed for Pages.
 
 ## Notifications
 
@@ -328,6 +341,8 @@ BallerWatch is intentionally small, but the boundaries are meant to scale:
 - **Separate failure domains.** Pages, Worker, Calendar, schedulers, and monitoring can fail/recover independently.
 - **Prefer idempotent reconciliation.** Watchers compare desired/current state instead of blindly rewriting external systems.
 - **Keep tests notification-silent.** Verification must be safe to run repeatedly.
+- **Constrain outbound network capabilities.** Persisted URLs are not trusted merely because they are encrypted; provider allowlists, public DNS validation, and redirect controls must be applied again at send time.
+- **Pin build dependencies.** GitHub Actions are referenced by reviewed commit SHAs so mutable upstream tags cannot silently change production workflows.
 
 ## More documentation
 
