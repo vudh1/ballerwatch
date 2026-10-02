@@ -61,8 +61,8 @@ let liveRefreshInFlight = false;
 let activeSuggestionIndex = -1;
 let lastAnswerExchange = null;
 let feedbackSubmitted = false;
-let answerHoldTimer = null;
-let answerHoldStart = null;
+let feedbackId = "";
+let feedbackInFlight = false;
 
 const OWNER_TOKEN_KEY = "ballerwatch-owner-token";
 const LIVE_DATA_REFRESH_MS = 60_000;
@@ -968,15 +968,15 @@ async function disablePush() {
   }
 }
 
-function clearAnswerHold() {
-  if (answerHoldTimer) clearTimeout(answerHoldTimer);
-  answerHoldTimer = null;
-  answerHoldStart = null;
+function nextFeedbackId() {
+  if (globalThis.crypto?.randomUUID) {
+    return `web-feedback:${globalThis.crypto.randomUUID()}`;
+  }
+  return `web-feedback:${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
 }
 
-async function reportWrongAnswer() {
-  clearAnswerHold();
-  if (!lastAnswerExchange || feedbackSubmitted) return;
+async function toggleWrongAnswerFeedback() {
+  if (!lastAnswerExchange || feedbackInFlight) return;
 
   if (!ownerToken()) {
     els.answerFeedbackStatus.hidden = false;
@@ -986,23 +986,56 @@ async function reportWrongAnswer() {
     return;
   }
 
-  feedbackSubmitted = true;
+  const wasSubmitted = feedbackSubmitted;
+  if (!feedbackId) feedbackId = nextFeedbackId();
+  feedbackInFlight = true;
   els.answer.classList.add("answer-feedback-pending");
   els.answerFeedbackStatus.hidden = false;
-  els.answerFeedbackStatus.textContent = "Sending feedback…";
+  els.answerFeedbackStatus.textContent = wasSubmitted
+    ? "Canceling feedback…"
+    : "Sending feedback…";
+
   try {
     await api("/web/feedback", {
       method: "POST",
       headers: ownerHeaders(),
-      body: JSON.stringify(lastAnswerExchange),
+      body: JSON.stringify(
+        wasSubmitted
+          ? {
+              action: "cancel",
+              feedbackId,
+            }
+          : {
+              action: "mark",
+              feedbackId,
+              ...lastAnswerExchange,
+            },
+      ),
     });
+
     els.answer.classList.remove("answer-feedback-pending");
-    els.answer.classList.add("answer-feedback-sent");
-    els.answerFeedbackStatus.textContent =
-      "Marked wrong — queued for the next review.";
+    if (wasSubmitted) {
+      feedbackSubmitted = false;
+      feedbackId = "";
+      els.answer.classList.remove("answer-feedback-sent");
+      els.answerFeedbackStatus.textContent =
+        "Feedback canceled — double-tap/click to mark this answer wrong.";
+    } else {
+      feedbackSubmitted = true;
+      els.answer.classList.add("answer-feedback-sent");
+      els.answerFeedbackStatus.textContent =
+        "Marked wrong — double-tap/click again to cancel.";
+    }
   } catch (error) {
-    feedbackSubmitted = false;
+    feedbackSubmitted = wasSubmitted;
     els.answer.classList.remove("answer-feedback-pending");
+    if (wasSubmitted) {
+      els.answer.classList.add("answer-feedback-sent");
+    } else {
+      feedbackId = "";
+      els.answer.classList.remove("answer-feedback-sent");
+    }
+
     if (error.status === 401) {
       localStorage.removeItem(OWNER_TOKEN_KEY);
       els.answerFeedbackStatus.textContent =
@@ -1011,23 +1044,9 @@ async function reportWrongAnswer() {
     } else {
       els.answerFeedbackStatus.textContent = error.message;
     }
+  } finally {
+    feedbackInFlight = false;
   }
-}
-
-function startAnswerHold(event) {
-  if (!lastAnswerExchange || feedbackSubmitted) return;
-  clearAnswerHold();
-  answerHoldStart = { x: event.clientX, y: event.clientY };
-  answerHoldTimer = setTimeout(() => {
-    void reportWrongAnswer();
-  }, 700);
-}
-
-function moveAnswerHold(event) {
-  if (!answerHoldTimer || !answerHoldStart) return;
-  const dx = Math.abs(event.clientX - answerHoldStart.x);
-  const dy = Math.abs(event.clientY - answerHoldStart.y);
-  if (dx > 12 || dy > 12) clearAnswerHold();
 }
 
 els.question.addEventListener("input", renderQuestionSuggestions);
@@ -1081,13 +1100,18 @@ els.form.addEventListener("submit", async (event) => {
     els.answer.textContent = payload.reply;
     lastAnswerExchange = { question, reply: payload.reply };
     feedbackSubmitted = false;
+    feedbackId = "";
+    feedbackInFlight = false;
     els.answer.classList.remove("answer-feedback-pending", "answer-feedback-sent");
     els.answerFeedbackStatus.hidden = false;
-    els.answerFeedbackStatus.textContent = "Hold the answer to mark it wrong for the next review.";
+    els.answerFeedbackStatus.textContent =
+      "Double-tap/click the answer to mark it wrong for the next review.";
     if (payload.lastDate) sessionStorage.setItem("ballerwatch-last-date", payload.lastDate);
   } catch (error) {
     lastAnswerExchange = null;
     feedbackSubmitted = false;
+    feedbackId = "";
+    feedbackInFlight = false;
     els.answerFeedbackStatus.hidden = true;
     els.answer.textContent = error.message;
   } finally {
@@ -1095,13 +1119,9 @@ els.form.addEventListener("submit", async (event) => {
   }
 });
 
-els.answer.addEventListener("pointerdown", startAnswerHold);
-els.answer.addEventListener("pointermove", moveAnswerHold);
-els.answer.addEventListener("pointerup", clearAnswerHold);
-els.answer.addEventListener("pointercancel", clearAnswerHold);
-els.answer.addEventListener("pointerleave", clearAnswerHold);
-els.answer.addEventListener("contextmenu", (event) => {
-  if (lastAnswerExchange) event.preventDefault();
+els.answer.addEventListener("dblclick", (event) => {
+  event.preventDefault();
+  void toggleWrongAnswerFeedback();
 });
 
 els.notificationBell.addEventListener("click", openNotifications);
