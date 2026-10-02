@@ -5,7 +5,11 @@
  */
 import { recordUnknownQuestion, refreshPublicRequests } from "../shared/feature-requests.mjs";
 import { answerUnknownWithAi } from "../shared/ai-fallback.mjs";
-import { findChatExchange, recordChatExchange } from "../shared/chat-history.mjs";
+import {
+  findChatExchange,
+  recordChatExchange,
+  removeChatFeedback,
+} from "../shared/chat-history.mjs";
 import fs from "node:fs";
 import crypto from "node:crypto";
 import { isOwnerChat, sendTelegram, sendTyping } from "../shared/telegram.mjs";
@@ -1366,11 +1370,23 @@ async function main() {
 
   if (historyEventB64 && !injectedUpdate) {
     const event = JSON.parse(Buffer.from(historyEventB64, "base64").toString("utf8"));
+    if (event?.action === "cancel-feedback") {
+      const removed = removeChatFeedback(event.feedbackId);
+      saveBotState(state.lastUpdateId || 0, settings);
+      console.log(
+        removed
+          ? "Canceled authenticated web answer feedback."
+          : "Authenticated web answer feedback was already absent.",
+      );
+      return;
+    }
+
     await recordChatExchange({
       question: event.question,
       reply: event.reply,
       hint: event.hint || "",
       source: historySource(event),
+      externalId: event.feedbackId || "",
     });
     settings = rememberBotReply(settings, event.question, event.reply, event.messageId);
     if (event.lastDate) settings.lastReferencedDate = String(event.lastDate);
