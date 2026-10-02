@@ -306,8 +306,17 @@ export async function sendWebPushSignals({
   const staleEndpoints = new Set();
 
   for (const subscription of state.subscriptions) {
+    let endpoint;
     try {
-      const endpoint = await validateWebPushDestination(subscription.endpoint, { resolveHost });
+      endpoint = await validateWebPushDestination(subscription.endpoint, { resolveHost });
+    } catch (error) {
+      failed += 1;
+      staleEndpoints.add(subscription.endpoint);
+      console.warn(`Web Push endpoint rejected: ${error?.message || error}`);
+      continue;
+    }
+
+    try {
       const response = await fetchImpl(endpoint, {
         method: "POST",
         redirect: "error",
@@ -328,8 +337,7 @@ export async function sendWebPushSignals({
       }
     } catch (error) {
       failed += 1;
-      staleEndpoints.add(subscription.endpoint);
-      console.warn(`Web Push signal rejected or failed: ${error?.message || error}`);
+      console.warn(`Web Push signal failed without following redirects: ${error?.message || error}`);
     }
   }
 
