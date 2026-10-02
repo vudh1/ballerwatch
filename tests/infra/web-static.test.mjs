@@ -16,13 +16,13 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=5\.4\.0/);
-  assert.match(html, /app\.js\?v=5\.4\.0/);
+  assert.match(html, /styles\.css\?v=5\.5\.0/);
+  assert.match(html, /app\.js\?v=5\.5\.0/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v5-4-0-shell/);
+  assert.match(sw, /ballerwatch-v5-5-0-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -63,7 +63,7 @@ test("Home Screen install card is removed in standalone mode and notifications u
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=5\.4\.0/);
+  assert.match(app, /sw\.js\?v=5\.5\.0/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -511,4 +511,25 @@ test("match spotlight swipe uses connected neighboring cards like a carousel tra
   assert.match(css, /\.spotlight-card\.is-train-settling/);
   assert.match(css, /transition:\s*transform 260ms/);
   assert.match(css, /html\.spotlight-swipe-active[\s\S]*overscroll-behavior-x:\s*none;/);
+});
+
+
+test("v5.5 dashboard matches the iPhone-first demo direction", () => {
+  const html = fs.readFileSync("docs/index.html", "utf8");
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  const css = fs.readFileSync("docs/styles.css", "utf8");
+
+  assert.match(html, /Pickup \+ RATS monitor/);
+  assert.match(html, /<h2>14-Day Calendar<\/h2>/);
+  assert.match(html, /<h2>Ask BallerWatch<\/h2>/);
+  assert.match(html, /id="next-game-capacity"/);
+  assert.match(app, /capacityPercent/);
+  assert.match(app, /spotsText/);
+  assert.match(app, /title: game\.dateLabel \|\| game\.title/);
+  assert.match(css, /\/\* v5\.5 iPhone dashboard visual refresh \*\//);
+  assert.match(css, /\.spotlight-content \{[\s\S]*grid-template-areas:/);
+  assert.match(css, /\.next-game-capacity-track/);
+  assert.match(css, /\.calendar-day\[aria-selected="true"\]/);
+  assert.match(css, /\.notification-dialog \{[\s\S]*position:\s*fixed;/);
+  assert.match(css, /\.ask-card h2::before/);
 });
