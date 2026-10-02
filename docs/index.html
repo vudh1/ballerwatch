@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0f172a">
+  <meta name="theme-color" content="#182235">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="BallerWatch">
@@ -11,7 +11,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
-  <link rel="stylesheet" href="./styles.css?v=5.4.0">
+  <link rel="stylesheet" href="./styles.css?v=5.5.0">
 </head>
 <body>
   <main class="shell">
@@ -19,9 +19,9 @@
       <div class="brand-lockup">
         <div class="brand-mark" aria-hidden="true">BW</div>
         <div>
-          <p class="eyebrow">MATCH CONTROL</p>
+          <p class="eyebrow">SOCCER AT A GLANCE</p>
           <h1>BallerWatch</h1>
-          <p class="subtitle">Games, weather, RSVP and match-day details.</p>
+          <p class="subtitle">Pickup + RATS monitor</p>
         </div>
       </div>
       <div class="hero-actions">
@@ -59,6 +59,15 @@
           </div>
           <p class="next-game-meta" id="next-game-meta"></p>
           <p class="next-game-location muted" id="next-game-location"></p>
+          <div class="next-game-capacity" id="next-game-capacity" hidden>
+            <div class="next-game-capacity-row">
+              <span class="next-game-capacity-label" id="next-game-capacity-label"></span>
+              <span class="next-game-capacity-spots" id="next-game-capacity-spots"></span>
+            </div>
+            <div class="next-game-capacity-track" aria-hidden="true">
+              <span class="next-game-capacity-fill" id="next-game-capacity-fill"></span>
+            </div>
+          </div>
           <div class="next-game-weather" id="next-game-weather" hidden></div>
           <div class="button-row next-game-actions" id="next-game-actions" hidden>
             <a class="button-link" id="next-game-directions" target="_blank" rel="noopener">Directions</a>
@@ -72,8 +81,8 @@
     <section class="card calendar-card" id="two-week-calendar">
       <div class="section-heading calendar-heading">
         <div>
-          <p class="eyebrow">NEXT 14 DAYS</p>
-          <h2>Game calendar</h2>
+          <p class="eyebrow">MATCH DAYS</p>
+          <h2>14-Day Calendar</h2>
         </div>
         <span class="calendar-updated" id="calendar-updated">Weather every 6h</span>
       </div>
@@ -85,8 +94,8 @@
     <section class="card ask-card">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">ASK BALLERWATCH</p>
-          <h2>Find a game detail</h2>
+          <p class="eyebrow">QUICK ANSWERS</p>
+          <h2>Ask BallerWatch</h2>
         </div>
         <span class="ask-shortcut">/ commands</span>
       </div>
@@ -95,7 +104,7 @@
         <div class="question-row">
           <div class="question-input-wrap">
             <input id="question" name="question" maxlength="600" autocomplete="off"
-              placeholder="Ask about a game, field, time or RSVP…" role="combobox"
+              placeholder="Ask a question…" role="combobox"
               aria-autocomplete="list" aria-expanded="false" aria-controls="question-suggestions" required>
             <div class="question-suggestions" id="question-suggestions" role="listbox" hidden></div>
           </div>
@@ -230,6 +239,6 @@
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=5.4.0"></script>
+  <script type="module" src="./app.js?v=5.5.0"></script>
 </body>
 </html>
