@@ -71,7 +71,7 @@ Unpaired public visitors cannot submit review feedback. If the device is not pai
 
 ## Two-week calendar and weather
 
-The dashboard displays the next 14 Pacific-calendar days. Game dates are highlighted and can be selected to see one or more games, time/location, pickup capacity when available, jersey color, Directions, and weather.
+The dashboard displays the next 14 Pacific-calendar days. Game dates are highlighted and can be selected to see one or more games, time/location, pickup capacity when available, jersey color, Directions, and weather. On touch devices, swiping the main match spotlight left moves to the next game date and swiping right moves to the previous game date; empty dates are skipped and the calendar highlight moves with the selected match.
 
 Weather is computed from the actual scheduled game window rather than a generic daily forecast. BallerWatch uses the maximum hourly precipitation probability that overlaps the match, plus an average match-window temperature and compact condition. The encrypted weather snapshot refreshes every six hours.
 
@@ -81,7 +81,7 @@ Recurring venues use cached coordinates. Only new public field names/addresses a
 
 The v5.1 interface uses translucent, layered surfaces with backdrop blur, soft edge highlights, and depth while keeping strong text contrast for outdoor/mobile use. Browsers without backdrop-filter support fall back to opaque dark surfaces.
 
-The top match spotlight is also the single detail surface for the 14-day calendar. Initial load shows the next game. Tapping a game day changes that same spotlight to **Selected game** with its match-window weather, field/location, Directions, and Share controls. Empty days are not interactive. If more than one match exists on a date, the calendar shows a compact selector and each choice updates the same spotlight.
+The top match spotlight is also the single detail surface for the 14-day calendar. Initial load shows the next game. Tapping a game day changes that same spotlight to **Selected game** with its match-window weather, field/location, Directions, and Share controls. The spotlight can also be swiped horizontally: left selects the next date with a game, right selects the previous game date, and the selected calendar cell updates at the same time. Empty days are skipped rather than becoming empty spotlight pages. If more than one match exists on a date, the calendar shows a compact selector and each choice updates the same spotlight.
 
 ## Next game and notification test
 
