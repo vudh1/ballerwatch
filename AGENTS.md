@@ -43,7 +43,7 @@ Merging to `main` does **not** deploy production. Production is release-gated:
 
 - `production` points to the latest promoted release commit.
 - A published GitHub Release/tag such as `v5.7.0` is the production promotion event.
-- Release publication should use a dedicated `RELEASE_GITHUB_TOKEN` with repository Contents read/write when available; `CRON_GITHUB_PAT` is only the compatibility fallback. If neither credential can create Releases, fail closed rather than moving production without a release record.
+- Release publication uses the dedicated `RELEASE_GITHUB_TOKEN`. Grant repository **Contents: read/write** and **Workflows: read/write** because a product release may target a commit that changes `.github/workflows/`. If the token cannot create the Release, fail closed rather than moving production without a release record.
 - The **Promote production release** workflow checks the candidate on `main`, requires successful validation, waits at least 24 hours, checks eligibility hourly, then advances `production` and publishes the GitHub Release on the first eligible check.
 - The same workflow may be manually run to promote a product version immediately; manual promotion skips the 24-hour soak but still requires validation.
 - Pages, Worker, Calendar-bridge bootstrap, weather bootstrap, and web-runtime deployment workflows listen to published releases rather than pushes to `main`.
