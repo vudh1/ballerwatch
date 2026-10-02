@@ -43,7 +43,7 @@ The hourly **Promote production release** workflow:
 3. on the automatic path, waits until the candidate has soaked for at least 24 hours;
 4. creates/publishes the GitHub Release/tag;
 5. advances `production` to that exact commit;
-6. Worker/Calendar/weather/web-runtime and Pages release listeners deploy the tagged version; Pages always checks out `production`, and its workflow can re-enable the Pages site if repository Pages activation is missing.
+6. Worker/Calendar/weather/web-runtime release listeners deploy the tagged version; the promoter separately dispatches the Pages workflow on `main`, and that workflow checks out the promoted `production` commit. Keeping the Pages workflow on the `main` execution context avoids GitHub Pages environment rejection of release-tag jobs.
 
 A manual run skips the soak but still requires validation. Worker deployment is not considered healthy until the deployed runtime passes notification-silent readiness checks for health/config plus the runtime-backed next-game and calendar APIs.
 
