@@ -466,33 +466,38 @@ test("notification popup stays bounded and offers local Delete all beside Send t
 });
 
 
-test("match spotlight swipes between game dates with a fixed card frame", () => {
+test("match spotlight swipe uses connected neighboring cards like a carousel train", () => {
   const html = fs.readFileSync("docs/index.html", "utf8");
   const app = fs.readFileSync("docs/app.js", "utf8");
   const css = fs.readFileSync("docs/styles.css", "utf8");
 
-  assert.match(html, /id="spotlight-swipe-surface"/);
-  assert.match(app, /function calendarGameDates/);
+  assert.match(html, /id="spotlight-carousel"/);
+  assert.match(html, /class="spotlight-content"/);
+  assert.match(app, /function spotlightModel/);
+  assert.match(app, /function buildSpotlightTrainCard/);
+  assert.match(app, /function adjacentCalendarSelection/);
   assert.match(app, /function selectAdjacentCalendarGameDate/);
   assert.match(app, /function installSpotlightSwipe/);
-  assert.match(app, /spotlightSwipeSurface/);
-  assert.match(app, /nextGameCard\.addEventListener\("touchstart"/);
-  assert.match(app, /nextGameCard\.addEventListener\("touchmove"/);
-  assert.match(app, /nextGameCard\.addEventListener\("touchend"/);
-  assert.match(app, /surface\.style\.transform = `translate3d/);
+  assert.match(app, /spotlightCarousel/);
+  assert.match(app, /cloneNode\(true\)/);
+  assert.match(app, /classList\.add\("spotlight-train-card"\)/);
+  assert.match(app, /preview\.style\.transform = `translate3d/);
+  assert.match(app, /current\.style\.transform = `translate3d/);
+  assert.match(app, /committedTrain\.preview\.style\.transform = "translate3d\(0, 0, 0\)"/);
+  assert.match(app, /selectCalendarDate\(committedTrain\.target\.date\)/);
   assert.match(app, /document\.documentElement\.classList\.add\("spotlight-swipe-active"\)/);
-  assert.match(app, /const direction = deltaX < 0 \? 1 : -1/);
-  assert.match(app, /selectAdjacentCalendarGameDate\(direction\)/);
   assert.match(
     app,
     /button\.setAttribute\("aria-selected", String\(button\.dataset\.date === date\)\)/,
   );
   assert.match(app, /renderCalendarGamePicker\(games, game\.id \|\| ""\)/);
   assert.match(app, /event\.target\.closest\?\.\("a, button"\)/);
-  assert.doesNotMatch(app, /nextGameCard\.style\.(?:transform|opacity)/);
-  assert.match(css, /\/\* v5\.3\.1 fixed-frame calendar swipe \*\//);
-  assert.match(css, /\.spotlight-card \{[\s\S]*touch-action:\s*pan-y;/);
-  assert.match(css, /\.spotlight-swipe-surface \{[\s\S]*transform:\s*translate3d/);
-  assert.match(css, /\.spotlight-swipe-surface\.is-calendar-swiping/);
+  assert.match(css, /\/\* v5\.3\.2 connected-card carousel swipe \*\//);
+  assert.match(css, /\.spotlight-carousel \{[\s\S]*overflow:\s*hidden;/);
+  assert.match(css, /--spotlight-train-gap:\s*12px/);
+  assert.match(css, /\.spotlight-train-card \{[\s\S]*position:\s*absolute;/);
+  assert.match(css, /\.spotlight-card\.is-train-dragging/);
+  assert.match(css, /\.spotlight-card\.is-train-settling/);
+  assert.match(css, /transition:\s*transform 260ms/);
   assert.match(css, /html\.spotlight-swipe-active[\s\S]*overscroll-behavior-x:\s*none;/);
 });
