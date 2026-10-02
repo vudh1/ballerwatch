@@ -1,7 +1,7 @@
 /**
  * Routes Telegram webhooks, edge Q&A, runtime-state APIs, health checks, and scheduled edge work.
  *
- * Updated v5.0.0: adds a public-safe 14-day game/weather calendar while preserving owner pairing, anonymous-read privacy, and encrypted runtime state.
+ * Updated v5.4.0: preserves exact owner review exchanges only inside encrypted runtime state, keeps readable review signals sanitized, and routes common weekday match-detail questions deterministically.
  */
 import {
   fetchPickupSnapshot,
@@ -34,6 +34,10 @@ function base64Json(value) {
 
 function cleanText(value, max = 1200) {
   return String(value || "").trim().replace(/\s+/g, " ").slice(0, max);
+}
+
+function retainPrivateText(value, max = 12000) {
+  return String(value ?? "").trim().slice(0, max);
 }
 
 function bytesB64Url(value) {
@@ -378,6 +382,8 @@ async function persistFastChatHistory(env, event) {
     createdAt: new Date().toISOString(),
     source: cleanText(event.source, 40) || "cloudflare-fast-path",
     ...(Number(event.messageId) > 0 ? { messageId: Number(event.messageId) } : {}),
+    question: retainPrivateText(event.question, 4000),
+    reply: retainPrivateText(event.reply, 12000),
     kind: compact?.kind || "normal",
     summary: compact?.summary || `Fast-path ${cleanText(event.intent,60) || "read-only"} question answered.`,
     reason: compact?.reason || "",
@@ -946,6 +952,12 @@ export function directIntent(text) {
   if (/^\/next(?:\s|$)/.test(lower)) return "next_game";
   if (/^\/teams(?:\s|$)/.test(lower)) return "league_teams";
   if (/^\/(?:count|field|time)(?:\s|$)/.test(lower)) return "pickup_status";
+  if (
+    /\b(?:today|tomorrow|sunday|monday|tuesday|wednesday|thursday|friday|saturday|\d{1,2}\/\d{1,2})\b/.test(lower) &&
+    /\b(?:time|when|where|field|location|address)\b/.test(lower)
+  ) {
+    return "pickup_status";
+  }
   return classifyIndexedIntent(clean);
 }
 
@@ -1849,8 +1861,8 @@ export default {
         );
       }
 
-      const question = cleanText(body?.question, 600);
-      const reply = cleanText(body?.reply, 1200);
+      const question = retainPrivateText(body?.question, 4000);
+      const reply = retainPrivateText(body?.reply, 12000);
       if (!question || !reply) {
         return webJson(
           request,

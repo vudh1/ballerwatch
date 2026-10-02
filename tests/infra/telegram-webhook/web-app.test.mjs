@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import {
   dedupeWebBoardEntries,
   directIntent,
@@ -107,6 +108,7 @@ test("web slash commands map to read-only intents", () => {
   assert.equal(directIntent("/count Thursday"), "pickup_status");
   assert.equal(directIntent("/field Thursday"), "pickup_status");
   assert.equal(directIntent("/time Thursday"), "pickup_status");
+  assert.equal(directIntent("Thursday time"), "pickup_status");
   assert.equal(directIntent("/version"), "version");
   assert.equal(directIntent("/help"), "help");
 });
@@ -367,4 +369,14 @@ test("web board keeps only the newest copy of identical historical notifications
     dedupeWebBoardEntries(entries).map((entry) => entry.id),
     ["new", "changed"],
   );
+});
+
+
+test("web feedback keeps original question and answer before encrypted review dispatch", () => {
+  const source = fs.readFileSync("infra/telegram-webhook/worker.mjs", "utf8");
+  assert.match(source, /function retainPrivateText/);
+  assert.match(source, /question:\s*retainPrivateText\(event\.question, 4000\)/);
+  assert.match(source, /reply:\s*retainPrivateText\(event\.reply, 12000\)/);
+  assert.match(source, /const question = retainPrivateText\(body\?\.question, 4000\)/);
+  assert.match(source, /const reply = retainPrivateText\(body\?\.reply, 12000\)/);
 });

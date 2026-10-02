@@ -1,7 +1,7 @@
 /**
  * Implements the GitHub-hosted Telegram fallback bot, state-changing commands, and deterministic replies.
  *
- * Documentation baseline: v2.6.0. The listener is webhook-input only and sends Telegram messages only as direct replies to owner input; unsolicited setup, health, and release reminders are disabled. Runtime/private data must never be committed to Git.
+ * Documentation baseline: v5.4.0. The listener is webhook-input only, uses deterministic date/detail routing before AI fallback, and stores owner review source only through encrypted runtime state. Unsolicited setup, health, and release reminders are disabled.
  */
 import { recordUnknownQuestion, refreshPublicRequests } from "../shared/feature-requests.mjs";
 import { answerUnknownWithAi } from "../shared/ai-fallback.mjs";
@@ -676,6 +676,11 @@ function isPickupDetailsIntent(text) {
   return /\bpickup\b.*\b(game|details?|info(?:rmation)?|field|where|time|when)\b/i.test(text);
 }
 
+function isDateMatchDetailIntent(text) {
+  return hasExplicitDateReference(text) &&
+    /\b(time|when|where|field|location|address)\b/i.test(text);
+}
+
 function isTodayGamesIntent(text) {
   const lower = text.toLowerCase();
   return (
@@ -1166,6 +1171,28 @@ async function handleMessage(text, settings) {
     return {
       settings: next.date ? { ...settings, lastReferencedDate: next.date } : settings,
       reply: next.reply,
+    };
+  }
+
+  if (isDateMatchDetailIntent(clean)) {
+    if (date) {
+      const event = eventForDate(date);
+      if (event) {
+        return {
+          settings: { ...settings, lastReferencedDate: date },
+          reply: statusReply(date, event, settings),
+        };
+      }
+    }
+    if (scheduleDate) {
+      return {
+        settings: { ...settings, lastReferencedDate: scheduleDate },
+        reply: gamesForDateReply(scheduleDate, settings),
+      };
+    }
+    return {
+      settings,
+      reply: "I don’t have a published match time for that date yet.",
     };
   }
 

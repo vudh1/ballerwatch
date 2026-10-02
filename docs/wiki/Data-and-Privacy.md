@@ -6,11 +6,11 @@ The public `main` branch contains source code, documentation, static configurati
 
 Generated state lives on the dedicated `runtime-state` branch.
 
-Private runtime payloads are AES-GCM encrypted before storage, including listener settings, soccer snapshots, monitored-team state, Calendar reconciliation state, watchdog state, the match-weather/geocode cache, Web Push VAPID private material/subscriptions, notification-board state, explicit private feature requests, and condensed owner conversation history.
+Private runtime payloads are AES-GCM encrypted before storage, including listener settings, soccer snapshots, monitored-team state, Calendar reconciliation state, watchdog state, the match-weather/geocode cache, Web Push VAPID private material/subscriptions, notification-board state, explicit private feature requests, and owner conversation history.
 
 ## 48-hour chat history
 
-`state/chat-history.json` stores only Groq-condensed owner conversation records and is encrypted. Records are retained for at most 48 hours. Private-bot exchanges and Q&A from an owner-paired PWA share this pipeline; anonymous public-web Q&A is not retained.
+`state/chat-history.json` is encrypted and retains the original owner question and original bot answer for at most 48 hours. Groq may add classification, summary, and reason metadata for engineering triage, but that generated metadata never replaces the stored source exchange. Private-bot exchanges and Q&A from an owner-paired PWA share this pipeline; anonymous public-web Q&A is not retained.
 
 `state/chat-review.json` is intentionally readable so a scheduled ChatGPT maintenance task can inspect it. It may contain only privacy-minimized engineering signals:
 

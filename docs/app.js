@@ -417,7 +417,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=5.3.3", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=5.4.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -829,14 +829,16 @@ function syncSpotlightCardDimensions() {
     probes.push(probe);
   }
 
-  const heights = [
-    current.scrollHeight,
-    ...probes.map((probe) => probe.scrollHeight),
-  ].filter((height) => Number.isFinite(height) && height > 0);
+  const heights = probes
+    .map((probe) => probe.getBoundingClientRect().height)
+    .filter((height) => Number.isFinite(height) && height > 0);
 
   for (const probe of probes) probe.remove();
 
-  const height = heights.length ? Math.ceil(Math.max(...heights)) : 0;
+  const fallbackHeight = current.getBoundingClientRect().height;
+  const height = heights.length
+    ? Math.ceil(Math.max(...heights))
+    : Math.ceil(Number.isFinite(fallbackHeight) ? fallbackHeight : 0);
   if (height > 0) {
     carousel.style.setProperty("--spotlight-card-height", `${height}px`);
   }

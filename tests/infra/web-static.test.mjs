@@ -16,13 +16,13 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=5\.3\.3/);
-  assert.match(html, /app\.js\?v=5\.3\.3/);
+  assert.match(html, /styles\.css\?v=5\.4\.0/);
+  assert.match(html, /app\.js\?v=5\.4\.0/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v5-3-3-shell/);
+  assert.match(sw, /ballerwatch-v5-4-0-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -63,7 +63,7 @@ test("Home Screen install card is removed in standalone mode and notifications u
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=5\.3\.3/);
+  assert.match(app, /sw\.js\?v=5\.4\.0/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -463,6 +463,9 @@ test("notification popup stays bounded and offers local Delete all beside Send t
   assert.match(css, /\.notification-dialog \{[\s\S]*max-height:\s*min\(86dvh, 42rem\);[\s\S]*overflow:\s*hidden;/);
   assert.match(css, /\.notification-dialog \.board \{[\s\S]*overflow-y:\s*auto;/);
   assert.match(css, /\.notification-test-row \{[\s\S]*flex-wrap:\s*wrap;/);
+  assert.match(css, /\.notification-reader \{[\s\S]*overflow-x:\s*hidden;[\s\S]*overflow-y:\s*auto;/);
+  assert.match(css, /\.notification-reader-content \{[\s\S]*max-width:\s*100%;[\s\S]*overflow:\s*hidden;/);
+  assert.match(css, /\.notification-reader-content p \{[\s\S]*overflow-wrap:\s*anywhere;[\s\S]*word-break:\s*break-word;/);
 });
 
 
@@ -477,7 +480,9 @@ test("match spotlight swipe uses connected neighboring cards like a carousel tra
   assert.match(app, /function buildSpotlightTrainCard/);
   assert.match(app, /function syncSpotlightCardDimensions/);
   assert.match(app, /--spotlight-card-height/);
+  assert.match(app, /probes\s*\.map\(\(probe\) => probe\.getBoundingClientRect\(\)\.height\)/);
   assert.match(app, /Math\.ceil\(Math\.max\(\.\.\.heights\)\)/);
+  assert.doesNotMatch(app, /current\.scrollHeight/);
   assert.match(app, /window\.addEventListener\("resize"/);
   assert.match(app, /function adjacentCalendarSelection/);
   assert.match(app, /function selectAdjacentCalendarGameDate/);

@@ -17,13 +17,13 @@ The web app is a public-safe BallerWatch surface with an optional owner-paired s
 - can subscribe the installed app to standards-based Web Push notifications;
 - keeps anonymous/public use read-only while allowing a paired owner device to change only the pickup RSVP name and monitored league teams.
 
-There is intentionally no visible chat transcript in the web UI. Each new question replaces the previous answer. On an owner-paired device, the exchange is privacy-minimized and enters the same encrypted 48-hour engineering review history used by the private bot; anonymous web questions are not retained.
+There is intentionally no visible chat transcript in the web UI. Each new question replaces the previous answer. On an owner-paired device, the original question and original answer are retained only inside encrypted 48-hour engineering review history; the readable review index contains sanitized engineering signals only. Anonymous web questions are not retained.
 
 ## Installed-app navigation
 
 When BallerWatch is opened from the iPhone Home Screen, Home Screen installation help is removed entirely. Browser visits keep a compact **Home Screen app** section in the footer. The footer also includes a Telegram shortcut that opens the bot through Telegram's universal link.
 
-Push enable/disable lives in a compact On/Off control beside Refresh in the notification header. The notification dialog is height-bounded and its history list scrolls independently so controls stay visible on iPhone. Notification previews are truncated to keep the popup compact. Opening one marks it read and opens a full-screen reader; the bell badge then reflects only unread, non-deleted notifications. Swiping a notification left follows the finger, then slides/collapses the card away before deleting it locally on that device. A subtle **Delete all** action beside **Send test** clears the visible notification history only on the current device without mutating the shared public notification-board history.
+Push enable/disable lives in a compact On/Off control beside Refresh in the notification header. The notification dialog is height-bounded and its history list scrolls independently so controls stay visible on iPhone. Notification previews are truncated to keep the popup compact. Opening one marks it read and opens a full-screen reader whose title/body wrap long URLs or unbroken text instead of overflowing the viewport; the bell badge then reflects only unread, non-deleted notifications. Swiping a notification left follows the finger, then slides/collapses the card away before deleting it locally on that device. A subtle **Delete all** action beside **Send test** clears the visible notification history only on the current device without mutating the shared public notification-board history.
 
 ## iPhone installation
 
@@ -65,9 +65,9 @@ Disconnecting from Settings removes the local token from that device. Rotating t
 
 ## Wrong-answer feedback
 
-On an owner-paired device, press and hold the displayed answer for about 0.7 seconds to mark it wrong. BallerWatch queues the question/answer as `negative_feedback` for the next privacy-minimized engineering review and shows a small confirmation below the answer.
+On an owner-paired device, double-tap/click the displayed answer to mark it wrong. BallerWatch retains the original question and answer inside encrypted 48-hour history, adds a sanitized `negative_feedback` signal to the readable review index, and shows a small confirmation below the answer. Double-tap/click again to cancel that feedback.
 
-Unpaired public visitors cannot submit review feedback. If the device is not paired, long-pressing an answer directs the owner to Settings instead of writing a review signal.
+Unpaired public visitors cannot submit review feedback. If the device is not paired, attempting to mark an answer wrong directs the owner to Settings instead of writing a review signal.
 
 ## Two-week calendar and weather
 
@@ -81,7 +81,7 @@ Recurring venues use cached coordinates. Only new public field names/addresses a
 
 The v5.1 interface uses translucent, layered surfaces with backdrop blur, soft edge highlights, and depth while keeping strong text contrast for outdoor/mobile use. Browsers without backdrop-filter support fall back to opaque dark surfaces.
 
-The top match spotlight is also the single detail surface for the 14-day calendar. Initial load shows the next game. Tapping a game day changes that same spotlight to **Selected game** with its match-window weather, field/location, Directions, and Share controls. The spotlight can also be swiped horizontally: left selects the next date with a game, right selects the previous game date, and the selected calendar cell updates at the same time. Swipe navigation uses a connected-card carousel: the current full glass card and the adjacent match card are both present on one horizontal track with a small gap. All game cards use one measured maximum height at the current viewport width, so the carousel never changes dimensions between matches; sizing is recomputed after data refreshes and screen-width changes. Dragging moves both cards together, and releasing completes the same motion so the incoming card naturally replaces the outgoing one. Horizontal page overscroll is suppressed while the gesture is active. Empty days are skipped rather than becoming empty spotlight pages. If more than one match exists on a date, the calendar shows a compact selector and each choice updates the same spotlight.
+The top match spotlight is also the single detail surface for the 14-day calendar. Initial load shows the next game. Tapping a game day changes that same spotlight to **Selected game** with its match-window weather, field/location, Directions, and Share controls. The spotlight can also be swiped horizontally: left selects the next date with a game, right selects the previous game date, and the selected calendar cell updates at the same time. Swipe navigation uses a connected-card carousel: the current full glass card and the adjacent match card are both present on one horizontal track with a small gap. All game cards use one shared height equal to the tallest clean rendered match card at the current viewport width, so the carousel never changes dimensions between matches without being inflated by temporary hint/error text; sizing is recomputed after data refreshes and screen-width changes. Dragging moves both cards together, and releasing completes the same motion so the incoming card naturally replaces the outgoing one. Horizontal page overscroll is suppressed while the gesture is active. Empty days are skipped rather than becoming empty spotlight pages. If more than one match exists on a date, the calendar shows a compact selector and each choice updates the same spotlight.
 
 ## Next game and notification test
 
