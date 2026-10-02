@@ -10,11 +10,6 @@ on:
         required: false
         default: ""
         type: string
-      target_ref:
-        description: "Git branch/ref to promote (blank = main)"
-        required: false
-        default: ""
-        type: string
 
 permissions:
   contents: write
@@ -39,15 +34,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.CRON_GITHUB_PAT }}
           REQUESTED_VERSION: ${{ inputs.version }}
-          REQUESTED_REF: ${{ inputs.target_ref }}
           EVENT_NAME: ${{ github.event_name }}
         shell: bash
         run: |
           set -euo pipefail
           test -n "$GH_TOKEN" || { echo "::error::CRON_GITHUB_PAT is required to publish a release that can trigger deploy workflows."; exit 1; }
 
-          target_ref="${REQUESTED_REF:-main}"
-          git fetch --no-tags origin "$target_ref"
+          git fetch --no-tags origin main
           sha="$(git rev-parse FETCH_HEAD)"
           git show "$sha:features/versions.json" > /tmp/ballerwatch-versions.json
 
@@ -98,7 +91,6 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
-          echo "target_ref=$target_ref" >> "$GITHUB_OUTPUT"
 
       - name: Build release notes
         if: steps.candidate.outputs.eligible == 'true'
