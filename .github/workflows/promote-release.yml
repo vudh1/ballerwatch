@@ -4,13 +4,10 @@ on:
   schedule:
     - cron: "37 * * * *"
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/promote-release.yml"
 
 permissions:
   contents: read
+  actions: write
 
 concurrency:
   group: ballerwatch-production-promotion
@@ -155,6 +152,12 @@ jobs:
             echo "- Production branch now points to the same commit."
             echo "- Release-triggered deployment workflows will deploy this tagged version."
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Deploy Pages from promoted production
+        if: steps.candidate.outputs.eligible == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref main
 
       - name: Explain no-op promotion
         if: steps.candidate.outputs.eligible != 'true'
