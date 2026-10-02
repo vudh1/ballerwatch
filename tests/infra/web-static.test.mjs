@@ -643,7 +643,10 @@ test("web runtime and owner settings do not require Telegram credentials", () =>
   )?.[0] || "";
   assert.match(requiredBlock, /TRACKER_STATE_KEY/);
   assert.match(requiredBlock, /CRON_GITHUB_PAT/);
-  assert.doesNotMatch(requiredBlock, /TELEGRAM_BOT_TOKEN|TELEGRAM_CHAT_ID/);
+  assert.match(requiredBlock, /TRACKER_STATE_KEY or TELEGRAM_BOT_TOKEN is required/);
+  const mandatoryLoop = requiredBlock.match(/for name in[^\n]+/)?.[0] || "";
+  assert.doesNotMatch(mandatoryLoop, /TRACKER_STATE_KEY|TELEGRAM_BOT_TOKEN|TELEGRAM_CHAT_ID/);
+  assert.match(deploy, /process\.env\.TRACKER_STATE_KEY \|\| process\.env\.TELEGRAM_BOT_TOKEN/);
 
   assert.match(deploy, /Telegram adapter disabled; PWA\/API operation remains enabled/);
   assert.match(deploy, /TRACKER_STATE_KEY\+"\|ballerwatch-webhook-v2"/);
