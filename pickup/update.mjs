@@ -8,6 +8,7 @@ import path from "node:path";
 import { decryptState, encryptState } from "../shared/state-crypto.mjs";
 import { loadBotSettings } from "../shared/bot-state.mjs";
 import { discoverPublicRsvpEndpoint, shouldRediscoverEndpoint } from "./upstream-endpoint.mjs";
+import { pickupWeatherChanged } from "../weather/relevance.mjs";
 
 const TIME_ZONE = "America/Los_Angeles";
 const DATES_DIR = ".runtime/pickup/data/dates";
@@ -18,6 +19,7 @@ const PRIVATE_RUNTIME_PATH = path.join(RUNTIME_DIR, "events.json");
 const PRIVATE_STATE_PATH = "pickup/state/events.json";
 const FEED_STATE_PATH = "pickup/state/feed.json";
 const SOURCE_HEALTH_STATE_PATH = "pickup/state/source-health.json";
+const WEATHER_REFRESH_MARKER = ".runtime/pickup/weather-refresh-needed";
 const settings = loadBotSettings();
 const endpointOverride = String(settings?.pickupEndpointOverride || "").trim();
 const defaultEndpoint = String(process.env.UPSTREAM_ENDPOINT || "").trim();
@@ -104,6 +106,15 @@ function readJson(filePath) {
   }
 }
 
+function readEncryptedState(filePath) {
+  try {
+    const payload = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    return decryptState(payload) || {};
+  } catch {
+    return {};
+  }
+}
+
 function writeIfChanged(filePath, next, stamp = false) {
   const previous = readJson(filePath);
 
@@ -167,6 +178,8 @@ function safePlayer(player) {
 }
 
 async function main() {
+  const previousFeedState = readEncryptedState(FEED_STATE_PATH);
+  const previousPrivateState = readEncryptedState(PRIVATE_STATE_PATH);
   const datesResult = await callEndpoint({ action: "listPlayDates" });
 
   const dates = [...new Set(
@@ -257,12 +270,26 @@ async function main() {
     timezone: TIME_ZONE,
     lastSuccessfulCheckAt: new Date().toISOString(),
   });
-  writeEncryptedIfChanged(FEED_STATE_PATH, {
+  const nextFeedState = {
     ok: true,
     timezone: TIME_ZONE,
     dates: index.dates,
     events: publicEvents,
-  });
+  };
+  writeEncryptedIfChanged(FEED_STATE_PATH, nextFeedState);
+
+  if (
+    pickupWeatherChanged(
+      previousFeedState,
+      previousPrivateState,
+      nextFeedState,
+      privatePayload,
+    )
+  ) {
+    fs.mkdirSync(path.dirname(WEATHER_REFRESH_MARKER), { recursive: true });
+    fs.writeFileSync(WEATHER_REFRESH_MARKER, "1\n");
+    console.log("Weather-relevant pickup schedule changed.");
+  }
 
   writeEncryptedIfChanged(SOURCE_HEALTH_STATE_PATH, {
     ok: true,
