@@ -44,7 +44,7 @@ System watchdog/weather runs natively in GitHub Actions every six hours. Manual 
 
 ## Runtime-state migration/audit
 
-Worker deployment pulls/pushes every runtime scope so legacy 5.7-and-earlier files are resealed as complete AES-GCM envelopes. It then runs:
+Worker deployment pulls/pushes every runtime scope so legacy files are resealed as complete AES-GCM envelopes. In 5.8.2, legacy encrypted envelopes are also read once and resealed with the domain-separated runtime-encryption KDF. It then runs:
 
 ```bash
 node shared/runtime-state.mjs audit
@@ -83,6 +83,12 @@ The Worker uses separate GitHub credentials by responsibility: `GITHUB_DISPATCH_
 Pages is deployed from `docs/`. One-time repository setup is **Settings → Pages → Build and deployment → Source → GitHub Actions**.
 
 **Web app runtime** maintains encrypted VAPID/subscription state. Subscribed devices do not require Telegram for delivery; GitHub Actions sends Web Push signals directly to browser push services.
+
+Web Push delivery is an outbound-network security boundary. Only recognized browser push-service hosts are persisted; registration requires a short-lived endpoint-bound challenge from the trusted PWA origin. The GitHub runner revalidates the endpoint, resolves DNS immediately before delivery, requires every result to be public, and sends with redirects disabled. Rejected endpoints are removed from runtime state rather than retried indefinitely.
+
+All third-party GitHub Actions are pinned to reviewed commit SHAs. Version comments beside the SHA are informational only; updating an Action means explicitly reviewing and replacing the pinned commit.
+
+The Worker API emits defense-in-depth CSP, anti-framing, content-type, referrer, and permissions headers. GitHub Pages can only enforce the document-level CSP/referrer controls supplied in HTML; repository-defined custom response headers are not available on the static Pages hosting layer.
 
 ## Purge
 
