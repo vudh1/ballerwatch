@@ -11,7 +11,7 @@ on:
 
 permissions:
   contents: write
-  actions: read
+  actions: write
 
 concurrency:
   group: ballerwatch-production-promotion
@@ -30,13 +30,11 @@ jobs:
       - name: Resolve release candidate
         id: candidate
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || secrets.CRON_GITHUB_PAT }}
+          GH_TOKEN: ${{ github.token }}
           EVENT_NAME: ${{ github.event_name }}
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$GH_TOKEN" || { echo "::error::RELEASE_GITHUB_TOKEN (preferred) or CRON_GITHUB_PAT with Contents read/write is required to publish GitHub Releases."; exit 1; }
-
           git fetch --no-tags origin main
           head_sha="$(git rev-parse FETCH_HEAD)"
           sha="$head_sha"
@@ -131,7 +129,7 @@ jobs:
       - name: Promote candidate and publish GitHub Release
         if: steps.candidate.outputs.eligible == 'true'
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || secrets.CRON_GITHUB_PAT }}
+          GH_TOKEN: ${{ github.token }}
           SHA: ${{ steps.candidate.outputs.sha }}
           TAG: ${{ steps.candidate.outputs.tag }}
           RELEASE_STATE: ${{ steps.candidate.outputs.release_state }}
@@ -154,8 +152,20 @@ jobs:
             echo "- Release: **$TAG**"
             echo "- Commit: `$SHA`"
             echo "- Production branch now points to the same commit."
-            echo "- Release-triggered deployment workflows will deploy this tagged version."
+            echo "- Production deployment workflows are dispatched explicitly from the promoted ref."
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Dispatch production deployments
+        if: steps.candidate.outputs.eligible == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for workflow in             pages.yml             deploy-telegram-webhook.yml             web-app.yml             weather-refresh.yml             deploy-apps-script.yml
+          do
+            gh workflow run "$workflow" --repo "$GITHUB_REPOSITORY" --ref main
+          done
 
       - name: Explain no-op promotion
         if: steps.candidate.outputs.eligible != 'true'
