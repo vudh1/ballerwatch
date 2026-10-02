@@ -1,7 +1,8 @@
 /**
- * Validates the SemVer release ledger and announcement references used by CI.
+ * Validates the SemVer product-release ledger used by CI.
  *
- * Documentation baseline: v2.3.0. Runtime/private data must never be committed to Git.
+ * Documentation baseline: v5.8.0. User-facing release announcements live
+ * inline with their release entry; maintenance commits do not create versions.
  */
 import fs from "node:fs";
 
@@ -32,8 +33,7 @@ function compare(a, b) {
 }
 
 const ledger = readJson("features/versions.json");
-const announcements = readJson("features/announcements.json");
-if (!ledger || !announcements) process.exit(1);
+if (!ledger) process.exit(1);
 
 if (ledger.schemaVersion !== 1) fail("features/versions.json schemaVersion must be 1");
 const releases = Array.isArray(ledger.releases) ? ledger.releases : [];
@@ -68,12 +68,6 @@ for (const release of releases) {
 
 if (releases[0]?.version !== ledger.currentVersion) {
   fail("currentVersion must equal the newest release");
-}
-
-for (const item of announcements.announcements || []) {
-  if (item.version && !known.has(item.version)) {
-    fail(`announcement ${item.id} references unknown version ${item.version}`);
-  }
 }
 
 if (process.exitCode) process.exit(process.exitCode);

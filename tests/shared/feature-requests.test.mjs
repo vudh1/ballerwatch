@@ -48,7 +48,11 @@ test("encrypted persistence preserves originals, deduplicates, migrates public d
     fs.writeFileSync(path.join(directory, "unknown.json"), JSON.stringify({ version: 1, requests: [{ question }] }));
     refreshPublicRequests(directory);
     const publicText = fs.readFileSync(path.join(directory, "unknown.json"), "utf8");
-    assert.deepEqual(JSON.parse(publicText), { version: 3, requests: [{ category: "other", count: 2, manual: 0, thumbsDown: 0 }] });
+    assert.doesNotMatch(publicText, /other|requests|audit@example\.invalid/);
+    assert.deepEqual(decryptState(JSON.parse(publicText)), {
+      version: 3,
+      requests: [{ category: "other", count: 2, manual: 0, thumbsDown: 0 }],
+    });
     process.env.TRACKER_STATE_KEY = "wrong-test-key";
     assert.throws(() => recordUnknownQuestion("another request", directory), /Unable to decrypt/);
     assert.throws(() => refreshPublicRequests(directory), /Unable to decrypt/);

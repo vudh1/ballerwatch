@@ -90,7 +90,7 @@ test("feedback authorization is scoped to the exact answer and never grants owne
   assert.equal(await verifyOwnerToken(env, token), false);
 });
 
-test("owner tokens remain owner-only after feedback tokens are introduced", async () => {
+test("user capability tokens remain settings-only after feedback tokens are introduced", async () => {
   const env = { TRACKER_STATE_KEY: "test-owner-signing-key" };
   const issued = await issueOwnerToken(env);
   assert.equal(await verifyOwnerToken(env, issued.token), true);
@@ -101,7 +101,7 @@ test("owner tokens remain owner-only after feedback tokens are introduced", asyn
 });
 
 
-test("owner password records are server-keyed and verify only the exact password", async () => {
+test("user password records are server-keyed and verify only the exact password", async () => {
   const env = { TRACKER_STATE_KEY: "test-owner-password-key" };
   const record = await createOwnerPasswordRecord(env, "correct horse battery staple");
 
@@ -126,7 +126,7 @@ test("owner password records are server-keyed and verify only the exact password
   );
 });
 
-test("owner password validation enforces a meaningful minimum without trimming secrets", () => {
+test("user password validation enforces a meaningful minimum without trimming secrets", () => {
   assert.equal(normalizeOwnerPassword("  twelve chars  "), "  twelve chars  ");
   assert.throws(() => normalizeOwnerPassword("short"), /between 12 and 200/);
   assert.throws(() => normalizeOwnerPassword("x".repeat(201)), /between 12 and 200/);

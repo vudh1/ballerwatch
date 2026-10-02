@@ -26,12 +26,12 @@ jobs:
       - name: Resolve release candidate
         id: candidate
         env:
-          GH_TOKEN: ${{ secrets.CRON_GITHUB_PAT }}
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || secrets.CRON_GITHUB_PAT }}
           EVENT_NAME: ${{ github.event_name }}
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$GH_TOKEN" || { echo "::error::CRON_GITHUB_PAT is required to publish a release that can trigger deploy workflows."; exit 1; }
+          test -n "$GH_TOKEN" || { echo "::error::RELEASE_GITHUB_TOKEN (preferred) or CRON_GITHUB_PAT with Contents read/write is required to publish GitHub Releases."; exit 1; }
 
           git fetch --no-tags origin main
           sha="$(git rev-parse FETCH_HEAD)"
@@ -121,7 +121,7 @@ jobs:
       - name: Promote candidate and publish GitHub Release
         if: steps.candidate.outputs.eligible == 'true'
         env:
-          GH_TOKEN: ${{ secrets.CRON_GITHUB_PAT }}
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || secrets.CRON_GITHUB_PAT }}
           SHA: ${{ steps.candidate.outputs.sha }}
           TAG: ${{ steps.candidate.outputs.tag }}
           RELEASE_STATE: ${{ steps.candidate.outputs.release_state }}

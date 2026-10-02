@@ -1,14 +1,45 @@
 # Release process
 
-1. Create `release/<next-version>` from current `main`.
-2. Make implementation/refactor/test commits on the branch.
-3. Do not bump the release ledger yet.
-4. Run **Validate code** and relevant notification-silent smoke tests.
-5. Fix failures on the branch.
-6. Update release notes/version only after implementation tests pass.
-7. Run final validation.
-8. Open/update the PR.
-9. Squash merge to `main`.
-10. Delete the release branch.
+BallerWatch separates **merging** from **production promotion**.
 
-The result is one `main` commit per released version while preserving detailed development commits inside the temporary release branch during implementation.
+## Build the product release
+
+1. Create `release/<next-version>` from current `main`.
+2. Implement/refactor/test on that branch.
+3. Do not bump `features/versions.json` yet.
+4. Get **Validate code** green.
+5. For runtime-affecting work, run the notification-silent **Manual smoke test**.
+6. Fix failures rather than bypassing them.
+7. Update the release ledger, PWA asset version, and current docs only after implementation is green.
+8. Run final validation/smoke.
+9. Mark the PR ready.
+10. **Squash merge** to `main`.
+
+The release branch can contain detailed implementation commits; `main` receives one product-release commit.
+
+## Promote production
+
+`main` is integration. `production` is what live runtime/deploy workflows execute.
+
+The hourly **Promote production release** workflow:
+
+1. reads the current product version from `main`;
+2. verifies a successful validation run for that candidate commit;
+3. on the automatic path, waits until the candidate has soaked for at least 24 hours;
+4. creates/publishes the GitHub Release/tag;
+5. advances `production` to that exact commit;
+6. release-triggered deploy workflows deploy the tagged version.
+
+A manual run skips the soak but still requires validation.
+
+If a GitHub Release for the current version already exists, promotion is a no-op. This lets maintenance commits merge later without redeploying or inventing a version.
+
+## Release credential
+
+Prefer `RELEASE_GITHUB_TOKEN` as a fine-grained repository token with **Contents: read/write**. `CRON_GITHUB_PAT` remains a compatibility fallback.
+
+If neither credential can create the Release, promotion fails closed and `production` stays pinned.
+
+## Branch cleanup
+
+After merge, **Cleanup merged release branches** deletes closed stale `release/*` and `fix/*` branches. `main`, `production`, and `runtime-state` are durable branches and must remain.

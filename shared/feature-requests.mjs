@@ -1,7 +1,8 @@
 /**
- * Stores private feature-request context and produces only a privacy-safe aggregate summary.
+ * Stores feature-request context and its privacy-safe aggregate projection encrypted at rest.
  *
- * Documentation baseline: v2.3.0. Runtime/private data must never be committed to Git.
+ * Documentation baseline: v5.8.0. The public API may expose the allowlisted projection,
+ * but every runtime-state branch file remains an AES-GCM envelope.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -76,10 +77,17 @@ function loadPrivate(directory) {
   return data;
 }
 
+function writeEncryptedSummary(directory, requests) {
+  fs.writeFileSync(
+    path.join(directory, "unknown.json"),
+    JSON.stringify(encryptState(publicRequestSummary(requests)), null, 2) + "\n",
+  );
+}
+
 export function refreshPublicRequests(directory = "requests") {
   const data = loadPrivate(directory);
   fs.mkdirSync(directory, { recursive: true });
-  fs.writeFileSync(path.join(directory, "unknown.json"), JSON.stringify(publicRequestSummary(data.requests), null, 2) + "\n");
+  writeEncryptedSummary(directory, data.requests);
 }
 
 export function recordUnknownQuestion(question, directory = "requests", metadata = {}) {
@@ -116,6 +124,6 @@ export function recordUnknownQuestion(question, directory = "requests", metadata
   const encrypted = encryptState(data);
   fs.mkdirSync(directory, { recursive: true });
   fs.writeFileSync(path.join(directory, "private.json"), JSON.stringify(encrypted, null, 2) + "\n");
-  fs.writeFileSync(path.join(directory, "unknown.json"), JSON.stringify(publicRequestSummary(data.requests), null, 2) + "\n");
+  writeEncryptedSummary(directory, data.requests);
   return request.id;
 }

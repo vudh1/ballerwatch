@@ -1,7 +1,8 @@
 /**
- * Defines the AES-GCM state-encryption boundary shared by GitHub runtime modules.
+ * Defines and identifies the AES-GCM envelope used by every runtime-state file.
  *
- * Documentation baseline: v2.3.0. Runtime/private data must never be committed to Git.
+ * Documentation baseline: v5.8.0. Runtime/private data must never be committed
+ * to Git outside a complete authenticated-encryption envelope.
  */
 import crypto from "node:crypto";
 
@@ -9,6 +10,16 @@ function secret() {
   const value = (process.env.TRACKER_STATE_KEY || process.env.TELEGRAM_BOT_TOKEN || "").trim();
   if (!value) throw new Error("TRACKER_STATE_KEY or TELEGRAM_BOT_TOKEN is required.");
   return crypto.createHash("sha256").update(value).digest();
+}
+
+export function isEncryptedStateEnvelope(value) {
+  return Boolean(
+    value &&
+    value.v === 1 &&
+    typeof value.iv === "string" &&
+    typeof value.tag === "string" &&
+    typeof value.data === "string",
+  );
 }
 
 export function encryptState(value) {
@@ -28,7 +39,7 @@ export function encryptState(value) {
 
 export function decryptState(payload) {
   try {
-    if (!payload || payload.v !== 1) return null;
+    if (!isEncryptedStateEnvelope(payload)) return null;
     const decipher = crypto.createDecipheriv(
       "aes-256-gcm",
       secret(),

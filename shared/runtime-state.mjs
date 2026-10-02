@@ -12,6 +12,11 @@ import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { restoreFailoverState } from "./failover-state.mjs";
 import { ALL_RUNTIME_FILE_PATHS, runtimePathsFor } from "./runtime-paths.mjs";
+import {
+  decryptState,
+  encryptState,
+  isEncryptedStateEnvelope,
+} from "./state-crypto.mjs";
 
 const STATE_BRANCH = String(process.env.BALLERWATCH_STATE_BRANCH || "runtime-state").trim();
 function git(args, options = {}) {
@@ -60,6 +65,82 @@ function readBranchFile(file) {
   }
 }
 
+function parseRuntimeJson(file, raw) {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new Error(`Runtime-state file is not valid JSON: ${file}`);
+  }
+}
+
+function legacyRuntimeValue(file, parsed) {
+  if (file === "state/listener.json" && parsed?.settings) {
+    const settings = decryptState(parsed.settings);
+    if (!settings || typeof settings !== "object") {
+      throw new Error("Unable to decrypt legacy listener settings during migration.");
+    }
+    return {
+      lastUpdateId: Number(parsed.lastUpdateId || 0),
+      settings,
+    };
+  }
+  return parsed;
+}
+
+function sealLocalRuntimeFile(file) {
+  if (!fs.existsSync(file)) return false;
+  const raw = fs.readFileSync(file, "utf8");
+  const parsed = parseRuntimeJson(file, raw);
+  if (isEncryptedStateEnvelope(parsed)) return false;
+
+  const sealed = encryptState(legacyRuntimeValue(file, parsed));
+  fs.writeFileSync(file, JSON.stringify(sealed, null, 2) + "\n");
+  console.log(`Migrated ${file} to a complete encrypted runtime-state envelope.`);
+  return true;
+}
+
+export function auditRuntimeStateBranch() {
+  fetchStateBranch();
+  const canonical = new Set(ALL_RUNTIME_FILE_PATHS);
+  const branchFiles = git([
+    "ls-tree",
+    "-r",
+    "--name-only",
+    "FETCH_HEAD",
+  ])
+    .split("\n")
+    .map((file) => file.trim())
+    .filter(Boolean);
+
+  const failures = [];
+  for (const file of branchFiles) {
+    // Unknown files are a privacy failure too: the snapshot branch is allowed
+    // to contain only the reviewed canonical runtime paths.
+    if (!canonical.has(file)) {
+      failures.push(file);
+      continue;
+    }
+    const raw = readBranchFile(file);
+    try {
+      if (!raw || !isEncryptedStateEnvelope(parseRuntimeJson(file, raw))) {
+        failures.push(file);
+      }
+    } catch {
+      failures.push(file);
+    }
+  }
+
+  if (failures.length) {
+    throw new Error(
+      `Runtime-state encryption audit failed for: ${failures.join(", ")}`,
+    );
+  }
+  console.log(
+    `Runtime-state encryption audit passed for ${branchFiles.length} file(s).`,
+  );
+  return branchFiles.length;
+}
+
 export async function pullRuntimeState(scope) {
   const files = runtimePathsFor(scope);
   const baseline = {};
@@ -80,8 +161,10 @@ export async function pullRuntimeState(scope) {
         continue;
       }
       fs.mkdirSync(path.dirname(file), { recursive: true });
-      fs.writeFileSync(file, raw.endsWith("\n") ? raw : raw + "\n");
-      baseline[file] = blobSha(raw.endsWith("\n") ? raw : raw + "\n");
+      const normalized = raw.endsWith("\n") ? raw : raw + "\n";
+      fs.writeFileSync(file, normalized);
+      baseline[file] = blobSha(normalized);
+      sealLocalRuntimeFile(file);
       count += 1;
     }
   } else {
@@ -102,6 +185,10 @@ function changedLocalFiles(scope) {
   for (const file of runtimePathsFor(scope)) {
     if (!fs.existsSync(file)) continue;
     const raw = fs.readFileSync(file, "utf8");
+    const parsed = parseRuntimeJson(file, raw);
+    if (!isEncryptedStateEnvelope(parsed)) {
+      throw new Error(`Refusing to persist unencrypted runtime-state file: ${file}`);
+    }
     if (blobSha(raw) !== String(baseline[file] || "")) changed.push({ file, raw });
   }
   return changed;
@@ -251,5 +338,8 @@ if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).
   else if (command === "push") await pushRuntimeState(scope);
   else if (command === "purge") purgeRuntimeState();
   else if (command === "clean") cleanRuntimeState(scope);
-  else throw new Error("Usage: node shared/runtime-state.mjs pull|push|clean <scope> | purge");
+  else if (command === "audit") auditRuntimeStateBranch();
+  else throw new Error(
+    "Usage: node shared/runtime-state.mjs pull|push|clean <scope> | purge | audit",
+  );
 }

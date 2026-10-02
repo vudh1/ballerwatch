@@ -1,3 +1,11 @@
+/**
+ * BallerWatch PWA client: renders the dashboard, read-only Q&A, notifications,
+ * user Settings, connected-card navigation, and installed-app update behavior.
+ *
+ * v5.8 keeps legacy `owner-*` DOM IDs and the existing localStorage token key
+ * so already-installed 5.7 clients stay signed in; current UI copy and API calls
+ * use user terminology.
+ */
 const API = "https://ballerwatch-telegram.vudhone.workers.dev";
 
 const els = {
@@ -321,8 +329,8 @@ function showOwnerSettings(settings) {
   els.ownerName.value = settings?.ownerName || "";
   els.ownerTeams.value = Array.isArray(settings?.teams) ? settings.teams.join("\n") : "";
   els.ownerPasswordStatus.textContent = settings?.passwordConfigured
-    ? "Owner password is set. New devices can sign in directly."
-    : "Set an owner password so new devices can sign in without /webpair.";
+    ? "User password is set. New devices can sign in directly."
+    : "Set a user password so new devices can sign in without /webpair.";
 }
 
 async function loadOwnerSettings() {
@@ -333,7 +341,7 @@ async function loadOwnerSettings() {
 
   els.ownerSettingsStatus.textContent = "Loading…";
   try {
-    const payload = await api("/web/owner/settings", {
+    const payload = await api("/web/user/settings", {
       headers: ownerHeaders(),
     });
     showOwnerSettings(payload.settings || {});
@@ -341,7 +349,7 @@ async function loadOwnerSettings() {
   } catch (error) {
     if (error.status === 401) {
       localStorage.removeItem(OWNER_TOKEN_KEY);
-      showPairSettings("Sign in again to edit owner settings.");
+      showPairSettings("Sign in again to edit user settings.");
       return;
     }
     showOwnerSettings({});
@@ -361,7 +369,7 @@ async function loginOwnerDevice(event) {
   button.disabled = true;
   els.ownerLoginStatus.textContent = "Signing in…";
   try {
-    const payload = await api("/web/owner/login", {
+    const payload = await api("/web/user/login", {
       method: "POST",
       body: JSON.stringify({ password }),
     });
@@ -382,7 +390,7 @@ async function pairOwnerDevice(event) {
   button.disabled = true;
   els.ownerPairStatus.textContent = "Pairing…";
   try {
-    const payload = await api("/web/owner/pair", {
+    const payload = await api("/web/user/pair", {
       method: "POST",
       body: JSON.stringify({ code }),
     });
@@ -391,7 +399,7 @@ async function pairOwnerDevice(event) {
     await loadOwnerSettings();
     if (!payload.passwordConfigured) {
       els.ownerPasswordStatus.textContent =
-        "Paired. Set an owner password below so future devices can sign in directly.";
+        "Paired. Set a user password below so future devices can sign in directly.";
     }
   } catch (error) {
     els.ownerPairStatus.textContent = error.message;
@@ -410,7 +418,7 @@ async function saveOwnerSettings(event) {
   button.disabled = true;
   els.ownerSettingsStatus.textContent = "Saving…";
   try {
-    const payload = await api("/web/owner/settings", {
+    const payload = await api("/web/user/settings", {
       method: "POST",
       headers: ownerHeaders(),
       body: JSON.stringify({
@@ -424,7 +432,7 @@ async function saveOwnerSettings(event) {
   } catch (error) {
     if (error.status === 401) {
       localStorage.removeItem(OWNER_TOKEN_KEY);
-      showPairSettings("Sign in again to edit owner settings.");
+      showPairSettings("Sign in again to edit user settings.");
     } else {
       els.ownerSettingsStatus.textContent = error.message;
     }
@@ -445,9 +453,9 @@ async function saveOwnerPassword(event) {
   }
 
   button.disabled = true;
-  els.ownerPasswordStatus.textContent = "Saving owner password…";
+  els.ownerPasswordStatus.textContent = "Saving user password…";
   try {
-    const payload = await api("/web/owner/password", {
+    const payload = await api("/web/user/password", {
       method: "POST",
       headers: ownerHeaders(),
       body: JSON.stringify({ password }),
@@ -455,11 +463,11 @@ async function saveOwnerPassword(event) {
     els.ownerPasswordNew.value = "";
     els.ownerPasswordConfirm.value = "";
     els.ownerPasswordStatus.textContent = payload.message ||
-      "Owner password saved. New devices can now sign in directly.";
+      "User password saved. New devices can now sign in directly.";
   } catch (error) {
     if (error.status === 401) {
       localStorage.removeItem(OWNER_TOKEN_KEY);
-      showPairSettings("Sign in again to change the owner password.");
+      showPairSettings("Sign in again to change the user password.");
     } else {
       els.ownerPasswordStatus.textContent = error.message;
     }
@@ -495,7 +503,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=5.7.0", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=5.8.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -1798,6 +1806,7 @@ document.addEventListener("visibilitychange", () => {
   checkForAppUpdate().catch(() => null);
 });
 
+document.documentElement.classList.toggle("is-standalone", standalone());
 applyInstallState();
 await Promise.all([
   registerServiceWorker().catch(() => null),

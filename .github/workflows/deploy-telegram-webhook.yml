@@ -44,11 +44,14 @@ jobs:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: |
-          for scope in listener pickup league watchdog; do
+          # Every canonical runtime path is visited. Pull transparently migrates
+          # legacy partial/plain projections; push refuses non-encrypted files.
+          for scope in listener pickup league watchdog weather web; do
             node shared/runtime-state.mjs pull "$scope"
             node shared/runtime-state.mjs push "$scope"
             node shared/runtime-state.mjs clean "$scope"
           done
+          node shared/runtime-state.mjs audit
 
 
       - name: Prepare Cloudflare runtime config

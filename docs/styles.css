@@ -2703,9 +2703,33 @@ h1 {
 }
 
 
-/* v5.7 desktop carousel and owner sign-in */
+/* v5.8 desktop carousel edge affordance + installed status glass */
 .spotlight-edge-control {
   display: none;
+}
+
+.status-bar-glass {
+  display: none;
+}
+
+html.is-standalone .status-bar-glass {
+  position: fixed;
+  z-index: 120;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: block;
+  height: calc(env(safe-area-inset-top) + 0.7rem);
+  pointer-events: none;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(7, 15, 27, 0.64) 0%,
+      rgba(14, 25, 42, 0.42) 58%,
+      rgba(14, 25, 42, 0.08) 100%
+    );
+  -webkit-backdrop-filter: blur(22px) saturate(175%);
+  backdrop-filter: blur(22px) saturate(175%);
 }
 
 .settings-recovery {
@@ -2741,82 +2765,127 @@ h1 {
   .spotlight-edge-control {
     position: absolute;
     z-index: 30;
-    top: 0.6rem;
-    bottom: 0.6rem;
+    top: 0.35rem;
+    bottom: 0.35rem;
     display: flex;
     align-items: center;
-    width: 3.6rem;
+    width: min(5.5rem, 18%);
     padding: 0;
     border: 0;
-    border-radius: 24px;
-    color: #f8fafc;
+    border-radius: 28px;
+    color: rgba(248, 250, 252, 0.92);
     background: transparent;
     box-shadow: none;
     cursor: pointer;
+    overflow: hidden;
+  }
+
+  .spotlight-edge-control::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 170ms ease;
+    -webkit-backdrop-filter: blur(7px) saturate(150%);
+    backdrop-filter: blur(7px) saturate(150%);
+    pointer-events: none;
   }
 
   .spotlight-edge-previous {
-    left: 0.25rem;
+    left: 0;
     justify-content: flex-start;
-    padding-left: 0.4rem;
+    padding-left: 0.7rem;
   }
 
   .spotlight-edge-next {
-    right: 0.25rem;
+    right: 0;
     justify-content: flex-end;
-    padding-right: 0.4rem;
+    padding-right: 0.7rem;
+  }
+
+  .spotlight-edge-previous::before {
+    background: linear-gradient(
+      90deg,
+      rgba(125, 211, 252, 0.20) 0%,
+      rgba(96, 165, 250, 0.08) 42%,
+      transparent 100%
+    );
+    box-shadow: inset 14px 0 30px -24px rgba(191, 219, 254, 0.95);
+  }
+
+  .spotlight-edge-next::before {
+    background: linear-gradient(
+      270deg,
+      rgba(125, 211, 252, 0.20) 0%,
+      rgba(96, 165, 250, 0.08) 42%,
+      transparent 100%
+    );
+    box-shadow: inset -14px 0 30px -24px rgba(191, 219, 254, 0.95);
   }
 
   .spotlight-edge-control span {
+    position: relative;
+    z-index: 1;
     display: grid;
     place-items: center;
     width: 2.15rem;
-    height: 2.15rem;
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    border-radius: 999px;
+    height: 2.8rem;
+    border: 0;
+    border-radius: 0;
     opacity: 0;
-    color: rgba(248, 250, 252, 0.86);
-    background:
-      linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.035)),
-      rgba(30, 41, 59, 0.60);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.22),
-      0 10px 26px rgba(0, 0, 0, 0.24);
-    font-size: 1.7rem;
+    color: rgba(248, 250, 252, 0.96);
+    background: transparent;
+    box-shadow: none;
+    text-shadow:
+      0 0 10px rgba(191, 219, 254, 0.78),
+      0 3px 14px rgba(0, 0, 0, 0.46);
+    font-size: 2rem;
     font-weight: 400;
     line-height: 1;
-    transform: scale(0.86);
+    transform: translateX(0) scale(0.9);
     transition:
-      opacity 130ms ease,
-      transform 160ms ease,
-      background-color 160ms ease,
-      box-shadow 160ms ease;
-    -webkit-backdrop-filter: blur(18px) saturate(175%);
-    backdrop-filter: blur(18px) saturate(175%);
+      opacity 150ms ease,
+      transform 180ms ease,
+      text-shadow 180ms ease;
+  }
+
+  .spotlight-edge-previous span {
+    transform: translateX(-0.28rem) scale(0.9);
+  }
+
+  .spotlight-edge-next span {
+    transform: translateX(0.28rem) scale(0.9);
+  }
+
+  .spotlight-edge-control:not(:disabled):hover::before,
+  .spotlight-edge-control:not(:disabled):focus-visible::before {
+    opacity: 1;
   }
 
   .spotlight-edge-control:not(:disabled):hover span,
   .spotlight-edge-control:not(:disabled):focus-visible span {
     opacity: 1;
-    transform: scale(1);
-    background-color: rgba(59, 130, 246, 0.28);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.28),
-      0 0 0 1px rgba(96, 165, 250, 0.16),
-      0 10px 30px rgba(37, 99, 235, 0.24);
+    transform: translateX(0) scale(1);
+    text-shadow:
+      0 0 14px rgba(219, 234, 254, 0.95),
+      0 0 30px rgba(59, 130, 246, 0.36),
+      0 3px 14px rgba(0, 0, 0, 0.48);
   }
 
   .spotlight-edge-control:disabled {
     pointer-events: none;
   }
 
+  .spotlight-edge-control:disabled::before,
   .spotlight-edge-control:disabled span {
     opacity: 0;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .spotlight-edge-control::before,
   .spotlight-edge-control span {
     transition: none;
   }
 }
+

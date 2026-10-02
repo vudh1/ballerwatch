@@ -1,83 +1,88 @@
 # Architecture
 
-BallerWatch separates fast Telegram/PWA read paths from durable watcher state.
+BallerWatch keeps the soccer domain model separate from delivery/storage providers. The PWA is the primary product surface; Telegram remains an optional adapter.
 
-## Telegram listener boundary
+## Request paths
 
-Cloudflare is the only Telegram webhook receiver. The GitHub listener is event-driven and is **not scheduled by cron-job.org**. Listener runs accept injected Telegram updates, owner-paired web settings updates, or privacy-minimized history/feedback events. They never call Telegram `getUpdates`; an empty workflow dispatch is a no-op. BallerWatch explicitly disables any legacy cron-job.org listener/polling job.
+### Public/read-only web
 
-## Request path
+```text
+PWA -> Cloudflare Worker -> encrypted runtime-state / short-lived cache
+```
 
-Telegram sends webhook updates to the Cloudflare Worker. Common read-only questions are answered there from a short-lived Workers Cache backed by encrypted files on the GitHub `runtime-state` branch.
+Common schedule/RSVP/weather questions are answered deterministically when possible. Gemini Flash, then Groq, is used only as a bounded read-only fallback; neither model receives action tools.
 
-The GitHub Pages PWA uses the same Worker for public-safe Q&A, notification-board reads, Web Push registration, and a narrowly scoped owner-paired settings API. Anonymous access stays read-only. A paired device can change only RSVP owner name and monitored league teams; those writes are dispatched through the existing GitHub listener/runtime-state flow.
+### User-authenticated settings
+
+```text
+PWA -> /web/user/* -> signed device capability
+                    -> encrypted runtime-state / listener persistence
+```
+
+The authenticated surface is deliberately narrow: pickup RSVP display name and monitored league teams.
+
+A user password is the normal sign-in path after bootstrap. `/webpair` is a temporary recovery/bootstrap path. Legacy pre-5.8 route aliases and tokens remain accepted during migration.
+
+### Telegram
+
+Telegram sends webhooks to the Cloudflare Worker when that adapter is configured. Common read-only questions may be answered at the edge; state-changing or unsupported requests are dispatched to the GitHub listener.
+
+The listener is event-driven. It is not a recurring `getUpdates` poller.
+
+## Watcher path
+
+```text
+cron-job.org --2 min--> Pickup watcher ----+
+cron-job.org --5 min--> RATS watcher ------+--> encrypted runtime-state
+                                            +--> allowed notifications
+                                            +--> Calendar when reconciliation requires it
+
+GitHub schedule --6 hr--> Watchdog + 14-day weather + encryption audit
+```
+
+The retired external watchdog and legacy Telegram polling schedule remain disabled.
 
 ## Notification boundary
 
-Telegram and Web Push share a narrow proactive allowlist. Sends come only from the pickup watcher, real league schedule changes, and the once-per-Pacific-day combined version announcement. Direct Telegram replies are sent only in response to owner input.
+Proactive Telegram/Web Push is limited to:
 
-Web-visible notifications are public-safe and exclude roster names, waitlist names, and owner-specific status. Watchdog health/recovery, CI/tests, builds/deploys, commits/PRs, setup reminders, invalid-setting reminders, and score-only changes never generate Telegram or Web Push messages.
+- pickup RSVP/capacity changes;
+- real RATS schedule changes;
+- one combined version-change announcement per Pacific day.
 
-The version announcer runs alongside the watchdog schedule but is independent of watchdog health alerts. It reads `features/versions.json`, combines every pending release into one user-facing message, and defers rather than sends when the watchdog itself is unhealthy.
+Direct Telegram replies are allowed only in response to authenticated user input.
 
-## Scheduler path
+Tests, smoke runs, watchdog health events, deploys, commits/PRs, setup reminders, and score-only changes are silent.
 
-cron-job.org is reserved for the two high-frequency source watchers:
+## Runtime storage
 
-- pickup every 2 minutes;
-- RATS league every 5 minutes.
+`runtime-state` is a generated snapshot branch, not an audit log.
 
-The legacy Telegram listener cron and the retired external watchdog cron must stay disabled. System watchdog/maintenance now uses a native GitHub Actions schedule every 6 hours, and that same run refreshes the encrypted 14-day match-weather snapshot. Cloudflare Cron Triggers remain disabled.
+Each canonical file is one authenticated AES-GCM envelope. Successful writes build the complete current canonical runtime tree as a parentless snapshot and update the branch using an optimistic force-with-lease. Concurrent writers retry against the newer snapshot.
 
-## Runtime platform
+This gives BallerWatch:
 
-GitHub Actions runtime code is dependency-free Node.js 22 / ECMAScript modules. League source normalization, Calendar reconciliation, bridge clients, Telegram notification formatting, state helpers, and tests use one runtime while the Apps Script bridge remains Google Apps Script JavaScript.
+- no readable runtime payloads in Git history;
+- one reachable runtime snapshot instead of unbounded state history;
+- safe concurrent pickup/league/listener/watchdog updates;
+- a storage contract that can move to another backend later.
 
-## Match-weather path
+## Runtime encryption migration
 
-The six-hour maintenance workflow reads the latest encrypted pickup and league schedules, resolves only new public venue locations, fetches hourly forecast data, and writes an encrypted `state/weather.json` snapshot. Venue coordinates are cached so repeat fields do not require repeat geocoding. The public Worker exposes only the public-safe 14-day game/weather projection through `GET /web/calendar`.
+5.8 treats complete top-level encryption as an invariant. The shared runtime helper can read legacy partial/plain projections solely to migrate them. New pushes are rejected if a canonical runtime file is not encrypted.
 
-## Durable state
+Worker deployment visits every runtime scope, pushes migrated envelopes, then audits the branch. The six-hour watchdog repeats the audit.
 
-The `runtime-state` branch is the durable runtime store. Private state is AES-GCM encrypted before it is written. This includes Web Push VAPID private material, browser subscriptions, and web notification-board files. Workflows materialize state temporarily, persist only changed files, and clean local runtime paths afterward.
+## Review and feedback
 
-GitHub Actions cache keeps encrypted last-known backups for recovery.
+Exact question/answer text is retained for at most 48 hours only for user-authenticated exchanges or an anonymous answer explicitly marked **Wrong answer**.
 
-## Chat review
+A separate sanitized engineering projection is generated from those retained exchanges. That projection is also encrypted at rest.
 
-Owner conversations may be retained for up to 48 hours as Groq-condensed encrypted records. This includes private-bot exchanges and owner-paired PWA Q&A; anonymous web Q&A is not retained. Only sanitized engineering signals are readable by the scheduled maintenance task.
+Wrong-answer authorization is scoped to the exact answer and does not grant Settings access.
 
-## Gemini-first answer path
+## Production boundary
 
-Common questions retain deterministic routing. Remaining read-only questions try Gemini Flash
-(`gemini-3.8-flash`) before Groq, then return to non-AI handling if both fail. The Worker only
-accepts known intent labels and renders facts itself. The listener rejects action requests and
-completion claims; models receive no tools. Each provider attempt consumes the existing AI budget.
-Requests have bounded inputs, outputs and timeouts (1.2 seconds at the edge, 2.5 seconds in Actions).
-The Cache API edge budget is best-effort per location, not a global billing limit.
+`main` is integration. `production` is the live code pointer. A GitHub Release/tag is the promotion record tying one product version to one exact commit.
 
-Gemini authentication uses the `GEMINI_API_KEY` repository secret, deployed to the Worker.
-Chat condensation remains on Groq and retains the encrypted 48-hour history design.
-
-Scheduler configuration audits are cached for 6 hours in encrypted watchdog state. The watchdog itself now runs every 6 hours and checks webhook, validation, privacy, the two required cron-job.org jobs, and the disabled posture of retired listener/watchdog schedules. Cached failures remain failures. Release smoke makes
-a fresh scheduler API check when available; temporary management-API failures such as HTTP 429
-are warnings, while any successfully retrieved missing, disabled, duplicated, mistargeted, or
-wrong-cadence scheduler posture still fails. The same temporary-unavailability rule applies to
-post-merge scheduler setup and the final scheduler step of Worker deployment, so cron-job.org
-quota exhaustion cannot mark an otherwise healthy Worker deployment as failed. Source polling cadences remain 2/5 minutes; weather/maintenance is six-hourly.
-
-A readable runtime-state branch is authoritative, including missing files after PURGE. Encrypted
-backup recovery applies only when the branch cannot be fetched, never to individual absent files.
-
-## Feedback-driven answer quality
-
-The 48-hour chat review is an engineering feedback loop, not online model training. Privacy-minimized recurring failures can be promoted into deterministic intent phrases, regression tests, and bounded prompt examples. Raw Telegram text is not committed to source or used as a persistent training corpus.
-
-Common factual soccer questions should prefer deterministic runtime-state answers. Gemini Flash is the first bounded fallback for unfamiliar read-only wording, with Groq next; neither model receives action tools.
-
-## Runtime-state history retention
-
-`runtime-state` is a snapshot branch, not an audit log. Each successful state write constructs the complete current encrypted tree as a parentless commit and updates the branch only if the expected previous head is still current. A concurrent writer causes a retry against the newer snapshot.
-
-This keeps one reachable commit on `runtime-state` while preserving the existing encrypted-file boundaries and concurrent pickup/league/listener/watchdog updates. The snapshot tree is built only from the canonical runtime paths, so repository source files never appear on `runtime-state`. PURGE uses the same mechanism and produces an empty runtime tree.
-
+Production watcher/listener jobs check out `production`; release deploys use the published tag/production ref. This lets `main` continue evolving without changing the live system.

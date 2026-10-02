@@ -1,248 +1,132 @@
-# Web App, Owner Settings, and Push
+# Web App, User Settings, and Push
 
-BallerWatch v3 adds an installable Progressive Web App (PWA) at:
+The installable PWA is BallerWatch's primary user surface. Anonymous use is public-safe/read-only; Settings uses app-native user authentication; Web Push works independently of Telegram.
 
-`https://vudh1.github.io/ballerwatch/`
+## Dashboard
 
-The web app is a public-safe BallerWatch surface with app-native owner authentication for Settings, pairing-code recovery, and independent Web Push delivery.
+The dashboard provides:
 
-## What the web app does
+- next/selected game spotlight;
+- pickup RSVP progress;
+- field directions and native sharing;
+- match-window weather;
+- 14-day pickup/RATS calendar;
+- notification inbox and Push toggle;
+- one-question/one-answer Ask BallerWatch;
+- user Settings.
 
-- uses an iPhone-first frosted-glass dashboard with a date-first next-game spotlight, pickup RSVP progress, Google Maps directions, and native device sharing;
-- shows a compact 14-day calendar for published pickup games and monitored RATS matches;
-- shows match-window weather (condition, temperature, and maximum rain probability during the game window), refreshed about every six hours;
-- shows recent pickup, RATS schedule, and version updates in a compact notification inbox behind the top-right bell; unread state and deletions are stored locally per device;
-- answers one read-only question at a time with slash-command and natural-question suggestions;
-- can be added to the iPhone Home Screen and opened in standalone app mode;
-- can subscribe the installed app to standards-based Web Push notifications;
-- keeps anonymous/public use read-only while allowing an owner-authenticated device to change only the pickup RSVP name and monitored league teams.
+The UI intentionally avoids a persistent chat transcript. Each new question replaces the prior answer.
 
-There is intentionally no visible chat transcript in the web UI. Each new question replaces the previous answer. Owner-authenticated questions retain the original question and answer only inside encrypted 48-hour engineering review history. Anonymous web questions are not retained by default; if the visitor explicitly taps **Wrong answer**, that exact exchange is retained encrypted for up to 48 hours so the rejected answer can be reproduced during engineering review. The readable review index contains sanitized engineering signals only.
+## Match-card navigation
 
-## Installed-app navigation
+Touch devices use the connected-card swipe carousel.
 
-When BallerWatch is opened from the iPhone Home Screen, Home Screen installation help is removed entirely. Browser visits keep a compact **Home Screen app** section in the footer. The footer also includes a Telegram shortcut that opens the bot through Telegram's universal link.
+On fine-pointer desktop browsers, the left/right portions of the match card are broad transparent hit zones. Moving the pointer into an available edge softly blurs/lights the edge and reveals a borderless arrow; one click runs the same connected-card train transition as a swipe. Empty dates are skipped.
 
-Push enable/disable lives in a compact On/Off control beside Refresh in the notification header. The notification dialog is height-bounded and its history list scrolls independently so controls stay visible on iPhone. Notification previews are truncated to keep the popup compact. Opening one marks it read and opens a full-screen reader whose title/body wrap long URLs or unbroken text instead of overflowing the viewport; the bell badge then reflects only unread, non-deleted notifications. Swiping a notification left follows the finger, then slides/collapses the card away before deleting it locally on that device. A subtle **Delete all** action beside **Send test** clears the visible notification history only on the current device without mutating the shared public notification-board history.
+## Installed iPhone behavior
 
-## iPhone installation
+The PWA uses `viewport-fit=cover` and `black-translucent` so the dashboard can feel native.
 
-On iPhone or iPad:
+In standalone mode, a fixed blurred **status-area glass** layer sits between scrolling app content and iOS's Dynamic Island/network/battery area. It uses the safe-area inset, does not intercept touches, and fades into the dashboard below.
 
-1. Open `https://vudh1.github.io/ballerwatch/` in Safari.
-2. Tap **Share**.
-3. Choose **Add to Home Screen**.
-4. Open BallerWatch from the Home Screen icon.
-5. Open the notification bell, turn **Push notifications** on, and approve notifications.
+Install with Safari → Share → **Add to Home Screen**. iPhone Web Push requires opening BallerWatch from that Home Screen icon.
 
-Web Push for Home Screen web apps requires iOS/iPadOS 16.4 or newer. Notification permission must be requested in response to a user action, so the app never prompts automatically.
+## User authentication and Settings
 
-## Question suggestions
+After bootstrap, the normal flow is:
 
-The question box supports both free-form text and shortcuts:
+1. open **Settings**;
+2. enter the user password;
+3. receive a signed capability token stored on that device;
+4. edit the pickup RSVP display name or monitored league teams.
 
-- typing **/** opens the command list;
-- ordinary text produces Google-style full-sentence completions ranked from the typed prefix;
-- partial word prefixes can complete later words, so text such as “what g” or “count thu” can predict a complete supported question;
-- tap a completion on touch devices; desktop keyboards can use arrows/Enter, or Tab/Right Arrow to accept the top completion;
-- autocomplete is local/deterministic and does not send each keystroke to an AI provider;
-- suggestions float in a bounded overlay directly below the input, so opening the list does not resize the Ask card or push later content down.
+The token is valid for up to 90 days and grants only the narrow Settings capability.
 
-Read-only shortcuts include `/today`, `/next`, `/teams`, `/count [day]`, `/field [day]`, `/time [day]`, `/version`, and `/help`.
+The password itself is never stored. BallerWatch stores a random salt plus a server-keyed verifier inside encrypted runtime state.
 
-## Owner authentication and settings
+Current app API routes are:
 
-The Settings gear is private by default. After bootstrap, owner access uses an app-native password rather than requiring a Telegram pairing code for each device.
+- `POST /web/user/login`
+- `GET|POST /web/user/settings`
+- `POST /web/user/password`
+- `POST /web/user/pair`
 
-### Normal sign-in
+Pre-5.8 aliases/tokens remain accepted internally during migration so installed devices are not broken by the terminology change.
 
-Once the owner password has been configured, a new browser/Home Screen installation can open **Settings**, enter the owner password, and receive its own signed owner capability token. The token is stored only on that device for up to 90 days and grants access only to the limited owner settings APIs.
+### Pairing/recovery
 
-The password itself is never stored. BallerWatch keeps only a random salt plus a server-keyed HMAC verifier inside encrypted `state/listener.json`. Because verification also requires private runtime signing material, copying the encrypted runtime file alone is not sufficient for offline password guessing.
+`/webpair` is no longer normal day-to-day sign-in. While Telegram is configured, it is a bootstrap/recovery root:
 
-### Bootstrap and recovery
+1. request `/webpair`;
+2. enter the six-digit code under **Use a pairing code instead**;
+3. the same code can authorize multiple devices until its 10-minute expiry;
+4. set/rotate the user password for normal future sign-in.
 
-`/webpair` remains available as a bootstrap/recovery path while Telegram is still configured:
-
-1. Request `/webpair` from the owner bot.
-2. Open **Settings → Use a pairing code instead**.
-3. Enter the six-digit code within 10 minutes.
-4. The same temporary code may authorize multiple devices until it expires.
-5. Once authenticated, set or rotate the owner password from Settings so future devices can sign in directly.
-
-Pairing is therefore no longer the normal day-to-day Settings flow. While Telegram remains configured it is a recovery root; after an owner password has been set, normal web Settings/Q&A/Web Push operation does not require Telegram. A future passkey or other owner identity provider can replace `/webpair` for Telegram-independent recovery as well.
-
-After authentication, Settings displays the pickup RSVP name and current monitored league teams. Saving changes uses the existing encrypted runtime/listener path; the public repository never receives plaintext private settings. Disconnecting removes the local token from that device only. Rotating the runtime signing key invalidates existing device tokens.
+A future passkey/identity-provider flow can replace this recovery dependency without changing the Settings capability boundary.
 
 ## Wrong-answer feedback
 
-Wrong-answer feedback is intentionally separate from owner pairing and owner settings. Every successful web answer receives a short-lived signed token bound to that exact question and answer. The token can authorize only feedback for that exchange; it cannot read or change the pickup RSVP name, league teams, or any other owner-only setting.
+Every successful web answer receives a short-lived signed feedback token bound to that exact question/answer.
 
-On phones, tap **Wrong answer** once to save the rejected exchange for engineering review. Tap **Undo wrong answer** to cancel it. Desktop users may also double-click the answer as a shortcut. The answer surface disables long-press text selection/copy, and the app does not globally disable pinch zoom.
+The **Wrong answer** button (and desktop double-click shortcut) can retain that exact exchange for engineering review without signing in. It cannot read/change Settings.
 
-Submitting feedback retains the original question and answer inside encrypted 48-hour history and adds a sanitized `negative_feedback` signal to the readable review index. Anonymous questions remain unretained unless the visitor explicitly submits this feedback. If the answer-scoped authorization has expired, BallerWatch asks the user to ask the question again rather than opening Settings or requesting `/webpair`.
+On mobile, long-press text selection/copy is disabled on the answer surface, while pinch zoom remains available for the page.
 
-## Two-week calendar and weather
+If feedback authorization expires, BallerWatch asks the user to ask the question again rather than opening Settings/pairing.
 
-The dashboard displays the next 14 Pacific-calendar days. Weather is calculated from only the Open-Meteo hourly slots that overlap each match's actual Pacific start/end window; partial-hour and overnight matches are handled explicitly. Game dates are highlighted and can be selected to see one or more games, time/location, pickup capacity when available, jersey color, Directions, and weather. On touch devices, swiping the main match spotlight left moves to the next game date and swiping right moves to the previous game date. On fine-pointer desktop browsers, moving the pointer onto an available left/right edge reveals a subtle glass arrow; one click advances the same connected-card train animation. Empty dates are skipped and the calendar highlight moves with the selected match.
+## Ask autocomplete
 
-Weather is computed from the actual scheduled game window rather than a generic daily forecast. BallerWatch uses the maximum hourly precipitation probability that overlaps the match, plus an average match-window temperature and compact condition. The encrypted weather snapshot refreshes every six hours.
+Suggestions are an absolutely positioned glass overlay under the input. They float above the Ask card rather than increasing the form row height.
 
-Recurring venues use cached coordinates. Only new public field names/addresses are geocoded. The app credits **Open-Meteo** for forecast data and **OpenStreetMap contributors** for geocoding data.
+Keyboard users can navigate suggestions with arrow keys, Tab/right-arrow completion, Enter, and Escape.
 
-## iPhone-first glass dashboard
+## Privacy
 
-Version 5.5 keeps the Liquid Glass foundation but moves the PWA closer to the approved mobile demo direction. The header gives the BallerWatch name more prominence beside circular notification/settings controls. The match spotlight uses a date-first hierarchy, a dedicated pickup RSVP progress bar with spots-left status, a compact match-window weather chip, and large pill-shaped Directions/Share actions. The 14-day calendar uses brighter selected-date treatment and clearer match indicators, while Ask BallerWatch uses one rounded mobile input/result surface.
+Anonymous PWA data excludes:
 
-The top match spotlight remains the single detail surface for the 14-day calendar. Initial load shows the next game. Tapping a game day changes that same spotlight to **Selected game** with its match-window weather, field/location, Directions, Share, and pickup capacity when available. The spotlight can also be swiped horizontally: left selects the next date with a game, right selects the previous game date, and the selected calendar cell updates at the same time.
+- RSVP participant/waitlist names;
+- user-specific RSVP status;
+- private settings;
+- push endpoints/keys;
+- tokens/IDs;
+- encrypted runtime payloads.
 
-Touch swipe and desktop edge-click navigation share the connected-card carousel: the current full glass card and adjacent match card use the same horizontal train animation with a small gap. All game cards use one shared height equal to the tallest clean rendered match card at the current viewport width, so the carousel does not resize between matches or become inflated by temporary hint/error text. Sizing is recomputed after data refreshes and screen-width changes. Empty days are skipped, and dates with multiple matches keep the compact match selector.
+Exact authenticated Q&A or an anonymously rejected answer may be retained encrypted for at most 48 hours. The sanitized engineering projection is also encrypted at rest.
 
-The visual refresh does not change the privacy or capability boundary: anonymous web use remains read-only, owner settings require owner authentication, and notification/Q&A behavior stays within the existing public-safe and encrypted-review rules.
-
-## Next game and notification test
-
-The main screen loads the same earliest-upcoming pickup/RATS selection used by the Telegram fast path. The card exposes only public-safe game details and provides:
-
-- **Directions** — a Google Maps universal link using the published field/address, which can open the Google Maps app when available;
-- **Share** — opens the device's native share sheet with the game details and map link. If Tesla is installed and exposed by iOS as a share target, it can still be chosen there; BallerWatch does not assume Tesla is available. When native sharing is unavailable, the complete game details are copied to the clipboard.
-
-The bell panel also has **Test notification**. It asks for notification permission if needed, schedules a local service-worker notification about five seconds later, and tells the user to close BallerWatch immediately. This verifies that iOS can display a BallerWatch notification while the Home Screen app is closed without sending a Web Push test signal or creating a notification-board entry.
+Every canonical `runtime-state` file is a complete AES-GCM envelope in 5.8. Public projections are decrypted and schema-checked only inside the Worker before response.
 
 ## Push architecture
 
-The PWA uses standards-based Web Push without adding a new database or third-party notification provider.
+1. the service worker registers from the installed PWA;
+2. BallerWatch creates/loads its VAPID identity;
+3. browser subscriptions are persisted inside encrypted runtime state;
+4. pickup/league/version producers create only allowlisted public-safe board entries;
+5. GitHub Actions signals browser push services directly;
+6. the service worker fetches the newest board entry from the Worker;
+7. if that read fails, the notification falls back to generic BallerWatch text.
 
-- VAPID signing keys are generated by GitHub Actions.
-- VAPID private material and browser subscriptions are AES-GCM encrypted in `state/web-push.json` on the `runtime-state` branch.
-- The Cloudflare Worker accepts subscription/unsubscription requests and dispatches an encrypted registration event to the **Web app runtime** workflow.
-- Pickup, league, and version workflows write public-safe notification-board entries to encrypted runtime state.
-- After runtime state is persisted, GitHub Actions sends a payload-free Web Push signal directly to each browser push endpoint.
-- The service worker receives the signal, fetches the newest public-safe board entry, and displays the notification.
-- If the Worker cannot be reached at push-display time, the service worker still displays a generic BallerWatch update notification.
+Telegram is not in this delivery chain.
 
-This means delivery does not depend on Telegram. Once a device is subscribed, GitHub Actions sends the push signal directly to the browser push service.
+## Notifications
 
-The Cloudflare Worker also treats Telegram as optional infrastructure in 5.7. Core PWA routes, owner password authentication, encrypted runtime access, and Web Push remain deployable with no Telegram bot/chat credentials. The `/telegram` route simply stays disabled when that adapter is not configured.
+The bell popup keeps per-device read/delete state local to the browser. Opening an item uses the full-screen reader. Swipe-to-delete is local; **Delete all** does not delete server history.
 
-## Privacy boundary
+The Push switch reflects the actual browser subscription. If the VAPID application key changes (for example after a factory reset), the PWA drops the stale subscription and asks for a new one.
 
-The GitHub Pages site is public, so web-visible data is deliberately narrower than the private Telegram bot.
+## Weather
 
-The web app may show:
+Weather is calculated for the actual game window. BallerWatch reports the maximum overlapping hourly rain probability plus match-window temperature/condition.
 
-- pickup reserved/capacity counts;
-- published date/time;
-- field/location;
-- RATS team/opponent and jersey information;
-- BallerWatch release summaries.
+The encrypted 14-day snapshot refreshes every six hours and immediately after schedule-relevant pickup/league changes. RSVP-only changes do not trigger weather work.
 
-The web app must not expose:
+## Release refresh
 
-- RSVP participant names;
-- waitlist names;
-- owner-specific RSVP status;
-- encrypted bot settings;
-- push endpoints or subscription keys;
-- tokens, secrets, Calendar IDs, or private runtime payloads.
+Static JS/CSS URLs carry the product version. The service worker uses `updateViaCache: "none"` and network reads use `cache: "no-store"` before updating the offline shell.
 
-Push subscriptions and VAPID private keys remain encrypted on `runtime-state`.
+When a new service worker takes control, the app reloads once after initial hydration so an installed Home Screen app moves to the promoted release without interrupting first load.
 
-## Read-only Q&A
+## Live refresh
 
-The Worker endpoints used by the PWA are:
+While visible, the PWA refreshes live soccer/notification data every minute and checks for a new app release periodically. Returning to a visible tab also refreshes data/update state.
 
-- `GET /web/config`
-- `GET /web/calendar`
-- `GET /web/next-game`
-- `GET /web/board`
-- `POST /web/ask`
-- `POST /web/owner/login`
-- `GET|POST /web/owner/settings`
-- `POST /web/owner/password`
-- `POST /web/owner/pair` (bootstrap/recovery)
-- `POST /web/push/subscribe`
-- `POST /web/push/unsubscribe`
-
-The Q&A endpoint strips private pickup roster/owner state before answering. Anonymous state-changing requests are rejected. An owner-authenticated device receives a signed capability token that can access only the dedicated owner-settings API for RSVP name and monitored league teams. Password sign-in is the normal path after bootstrap; pairing-code recovery remains separate.
-
-## Release-gated production deployment
-
-The live PWA is no longer deployed by every push to `main`. BallerWatch uses three distinct release concepts:
-
-- `main` — reviewed integration code; may be newer than production;
-- `production` — the exact commit currently promoted for production runtime/deployment;
-- a published GitHub Release/tag — the immutable promotion record that triggers production deployment workflows.
-
-For a normal product release, code first merges to `main`. The **Promote production release** workflow requires at least a 24-hour soak, checks eligibility hourly, and requires a successful validation run for the candidate commit before the first eligible promotion. Promotion advances `production`, creates the version tag/GitHub Release, and the Release publication triggers Pages, Worker, Calendar-bridge/bootstrap, weather-bootstrap, and web-runtime deployment.
-
-A validated version can be rolled out immediately with **Actions → Promote production release → Run workflow**. Manual promotion skips the soak period.
-
-Maintenance commits that do not change product behavior keep the existing version. Because a GitHub Release for that version already exists, the promoter is a no-op and production stays pinned. Documentation-only changes, behavior-preserving refactors, tests, CI/tooling maintenance, formatting, and comments therefore do not create a release or deployment by themselves.
-
-The **Deploy GitHub Pages app** workflow still requires the repository's one-time Pages activation at **Settings → Pages → Build and deployment → Source → GitHub Actions**. Once activated, it deploys the `docs/` tree from the promoted release tag.
-
-A full BallerWatch PURGE clears device subscriptions and notification-board history, then immediately generates a fresh empty encrypted Web Push identity. An installed app detects a changed VAPID application key and asks the user to enable push again rather than silently keeping a stale subscription.
-
-## Notification policy
-
-Web Push follows the same proactive allowlist as Telegram:
-
-- pickup RSVP/capacity watcher alerts;
-- real RATS schedule changes;
-- one combined version announcement per Pacific calendar day.
-
-Tests, builds, deployments, watchdog failures/recovery, score-only changes, and other engineering events never send Web Push.
-
-
-## Release refresh behavior
-
-Static JavaScript and CSS URLs carry the current product version, the service worker is registered with `updateViaCache: "none"`, and same-origin network reads bypass the browser HTTP cache before updating the offline shell. These assets change only when a promoted product version is published. When a new worker takes control, the installed app reloads once automatically.
-
-
-### League weather fallback
-
-BallerWatch prefers weather from the exact geocoded match venue. Some RATS field names are not recognized by the venue geocoder even though the schedule itself is valid. For Seattle RATS league matches only, the weather refresh therefore falls back to Seattle-area coordinates so a match does not lose weather entirely. The PWA labels that result **Seattle-area** to distinguish it from exact-venue weather.
-
-Pickup matches do not use the city fallback because their private field/address state is expected to provide a resolvable booked location.
-
-Pickup spotlight details also show the live RSVP load as **reserved / capacity** when both values are available.
-
-
-## Automatic live refresh
-
-BallerWatch treats **Next Game** as a live upcoming-game view, not a date-only list. A game remains eligible through its published match window and is removed as soon as its Pacific end time passes. League matches use the normalized two-hour RATS window; pickup matches use the published end time and retain the existing three-hour fallback only when an end time is missing.
-
-While the PWA is open:
-
-- calendar and notification-board data refresh every 60 seconds;
-- returning to the foreground refreshes immediately;
-- reconnecting after being offline refreshes immediately;
-- the service worker checks for a newer deployed app shell every five minutes and whenever the app returns to the foreground;
-- live config, notification-board, and calendar hydration runs alongside service-worker startup so a slow iOS worker update cannot leave the visible app stuck on placeholders;
-- if a new service worker takes control during initial startup, BallerWatch finishes hydrating the current screen and defers the reload until a later foreground/launch; updates discovered after startup can still reload automatically.
-
-The green **Live** indicator pulses while online. Explicitly selected future calendar games stay selected across automatic data refreshes.
-
-
-## Schedule-aware weather refresh
-
-The six-hour maintenance run remains the normal periodic weather refresh. BallerWatch also refreshes weather once immediately when a weather-relevant schedule changes:
-
-- pickup date, start/end time, field name, or address;
-- league schedule metadata that requires a Calendar update.
-
-RSVP count, capacity, roster, and waitlist-only changes do **not** trigger a weather request. This prevents the two-minute pickup watcher from turning into a two-minute forecast poll.
-
-## Answer feedback gesture
-
-The primary feedback interaction is the one-tap **Wrong answer** button, which becomes **Undo wrong answer** after submission. Desktop double-click remains a shortcut. Feedback authorization is scoped to the exact answer and is independent of owner pairing.
-
-## Question autocomplete layout
-
-Autocomplete suggestions use a floating glass overlay anchored below the question input. The overlay has its own bounded scroll area and sits above following content instead of expanding the Ask card.
-
-
-### Duplicate notification suppression
-
-Pickup watcher refreshes may run every two minutes, but unchanged pickup state no longer creates a new notification. A new pickup notification requires a meaningful change such as RSVP/capacity, roster, location, primary-match selection, or owner-status change. The web notification layer also suppresses exact duplicates with the same tag, title, body, and URL so an identical board item cannot create another Web Push event. The board API also collapses older stored copies of the same exact payload, keeping the newest copy visible while preserving notifications whose content changed.
+The live indicator represents successful refresh, not a promise that every external provider is healthy.

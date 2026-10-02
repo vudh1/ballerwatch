@@ -1,7 +1,8 @@
 /**
  * Routes Telegram webhooks, edge Q&A, runtime-state APIs, health checks, and scheduled edge work.
  *
- * Updated v5.7.0: adds app-native owner password sign-in, routes production workflow dispatches through the promoted production ref, and keeps pairing as a recovery/bootstrap path.
+ * Updated v5.8.0: uses user-facing authentication terminology, supports /web/user routes,
+ * and reads/writes every runtime-state document as a complete encrypted envelope.
  */
 import {
   fetchPickupSnapshot,
@@ -60,7 +61,7 @@ async function sha256Hex(value) {
 
 async function ownerSigningKey(env) {
   const secret = cleanText(env.TRACKER_STATE_KEY || env.TELEGRAM_WEBHOOK_SECRET, 5000);
-  if (!secret) throw new Error("Owner pairing key is unavailable.");
+  if (!secret) throw new Error("User authentication key is unavailable.");
   return crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(secret),
@@ -73,7 +74,7 @@ async function ownerSigningKey(env) {
 export async function issueOwnerToken(env) {
   const payload = {
     v: 1,
-    kind: "owner",
+    kind: "user",
     exp: Date.now() + 90 * 24 * 60 * 60 * 1000,
     nonce: bytesB64Url(crypto.getRandomValues(new Uint8Array(18))),
   };
@@ -103,8 +104,12 @@ export async function verifyOwnerToken(env, token) {
     );
     if (!valid) return false;
     const payload = JSON.parse(new TextDecoder().decode(b64UrlBytes(encoded)));
-    const ownerKind = payload?.kind === undefined || payload?.kind === "owner";
-    return payload?.v === 1 && ownerKind && Number(payload.exp) > Date.now();
+    const userKind = (
+      payload?.kind === undefined ||
+      payload?.kind === "owner" ||
+      payload?.kind === "user"
+    );
+    return payload?.v === 1 && userKind && Number(payload.exp) > Date.now();
   } catch {
     return false;
   }
@@ -114,7 +119,7 @@ export async function verifyOwnerToken(env, token) {
 export function normalizeOwnerPassword(value) {
   const password = String(value ?? "");
   if (password.length < 12 || password.length > 200) {
-    throw new Error("Owner password must be between 12 and 200 characters.");
+    throw new Error("User password must be between 12 and 200 characters.");
   }
   return password;
 }
@@ -255,6 +260,13 @@ function bearerToken(request) {
   return match ? match[1].trim() : "";
 }
 
+function userRoute(pathname, action) {
+  return (
+    pathname === `/web/user/${action}` ||
+    pathname === `/web/owner/${action}`
+  );
+}
+
 function b64Bytes(value) {
   const binary = atob(value);
   return Uint8Array.from(binary, c => c.charCodeAt(0));
@@ -391,14 +403,39 @@ async function githubStatePut(env, path, value, sha, message) {
   if (!response.ok) throw new Error(`GitHub history write failed: ${path} HTTP ${response.status}`);
 }
 
+async function decryptRuntimeDocument(env, value) {
+  if (!value || typeof value !== "object") return null;
+  return (await decryptState(value, env)) || value;
+}
+
+async function listenerStateDocument(env, value) {
+  if (!value || typeof value !== "object") {
+    return { lastUpdateId: 0, settings: {} };
+  }
+  const current = await decryptState(value, env);
+  if (current && typeof current === "object") {
+    return {
+      lastUpdateId: Number(current.lastUpdateId || 0),
+      settings: current.settings && typeof current.settings === "object"
+        ? current.settings
+        : {},
+    };
+  }
+
+  // Compatibility with pre-v5.8 runtime-state where only settings were sealed.
+  const settings = value.settings ? await decryptState(value.settings, env) : null;
+  return {
+    lastUpdateId: Number(value.lastUpdateId || 0),
+    settings: settings && typeof settings === "object" ? settings : {},
+  };
+}
+
 async function ownerSettingsRecord(env) {
   const [listenerRecord, teamsRecord] = await Promise.all([
     githubStateRecord(env, "state/listener.json"),
     githubStateRecord(env, "league/state/teams.json"),
   ]);
-  const settings = listenerRecord.value?.settings
-    ? await decryptState(listenerRecord.value.settings, env)
-    : {};
+  const listenerState = await listenerStateDocument(env, listenerRecord.value);
   const teamsPayload = teamsRecord.value
     ? await decryptState(teamsRecord.value, env)
     : null;
@@ -407,7 +444,8 @@ async function ownerSettingsRecord(env) {
     : [];
   return {
     listenerRecord,
-    settings: settings && typeof settings === "object" ? settings : {},
+    listenerState,
+    settings: listenerState.settings,
     teams,
   };
 }
@@ -421,7 +459,7 @@ async function pairOwnerDevice(env, code) {
   const expected = cleanText(settings.webPairCodeHash, 128);
   if (!expected || expected !== await sha256Hex(normalized)) return null;
 
-  // Keep the temporary code valid until its existing expiry so the owner can
+  // Keep the temporary code valid until its existing expiry so the user can
   // authorize more than one device without requesting a fresh code per device.
   return {
     ...(await issueOwnerToken(env)),
@@ -443,35 +481,27 @@ async function saveOwnerPassword(env, value) {
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       const record = await githubStateRecord(env, "state/listener.json");
-      const currentSettings = record.value?.settings
-        ? await decryptState(record.value.settings, env)
-        : {};
+      const current = await listenerStateDocument(env, record.value);
       const next = {
-        ...(record.value && typeof record.value === "object" ? record.value : {}),
-        lastUpdateId: Number(record.value?.lastUpdateId || 0),
-        settings: await encryptState(
-          {
-            ...(currentSettings && typeof currentSettings === "object"
-              ? currentSettings
-              : {}),
-            webOwnerPassword: passwordRecord,
-          },
-          env,
-        ),
+        lastUpdateId: current.lastUpdateId,
+        settings: {
+          ...current.settings,
+          webOwnerPassword: passwordRecord,
+        },
       };
       await githubStatePut(
         env,
         "state/listener.json",
-        next,
+        await encryptState(next, env),
         record.sha,
-        "runtime(owner): update web owner password",
+        "runtime(user): update web user password",
       );
       return passwordRecord;
     } catch (error) {
       if (attempt === 1) throw error;
     }
   }
-  throw new Error("Unable to update owner password.");
+  throw new Error("Unable to update user password.");
 }
 
 async function loginOwnerDevice(env, password) {
@@ -600,7 +630,8 @@ async function persistFastChatHistory(env, event) {
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       const record = await githubStateRecord(env, "state/chat-review.json");
-      const signals = recent48Hours([...(record.value?.signals || []), {
+      const current = await decryptRuntimeDocument(env, record.value);
+      const signals = recent48Hours([...(current?.signals || []), {
         createdAt: entry.createdAt,
         kind: entry.kind,
         summary: entry.summary,
@@ -609,14 +640,14 @@ async function persistFastChatHistory(env, event) {
       await githubStatePut(
         env,
         "state/chat-review.json",
-        {
+        await encryptState({
           version: 1,
           retentionHours: 48,
           generatedAt: new Date().toISOString(),
           signals,
-        },
+        }, env),
         record.sha,
-        "runtime(listener): update sanitized chat review",
+        "runtime(listener): update encrypted chat review",
       );
       break;
     } catch (error) {
@@ -655,11 +686,14 @@ async function syncDerivedRuntimeFile(env, path, raw) {
     const value = await decryptState(parsed, env);
     if (value) await kvJsonPut(env, "snapshot:today", value);
   } else if (path === "state/listener.json") {
-    const settings = parsed?.settings ? await decryptState(parsed.settings, env) : null;
-    if (settings) await kvJsonPut(env, "runtime:listener-settings", settings);
+    const listenerState = await listenerStateDocument(env, parsed);
+    if (listenerState.settings) {
+      await kvJsonPut(env, "runtime:listener-settings", listenerState.settings);
+    }
   } else if (path === "requests/unknown.json") {
-    if (parsed?.version === 3 && Array.isArray(parsed?.requests)) {
-      await kvJsonPut(env, "runtime:feature-summary", parsed);
+    const summary = await decryptRuntimeDocument(env, parsed);
+    if (summary?.version === 3 && Array.isArray(summary?.requests)) {
+      await kvJsonPut(env, "runtime:feature-summary", summary);
     }
   }
 }
@@ -680,10 +714,10 @@ async function runtimeSettings(env) {
   if (!raw) return {};
   try {
     const parsed = JSON.parse(raw);
-    const settings = parsed?.settings ? await decryptState(parsed.settings, env) : null;
-    if (settings) {
-      await kvJsonPut(env, "runtime:listener-settings", settings);
-      return settings;
+    const current = await listenerStateDocument(env, parsed);
+    if (current.settings) {
+      await kvJsonPut(env, "runtime:listener-settings", current.settings);
+      return current.settings;
     }
   } catch {}
   return {};
@@ -694,7 +728,8 @@ async function rememberFastReplyInRuntime(env, question, reply, messageId, lastD
   if (!raw) return;
   try {
     const parsed = JSON.parse(raw);
-    const settings = (parsed?.settings ? await decryptState(parsed.settings, env) : null) || {};
+    const current = await listenerStateDocument(env, parsed);
+    const settings = current.settings;
     const id = Number(messageId || 0);
     const recent = Array.isArray(settings.recentBotReplies) ? settings.recentBotReplies : [];
     const nextSettings = {
@@ -712,10 +747,10 @@ async function rememberFastReplyInRuntime(env, question, reply, messageId, lastD
           ].slice(-20)
         : recent,
     };
-    const next = {
-      lastUpdateId: Number(parsed?.lastUpdateId || 0),
-      settings: await encryptState(nextSettings, env),
-    };
+    const next = await encryptState({
+      lastUpdateId: current.lastUpdateId,
+      settings: nextSettings,
+    }, env);
     await runtimeFilePut(env, "state/listener.json", JSON.stringify(next, null, 2) + "\n");
   } catch {}
 }
@@ -750,16 +785,17 @@ async function loadGitHubSnapshot(env) {
         githubFile(env, "features/versions.json", PRODUCTION_REF),
       ]);
 
-    const [pickup, pickupPrivate, league, today, teamsPayload, settings] = await Promise.all([
+    const [pickup, pickupPrivate, league, today, teamsPayload, listener] = await Promise.all([
       decryptState(pickupEncrypted, env),
       decryptState(privateEncrypted, env),
       decryptState(leagueEncrypted, env),
       decryptState(todayEncrypted, env),
       decryptState(teamsEncrypted, env),
-      listenerState?.settings ? decryptState(listenerState.settings, env) : null,
+      listenerStateDocument(env, listenerState),
     ]);
 
     const teams = Array.isArray(teamsPayload?.teams) ? teamsPayload.teams : [];
+    const settings = listener.settings;
     if (!pickup || !league || !teams.length) {
       throw new Error("GitHub runtime snapshot is incomplete.");
     }
@@ -1948,7 +1984,7 @@ export default {
       }
     }
 
-    if (request.method === "POST" && url.pathname === "/web/owner/pair") {
+    if (request.method === "POST" && userRoute(url.pathname, "pair")) {
       let body;
       try { body = await request.json(); }
       catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
@@ -1964,7 +2000,7 @@ export default {
         }
         return webJson(request, { ok: true, ...paired });
       } catch (error) {
-        console.error("Owner pairing failed", error);
+        console.error("User pairing failed", error);
         return webJson(
           request,
           { ok: false, error: "Pairing service is temporarily unavailable. Request a new /webpair code and try again." },
@@ -1973,7 +2009,7 @@ export default {
       }
     }
 
-    if (request.method === "POST" && url.pathname === "/web/owner/login") {
+    if (request.method === "POST" && userRoute(url.pathname, "login")) {
       if (!(await ownerLoginAllowed(request))) {
         return webJson(
           request,
@@ -1994,7 +2030,7 @@ export default {
             request,
             {
               ok: false,
-              error: "Owner password is incorrect or has not been configured yet. Use pairing-code recovery if needed.",
+              error: "User password is incorrect or has not been configured yet. Use pairing-code recovery if needed.",
             },
             { status: 401 },
           );
@@ -2002,18 +2038,18 @@ export default {
         await clearOwnerLoginFailures(request);
         return webJson(request, { ok: true, ...signedIn });
       } catch (error) {
-        console.error("Owner password sign-in failed", error);
+        console.error("User password sign-in failed", error);
         return webJson(
           request,
-          { ok: false, error: "Owner sign-in is temporarily unavailable." },
+          { ok: false, error: "User sign-in is temporarily unavailable." },
           { status: 503 },
         );
       }
     }
 
-    if (request.method === "POST" && url.pathname === "/web/owner/password") {
+    if (request.method === "POST" && userRoute(url.pathname, "password")) {
       if (!(await verifyOwnerToken(env, bearerToken(request)))) {
-        return webJson(request, { ok: false, error: "Owner sign-in is required." }, { status: 401 });
+        return webJson(request, { ok: false, error: "User sign-in is required." }, { status: 401 });
       }
 
       let body;
@@ -2025,7 +2061,7 @@ export default {
         return webJson(request, {
           ok: true,
           passwordConfigured: true,
-          message: "Owner password saved. New devices can sign in directly.",
+          message: "User password saved. New devices can sign in directly.",
         });
       } catch (error) {
         const message = cleanText(error?.message, 200);
@@ -2034,7 +2070,7 @@ export default {
           request,
           {
             ok: false,
-            error: status === 400 ? message : "Unable to update owner password right now.",
+            error: status === 400 ? message : "Unable to update user password right now.",
           },
           { status },
         );
@@ -2043,11 +2079,11 @@ export default {
 
     if (
       (request.method === "GET" || request.method === "POST") &&
-      url.pathname === "/web/owner/settings"
+      userRoute(url.pathname, "settings")
     ) {
       const token = bearerToken(request);
       if (!(await verifyOwnerToken(env, token))) {
-        return webJson(request, { ok: false, error: "Owner sign-in is required." }, { status: 401 });
+        return webJson(request, { ok: false, error: "User sign-in is required." }, { status: 401 });
       }
 
       if (request.method === "GET") {
@@ -2080,14 +2116,14 @@ export default {
 
       const question = retainPrivateText(body?.question, 4000);
       const reply = retainPrivateText(body?.reply, 12000);
-      const ownerAuthorized = await verifyOwnerToken(env, bearerToken(request));
+      const userAuthorized = await verifyOwnerToken(env, bearerToken(request));
       const feedbackAuthorized = await verifyFeedbackToken(
         env,
         body?.feedbackToken,
         question,
         reply,
       );
-      if (!ownerAuthorized && !feedbackAuthorized) {
+      if (!userAuthorized && !feedbackAuthorized) {
         return webJson(
           request,
           {
@@ -2171,7 +2207,7 @@ export default {
         const history = {
           question: cleanText(body?.question, 600),
           reply: cleanText(answer?.reply || answer?.error, 1200),
-          source: "web-pwa-owner",
+          source: "web-pwa-user",
           intent: "web",
         };
         if (history.question && history.reply) {
@@ -2207,11 +2243,17 @@ export default {
     }
 
     if (request.method === "GET" && url.pathname === "/public/feature-summary") {
-      let summary=null;
-      try { summary=await githubFile(env,"requests/unknown.json","runtime-state"); } catch {}
-      return Response.json(summary || {version:3,requests:[]},{
-        headers:{"cache-control":"public,max-age=60"}
-      });
+      let summary = null;
+      try {
+        const stored = await githubFile(env, "requests/unknown.json", "runtime-state");
+        summary = await decryptRuntimeDocument(env, stored);
+      } catch {}
+      return Response.json(
+        summary?.version === 3 && Array.isArray(summary?.requests)
+          ? summary
+          : { version: 3, requests: [] },
+        { headers: { "cache-control": "public,max-age=60" } },
+      );
     }
     if (request.method === "POST" && url.pathname === "/admin/runtime-files") {
       const secret=request.headers.get("x-ballerwatch-admin")||"";
