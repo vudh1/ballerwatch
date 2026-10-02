@@ -663,16 +663,58 @@ async function dispatchGitHub(env, update) {
   return dispatchWorkflow(env, "listener.yml", { telegram_update_b64: base64Json(update) });
 }
 
-function localDate() {
+function localNowParts(now = new Date()) {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat("en-US", {
       timeZone: TIME_ZONE,
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
-    }).formatToParts(new Date()).filter(x => x.type !== "literal").map(x => [x.type, x.value]),
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(now).filter(x => x.type !== "literal").map(x => [x.type, x.value]),
   );
-  return `${parts.year}-${parts.month}-${parts.day}`;
+  return {
+    date: `${parts.year}-${parts.month}-${parts.day}`,
+    minutes: Number(parts.hour) * 60 + Number(parts.minute),
+  };
+}
+
+function localDate(now = new Date()) {
+  return localNowParts(now).date;
+}
+
+function clockMinutes(value) {
+  const text = cleanText(value, 60);
+  if (!text) return null;
+  const match = text.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/i);
+  if (!match) return null;
+  let hour = Number(match[1]);
+  const minute = Number(match[2]);
+  const suffix = String(match[3] || "").toUpperCase();
+  if (!Number.isFinite(hour) || !Number.isFinite(minute) || minute > 59) return null;
+  if (suffix) {
+    if (hour < 1 || hour > 12) return null;
+    if (suffix === "AM" && hour === 12) hour = 0;
+    if (suffix === "PM" && hour !== 12) hour += 12;
+  } else if (hour > 23) {
+    return null;
+  }
+  return hour * 60 + minute;
+}
+
+function gameIsUpcoming(date, startTime, endTime, fallbackMinutes, now = new Date()) {
+  const current = localNowParts(now);
+  if (date > current.date) return true;
+  if (date < current.date) return false;
+
+  const start = clockMinutes(startTime);
+  let end = clockMinutes(endTime);
+  if (end == null && start != null) end = start + Number(fallbackMinutes || 0);
+  if (end == null) return true;
+  if (start != null && end <= start) end += 24 * 60;
+  return current.minutes < end;
 }
 
 function addDays(date, days) {
@@ -868,15 +910,22 @@ function todayGames(snapshot) {
   return blocks.length ? `Today's games — ${formatDate(date)}\n\n${blocks.join("\n\n")}` : `No pickup or RATS game is scheduled today (${formatDate(date)}).`;
 }
 
-export function nextGame(snapshot) {
-  const today=localDate();
+export function nextGame(snapshot, now = new Date()) {
+  const today=localDate(now);
   const candidates=[];
   for (const d of availableDates(snapshot).filter(x=>x>=today)) {
     const p=pickupFacts(snapshot,d);
-    if(p) candidates.push({kind:"pickup",date:d,start:p.start||"",facts:p});
+    if(p && gameIsUpcoming(d, p.start, p.end, 180, now)) {
+      candidates.push({kind:"pickup",date:d,start:p.start||"",facts:p});
+    }
   }
   for (const game of leagueMatches(snapshot)) {
-    if(String(game.date||"")>=today) candidates.push({kind:"league",date:String(game.date),start:String(game.startTime||""),game});
+    const date = String(game.date || "");
+    const start = clock(game.start || game.startTime);
+    const end = clock(game.end || game.endTime);
+    if (date >= today && gameIsUpcoming(date, start, end, 120, now)) {
+      candidates.push({kind:"league",date,start:String(game.startTime||""),game});
+    }
   }
   candidates.sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start));
   const n=candidates[0];
@@ -1080,6 +1129,7 @@ export function webCalendarDetails(
   weatherState = {},
   days = 14,
   startDate = localDate(),
+  now = new Date(),
 ) {
   const safe = webSafeSnapshot(snapshot);
   const endDate = addDays(startDate, Math.max(1, Number(days) || 14) - 1);
@@ -1092,7 +1142,11 @@ export function webCalendarDetails(
   for (const date of availableDates(safe)) {
     if (date < startDate || date > endDate) continue;
     const facts = pickupFacts(safe, date);
-    if (!facts || (!facts.field && !facts.address)) continue;
+    if (
+      !facts ||
+      (!facts.field && !facts.address) ||
+      !gameIsUpcoming(date, facts.start, facts.end, 180, now)
+    ) continue;
     const id = webCalendarGameId("pickup", date);
     const sourceWeather = weatherById.get(id)?.weather || null;
     games.push({
@@ -1125,6 +1179,7 @@ export function webCalendarDetails(
     const opponent = cleanText(game?.opponent, 120) || "opponent";
     const startTime = clock(game?.start || game?.startTime);
     const endTime = clock(game?.end || game?.endTime);
+    if (!gameIsUpcoming(date, startTime, endTime, 120, now)) continue;
     const key = cleanText(game?.key, 240) ||
       [team, opponent, date, startTime].join("|");
     const id = webCalendarGameId("league", key);
@@ -1180,19 +1235,23 @@ async function loadWebWeather(env) {
   }
 }
 
-export function webNextGameDetails(snapshot) {
+export function webNextGameDetails(snapshot, now = new Date()) {
   const safe = webSafeSnapshot(snapshot);
-  const today = localDate();
+  const today = localDate(now);
   const candidates = [];
 
   for (const date of availableDates(safe).filter((value) => value >= today)) {
     const facts = pickupFacts(safe, date);
-    if (facts) candidates.push({ kind: "pickup", date, start: facts.start || "", facts });
+    if (facts && gameIsUpcoming(date, facts.start, facts.end, 180, now)) {
+      candidates.push({ kind: "pickup", date, start: facts.start || "", facts });
+    }
   }
 
   for (const game of leagueMatches(safe)) {
     const date = String(game?.date || "");
-    if (date >= today) {
+    const startTime = clock(game?.start || game?.startTime);
+    const endTime = clock(game?.end || game?.endTime);
+    if (date >= today && gameIsUpcoming(date, startTime, endTime, 120, now)) {
       candidates.push({
         kind: "league",
         date,
