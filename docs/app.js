@@ -45,6 +45,10 @@ const els = {
   nextGameType: document.querySelector("#next-game-type"),
   nextGameMeta: document.querySelector("#next-game-meta"),
   nextGameLocation: document.querySelector("#next-game-location"),
+  nextGameCapacity: document.querySelector("#next-game-capacity"),
+  nextGameCapacityLabel: document.querySelector("#next-game-capacity-label"),
+  nextGameCapacitySpots: document.querySelector("#next-game-capacity-spots"),
+  nextGameCapacityFill: document.querySelector("#next-game-capacity-fill"),
   nextGameWeather: document.querySelector("#next-game-weather"),
   nextGameActions: document.querySelector("#next-game-actions"),
   nextGameDirections: document.querySelector("#next-game-directions"),
@@ -417,7 +421,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=5.4.0", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=5.5.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -685,6 +689,9 @@ function spotlightModel(game, label = "NEXT GAME") {
       type: "None",
       meta: "No pickup or RATS game is currently published.",
       location: "",
+      capacityText: "",
+      capacityPercent: 0,
+      spotsText: "",
       weather: "",
       directions: "",
       actionsHidden: true,
@@ -704,12 +711,27 @@ function spotlightModel(game, label = "NEXT GAME") {
   if (game.address && game.address !== game.location) locationParts.push(game.address);
   if (game.jerseyColor) locationParts.push(`${game.jerseyColor} jersey`);
 
+  const capacity = Number(game.capacity);
+  const reserved = Number(game.reserved);
+  const hasCapacity = game.kind === "pickup" && Number.isFinite(reserved);
+  const capacityPercent = hasCapacity && Number.isFinite(capacity) && capacity > 0
+    ? Math.max(0, Math.min(100, Math.round((reserved / capacity) * 100)))
+    : 0;
+  const spotsText = hasCapacity && Number.isFinite(capacity)
+    ? (capacity - reserved > 0 ? `${capacity - reserved} spots left` : "Full")
+    : "";
+
   return {
     label,
-    title: game.title || "Upcoming game",
+    title: game.dateLabel || game.title || "Upcoming game",
     type: game.kind === "pickup" ? "Pickup" : "League",
-    meta: [game.dateLabel, game.time, capacityText].filter(Boolean).join(" • "),
+    meta: [game.time, game.title && game.title !== game.dateLabel ? game.title : ""]
+      .filter(Boolean)
+      .join(" • "),
     location: locationParts.join(" • "),
+    capacityText,
+    capacityPercent,
+    spotsText,
     weather: weatherSummary(
       game.weather,
       game.weatherStale,
@@ -727,6 +749,10 @@ function applySpotlightModel(targets, game, label = "NEXT GAME") {
   targets.type.textContent = model.type;
   targets.meta.textContent = model.meta;
   targets.location.textContent = model.location;
+  targets.capacity.hidden = !model.capacityText;
+  targets.capacityLabel.textContent = model.capacityText;
+  targets.capacitySpots.textContent = model.spotsText;
+  targets.capacityFill.style.width = `${model.capacityPercent}%`;
   targets.weather.textContent = model.weather;
   targets.weather.hidden = !model.weather;
   targets.actions.hidden = model.actionsHidden;
@@ -748,6 +774,10 @@ function currentSpotlightTargets() {
     type: els.nextGameType,
     meta: els.nextGameMeta,
     location: els.nextGameLocation,
+    capacity: els.nextGameCapacity,
+    capacityLabel: els.nextGameCapacityLabel,
+    capacitySpots: els.nextGameCapacitySpots,
+    capacityFill: els.nextGameCapacityFill,
     weather: els.nextGameWeather,
     actions: els.nextGameActions,
     directions: els.nextGameDirections,
@@ -798,6 +828,10 @@ function buildSpotlightTrainCard(game) {
       type: role("next-game-type"),
       meta: role("next-game-meta"),
       location: role("next-game-location"),
+      capacity: role("next-game-capacity"),
+      capacityLabel: role("next-game-capacity-label"),
+      capacitySpots: role("next-game-capacity-spots"),
+      capacityFill: role("next-game-capacity-fill"),
       weather: role("next-game-weather"),
       actions: role("next-game-actions"),
       directions: role("next-game-directions"),
