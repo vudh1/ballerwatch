@@ -8,7 +8,7 @@ The web app is a public-safe BallerWatch surface with an optional owner-paired s
 
 ## What the web app does
 
-- uses a redesigned dashboard with a next-game spotlight, Google Maps directions, and a Tesla-focused destination share action;
+- uses a redesigned dashboard with a next-game spotlight, Google Maps directions, and native device sharing;
 - shows a compact 14-day calendar for published pickup games and monitored RATS matches;
 - shows match-window weather (condition, temperature, and maximum rain probability during the game window), refreshed about every six hours;
 - shows recent pickup, RATS schedule, and version updates in a compact notification inbox behind the top-right bell; unread state and deletions are stored locally per device;
@@ -23,7 +23,7 @@ There is intentionally no visible chat transcript in the web UI. Each new questi
 
 When BallerWatch is opened from the iPhone Home Screen, Home Screen installation help is removed entirely. Browser visits keep a compact **Home Screen app** section in the footer. The footer also includes a Telegram shortcut that opens the bot through Telegram's universal link.
 
-Push enable/disable lives in a compact On/Off control beside Refresh in the notification header. Notification previews are truncated to keep the popup compact. Opening one marks it read and opens a full-screen reader; the bell badge then reflects only unread, non-deleted notifications. Swiping a notification left deletes it locally on that device without mutating the shared public notification-board history. The manual notification test remains available below the header.
+Push enable/disable lives in a compact On/Off control beside Refresh in the notification header. The notification dialog is height-bounded and its history list scrolls independently so controls stay visible on iPhone. Notification previews are truncated to keep the popup compact. Opening one marks it read and opens a full-screen reader; the bell badge then reflects only unread, non-deleted notifications. Swiping a notification left follows the finger, then slides/collapses the card away before deleting it locally on that device. A subtle **Delete all** action beside **Send test** clears the visible notification history only on the current device without mutating the shared public notification-board history.
 
 ## iPhone installation
 
@@ -88,7 +88,7 @@ The top match spotlight is also the single detail surface for the 14-day calenda
 The main screen loads the same earliest-upcoming pickup/RATS selection used by the Telegram fast path. The card exposes only public-safe game details and provides:
 
 - **Directions** — a Google Maps universal link using the published field/address, which can open the Google Maps app when available;
-- **Send to Tesla** — opens the iOS share sheet with only the destination/map link so the Tesla share extension can send it to the car. iOS still requires the user to choose Tesla from the share sheet; browsers cannot force a specific share target. If native sharing is unavailable, BallerWatch copies the destination and opens the Tesla app link as a fallback.
+- **Share** — opens the device's native share sheet with the game details and map link. If Tesla is installed and exposed by iOS as a share target, it can still be chosen there; BallerWatch does not assume Tesla is available. When native sharing is unavailable, the complete game details are copied to the clipboard.
 
 The bell panel also has **Test notification**. It asks for notification permission if needed, schedules a local service-worker notification about five seconds later, and tells the user to close BallerWatch immediately. This verifies that iOS can display a BallerWatch notification while the Home Screen app is closed without sending a Web Push test signal or creating a notification-board entry.
 

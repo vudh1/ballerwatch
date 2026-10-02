@@ -1728,3 +1728,130 @@ textarea {
     padding-left: 0.4rem;
   }
 }
+
+
+/* v5.2.1 notification fit and swipe polish */
+.notification-dialog {
+  max-width: calc(100vw - 1rem);
+  max-height: min(86dvh, 42rem);
+  overflow: hidden;
+}
+
+.notification-dialog .dialog-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: min(86dvh, 42rem);
+  overflow: hidden;
+}
+
+.notification-dialog .section-heading {
+  flex: 0 0 auto;
+  min-width: 0;
+  gap: 0.55rem;
+}
+
+.notification-dialog .section-heading > div:first-child {
+  min-width: 0;
+}
+
+.notification-dialog .section-heading h2 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notification-dialog .dialog-actions {
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+}
+
+.notification-dialog .board {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: min(54dvh, 28rem);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.notification-test-row {
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+}
+
+.notification-test-row #test-notification-status {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.subtle-danger {
+  color: #7f8a9c;
+}
+
+.subtle-danger:hover {
+  color: #fca5a5;
+}
+
+.notice {
+  transform: translateX(0);
+  transition:
+    transform 190ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 160ms ease,
+    max-height 210ms ease,
+    min-height 210ms ease,
+    padding 210ms ease,
+    margin 210ms ease,
+    border-width 210ms ease,
+    border-color 140ms ease;
+  will-change: transform, opacity;
+}
+
+.notice.is-swiping {
+  transition: none;
+}
+
+.notice.is-deleting {
+  min-height: 0;
+  max-height: 0;
+  margin-top: -0.25rem;
+  margin-bottom: -0.25rem;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-top-width: 0;
+  border-bottom-width: 0;
+  opacity: 0;
+  transform: translateX(-120%);
+  pointer-events: none;
+}
+
+@media (max-width: 560px) {
+  .notification-dialog {
+    width: calc(100vw - 0.75rem);
+    max-width: calc(100vw - 0.75rem);
+    max-height: calc(100dvh - 0.75rem);
+  }
+
+  .notification-dialog .dialog-shell {
+    max-height: calc(100dvh - 0.75rem);
+    padding: 0.85rem;
+  }
+
+  .notification-dialog .board {
+    max-height: 52dvh;
+  }
+
+  .notification-dialog .section-heading {
+    gap: 0.4rem;
+  }
+
+  .push-compact {
+    min-height: 2.1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notice,
+  .notice.is-deleting {
+    transition: none;
+  }
+}

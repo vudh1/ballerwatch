@@ -16,13 +16,13 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=5\.2\.0/);
-  assert.match(html, /app\.js\?v=5\.2\.0/);
+  assert.match(html, /styles\.css\?v=5\.2\.1/);
+  assert.match(html, /app\.js\?v=5\.2\.1/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v5-2-0-shell/);
+  assert.match(sw, /ballerwatch-v5-2-1-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -63,7 +63,7 @@ test("Home Screen install card is removed in standalone mode and notifications u
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=5\.2\.0/);
+  assert.match(app, /sw\.js\?v=5\.2\.1/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -391,7 +391,7 @@ test("installed app does not interrupt first-load hydration for a service-worker
 });
 
 
-test("notification inbox tracks unread state, opens full-screen detail, and supports swipe delete", () => {
+test("notification inbox tracks unread state, opens full-screen detail, and animates swipe delete", () => {
   const html = fs.readFileSync("docs/index.html", "utf8");
   const app = fs.readFileSync("docs/app.js", "utf8");
   const css = fs.readFileSync("docs/styles.css", "utf8");
@@ -402,11 +402,17 @@ test("notification inbox tracks unread state, opens full-screen detail, and supp
   assert.match(app, /NOTIFICATION_DELETED_KEY/);
   assert.match(app, /function markNotificationRead/);
   assert.match(app, /function deleteNotification/);
+  assert.match(app, /function animateNotificationDelete/);
   assert.match(app, /function openNotification/);
+  assert.match(app, /touchmove/);
+  assert.match(app, /translateX\(\$\{offset\}px\)/);
   assert.match(app, /deltaX < -64/);
-  assert.match(app, /touchend/);
+  assert.match(app, /classList\.add\("is-deleting"\)/);
   assert.match(app, /unreadCount/);
   assert.match(css, /-webkit-line-clamp:\s*2/);
+  assert.match(css, /\.notice\.is-swiping/);
+  assert.match(css, /\.notice\.is-deleting/);
+  assert.match(css, /translateX\(-120%\)/);
   assert.match(css, /\.notification-reader \{/);
   assert.match(css, /height:\s*100dvh/);
 });
@@ -423,18 +429,38 @@ test("notification push control is compact and only displays On or Off", () => {
   assert.match(css, /width:\s*2\.15rem/);
 });
 
-test("next-game destination sharing is Tesla-focused", () => {
+test("next-game sharing uses the generic device share sheet", () => {
   const html = fs.readFileSync("docs/index.html", "utf8");
   const app = fs.readFileSync("docs/app.js", "utf8");
 
-  assert.match(html, />Send to Tesla<\/button>/);
-  assert.match(app, /title: "Send to Tesla"/);
-  assert.match(app, /Choose Tesla in the share sheet/);
-  assert.match(app, /https:\/\/ts\.la\/app/);
+  assert.match(html, /id="next-game-share" type="button">Share<\/button>/);
+  assert.match(app, /navigator\.share/);
+  assert.match(app, /title: "BallerWatch game"/);
+  assert.match(app, /Game details copied/);
+  assert.doesNotMatch(app, /Choose Tesla in the share sheet/);
+  assert.doesNotMatch(app, /https:\/\/ts\.la\/app/);
 });
 
 test("footer offers a Telegram app shortcut", () => {
   const html = fs.readFileSync("docs/index.html", "utf8");
   assert.match(html, /https:\/\/t\.me\/ttf_rsvp_tracker_bot/);
   assert.match(html, />Telegram<\/a>/);
+});
+
+
+test("notification popup stays bounded and offers local Delete all beside Send test", () => {
+  const html = fs.readFileSync("docs/index.html", "utf8");
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  const css = fs.readFileSync("docs/styles.css", "utf8");
+
+  assert.match(
+    html,
+    /id="test-notification"[^>]*>Send test<\/button>\s*<button class="subtle-action subtle-danger" id="delete-all-notifications"[^>]*>Delete all<\/button>/,
+  );
+  assert.match(app, /function deleteAllNotifications/);
+  assert.match(app, /persistDeletedNotifications\(visible\)/);
+  assert.match(app, /deleteAllNotifications\.addEventListener\("click", deleteAllNotifications\)/);
+  assert.match(css, /\.notification-dialog \{[\s\S]*max-height:\s*min\(86dvh, 42rem\);[\s\S]*overflow:\s*hidden;/);
+  assert.match(css, /\.notification-dialog \.board \{[\s\S]*overflow-y:\s*auto;/);
+  assert.match(css, /\.notification-test-row \{[\s\S]*flex-wrap:\s*wrap;/);
 });
