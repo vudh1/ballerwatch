@@ -42,12 +42,14 @@ test("static web app contains no repository secrets or private runtime data", ()
   assert.doesNotMatch(text, /players\s*[:=]|waitlist\s*[:=]/i);
 });
 
-test("GitHub Pages workflow avoids admin-level self-enable permissions", () => {
+test("GitHub Pages workflow self-recovers missing Pages activation", () => {
   const workflow = fs.readFileSync(".github/workflows/pages.yml", "utf8");
   assert.doesNotMatch(workflow, /CRON_GITHUB_PAT/);
-  assert.doesNotMatch(workflow, /enablement:\s*true/);
   assert.match(workflow, /Check GitHub Pages activation/);
-  assert.match(workflow, /Settings → Pages → Build and deployment → Source → GitHub Actions/);
+  assert.match(workflow, /Enable GitHub Pages when missing/);
+  assert.match(workflow, /enablement:\s*true/);
+  assert.match(workflow, /secrets\.RELEASE_GITHUB_TOKEN/);
+  assert.match(workflow, /release:\s*\n\s*types:\s*\[published\]/);
 });
 
 
@@ -629,8 +631,9 @@ test("production rollout is gated by GitHub Releases instead of main pushes", ()
     assert.doesNotMatch(workflow, /push:\s*\n\s*branches:\s*\[main\]/);
   }
   assert.match(pages, /workflow_dispatch:/);
+  assert.match(pages, /release:\s*\n\s*types:\s*\[published\]/);
   assert.match(pages, /ref:\s*production/);
-  assert.doesNotMatch(pages, /push:\s*\n\s*branches:\s*\[main\]/);
+  assert.match(pages, /push:\s*\n\s*branches:\s*\[main\][\s\S]*paths:[\s\S]*\.github\/workflows\/pages\.yml/);
 
   assert.match(promote, /cron:\s*"37 \* \* \* \*"/);
   assert.match(promote, /86400/);
@@ -653,8 +656,8 @@ test("production rollout is gated by GitHub Releases instead of main pushes", ()
     assert.doesNotMatch(workflow, /inputs\.release_ref/);
     assert.match(workflow, /github\.event\.release\.tag_name \|\| 'production'/);
   }
-  assert.match(promote, /Deploy Pages from promoted production/);
-  assert.match(promote, /gh workflow run pages\.yml/);
+  assert.doesNotMatch(promote, /Deploy Pages from promoted production/);
+  assert.doesNotMatch(promote, /gh workflow run pages\.yml/);
 
   for (const workflow of [pickup, league, listener, watchdog]) {
     assert.match(workflow, /ref:\s*production/);
