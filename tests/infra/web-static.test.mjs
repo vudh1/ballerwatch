@@ -367,13 +367,20 @@ test("calendar refresh preserves an explicitly selected future game", () => {
 });
 
 
-test("autocomplete stays in document flow instead of overlapping following content", () => {
+test("autocomplete floats above the Ask card without resizing the input row", () => {
   const css = fs.readFileSync("docs/styles.css", "utf8");
-  assert.match(css, /\/\* v5\.1\.4 interaction polish \*\//);
-  assert.match(css, /\.question-suggestions \{[\s\S]*position:\s*static;/);
-  assert.match(css, /\.ask-card \.question-row \{[\s\S]*align-items:\s*start;/);
-  assert.match(css, /\.ask-card \.question-row > button \{[\s\S]*align-self:\s*start;/);
-  assert.match(css, /max-height:\s*min\(14rem, 35vh\)/);
+
+  assert.match(css, /\/\* v5\.6 autocomplete overlay \*\//);
+  assert.match(css, /\.ask-card \{[\s\S]*overflow:\s*visible;/);
+  assert.match(css, /\.question-input-wrap \{[\s\S]*position:\s*relative;/);
+  assert.match(
+    css,
+    /\/\* v5\.6 autocomplete overlay \*\/[\s\S]*\.question-suggestions \{[\s\S]*position:\s*absolute;[\s\S]*top:\s*calc\(100% \+ 0\.45rem\);[\s\S]*z-index:\s*80;/,
+  );
+  assert.match(css, /max-height:\s*min\(18rem, 42vh\)/);
+  assert.match(css, /overflow-y:\s*auto;/);
+  assert.match(css, /overscroll-behavior:\s*contain;/);
+  assert.match(css, /\.ask-card \.question-row > button \{[\s\S]*align-self:\s*center;/);
 });
 
 test("weather refresh is immediate only for schedule-relevant changes", () => {
