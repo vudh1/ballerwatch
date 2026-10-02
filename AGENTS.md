@@ -24,7 +24,13 @@ Always read the current `README.md`, this file, and `features/versions.json` fro
 
 ## Release workflow
 
-Product releases use one release branch per target version, named `release/<version>`. Pure maintenance does not need a release branch unless it is the safest way to review the change.
+Every repository change starts on a dedicated branch created from the latest `main`. Do not commit directly to `main`.
+
+- Product releases use `release/<version>`.
+- Internal maintenance uses `maintenance/<topic>`.
+- Targeted fixes use `fix/<topic>`.
+
+Keep implementation commits on the working branch, open a PR back to `main`, and merge only after the work is complete and the relevant checks/review are green.
 
 The default product-release process is:
 
@@ -50,7 +56,7 @@ Merging to `main` does **not** deploy production. Production is release-gated:
 - Scheduled/dispatch runtime workflows execute code from `production`, so unreleased `main` code does not silently become runtime behavior.
 - If a GitHub Release for the current version already exists, the promoter is a no-op. This is how maintenance commits can merge without creating another rollout.
 
-Direct commits to `main` remain permitted for emergencies or explicit user-directed maintenance, but normal reviewed changes should still use a PR. Product release commits should remain easy to identify; maintenance commits may exist between them without inventing a new product version.
+Do not commit directly to `main` for maintenance, releases, documentation, workflow changes, or product code. Start from the latest `main` on a dedicated branch and merge through a PR only after verification. Product release commits should remain easy to identify; maintenance commits may exist between releases without inventing a new product version.
 
 ## Notification policy
 
