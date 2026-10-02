@@ -27,17 +27,34 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CRON_GITHUB_PAT: ${{ secrets.CRON_GITHUB_PAT }}
+          RELEASE_GITHUB_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           CRON_JOB_ORG_API_KEY: ${{ secrets.CRON_JOB_ORG_API_KEY }}
         run: |
-          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID CRON_GITHUB_PAT CRON_JOB_ORG_API_KEY; do
+          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID CRON_GITHUB_PAT RELEASE_GITHUB_TOKEN CRON_JOB_ORG_API_KEY; do
             test -n "${!name}" || { echo "::error::Missing $name"; exit 1; }
           done
           if [ -z "${TRACKER_STATE_KEY:-}" ] && [ -z "${TELEGRAM_BOT_TOKEN:-}" ]; then
             echo "::error::TRACKER_STATE_KEY or TELEGRAM_BOT_TOKEN is required for encrypted runtime state."
             exit 1
           fi
+
+      - name: Verify dedicated runtime contents credential
+        env:
+          RELEASE_GITHUB_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $RELEASE_GITHUB_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/contents/pickup/state/feed.json?ref=runtime-state")"
+          test "$status" = "200" || {
+            echo "::error::RELEASE_GITHUB_TOKEN cannot read encrypted runtime-state (HTTP $status).";
+            exit 1;
+          }
 
       - name: Migrate and verify GitHub runtime-state branch
         env:
@@ -76,6 +93,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           CRON_GITHUB_PAT: ${{ secrets.CRON_GITHUB_PAT }}
+          RELEASE_GITHUB_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
           OWNER_RSVP_NAME: ${{ secrets.OWNER_RSVP_NAME }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -87,6 +105,7 @@ jobs:
           printf '%s' "$WEBHOOK_SECRET" > /tmp/telegram-webhook-secret
           node -e 'process.stdout.write(JSON.stringify({
             GITHUB_DISPATCH_TOKEN: process.env.CRON_GITHUB_PAT,
+            GITHUB_CONTENTS_TOKEN: process.env.RELEASE_GITHUB_TOKEN,
             TRACKER_STATE_KEY: process.env.TRACKER_STATE_KEY || process.env.TELEGRAM_BOT_TOKEN,
             TELEGRAM_WEBHOOK_SECRET: require("fs").readFileSync("/tmp/telegram-webhook-secret","utf8"),
             ...(process.env.TELEGRAM_BOT_TOKEN ? { TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN } : {}),
@@ -128,14 +147,45 @@ jobs:
           BASE_URL="https://ballerwatch-telegram.$SUBDOMAIN.workers.dev"
           SECRET="$(cat /tmp/telegram-webhook-secret)"
 
-          echo "Verifying BallerWatch Worker health..."
-          curl --max-time 15 --fail-with-body --silent --show-error "$BASE_URL/health"
-          echo
+          echo "Verifying BallerWatch Worker readiness..."
+          HEALTH="$(curl --max-time 15 --fail-with-body --silent --show-error "$BASE_URL/health")"
+          node -e 'const x=JSON.parse(process.argv[1]); if(x.ok!==true || x.ready!==true || !x.version || x.version==="unknown") process.exit(1)' "$HEALTH"
+          echo "Worker readiness verified."
 
-          echo "Verifying PWA API surface..."
+          echo "Verifying PWA API surface and runtime-backed data..."
           PWA_CONFIG="$(curl --max-time 15 --fail-with-body --silent --show-error "$BASE_URL/web/config")"
-          node -e 'const x=JSON.parse(process.argv[1]); if(x.ok!==true || !x.push || !("ready" in x.push) || !x.version) process.exit(1)' "$PWA_CONFIG"
-          echo "PWA API verified."
+          node -e 'const x=JSON.parse(process.argv[1]); if(x.ok!==true || x.ready!==true || !x.push || !("ready" in x.push) || !x.version || x.version==="unknown") process.exit(1)' "$PWA_CONFIG"
+
+          for path in /web/next-game /web/calendar; do
+            BODY="/tmp/ballerwatch-$(echo "$path" | tr '/' '-').json"
+            HEADERS="/tmp/ballerwatch-$(echo "$path" | tr '/' '-')-headers"
+            STATUS="$(curl --max-time 15 --silent --show-error \
+              --dump-header "$HEADERS" \
+              --output "$BODY" \
+              --write-out "%{http_code}" \
+              -H "Origin: https://vudh1.github.io" \
+              "$BASE_URL$path")"
+            test "$STATUS" = "200" || {
+              echo "::error::$path failed readiness smoke with HTTP $STATUS";
+              cat "$BODY";
+              exit 1;
+            }
+            grep -qi '^access-control-allow-origin: https://vudh1.github.io' "$HEADERS" || {
+              echo "::error::$path is missing the expected PWA CORS origin";
+              cat "$HEADERS";
+              exit 1;
+            }
+            node - "$path" "$BODY" <<'NODE'
+const fs = require("fs");
+const path = process.argv[2];
+const value = JSON.parse(fs.readFileSync(process.argv[3], "utf8"));
+if (value.ok !== true) process.exit(1);
+if (path === "/web/calendar" && !value.calendar) process.exit(1);
+if (path === "/web/next-game" && !Object.prototype.hasOwnProperty.call(value, "game")) process.exit(1);
+NODE
+            rm -f "$BODY" "$HEADERS"
+          done
+          echo "PWA runtime-backed API verified."
 
           echo "Verifying owner-pairing error response and CORS..."
           PAIR_HEADERS="/tmp/ballerwatch-pair-headers"
