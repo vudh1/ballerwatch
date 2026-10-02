@@ -27,13 +27,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           ref: production
           fetch-depth: 1
 
       - name: Restore encrypted watchdog state cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: .runtime/failover/watchdog.json
           key: ballerwatch-runtime-watchdog-${{ github.run_id }}
@@ -112,7 +112,7 @@ jobs:
 
       - name: Save encrypted watchdog state cache
         if: always()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: .runtime/failover/watchdog.json
           key: ballerwatch-runtime-watchdog-${{ github.run_id }}
