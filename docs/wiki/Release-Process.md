@@ -57,4 +57,4 @@ If neither credential can create the Release, promotion fails closed and `produc
 
 ## Branch cleanup
 
-After merge, **Cleanup merged release branches** deletes closed stale `release/*` and `fix/*` branches. `main`, `production`, and `runtime-state` are durable branches and must remain.
+After merge, **Cleanup merged working branches** deletes closed stale `release/*`, `maintenance/*`, and `fix/*` branches. `main`, `production`, and `runtime-state` are durable branches and must remain.
