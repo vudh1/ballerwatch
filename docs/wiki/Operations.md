@@ -2,7 +2,7 @@
 
 ## Health
 
-The Worker health endpoint reports runtime availability. The deep watchdog checks:
+The Worker health endpoint is a **readiness** check, not just a process-liveness check. It returns healthy only when the Worker can authenticate to GitHub, read/decrypt the required encrypted `runtime-state` snapshot, and resolve a real product version. The deep watchdog checks:
 
 - Worker health;
 - latest validation health;
@@ -11,6 +11,8 @@ The Worker health endpoint reports runtime availability. The deep watchdog check
 - structural encryption of every canonical `runtime-state` file.
 
 Watchdog problems/recovery are operational signals only. They do not send Telegram or Web Push messages.
+
+Worker deployment also performs a notification-silent production-readiness smoke: `/health`, `/web/config`, `/web/next-game`, and `/web/calendar` must all succeed, and the web endpoints must return the expected Pages CORS origin. A green deploy therefore means the user-facing data path works, not merely that the Worker process started.
 
 ## Notification policy
 
@@ -73,6 +75,10 @@ OpenStreetMap Nominatim geocodes uncached public venue names/addresses conservat
 The release/bootstrap **Refresh match weather** workflow remains notification-silent and separate from the recurring watchdog so deploy recovery is explicit.
 
 ## PWA operations
+
+Pages is deployed from `docs/`. The client shows **Live** only after runtime-backed calendar and notification-board reads succeed; network/browser-online state or `/web/config` alone is never sufficient.
+
+The Worker uses separate GitHub credentials by responsibility: `GITHUB_DISPATCH_TOKEN` is sourced from `CRON_GITHUB_PAT` for workflow dispatch only, while `GITHUB_CONTENTS_TOKEN` is sourced from `RELEASE_GITHUB_TOKEN` for encrypted `runtime-state` reads/writes. This prevents scheduler-token permission changes from silently taking the PWA data plane offline.
 
 Pages is deployed from `docs/`. One-time repository setup is **Settings → Pages → Build and deployment → Source → GitHub Actions**.
 

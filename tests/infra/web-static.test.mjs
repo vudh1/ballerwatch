@@ -16,13 +16,13 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=5\.8\.0/);
-  assert.match(html, /app\.js\?v=5\.8\.0/);
+  assert.match(html, /styles\.css\?v=5\.8\.1/);
+  assert.match(html, /app\.js\?v=5\.8\.1/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v5-8-0-shell/);
+  assert.match(sw, /ballerwatch-v5-8-1-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -65,7 +65,7 @@ test("Home Screen install card is removed in standalone mode and notifications u
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=5\.8\.0/);
+  assert.match(app, /sw\.js\?v=5\.8\.1/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -376,9 +376,45 @@ test("installed app refreshes data and release updates automatically", () => {
   assert.match(app, /visibilitychange/);
   assert.match(app, /window\.setInterval/);
   assert.match(app, /registration\.update\(\)/);
-  assert.match(app, /setSystemState\("live"\)/);
+  assert.match(app, /calendarOk && boardOk \? "live" : "offline"/);
   assert.match(css, /@keyframes ballerwatch-live-pulse/);
   assert.match(css, /\.system-line\.is-live \.system-dot/);
+});
+
+test("web Live status requires successful runtime-backed reads", () => {
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  const refresh = app.match(/async function refreshLiveData\(\)[\s\S]*?\n}\n/)?.[0] || "";
+  const config = app.match(/async function loadConfig\(\)[\s\S]*?\n}\n/)?.[0] || "";
+  const online = app.match(/window\.addEventListener\("online"[\s\S]*?\n}\);/)?.[0] || "";
+
+  assert.match(refresh, /const \[calendarOk, boardOk\] = await Promise\.all/);
+  assert.match(refresh, /calendarOk && boardOk \? "live" : "offline"/);
+  assert.doesNotMatch(config, /setSystemState\("live"\)/);
+  assert.match(online, /setSystemState\("checking"\)/);
+  assert.doesNotMatch(online, /setSystemState\("live"\)/);
+});
+
+test("Worker readiness uses a dedicated GitHub contents credential and probes live data", () => {
+  const worker = fs.readFileSync("infra/telegram-webhook/worker.mjs", "utf8");
+  const deploy = fs.readFileSync(".github/workflows/deploy-telegram-webhook.yml", "utf8");
+
+  assert.match(worker, /GITHUB_CONTENTS_TOKEN/);
+  assert.match(worker, /githubContentsToken\(env\)/);
+  assert.match(worker, /GITHUB_DISPATCH_TOKEN/);
+  assert.match(worker, /url\.pathname === "\/health"[\s\S]*loadSnapshot\(env\)/);
+  assert.match(worker, /url\.pathname === "\/web\/config"[\s\S]*loadSnapshot\(env\)/);
+  assert.doesNotMatch(
+    worker.match(/url\.pathname === "\/web\/config"[\s\S]*?\n    }/)?.[0] || "",
+    /loadSnapshot\(env\)\.catch/,
+  );
+
+  assert.match(deploy, /RELEASE_GITHUB_TOKEN/);
+  assert.match(deploy, /GITHUB_CONTENTS_TOKEN: process\.env\.RELEASE_GITHUB_TOKEN/);
+  assert.match(deploy, /GITHUB_DISPATCH_TOKEN: process\.env\.CRON_GITHUB_PAT/);
+  assert.match(deploy, /Verify dedicated runtime contents credential/);
+  assert.match(deploy, /\/web\/next-game/);
+  assert.match(deploy, /\/web\/calendar/);
+  assert.match(deploy, /Worker readiness verified/);
 });
 
 test("calendar refresh preserves an explicitly selected future game", () => {

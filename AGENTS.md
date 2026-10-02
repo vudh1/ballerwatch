@@ -11,7 +11,7 @@ Always read the current `README.md`, this file, and `features/versions.json` fro
 - `state/chat-review.json` contains only privacy-minimized engineering signals—timestamp, `bug_candidate|feature_candidate|negative_feedback`, short sanitized summary, and short sanitized reason—but it is still encrypted at rest like every other runtime-state file. Never include names, IDs, tokens, URLs, addresses, raw questions, raw replies, or quotes in that projection.
 - Explicit `/feature <request>` remains a deliberate feature-request path. Ordinary unanswered questions and thumbs-down feedback belong in the 48-hour chat review flow instead of automatically becoming feature requests.
 - Cloudflare Workers hosts the public-safe PWA API plus an optional Telegram webhook adapter. Core PWA Q&A, user password authentication, encrypted runtime access, and Web Push must remain usable when Telegram credentials are absent and `TRACKER_STATE_KEY` is configured. **Workers KV is not part of the production runtime and Cloudflare Cron Triggers must stay disabled.**
-- The fast path reads encrypted state from the `runtime-state` branch and uses the Workers Cache API only as a short-lived best-effort cache.
+- The fast path reads encrypted state from the `runtime-state` branch and uses the Workers Cache API only as a short-lived best-effort cache. Keep GitHub responsibilities split: `RELEASE_GITHUB_TOKEN`/Worker `GITHUB_CONTENTS_TOKEN` owns encrypted content reads/writes; `CRON_GITHUB_PAT`/Worker `GITHUB_DISPATCH_TOKEN` is dispatch-only. Do not couple PWA state availability to the scheduler token.
 - The GitHub Pages PWA keeps anonymous/public access read-only. User settings use app-native password sign-in after bootstrap; a temporary six-digit `/webpair` code remains only as a first-time/recovery path and can authorize multiple devices until its 10-minute expiry. Only a user-authenticated device may read/change the limited settings surface (RSVP name and monitored league teams). Wrong-answer feedback is separately authorized by a short-lived token scoped to the exact answer and does not grant settings access. Arbitrary state-changing commands remain outside the public web API.
 - Web Push VAPID keys and subscriptions live only in encrypted `state/web-push.json` on `runtime-state`; never commit a VAPID private key or push endpoint to `main`.
 - Web notification-board entries exposed to the public Pages origin must be public-safe: never include RSVP names, waitlist names, user-specific status, tokens, IDs, or private settings.
@@ -76,6 +76,8 @@ Version announcements are derived from `features/versions.json`, combine every p
 
 Tests, audits, smoke tests, and temporary verification runs must **not send Telegram messages or Web Push signals**.
 
+Any Worker deployment that serves the PWA must fail unless the notification-silent live readiness smoke verifies `/health`, `/web/config`, `/web/next-game`, and `/web/calendar` against the deployed Worker. A shell-only health response is insufficient.
+
 Use the notification-silent Manual smoke test for live-source verification. Do not add production notifications to PR tests.
 
 All test-only source files live under `tests/`, mirroring the production source area where practical. Do not place `*.test.mjs` or smoke-only scripts beside runtime modules.
@@ -88,7 +90,7 @@ When testing runtime persistence, use encrypted fixtures or the real `runtime-st
 
 The watchdog must verify:
 
-- Cloudflare webhook health;
+- Cloudflare Worker readiness, including encrypted runtime-state read/decrypt;
 - latest validation health;
 - public-repo privacy rules; and
 - cron-job.org primary scheduler existence, cadence, target, and enabled posture.
