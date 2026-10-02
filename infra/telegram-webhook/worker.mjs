@@ -785,16 +785,17 @@ async function loadGitHubSnapshot(env) {
         githubFile(env, "features/versions.json", PRODUCTION_REF),
       ]);
 
-    const [pickup, pickupPrivate, league, today, teamsPayload, settings] = await Promise.all([
+    const [pickup, pickupPrivate, league, today, teamsPayload, listener] = await Promise.all([
       decryptState(pickupEncrypted, env),
       decryptState(privateEncrypted, env),
       decryptState(leagueEncrypted, env),
       decryptState(todayEncrypted, env),
       decryptState(teamsEncrypted, env),
-      listenerState?.settings ? decryptState(listenerState.settings, env) : null,
+      listenerStateDocument(env, listenerState),
     ]);
 
     const teams = Array.isArray(teamsPayload?.teams) ? teamsPayload.teams : [];
+    const settings = listener.settings;
     if (!pickup || !league || !teams.length) {
       throw new Error("GitHub runtime snapshot is incomplete.");
     }
