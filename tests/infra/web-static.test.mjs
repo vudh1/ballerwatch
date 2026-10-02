@@ -364,3 +364,24 @@ test("weather refresh is immediate only for schedule-relevant changes", () => {
   assert.match(leagueWorkflow, /needsCalendar == 'true'/);
   assert.doesNotMatch(relevance, /reserved|capacity|players|waitlist/);
 });
+
+
+test("installed app does not interrupt first-load hydration for a service-worker update", () => {
+  const app = fs.readFileSync("docs/app.js", "utf8");
+
+  assert.match(app, /let initialLoadComplete = false/);
+  assert.match(app, /let appRefreshDeferred = false/);
+  assert.match(
+    app,
+    /if \(!initialLoadComplete\) \{\s*appRefreshDeferred = true;\s*return;\s*\}/,
+  );
+  assert.match(
+    app,
+    /await Promise\.all\(\[\s*registerServiceWorker\(\)\.catch\(\(\) => null\),\s*loadConfig\(\),\s*loadBoard\(\),\s*loadCalendar\(\),\s*\]\);/,
+  );
+  assert.match(app, /initialLoadComplete = true/);
+  assert.match(
+    app,
+    /if \(appRefreshDeferred && initialLoadComplete\) \{\s*window\.location\.reload\(\);\s*return;\s*\}/,
+  );
+});
