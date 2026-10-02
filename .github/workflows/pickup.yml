@@ -76,6 +76,17 @@ jobs:
           BALLERWATCH_ALLOW_OFFLINE: ${{ inputs.external_fallback }}
         run: node shared/runtime-state.mjs push pickup
 
+      - name: Refresh weather after pickup schedule change
+        if: steps.gate.outputs.should_run == 'true' && hashFiles('.runtime/pickup/weather-refresh-needed') != ''
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: |
+          node shared/runtime-state.mjs pull weather
+          node weather/update.mjs
+          node shared/runtime-state.mjs push weather
+
       - name: Signal installed web app
         if: steps.gate.outputs.should_run == 'true'
         env:
