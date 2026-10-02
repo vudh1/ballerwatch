@@ -28,7 +28,7 @@ The hourly **Promote production release** workflow:
 3. on the automatic path, waits until the candidate has soaked for at least 24 hours;
 4. creates/publishes the GitHub Release/tag;
 5. advances `production` to that exact commit;
-6. release-triggered deploy workflows deploy the tagged version.
+6. Worker/Calendar/weather/web-runtime release listeners deploy the tagged version, while the promoter explicitly dispatches Pages from `production` to satisfy the GitHub Pages environment boundary.
 
 A manual run skips the soak but still requires validation.
 
