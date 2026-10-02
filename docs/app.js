@@ -23,6 +23,11 @@ const els = {
   notificationBadge: document.querySelector("#notification-badge"),
   notificationDialog: document.querySelector("#notification-dialog"),
   closeNotifications: document.querySelector("#close-notifications"),
+  notificationReader: document.querySelector("#notification-reader"),
+  closeNotificationReader: document.querySelector("#close-notification-reader"),
+  notificationReaderTitle: document.querySelector("#notification-reader-title"),
+  notificationReaderBody: document.querySelector("#notification-reader-body"),
+  notificationReaderTime: document.querySelector("#notification-reader-time"),
   bellPushToggle: document.querySelector("#bell-push-toggle"),
   bellPushStatus: document.querySelector("#bell-push-status"),
   form: document.querySelector("#question-form"),
@@ -54,6 +59,7 @@ const els = {
 let config = null;
 let currentNextGame = null;
 let currentCalendar = null;
+let currentBoardEntries = [];
 let selectedCalendarDate = "";
 let selectedCalendarGameId = "";
 let serviceWorkerRegistration = null;
@@ -67,6 +73,8 @@ let feedbackId = "";
 let feedbackInFlight = false;
 
 const OWNER_TOKEN_KEY = "ballerwatch-owner-token";
+const NOTIFICATION_READ_KEY = "ballerwatch-notification-read-v1";
+const NOTIFICATION_DELETED_KEY = "ballerwatch-notification-deleted-v1";
 const LIVE_DATA_REFRESH_MS = 60_000;
 const APP_UPDATE_CHECK_MS = 5 * 60_000;
 
@@ -435,35 +443,147 @@ function updateNotificationBadge(count) {
   els.notificationBadge.hidden = false;
 }
 
-function renderBoard(entries) {
-  els.board.replaceChildren();
-  updateNotificationBadge(entries.length);
+function storedNotificationIds(key) {
+  try {
+    const value = JSON.parse(localStorage.getItem(key) || "[]");
+    return new Set(Array.isArray(value) ? value.map(String) : []);
+  } catch {
+    return new Set();
+  }
+}
 
-  if (!entries.length) {
+function saveNotificationIds(key, values) {
+  try {
+    localStorage.setItem(key, JSON.stringify([...values].slice(-160)));
+  } catch {}
+}
+
+function notificationId(item) {
+  return String(
+    item?.id ||
+    [item?.createdAt || "", item?.title || "", item?.body || ""].join("|"),
+  );
+}
+
+function notificationTimeText(item) {
+  const date = new Date(item?.createdAt || "");
+  return Number.isNaN(date.getTime())
+    ? ""
+    : new Intl.DateTimeFormat(undefined, {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      }).format(date);
+}
+
+function notificationViewState(entries = currentBoardEntries) {
+  const read = storedNotificationIds(NOTIFICATION_READ_KEY);
+  const deleted = storedNotificationIds(NOTIFICATION_DELETED_KEY);
+  const visible = entries.filter((item) => !deleted.has(notificationId(item)));
+  const unreadCount = visible.filter((item) => !read.has(notificationId(item))).length;
+  return { read, deleted, visible, unreadCount };
+}
+
+function markNotificationRead(item) {
+  const id = notificationId(item);
+  const read = storedNotificationIds(NOTIFICATION_READ_KEY);
+  read.add(id);
+  saveNotificationIds(NOTIFICATION_READ_KEY, read);
+  updateNotificationBadge(notificationViewState().unreadCount);
+}
+
+function deleteNotification(item) {
+  const deleted = storedNotificationIds(NOTIFICATION_DELETED_KEY);
+  deleted.add(notificationId(item));
+  saveNotificationIds(NOTIFICATION_DELETED_KEY, deleted);
+  renderBoard(currentBoardEntries);
+}
+
+function openNotification(item) {
+  markNotificationRead(item);
+  els.notificationReaderTitle.textContent = item.title || "BallerWatch update";
+  els.notificationReaderBody.textContent = item.body || "";
+  els.notificationReaderTime.textContent = notificationTimeText(item);
+  if (els.notificationDialog.open) els.notificationDialog.close();
+  els.notificationReader.showModal();
+}
+
+function closeNotificationReader() {
+  els.notificationReader.close();
+  renderBoard(currentBoardEntries);
+  els.notificationDialog.showModal();
+}
+
+function renderBoard(entries) {
+  currentBoardEntries = Array.isArray(entries) ? entries : [];
+  const { read, visible, unreadCount } = notificationViewState(currentBoardEntries);
+  els.board.replaceChildren();
+  updateNotificationBadge(unreadCount);
+
+  if (!visible.length) {
     const empty = document.createElement("p");
     empty.className = "muted";
-    empty.textContent = "No web notifications yet.";
+    empty.textContent = currentBoardEntries.length
+      ? "No notifications left on this device."
+      : "No web notifications yet.";
     els.board.append(empty);
     return;
   }
 
-  for (const item of entries) {
+  for (const item of visible) {
+    const id = notificationId(item);
     const article = document.createElement("article");
     article.className = "notice";
+    article.classList.toggle("is-unread", !read.has(id));
+    article.tabIndex = 0;
+    article.setAttribute("role", "button");
+    article.setAttribute("aria-label", `Read ${item.title || "BallerWatch notification"}`);
 
     const title = document.createElement("h3");
     title.textContent = item.title || "BallerWatch update";
 
     const body = document.createElement("p");
+    body.className = "notice-preview";
     body.textContent = item.body || "";
 
     const time = document.createElement("time");
-    const date = new Date(item.createdAt);
-    time.textContent = Number.isNaN(date.getTime())
-      ? ""
-      : new Intl.DateTimeFormat(undefined, {
-          month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
-        }).format(date);
+    time.textContent = notificationTimeText(item);
+
+    let touchStartX = null;
+    let touchStartY = null;
+    let deletedBySwipe = false;
+
+    article.addEventListener("touchstart", (event) => {
+      const touch = event.changedTouches?.[0];
+      if (!touch) return;
+      touchStartX = touch.clientX;
+      touchStartY = touch.clientY;
+      deletedBySwipe = false;
+    }, { passive: true });
+
+    article.addEventListener("touchend", (event) => {
+      const touch = event.changedTouches?.[0];
+      if (!touch || touchStartX == null || touchStartY == null) return;
+      const deltaX = touch.clientX - touchStartX;
+      const deltaY = touch.clientY - touchStartY;
+      if (deltaX < -64 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+        event.preventDefault();
+        deletedBySwipe = true;
+        deleteNotification(item);
+      }
+      touchStartX = null;
+      touchStartY = null;
+    }, { passive: false });
+
+    article.addEventListener("click", () => {
+      if (!deletedBySwipe) openNotification(item);
+    });
+    article.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      openNotification(item);
+    });
 
     article.append(title, body, time);
     els.board.append(article);
@@ -800,23 +920,33 @@ async function loadNextGame() {
 
 async function shareNextGame() {
   if (!currentNextGame) return;
-  const maps = googleMapsUrl(currentNextGame.mapsQuery);
-  const text = currentNextGame.shareText || currentNextGame.title || "BallerWatch game";
+  const destination =
+    currentNextGame.mapsQuery ||
+    currentNextGame.address ||
+    currentNextGame.location ||
+    "";
+  const maps = googleMapsUrl(destination);
+
   try {
     if (navigator.share) {
+      els.nextGameHint.textContent =
+        "Choose Tesla in the share sheet to send this destination to your car.";
       await navigator.share({
-        title: "BallerWatch next game",
-        text,
+        title: "Send to Tesla",
+        text: destination || currentNextGame.title || "BallerWatch game",
         ...(maps ? { url: maps } : {}),
       });
-      els.nextGameHint.textContent = "Shared.";
+      els.nextGameHint.textContent = "Destination shared.";
       return;
     }
-    await navigator.clipboard.writeText([text, maps].filter(Boolean).join("\n"));
-    els.nextGameHint.textContent = "Game details copied.";
+
+    await navigator.clipboard.writeText(destination || maps);
+    els.nextGameHint.textContent =
+      "Destination copied. Open Tesla → Locations to send it to your car.";
+    window.location.href = "https://ts.la/app";
   } catch (error) {
     if (error?.name !== "AbortError") {
-      els.nextGameHint.textContent = "Unable to share from this device.";
+      els.nextGameHint.textContent = "Unable to share this destination.";
     }
   }
 }
@@ -881,7 +1011,8 @@ async function currentSubscription() {
 }
 
 function setPushUi({ status, enabled, toggleDisabled = false, color = "" }) {
-  els.bellPushStatus.textContent = status;
+  els.bellPushStatus.textContent = enabled ? "On" : "Off";
+  els.bellPushStatus.title = status || "";
   els.bellPushStatus.style.color = color;
   els.bellPushToggle.checked = enabled;
   els.bellPushToggle.disabled = toggleDisabled;
@@ -954,7 +1085,7 @@ async function enablePush() {
       body: JSON.stringify({ subscription: subscription.toJSON() }),
     });
   } catch (error) {
-    els.bellPushStatus.textContent = error.message;
+    els.bellPushStatus.title = error.message;
   } finally {
     await updatePushStatus();
   }
@@ -1139,6 +1270,7 @@ els.ownerDisconnect.addEventListener("click", disconnectOwnerDevice);
 els.nextGameShare.addEventListener("click", shareNextGame);
 els.testNotification.addEventListener("click", scheduleTestNotification);
 els.closeNotifications.addEventListener("click", () => els.notificationDialog.close());
+els.closeNotificationReader.addEventListener("click", closeNotificationReader);
 els.refresh.addEventListener("click", loadBoard);
 els.bellPushToggle.addEventListener("change", async () => {
   const requested = els.bellPushToggle.checked;
