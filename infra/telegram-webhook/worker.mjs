@@ -1,7 +1,7 @@
 /**
  * Routes Telegram webhooks, edge Q&A, runtime-state APIs, health checks, and scheduled edge work.
  *
- * Updated v5.6.0: adds answer-scoped signed feedback authorization, preserves exact opted-in wrong-answer exchanges only inside encrypted runtime state, and keeps owner pairing separate from feedback.
+ * Updated v5.7.0: adds app-native owner password sign-in, routes production workflow dispatches through the promoted production ref, and keeps pairing as a recovery/bootstrap path.
  */
 import {
   fetchPickupSnapshot,
@@ -18,6 +18,7 @@ import { ALL_RUNTIME_FILE_PATHS } from "../../shared/runtime-paths.mjs";
 import { DEFAULT_LEAGUE_TEAMS } from "../../shared/defaults.mjs";
 
 const REPO = "vudh1/ballerwatch";
+const PRODUCTION_REF = "production";
 const CONTEXT_CACHE_SECONDS = 600;
 const EDGE_AI_DAILY_LIMIT = 25;
 const EDGE_AI_TIMEOUT_MS = 1200;
@@ -107,6 +108,82 @@ export async function verifyOwnerToken(env, token) {
   } catch {
     return false;
   }
+}
+
+
+export function normalizeOwnerPassword(value) {
+  const password = String(value ?? "");
+  if (password.length < 12 || password.length > 200) {
+    throw new Error("Owner password must be between 12 and 200 characters.");
+  }
+  return password;
+}
+
+function ownerPasswordMessage(salt, password) {
+  return new TextEncoder().encode(
+    `owner-password:v1:${String(salt || "")}:${String(password || "")}`,
+  );
+}
+
+export async function createOwnerPasswordRecord(env, value) {
+  const password = normalizeOwnerPassword(value);
+  const salt = bytesB64Url(crypto.getRandomValues(new Uint8Array(18)));
+  const digest = new Uint8Array(
+    await crypto.subtle.sign(
+      "HMAC",
+      await ownerSigningKey(env),
+      ownerPasswordMessage(salt, password),
+    ),
+  );
+  return {
+    v: 1,
+    salt,
+    digest: bytesB64Url(digest),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+export async function verifyOwnerPassword(env, value, record) {
+  if (
+    record?.v !== 1 ||
+    !record?.salt ||
+    !record?.digest ||
+    typeof value !== "string"
+  ) {
+    return false;
+  }
+  try {
+    return crypto.subtle.verify(
+      "HMAC",
+      await ownerSigningKey(env),
+      b64UrlBytes(record.digest),
+      ownerPasswordMessage(record.salt, value),
+    );
+  } catch {
+    return false;
+  }
+}
+
+async function ownerLoginAllowed(request) {
+  if (typeof caches === "undefined" || !caches.default) return true;
+  const source = [
+    request.headers.get("cf-connecting-ip") || "",
+    request.headers.get("user-agent") || "",
+  ].join("|");
+  const key = await sha256Hex(source || "unknown-owner-login");
+  const cacheRequest = new Request(
+    `https://ballerwatch.internal/owner-login/${key}`,
+  );
+  const hit = await caches.default.match(cacheRequest);
+  const attempts = Number(await hit?.text().catch(() => "0") || 0);
+  if (attempts >= 10) return false;
+  await caches.default.put(
+    cacheRequest,
+    new Response(String(attempts + 1), {
+      headers: { "cache-control": "public,max-age=600" },
+    }),
+  );
+  return true;
 }
 
 
@@ -231,7 +308,7 @@ async function decryptState(payload, env) {
   }
 }
 
-async function githubFile(env, path, ref = "main") {
+async function githubFile(env, path, ref = PRODUCTION_REF) {
   const response = await fetch(
     `https://api.github.com/repos/${REPO}/contents/${path}?ref=${encodeURIComponent(ref)}`,
     {
@@ -332,7 +409,10 @@ async function pairOwnerDevice(env, code) {
 
   // Keep the temporary code valid until its existing expiry so the owner can
   // authorize more than one device without requesting a fresh code per device.
-  return issueOwnerToken(env);
+  return {
+    ...(await issueOwnerToken(env)),
+    passwordConfigured: Boolean(settings.webOwnerPassword?.digest),
+  };
 }
 
 async function ownerSettingsView(env) {
@@ -340,7 +420,52 @@ async function ownerSettingsView(env) {
   return {
     ownerName: cleanText(settings.ownerRsvpName || env.OWNER_RSVP_NAME || "", 120),
     teams,
+    passwordConfigured: Boolean(settings.webOwnerPassword?.digest),
   };
+}
+
+async function saveOwnerPassword(env, value) {
+  const passwordRecord = await createOwnerPasswordRecord(env, value);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const record = await githubStateRecord(env, "state/listener.json");
+      const currentSettings = record.value?.settings
+        ? await decryptState(record.value.settings, env)
+        : {};
+      const next = {
+        ...(record.value && typeof record.value === "object" ? record.value : {}),
+        lastUpdateId: Number(record.value?.lastUpdateId || 0),
+        settings: await encryptState(
+          {
+            ...(currentSettings && typeof currentSettings === "object"
+              ? currentSettings
+              : {}),
+            webOwnerPassword: passwordRecord,
+          },
+          env,
+        ),
+      };
+      await githubStatePut(
+        env,
+        "state/listener.json",
+        next,
+        record.sha,
+        "runtime(owner): update web owner password",
+      );
+      return passwordRecord;
+    } catch (error) {
+      if (attempt === 1) throw error;
+    }
+  }
+  throw new Error("Unable to update owner password.");
+}
+
+async function loginOwnerDevice(env, password) {
+  const { settings } = await ownerSettingsRecord(env);
+  if (!(await verifyOwnerPassword(env, String(password ?? ""), settings.webOwnerPassword))) {
+    return null;
+  }
+  return issueOwnerToken(env);
 }
 
 export function normalizeOwnerSettingsInput(body) {
@@ -608,7 +733,7 @@ async function loadGitHubSnapshot(env) {
         githubFile(env, "league/state/today.json", "runtime-state"),
         githubFile(env, "league/state/teams.json", "runtime-state"),
         githubFile(env, "state/listener.json", "runtime-state").catch(() => null),
-        githubFile(env, "features/versions.json", "main"),
+        githubFile(env, "features/versions.json", PRODUCTION_REF),
       ]);
 
     const [pickup, pickupPrivate, league, today, teamsPayload, settings] = await Promise.all([
@@ -704,7 +829,7 @@ async function dispatchWorkflow(env, workflow, inputs = {}) {
         "x-github-api-version": "2022-11-28",
       },
       body: JSON.stringify({
-        ref: "main",
+        ref: PRODUCTION_REF,
         ...(Object.keys(inputs).length ? { inputs } : {}),
       }),
     },
@@ -1833,13 +1958,79 @@ export default {
       }
     }
 
+    if (request.method === "POST" && url.pathname === "/web/owner/login") {
+      if (!(await ownerLoginAllowed(request))) {
+        return webJson(
+          request,
+          { ok: false, error: "Too many sign-in attempts. Try again in about 10 minutes." },
+          { status: 429 },
+        );
+      }
+
+      let body;
+      try { body = await request.json(); }
+      catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
+
+      try {
+        const signedIn = await loginOwnerDevice(env, body?.password);
+        if (!signedIn) {
+          return webJson(
+            request,
+            {
+              ok: false,
+              error: "Owner password is incorrect or has not been configured yet. Use pairing-code recovery if needed.",
+            },
+            { status: 401 },
+          );
+        }
+        return webJson(request, { ok: true, ...signedIn });
+      } catch (error) {
+        console.error("Owner password sign-in failed", error);
+        return webJson(
+          request,
+          { ok: false, error: "Owner sign-in is temporarily unavailable." },
+          { status: 503 },
+        );
+      }
+    }
+
+    if (request.method === "POST" && url.pathname === "/web/owner/password") {
+      if (!(await verifyOwnerToken(env, bearerToken(request)))) {
+        return webJson(request, { ok: false, error: "Owner sign-in is required." }, { status: 401 });
+      }
+
+      let body;
+      try { body = await request.json(); }
+      catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
+
+      try {
+        await saveOwnerPassword(env, body?.password);
+        return webJson(request, {
+          ok: true,
+          passwordConfigured: true,
+          message: "Owner password saved. New devices can sign in directly.",
+        });
+      } catch (error) {
+        const message = cleanText(error?.message, 200);
+        const status = /between 12 and 200/.test(message) ? 400 : 503;
+        return webJson(
+          request,
+          {
+            ok: false,
+            error: status === 400 ? message : "Unable to update owner password right now.",
+          },
+          { status },
+        );
+      }
+    }
+
     if (
       (request.method === "GET" || request.method === "POST") &&
       url.pathname === "/web/owner/settings"
     ) {
       const token = bearerToken(request);
       if (!(await verifyOwnerToken(env, token))) {
-        return webJson(request, { ok: false, error: "Owner pairing is required." }, { status: 401 });
+        return webJson(request, { ok: false, error: "Owner sign-in is required." }, { status: 401 });
       }
 
       if (request.method === "GET") {
