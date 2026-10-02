@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           ref: production
           fetch-depth: 1
@@ -35,7 +35,7 @@ jobs:
 
       - name: Restore encrypted failover state cache
         if: steps.gate.outputs.should_run == 'true'
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: .runtime/failover/pickup.json
           key: ballerwatch-runtime-pickup-${{ github.run_id }}
@@ -111,7 +111,7 @@ jobs:
 
       - name: Save encrypted failover state cache
         if: always() && steps.gate.outputs.should_run == 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: .runtime/failover/pickup.json
           key: ballerwatch-runtime-pickup-${{ github.run_id }}
