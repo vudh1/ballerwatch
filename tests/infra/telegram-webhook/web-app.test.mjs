@@ -242,3 +242,90 @@ test("calendar exposes approximate weather markers", () => {
   assert.equal(calendar.games[0].weatherApproximate, true);
   assert.equal(calendar.games[0].weather.rainProbability, 30);
 });
+
+
+test("completed current-day match is excluded from next game and calendar", () => {
+  const snapshot = {
+    pickup: {
+      dates: [
+        { date: "2099-10-08" },
+        { date: "2099-10-09" },
+      ],
+      events: {
+        "2099-10-08": {
+          ok: true,
+          reserved: 16,
+          capacity: 16,
+          startTime: "20:30",
+          endTime: "22:30",
+        },
+        "2099-10-09": {
+          ok: true,
+          reserved: 10,
+          capacity: 16,
+          startTime: "20:00",
+          endTime: "22:00",
+        },
+      },
+    },
+    pickupPrivate: {
+      events: {
+        "2099-10-08": {
+          fieldName: "Old Field",
+          address: "Seattle, WA",
+        },
+        "2099-10-09": {
+          fieldName: "Next Field",
+          address: "Seattle, WA",
+        },
+      },
+    },
+    league: { teams: [] },
+  };
+
+  const now = new Date("2099-10-08T22:31:00-07:00");
+  const next = webNextGameDetails(snapshot, now);
+  assert.equal(next.date, "2099-10-09");
+  assert.equal(next.location, "Next Field");
+
+  const calendar = webCalendarDetails(
+    snapshot,
+    {},
+    14,
+    "2099-10-08",
+    now,
+  );
+  assert.deepEqual(calendar.games.map((game) => game.date), ["2099-10-09"]);
+});
+
+test("current match remains eligible until its end time", () => {
+  const snapshot = {
+    pickup: {
+      dates: [{ date: "2099-10-08" }],
+      events: {
+        "2099-10-08": {
+          ok: true,
+          reserved: 12,
+          capacity: 16,
+          startTime: "20:30",
+          endTime: "22:30",
+        },
+      },
+    },
+    pickupPrivate: {
+      events: {
+        "2099-10-08": {
+          fieldName: "Current Field",
+          address: "Seattle, WA",
+        },
+      },
+    },
+    league: { teams: [] },
+  };
+
+  const details = webNextGameDetails(
+    snapshot,
+    new Date("2099-10-08T22:29:00-07:00"),
+  );
+  assert.equal(details.date, "2099-10-08");
+});
