@@ -15,7 +15,7 @@
         "Kept /webpair as a first-time bootstrap and recovery option; paired devices can set or rotate the owner password from Settings.",
         "Stores only a server-keyed salted password verifier inside encrypted runtime state; plaintext owner passwords are never persisted or sent through GitHub Actions.",
         "Introduced a production branch and GitHub Release promotion gate so merging product code to main no longer deploys the Pages app, Worker, Calendar bridge, weather bootstrap, or web runtime immediately.",
-        "Added a daily production promoter that requires a green validation run and at least a 24-hour candidate soak before publishing the version's GitHub Release; manual promotion can publish the validated version immediately.",
+        "Added an hourly production eligibility check that requires a green validation run and at least a 24-hour candidate soak before publishing the version's GitHub Release; manual promotion can publish the validated version immediately.",
         "Pinned watcher, listener, watchdog, and external scheduler runtime execution to the promoted production branch so unreleased main code does not silently become production behavior.",
         "Changed repository versioning policy so documentation-only changes, behavior-preserving refactors, tests, CI/workflow maintenance, formatting, and other internal housekeeping do not receive a new SemVer version.",
         "Decoupled the PWA/Worker from mandatory Telegram credentials: owner-authenticated web settings, public-safe Q&A, Web Push, and core Worker deployment can remain available with the Telegram adapter disabled."
