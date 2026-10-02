@@ -1,7 +1,19 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "5.4.0",
+  "currentVersion": "5.4.1",
   "releases": [
+    {
+      "version": "5.4.1",
+      "date": "2026-10-02",
+      "type": "patch",
+      "source": "maintenance",
+      "title": "Current documentation alignment",
+      "changes": [
+        "Updated README to describe the implemented double-tap/double-click wrong-answer feedback toggle instead of the retired long-press gesture.",
+        "Updated README to match the v5.4 encrypted review design: original owner question/answer text remains encrypted for at most 48 hours, while the readable review index contains only sanitized engineering signals.",
+        "Kept runtime code, PWA assets, notification behavior, and service-worker cache unchanged because this release corrects documentation only."
+      ]
+    },
     {
       "version": "5.4.0",
       "date": "2026-10-02",
