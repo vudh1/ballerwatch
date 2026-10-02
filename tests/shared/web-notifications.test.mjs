@@ -36,3 +36,36 @@ test("stores notification board entries encrypted and returns sanitized metadata
   assert.equal(loaded.entries.length, 1);
   assert.equal(loaded.entries[0].tag, "pickup-2026-10-08");
 });
+
+
+test("suppresses exact duplicate board entries and does not queue another push", (t) => {
+  const cwd = process.cwd();
+  const env = process.env;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ballerwatch-board-dedupe-"));
+  process.chdir(dir);
+  process.env = { ...env, TRACKER_STATE_KEY: "synthetic-board-key" };
+  t.after(() => {
+    process.chdir(cwd);
+    process.env = env;
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  const first = appendWebNotification("pickup", {
+    title: "Pickup update",
+    body: "12/16 reserved - Wed 10/7",
+    tag: "pickup-2026-10-07",
+  }, { now: new Date("2026-10-02T16:00:00Z") });
+
+  fs.rmSync(".runtime/web-push-pending", { force: true });
+
+  const second = appendWebNotification("pickup", {
+    title: "Pickup update",
+    body: "12/16 reserved - Wed 10/7",
+    tag: "pickup-2026-10-07",
+  }, { now: new Date("2026-10-02T17:00:00Z") });
+
+  const loaded = loadWebNotificationChannel("pickup");
+  assert.equal(loaded.entries.length, 1);
+  assert.equal(second.id, first.id);
+  assert.equal(fs.existsSync(".runtime/web-push-pending"), false);
+});
