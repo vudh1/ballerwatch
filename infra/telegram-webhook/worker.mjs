@@ -334,13 +334,19 @@ async function decryptState(payload, env) {
   }
 }
 
+function githubContentsToken(env) {
+  const token = cleanText(env.GITHUB_CONTENTS_TOKEN, 5000);
+  if (!token) throw new Error("GitHub contents token is unavailable.");
+  return token;
+}
+
 async function githubFile(env, path, ref = PRODUCTION_REF) {
   const response = await fetch(
     `https://api.github.com/repos/${REPO}/contents/${path}?ref=${encodeURIComponent(ref)}`,
     {
       headers: {
         accept: "application/vnd.github+json",
-        authorization: `Bearer ${env.GITHUB_DISPATCH_TOKEN}`,
+        authorization: `Bearer ${githubContentsToken(env)}`,
         "user-agent": "ballerwatch-cloudflare-fastpath",
         "x-github-api-version": "2022-11-28",
       },
@@ -366,7 +372,7 @@ async function githubStateRecord(env, path) {
     {
       headers: {
         accept: "application/vnd.github+json",
-        authorization: `Bearer ${env.GITHUB_DISPATCH_TOKEN}`,
+        authorization: `Bearer ${githubContentsToken(env)}`,
         "user-agent": "ballerwatch-cloudflare-history",
         "x-github-api-version": "2022-11-28",
       },
@@ -392,7 +398,7 @@ async function githubStatePut(env, path, value, sha, message) {
       method: "PUT",
       headers: {
         accept: "application/vnd.github+json",
-        authorization: `Bearer ${env.GITHUB_DISPATCH_TOKEN}`,
+        authorization: `Bearer ${githubContentsToken(env)}`,
         "content-type": "application/json",
         "user-agent": "ballerwatch-cloudflare-history",
         "x-github-api-version": "2022-11-28",
@@ -1919,31 +1925,55 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (request.method === "GET" && url.pathname === "/health") {
-      return Response.json({
-        ok:true,
-        service:"ballerwatch-worker",
-        fastPath:true,
-        runtime:"cloudflare-worker",
-        storage:"github-runtime-state",
-        scheduler:"cron-job.org",
-        telegramEnabled:Boolean(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID),
-        kv:false,
-      });
+      try {
+        const snapshot = await loadSnapshot(env);
+        return Response.json({
+          ok:true,
+          ready:true,
+          service:"ballerwatch-worker",
+          fastPath:true,
+          runtime:"cloudflare-worker",
+          storage:"github-runtime-state",
+          scheduler:"cron-job.org",
+          version:String(snapshot?.version || "unknown"),
+          source:String(snapshot?.source || "unknown"),
+          telegramEnabled:Boolean(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID),
+          kv:false,
+        });
+      } catch {
+        return Response.json({
+          ok:false,
+          ready:false,
+          service:"ballerwatch-worker",
+          runtime:"cloudflare-worker",
+          storage:"github-runtime-state",
+          error:"Runtime state is unavailable.",
+        }, { status: 503 });
+      }
     }
     if (request.method === "OPTIONS" && url.pathname.startsWith("/web/")) {
       return new Response(null, { status: 204, headers: webCorsHeaders(request) });
     }
     if (request.method === "GET" && url.pathname === "/web/config") {
-      const [push, snapshot] = await Promise.all([
-        webPushConfig(env),
-        loadSnapshot(env).catch(() => null),
-      ]);
-      return webJson(request, {
-        ok: true,
-        version: String(snapshot?.version || "unknown"),
-        push,
-        appUrl: "https://vudh1.github.io/ballerwatch/",
-      });
+      try {
+        const [push, snapshot] = await Promise.all([
+          webPushConfig(env),
+          loadSnapshot(env),
+        ]);
+        return webJson(request, {
+          ok: true,
+          ready: true,
+          version: String(snapshot?.version || "unknown"),
+          push,
+          appUrl: "https://vudh1.github.io/ballerwatch/",
+        });
+      } catch {
+        return webJson(
+          request,
+          { ok: false, ready: false, error: "BallerWatch data is temporarily unavailable." },
+          { status: 503 },
+        );
+      }
     }
     if (request.method === "GET" && url.pathname === "/web/board") {
       const entries = await webBoard(env, url.searchParams.get("limit") || 30);
