@@ -1,6 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { gamesOnDate, nextGame, resolveScheduleDate } from "../../../infra/telegram-webhook/worker.mjs";
+import {
+  gamesOnDate,
+  issueFeedbackToken,
+  issueOwnerToken,
+  nextGame,
+  resolveScheduleDate,
+  verifyFeedbackToken,
+  verifyOwnerToken,
+} from "../../../infra/telegram-webhook/worker.mjs";
 
 function snapshot() {
   return {
@@ -65,4 +73,26 @@ test("next game considers both league and pickup schedules", () => {
   const result = nextGame(snapshot());
   assert.equal(result.date, "2099-10-05");
   assert.match(result.reply, /Team Alpha vs Team Beta/);
+});
+
+
+test("feedback authorization is scoped to the exact answer and never grants owner access", async () => {
+  const env = { TRACKER_STATE_KEY: "test-feedback-signing-key" };
+  const question = "What time is Thursday?";
+  const reply = "Thursday pickup starts at 7:15 PM.";
+
+  const token = await issueFeedbackToken(env, question, reply);
+  assert.equal(await verifyFeedbackToken(env, token, question, reply), true);
+  assert.equal(await verifyFeedbackToken(env, token, question, reply + " changed"), false);
+  assert.equal(await verifyOwnerToken(env, token), false);
+});
+
+test("owner tokens remain owner-only after feedback tokens are introduced", async () => {
+  const env = { TRACKER_STATE_KEY: "test-owner-signing-key" };
+  const issued = await issueOwnerToken(env);
+  assert.equal(await verifyOwnerToken(env, issued.token), true);
+  assert.equal(
+    await verifyFeedbackToken(env, issued.token, "question", "reply"),
+    false,
+  );
 });

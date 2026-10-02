@@ -1,7 +1,7 @@
 /**
  * Implements the GitHub-hosted Telegram fallback bot, state-changing commands, and deterministic replies.
  *
- * Documentation baseline: v5.4.0. The listener is webhook-input only, uses deterministic date/detail routing before AI fallback, and stores owner review source only through encrypted runtime state. Unsolicited setup, health, and release reminders are disabled.
+ * Documentation baseline: v5.6.0. The listener is webhook-input only, uses deterministic date/detail routing before AI fallback, supports a reusable short-lived multi-device web pairing window, and stores review source only through encrypted runtime state. Unsolicited setup, health, and release reminders are disabled.
  */
 import { recordUnknownQuestion, refreshPublicRequests } from "../shared/feature-requests.mjs";
 import { answerUnknownWithAi } from "../shared/ai-fallback.mjs";
@@ -51,22 +51,16 @@ function handleWebPairCommand(text, settings) {
     reply: [
       `Owner pairing code: ${code}`,
       "Expires in 10 minutes.",
-      "Enter it in BallerWatch Settings on the device you want to authorize.",
+      "You can enter this same code in BallerWatch Settings on multiple devices before it expires.",
     ].join("\n"),
   };
 }
 
 function applyWebSettingsEvent(event, settings) {
   if (event?.action === "consume-pair-code") {
-    const expectedHash = normalizeText(event?.pairCodeHash || "");
-    if (!expectedHash || expectedHash !== normalizeText(settings?.webPairCodeHash || "")) {
-      throw new Error("Web pairing code no longer matches current listener state.");
-    }
-    return {
-      ...settings,
-      webPairCodeHash: "",
-      webPairExpiresAt: "",
-    };
+    // Legacy Workers may still dispatch this during a rolling deploy.
+    // Pairing codes are intentionally reusable until expiry starting in v5.6.
+    return settings;
   }
 
   const ownerRsvpName = normalizeText(event?.ownerName || "").slice(0, 120);

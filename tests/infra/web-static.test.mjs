@@ -16,13 +16,13 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=5\.5\.0/);
-  assert.match(html, /app\.js\?v=5\.5\.0/);
+  assert.match(html, /styles\.css\?v=5\.6\.0/);
+  assert.match(html, /app\.js\?v=5\.6\.0/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v5-5-0-shell/);
+  assert.match(sw, /ballerwatch-v5-6-0-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -63,7 +63,7 @@ test("Home Screen install card is removed in standalone mode and notifications u
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=5\.5\.0/);
+  assert.match(app, /sw\.js\?v=5\.6\.0/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -174,20 +174,33 @@ test("notification test control is deliberately subtle", () => {
 });
 
 
-test("answer supports owner-only double-click feedback toggle and cancellation", () => {
+test("answer feedback is one-tap, answer-scoped, and does not open owner settings", () => {
   const html = fs.readFileSync("docs/index.html", "utf8");
   const app = fs.readFileSync("docs/app.js", "utf8");
+  const css = fs.readFileSync("docs/styles.css", "utf8");
   const worker = fs.readFileSync("infra/telegram-webhook/worker.mjs", "utf8");
   const listener = fs.readFileSync("listener/bot.mjs", "utf8");
   const history = fs.readFileSync("shared/chat-history.mjs", "utf8");
 
+  assert.match(html, /id="answer-feedback-button"[^>]*>Wrong answer<\/button>/);
   assert.match(html, /id="answer-feedback-status"/);
+  assert.match(app, /answerFeedbackButton\.addEventListener\("click"/);
   assert.match(app, /addEventListener\("dblclick"/);
-  assert.match(app, /action: "mark"/);
-  assert.match(app, /action: "cancel"/);
-  assert.match(app, /double-tap\/click again to cancel/);
-  assert.doesNotMatch(app, /startAnswerHold|answerHoldTimer|answerHoldStart/);
-  assert.match(worker, /url\.pathname === "\/web\/feedback"/);
+  assert.match(app, /feedbackToken: payload\.feedbackToken \|\| ""/);
+  assert.match(app, /feedbackToken: lastAnswerExchange\.feedbackToken \|\| ""/);
+  assert.match(app, /action: wasSubmitted \? "cancel" : "mark"/);
+  assert.doesNotMatch(
+    app.match(/async function toggleWrongAnswerFeedback\(\)[\s\S]*?\n}\n/)?.[0] || "",
+    /openSettings\(/,
+  );
+  assert.match(app, /Feedback expired\. Ask the question again/);
+  assert.match(css, /\.answer \{[\s\S]*-webkit-user-select:\s*none;[\s\S]*user-select:\s*none;[\s\S]*-webkit-touch-callout:\s*none;[\s\S]*touch-action:\s*manipulation;/);
+  assert.match(app, /addEventListener\("contextmenu", \(event\) => event\.preventDefault\(\)\)/);
+  assert.match(app, /addEventListener\("selectstart", \(event\) => event\.preventDefault\(\)\)/);
+  assert.match(worker, /export async function issueFeedbackToken/);
+  assert.match(worker, /export async function verifyFeedbackToken/);
+  assert.match(worker, /kind: "feedback"/);
+  assert.match(worker, /feedbackAuthorized/);
   assert.match(worker, /action === "cancel"/);
   assert.match(worker, /action: "cancel-feedback"/);
   assert.match(worker, /hint: "negative_feedback"/);
@@ -216,18 +229,27 @@ test("mobile header keeps settings and bell on the same row", () => {
 });
 
 
-test("owner pairing consumes codes through listener workflow and returns web-safe errors", () => {
+test("owner pairing code can authorize multiple devices until expiry", () => {
+  const html = fs.readFileSync("docs/index.html", "utf8");
   const worker = fs.readFileSync("infra/telegram-webhook/worker.mjs", "utf8");
   const listener = fs.readFileSync("listener/bot.mjs", "utf8");
 
   const pairFunction = worker.match(/async function pairOwnerDevice[\s\S]*?\n}\n/);
   assert.ok(pairFunction);
-  assert.match(pairFunction[0], /dispatchWorkflow\(env, "listener\.yml"/);
-  assert.match(pairFunction[0], /action: "consume-pair-code"/);
-  assert.doesNotMatch(pairFunction[0], /githubStatePut/);
+  assert.doesNotMatch(pairFunction[0], /dispatchWorkflow\(env, "listener\.yml"/);
+  assert.doesNotMatch(pairFunction[0], /action: "consume-pair-code"/);
+  assert.match(pairFunction[0], /return issueOwnerToken\(env\)/);
 
-  assert.match(listener, /event\?\.action === "consume-pair-code"/);
-  assert.match(listener, /webPairCodeHash: ""/);
+  assert.match(html, /multiple devices during its 10-minute window/);
+  assert.match(listener, /same code in BallerWatch Settings on multiple devices before it expires/);
+  assert.match(
+    listener,
+    /event\?\.action === "consume-pair-code"[\s\S]*Pairing codes are intentionally reusable until expiry[\s\S]*return settings;/,
+  );
+  assert.doesNotMatch(
+    listener.match(/if \(event\?\.action === "consume-pair-code"\)[\s\S]*?\n  }/)?.[0] || "",
+    /webPairCodeHash:\s*""/,
+  );
   assert.match(worker, /Pairing service is temporarily unavailable/);
   assert.match(worker, /webJson\([\s\S]*status: 503/);
 });
@@ -345,13 +367,22 @@ test("calendar refresh preserves an explicitly selected future game", () => {
 });
 
 
-test("autocomplete stays in document flow instead of overlapping following content", () => {
+test("autocomplete floats above the Ask card without resizing the input row", () => {
   const css = fs.readFileSync("docs/styles.css", "utf8");
-  assert.match(css, /\/\* v5\.1\.4 interaction polish \*\//);
-  assert.match(css, /\.question-suggestions \{[\s\S]*position:\s*static;/);
-  assert.match(css, /\.ask-card \.question-row \{[\s\S]*align-items:\s*start;/);
-  assert.match(css, /\.ask-card \.question-row > button \{[\s\S]*align-self:\s*start;/);
-  assert.match(css, /max-height:\s*min\(14rem, 35vh\)/);
+
+  assert.match(css, /\/\* v5\.6 autocomplete overlay \*\//);
+  assert.match(css, /\.ask-card \{[\s\S]*overflow:\s*visible;/);
+  assert.match(css, /\.ask-card form \{[\s\S]*z-index:\s*10;/);
+  assert.match(css, /\.question-input-wrap \{[\s\S]*position:\s*relative;/);
+  const overlay = css.slice(css.indexOf("/* v5.6 autocomplete overlay */"));
+  assert.match(overlay, /\.question-suggestions \{/);
+  assert.match(overlay, /position:\s*absolute;/);
+  assert.match(overlay, /top:\s*calc\(100% \+ 0\.45rem\);/);
+  assert.match(overlay, /z-index:\s*80;/);
+  assert.match(css, /max-height:\s*min\(18rem, 42vh\)/);
+  assert.match(css, /overflow-y:\s*auto;/);
+  assert.match(css, /overscroll-behavior:\s*contain;/);
+  assert.match(css, /\.ask-card \.question-row > button \{[\s\S]*align-self:\s*center;/);
 });
 
 test("weather refresh is immediate only for schedule-relevant changes", () => {
