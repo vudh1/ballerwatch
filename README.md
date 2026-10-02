@@ -4,10 +4,11 @@ BallerWatch is a small soccer automation system for pickup games and Seattle RAT
 
 It uses Telegram and an installable GitHub Pages web app for questions and alerts, Cloudflare Workers for the webhook/read-only API path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Gemini Flash with Groq fallback for bounded AI assistance, standards-based Web Push for a Telegram-independent notification channel, and Google Calendar for league match sync.
 
-**Current version: 5.2.1**
+**Current version: 5.3.0**
 
 ## Recent changes
 
+- **5.3.0** — Swipe the match spotlight left/right to move between game dates while keeping the calendar highlight synchronized.
 - **5.2.1** — Restore generic Share, keep the notification popup bounded, animate swipe-left deletion, and add local Delete all.
 - **5.2.0** — Notification inbox with unread state/full-screen reading/swipe delete, compact push controls, Tesla destination sharing, and a Telegram footer shortcut.
 - **5.1.5** — Prevent first-launch placeholder hangs during PWA release updates by hydrating live data without a startup reload race.
@@ -108,7 +109,7 @@ It provides:
 
 - an installable Home Screen app shell with a translucent Liquid Glass-inspired dashboard;
 - a redesigned match dashboard with a next-game spotlight, Google Maps directions, and native device sharing;
-- a compact 14-day game calendar for pickup and monitored RATS teams;
+- a compact 14-day game calendar for pickup and monitored RATS teams, synchronized with left/right swipe navigation on the match spotlight;
 - match-window weather showing condition, temperature, and the maximum rain probability during the scheduled game window;
 - a compact notification inbox behind the top-right bell with unread counts, full-screen reading, animated per-device swipe-to-delete, and local Delete all;
 - one-question/one-answer Q&A with slash commands and Google-style full-sentence autocomplete; paired-owner questions join the same privacy-minimized 48-hour review history while anonymous web questions are not retained;

@@ -1855,3 +1855,24 @@ textarea {
     transition: none;
   }
 }
+
+
+/* v5.3 calendar spotlight swipe navigation */
+.spotlight-card {
+  touch-action: pan-y;
+  transition:
+    transform 190ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 160ms ease,
+    border-color 160ms ease;
+  will-change: transform, opacity;
+}
+
+.spotlight-card.is-calendar-swiping {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spotlight-card {
+    transition: none;
+  }
+}

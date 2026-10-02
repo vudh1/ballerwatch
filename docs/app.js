@@ -416,7 +416,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=5.2.1", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=5.3.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -825,6 +825,111 @@ function selectCalendarDate(date, { scrollToSpotlight = false } = {}) {
   }
 }
 
+function calendarGameDates() {
+  if (!currentCalendar?.startDate) return [];
+  const firstDate = currentCalendar.startDate;
+  const lastDate = addIsoDays(firstDate, 13);
+  return [...new Set(
+    (currentCalendar.games || [])
+      .map((game) => game.date)
+      .filter((date) => date >= firstDate && date <= lastDate),
+  )].sort();
+}
+
+function selectAdjacentCalendarGameDate(direction) {
+  const gameDates = calendarGameDates();
+  if (!gameDates.length || !direction) return false;
+
+  const currentDate = selectedCalendarDate || currentNextGame?.date || gameDates[0];
+  let currentIndex = gameDates.indexOf(currentDate);
+  if (currentIndex < 0) currentIndex = direction > 0 ? -1 : gameDates.length;
+
+  const targetDate = gameDates[currentIndex + Math.sign(direction)];
+  if (!targetDate) return false;
+
+  selectCalendarDate(targetDate);
+  return true;
+}
+
+function installSpotlightSwipe() {
+  let touchStartX = null;
+  let touchStartY = null;
+
+  const reset = () => {
+    els.nextGameCard.classList.remove("is-calendar-swiping");
+    els.nextGameCard.style.removeProperty("transform");
+    els.nextGameCard.style.removeProperty("opacity");
+    touchStartX = null;
+    touchStartY = null;
+  };
+
+  els.nextGameCard.addEventListener("touchstart", (event) => {
+    if (event.target.closest?.("a, button")) return;
+    const touch = event.changedTouches?.[0];
+    if (!touch) return;
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+  }, { passive: true });
+
+  els.nextGameCard.addEventListener("touchmove", (event) => {
+    const touch = event.changedTouches?.[0];
+    if (!touch || touchStartX == null || touchStartY == null) return;
+
+    const deltaX = touch.clientX - touchStartX;
+    const deltaY = touch.clientY - touchStartY;
+    if (Math.abs(deltaX) < 8 || Math.abs(deltaX) <= Math.abs(deltaY)) return;
+
+    event.preventDefault();
+    els.nextGameCard.classList.add("is-calendar-swiping");
+    const offset = Math.max(-72, Math.min(72, deltaX));
+    const progress = Math.min(1, Math.abs(offset) / 72);
+    els.nextGameCard.style.transform = `translateX(${offset}px)`;
+    els.nextGameCard.style.opacity = String(1 - progress * 0.18);
+  }, { passive: false });
+
+  els.nextGameCard.addEventListener("touchend", (event) => {
+    const touch = event.changedTouches?.[0];
+    if (!touch || touchStartX == null || touchStartY == null) {
+      reset();
+      return;
+    }
+
+    const deltaX = touch.clientX - touchStartX;
+    const deltaY = touch.clientY - touchStartY;
+    const isHorizontalSwipe =
+      Math.abs(deltaX) >= 56 &&
+      Math.abs(deltaX) > Math.abs(deltaY) * 1.2;
+
+    if (!isHorizontalSwipe) {
+      reset();
+      return;
+    }
+
+    event.preventDefault();
+    const direction = deltaX < 0 ? 1 : -1;
+    const moved = selectAdjacentCalendarGameDate(direction);
+    if (!moved) {
+      reset();
+      return;
+    }
+
+    const entryOffset = direction > 0 ? 30 : -30;
+    els.nextGameCard.style.transform = `translateX(${entryOffset}px)`;
+    els.nextGameCard.style.opacity = "0.82";
+    void els.nextGameCard.offsetWidth;
+    els.nextGameCard.classList.remove("is-calendar-swiping");
+    window.requestAnimationFrame(() => {
+      els.nextGameCard.style.removeProperty("transform");
+      els.nextGameCard.style.removeProperty("opacity");
+    });
+
+    touchStartX = null;
+    touchStartY = null;
+  }, { passive: false });
+
+  els.nextGameCard.addEventListener("touchcancel", reset);
+}
+
 function renderCalendar(calendar) {
   currentCalendar = calendar || null;
   els.calendarGrid.replaceChildren();
@@ -1230,6 +1335,8 @@ async function toggleWrongAnswerFeedback() {
     feedbackInFlight = false;
   }
 }
+
+installSpotlightSwipe();
 
 els.question.addEventListener("input", renderQuestionSuggestions);
 els.question.addEventListener("focus", renderQuestionSuggestions);
