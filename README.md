@@ -2,7 +2,7 @@
 
 BallerWatch is a small soccer operations app for pickup games and Seattle RATS league matches. The installable web app is the primary user surface; Telegram is an optional messaging/recovery adapter.
 
-**Current source version: 5.8.0**
+**Current source version: 5.8.1**
 
 **Production source of truth:** the commit pointed to by `production` and the corresponding published GitHub Release. `main` may be newer without changing the live app.
 
@@ -19,7 +19,7 @@ BallerWatch is a small soccer operations app for pickup games and Seattle RATS l
 
 ## Recent changes
 
-- **5.8.x — User-first settings + runtime encryption hardening.** Settings uses user-facing language, every `runtime-state` file is a complete AES-GCM envelope, desktop carousel edges are softer and easier to hit, and installed iPhone content gets a blurred status-area separation layer.
+- **5.8.x — User-first settings + runtime reliability hardening.** Settings uses user-facing language, every `runtime-state` file is a complete AES-GCM envelope, PWA health now reflects real runtime-state readiness, and the Worker uses separate GitHub content/dispatch credentials so scheduler-token failures cannot silently take game data offline.
 - **5.7.x — Release-gated rollout + standalone sign-in.** Added app-native password sign-in, desktop click navigation, and a separate `production` branch so merging to `main` no longer means immediate deployment.
 - **5.6.x — Frictionless feedback + multi-device recovery.** Wrong-answer feedback became answer-scoped and one-tap; pairing codes became reusable across multiple devices for their 10-minute lifetime.
 - **5.5.x — iPhone-first dashboard.** Reworked the app around the glass dashboard, larger match spotlight, RSVP progress, calendar selection, Ask panel, and notification popover.
@@ -182,7 +182,7 @@ For a product release:
 5. update the version ledger/docs only after implementation is green;
 6. mark the PR ready and squash merge;
 7. leave the candidate on `main` for the default 24-hour soak;
-8. the hourly **Promote production release** check validates the candidate, advances `production`, publishes the GitHub Release/tag, triggers the release-driven runtime deploys, and explicitly dispatches Pages from the promoted `production` ref.
+8. the hourly **Promote production release** check validates the candidate, advances `production`, publishes the GitHub Release/tag, and triggers the release-driven runtime deploys; Pages deploys the promoted `production` ref.
 
 A manual promotion skips the soak but not validation.
 
@@ -190,7 +190,7 @@ Maintenance work—docs, comments, behavior-preserving refactors, test-only chan
 
 ### GitHub Release credential
 
-Use a fine-grained repository secret named `RELEASE_GITHUB_TOKEN` with **Contents: read/write** and **Workflows: read/write**. The workflow permission is required when the tagged product commit changes files under `.github/workflows/`. `CRON_GITHUB_PAT` remains separate for scheduler dispatches.
+Use a fine-grained repository secret named `RELEASE_GITHUB_TOKEN` with **Contents: read/write**, **Workflows: read/write**, **Pages: read/write**, and **Administration: read/write**. The Worker receives this credential as `GITHUB_CONTENTS_TOKEN` for encrypted runtime-state reads/writes. `CRON_GITHUB_PAT` remains separate and dispatch-only.
 
 Promotion fails closed if the available credential cannot publish the GitHub Release; it should not silently move production without the release record.
 
@@ -204,7 +204,7 @@ The workflow set is intentionally split by failure domain rather than by file co
 | **Manual smoke test** | notification-silent live-source validation |
 | **Promote production release** | 24-hour/manual promotion gate and GitHub Release publication |
 | **Deploy GitHub Pages app** | static PWA deployment from `production`, dispatched after Release publication |
-| **Deploy BallerWatch Worker** | Worker deploy, runtime-state migration/audit, optional Telegram setup, normal external-scheduler sync |
+| **Deploy BallerWatch Worker** | Worker deploy, runtime-state migration/audit, live PWA readiness smoke, optional Telegram setup, normal external-scheduler sync |
 | **Deploy Calendar bridge** | Apps Script Calendar bridge |
 | **Web app runtime** | VAPID/push-registration runtime initialization |
 | **Refresh match weather** | notification-silent release/bootstrap weather refresh |
@@ -275,9 +275,9 @@ The state crypto code can still fall back to `TELEGRAM_BOT_TOKEN` for migration 
 
 ### GitHub and scheduling
 
-- `CRON_GITHUB_PAT`
+- `CRON_GITHUB_PAT` — workflow-dispatch credential only.
 - `CRON_JOB_ORG_API_KEY`
-- `RELEASE_GITHUB_TOKEN` — preferred for GitHub Release publication.
+- `RELEASE_GITHUB_TOKEN` — release/Pages credential and the Worker runtime-state content credential.
 
 ### Cloudflare
 
@@ -315,7 +315,7 @@ Run **Actions → Purge current data**, enter `PURGE`, and confirm. The workflow
 - Telegram down/disabled: the PWA, user-password Settings, Web Push, monitoring, and Calendar reconciliation remain usable.
 - Runtime branch temporarily unreadable: workflows may use the encrypted Actions-cache failover snapshot.
 - RATS temporarily unavailable: league logic keeps the validated last-good schedule rather than replacing it with an empty transient result.
-- GitHub Release credential invalid: promotion fails closed; `production` stays pinned.
+- GitHub Release/content credential invalid: promotion or Worker readiness fails closed instead of presenting a green-but-empty PWA.
 
 ## Scale-up principles
 
