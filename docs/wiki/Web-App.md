@@ -187,3 +187,21 @@ While the PWA is open:
 - when a new service worker takes control, the PWA reloads itself automatically.
 
 The green **Live** indicator pulses while online. Explicitly selected future calendar games stay selected across automatic data refreshes.
+
+
+## Schedule-aware weather refresh
+
+The six-hour maintenance run remains the normal periodic weather refresh. BallerWatch also refreshes weather once immediately when a weather-relevant schedule changes:
+
+- pickup date, start/end time, field name, or address;
+- league schedule metadata that requires a Calendar update.
+
+RSVP count, capacity, roster, and waitlist-only changes do **not** trigger a weather request. This prevents the two-minute pickup watcher from turning into a two-minute forecast poll.
+
+## Answer feedback gesture
+
+For paired-owner Q&A, double-tap/double-click an answer to mark it wrong for the next review. Double-tap/double-click the same answer again to cancel that feedback. Cancellation removes the matching private encrypted feedback entry and regenerates the privacy-minimized review signals.
+
+## Question autocomplete layout
+
+Autocomplete suggestions stay inside the Ask section's normal document flow. Opening the suggestion list expands the card and pushes following content down rather than floating text over other UI.
