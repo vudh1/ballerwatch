@@ -1,9 +1,11 @@
 name: Deploy GitHub Pages app
 
 on:
-  release:
-    types: [published]
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/pages.yml"
 
 permissions:
   contents: read
@@ -24,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.release.tag_name || 'production' }}
+          ref: production
           fetch-depth: 1
       - name: Check GitHub Pages activation
         id: pages
