@@ -10,7 +10,7 @@ import { pathToFileURL } from "node:url";
 const SCHEDULE = "schedule.json";
 const STATE = "calendar-snapshot.json";
 const CHANGES = "calendar-changes.json";
-const TELEGRAM_UPDATE = "telegram-update.json";
+const NOTIFICATION_UPDATE = "notification-update.json";
 
 function readJson(file) {
   return JSON.parse(fs.readFileSync(file, "utf8"));
@@ -126,7 +126,7 @@ export async function syncCalendar({
   state.lastAppliedContentHash = feed.contentHash;
   state.lastAppliedAt = now.toISOString();
   writeJson(STATE, state);
-  writeJson(TELEGRAM_UPDATE, {updates: completed});
+  writeJson(NOTIFICATION_UPDATE, {updates: completed});
   return {updates: completed};
 }
 
