@@ -2540,16 +2540,62 @@ export default {
         { status: answer.ok ? 200 : 400 },
       );
     }
+    if (request.method === "POST" && url.pathname === "/web/push/challenge") {
+      if (!webRequestOriginAllowed(request)) {
+        return webJson(request, { ok: false, error: "Untrusted Web Push origin." }, { status: 403 });
+      }
+      if (!(await pushRegistrationAllowed(request))) {
+        return webJson(
+          request,
+          { ok: false, error: "Too many Web Push registration attempts. Try again later." },
+          { status: 429 },
+        );
+      }
+
+      let body;
+      try { body = await request.json(); }
+      catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
+      const endpoint = validWebPushEndpoint(body?.endpoint);
+      if (!endpoint) {
+        await recordPushRegistrationFailure(request);
+        return webJson(request, { ok: false, error: "Invalid Web Push endpoint." }, { status: 400 });
+      }
+      return webJson(request, {
+        ok: true,
+        challenge: await issuePushRegistrationChallenge(env, endpoint),
+        expiresInSeconds: 300,
+      });
+    }
+
     if (
       request.method === "POST" &&
       (url.pathname === "/web/push/subscribe" || url.pathname === "/web/push/unsubscribe")
     ) {
+      if (!webRequestOriginAllowed(request)) {
+        return webJson(request, { ok: false, error: "Untrusted Web Push origin." }, { status: 403 });
+      }
+      if (!(await pushRegistrationAllowed(request))) {
+        return webJson(
+          request,
+          { ok: false, error: "Too many Web Push registration attempts. Try again later." },
+          { status: 429 },
+        );
+      }
+
       let body;
       try { body = await request.json(); }
       catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
       const subscription = validWebSubscription(body?.subscription);
-      if (!subscription) {
-        return webJson(request, { ok: false, error: "Invalid Web Push subscription." }, { status: 400 });
+      if (
+        !subscription ||
+        !(await verifyPushRegistrationChallenge(env, body?.challenge, subscription?.endpoint))
+      ) {
+        await recordPushRegistrationFailure(request);
+        return webJson(
+          request,
+          { ok: false, error: "Invalid or expired Web Push registration challenge." },
+          { status: 400 },
+        );
       }
       const action = url.pathname.endsWith("/unsubscribe") ? "unsubscribe" : "subscribe";
       await dispatchWebRegistration(env, action, subscription);
