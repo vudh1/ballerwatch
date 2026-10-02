@@ -4,16 +4,15 @@ BallerWatch is a small soccer automation system for pickup games and Seattle RAT
 
 It uses Telegram and an installable GitHub Pages web app for questions and alerts, Cloudflare Workers for the webhook/read-only API path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Gemini Flash with Groq fallback for bounded AI assistance, standards-based Web Push for a Telegram-independent notification channel, and Google Calendar for league match sync.
 
-**Current version: 5.5.0**
+**Current version: 5.6.0**
 
 ## Recent changes
 
+- **5.6.x — Frictionless feedback + pairing.** Wrong-answer feedback no longer opens Settings or requires `/webpair`, mobile gets a one-tap feedback control, pairing codes can authorize multiple devices during their 10-minute window, and autocomplete now floats above the Ask card instead of stretching it.
 - **5.5.x — iPhone-first dashboard refresh.** Reworked the web app around the approved demo direction with a larger glass header, date-first match spotlight, RSVP progress, brighter calendar selection, an integrated Ask panel, and a floating notification popover.
-- **5.4.x — Review fidelity + answer reliability.** Exact owner Q&A stays encrypted for 48 hours while readable review signals remain sanitized; weekday time/location questions are deterministic, and match-card/notification layouts are tighter.
+- **5.4.x — Review fidelity + answer reliability.** Exact opted-in/owner review Q&A stays encrypted for 48 hours while readable review signals remain sanitized; weekday time/location questions are deterministic, and match-card/notification layouts are tighter.
 - **5.3.x — Connected match carousel.** Swipe between game dates with equal-size connected cards, stronger match-window weather verification, and duplicate pickup/notification suppression.
 - **5.2.x — Notification inbox + sharing.** Added unread/full-screen notification handling, swipe-to-delete, local Delete all, compact push controls, and generic native game sharing.
-- **5.1.x — Liquid Glass + live refresh.** Introduced the mobile dashboard, calendar selection, pickup capacity, weather fallbacks, automatic data/app refresh, and reliable first launch after releases.
-
 Full release history and Telegram announcement text live in `features/versions.json`.
 
 ## Web app demo
@@ -28,7 +27,7 @@ Try the public-safe web app:
 4. Ask a read-only question such as `What time is Thursday?` or use a slash command like `/next`.
 5. On iPhone, add the site to the Home Screen to try the standalone PWA experience and Web Push controls.
 
-The public demo is read-only. Owner-only settings and wrong-answer feedback require pairing from **Settings**.
+The public demo is read-only. Owner-only settings require pairing from **Settings**; wrong-answer feedback is available directly on each answer without granting settings access.
 
 ## Architecture
 
@@ -107,8 +106,8 @@ It provides:
 - a compact 14-day game calendar for pickup and monitored RATS teams, synchronized with left/right swipe navigation on the match spotlight;
 - match-window weather showing condition, temperature, and the maximum rain probability during the scheduled game window;
 - a compact notification inbox behind the top-right bell with unread counts, full-screen reading, animated per-device swipe-to-delete, and local Delete all;
-- one-question/one-answer Q&A with slash commands and Google-style full-sentence autocomplete; paired-owner questions retain the original question and answer only inside encrypted 48-hour review history while anonymous web questions are not retained;
-- owner-paired double-tap/double-click feedback on an answer to mark it wrong for the next engineering review; repeat the gesture to cancel that feedback;
+- one-question/one-answer Q&A with slash commands and a floating Google-style autocomplete overlay; paired-owner questions retain the original question and answer inside encrypted 48-hour review history, while anonymous questions are retained only if the visitor explicitly marks that answer wrong;
+- a one-tap **Wrong answer** control that uses an answer-scoped signed token instead of owner pairing; desktop double-click remains a shortcut, and feedback can be undone without opening Settings;
 - a compact Web Push On/Off control beside notification Refresh for pickup, real RATS schedule-change, and version notifications;
 - a manual local notification test for confirming iPhone notification display while the app is closed.
 - a Telegram footer shortcut beside GitHub and Wiki.
@@ -117,13 +116,13 @@ On iPhone, open the site in Safari, choose **Share → Add to Home Screen**, ope
 
 The anonymous public web surface remains read-only and deliberately strips RSVP participant names, waitlist names, owner-specific status, secrets, and private settings. An owner-paired device can view/change only the pickup RSVP name and monitored league teams through the Settings gear.
 
-## 48-hour owner review history
+## 48-hour review history
 
 BallerWatch no longer automatically turns every unanswered question into a feature request.
 
 Instead:
 
-1. an owner exchange from the private bot or an owner-paired PWA retains the original question and original bot answer inside private review history;
+1. an owner exchange from the private bot or owner-paired PWA retains the original question and original bot answer inside private review history; an anonymous web exchange is retained only when the visitor explicitly marks that answer wrong;
 2. Groq may add privacy-cleaned classification, summary, and reason metadata for engineering triage, but that generated metadata never replaces the source exchange;
 3. `state/chat-history.json` is AES-GCM encrypted on the `runtime-state` branch and pruned after at most **48 hours**;
 4. only actionable, sanitized signals are copied to the readable `state/chat-review.json`.
