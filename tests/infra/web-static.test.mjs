@@ -624,10 +624,12 @@ test("production rollout is gated by GitHub Releases instead of main pushes", ()
   const watchdog = fs.readFileSync(".github/workflows/watchdog.yml", "utf8");
   const schedules = fs.readFileSync("infra/external-schedules.mjs", "utf8");
 
-  for (const workflow of [pages, worker, webRuntime, calendarBridge]) {
+  for (const workflow of [worker, webRuntime, calendarBridge]) {
     assert.match(workflow, /release:\s*\n\s*types:\s*\[published\]/);
     assert.doesNotMatch(workflow, /push:\s*\n\s*branches:\s*\[main\]/);
   }
+  assert.match(pages, /workflow_dispatch:/);
+  assert.match(pages, /ref:\s*production/);
 
   assert.match(promote, /cron:\s*"37 \* \* \* \*"/);
   assert.match(promote, /86400/);
@@ -644,10 +646,14 @@ test("production rollout is gated by GitHub Releases instead of main pushes", ()
   assert.match(promote, /git fetch --no-tags origin main/);
   assert.match(promote, /git log -1 --format=%H "\$head_sha" -- features\/versions\.json/);
 
-  for (const workflow of [pages, worker, webRuntime, calendarBridge]) {
+  assert.doesNotMatch(pages, /inputs\.release_ref/);
+  assert.doesNotMatch(pages, /github\.event\.release\.tag_name/);
+  for (const workflow of [worker, webRuntime, calendarBridge]) {
     assert.doesNotMatch(workflow, /inputs\.release_ref/);
     assert.match(workflow, /github\.event\.release\.tag_name \|\| 'production'/);
   }
+  assert.match(promote, /Deploy Pages from promoted production/);
+  assert.match(promote, /gh workflow run pages\.yml/);
 
   for (const workflow of [pickup, league, listener, watchdog]) {
     assert.match(workflow, /ref:\s*production/);
