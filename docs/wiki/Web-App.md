@@ -184,7 +184,8 @@ While the PWA is open:
 - returning to the foreground refreshes immediately;
 - reconnecting after being offline refreshes immediately;
 - the service worker checks for a newer deployed app shell every five minutes and whenever the app returns to the foreground;
-- when a new service worker takes control, the PWA reloads itself automatically.
+- live config, notification-board, and calendar hydration runs alongside service-worker startup so a slow iOS worker update cannot leave the visible app stuck on placeholders;
+- if a new service worker takes control during initial startup, BallerWatch finishes hydrating the current screen and defers the reload until a later foreground/launch; updates discovered after startup can still reload automatically.
 
 The green **Live** indicator pulses while online. Explicitly selected future calendar games stay selected across automatic data refreshes.
 
