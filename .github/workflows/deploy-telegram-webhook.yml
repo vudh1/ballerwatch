@@ -152,9 +152,40 @@ jobs:
           node -e 'const x=JSON.parse(process.argv[1]); if(x.ok!==true || x.ready!==true || !x.version || x.version==="unknown") process.exit(1)' "$HEALTH"
           echo "Worker readiness verified."
 
-          echo "Verifying PWA API surface and runtime-backed data..."
-          PWA_CONFIG="$(curl --max-time 15 --fail-with-body --silent --show-error "$BASE_URL/web/config")"
+          echo "Verifying PWA API surface, security headers, and runtime-backed data..."
+          CONFIG_HEADERS="/tmp/ballerwatch-config-headers"
+          PWA_CONFIG="$(curl --max-time 15 --fail-with-body --silent --show-error \
+            --dump-header "$CONFIG_HEADERS" \
+            -H "Origin: https://vudh1.github.io" \
+            "$BASE_URL/web/config")"
           node -e 'const x=JSON.parse(process.argv[1]); if(x.ok!==true || x.ready!==true || !x.push || !("ready" in x.push) || !x.version || x.version==="unknown") process.exit(1)' "$PWA_CONFIG"
+          grep -qi '^access-control-allow-origin: https://vudh1.github.io' "$CONFIG_HEADERS" || { echo "::error::Config response is missing expected PWA CORS origin"; cat "$CONFIG_HEADERS"; exit 1; }
+          grep -qi '^content-security-policy: .*frame-ancestors '\''none'\''' "$CONFIG_HEADERS" || { echo "::error::Config response is missing anti-framing CSP"; cat "$CONFIG_HEADERS"; exit 1; }
+          grep -qi '^x-content-type-options: nosniff' "$CONFIG_HEADERS" || { echo "::error::Config response is missing X-Content-Type-Options"; cat "$CONFIG_HEADERS"; exit 1; }
+          grep -qi '^x-frame-options: DENY' "$CONFIG_HEADERS" || { echo "::error::Config response is missing X-Frame-Options"; cat "$CONFIG_HEADERS"; exit 1; }
+          grep -qi '^referrer-policy: no-referrer' "$CONFIG_HEADERS" || { echo "::error::Config response is missing Referrer-Policy"; cat "$CONFIG_HEADERS"; exit 1; }
+          grep -qi '^permissions-policy:' "$CONFIG_HEADERS" || { echo "::error::Config response is missing Permissions-Policy"; cat "$CONFIG_HEADERS"; exit 1; }
+          rm -f "$CONFIG_HEADERS"
+
+          echo "Verifying Web Push registration rejects SSRF inputs and untrusted origins..."
+          PUSH_BODY="/tmp/ballerwatch-push-security-body"
+          PUSH_STATUS="$(curl --max-time 15 --silent --show-error \
+            --output "$PUSH_BODY" --write-out "%{http_code}" \
+            -X POST "$BASE_URL/web/push/challenge" \
+            -H "Origin: https://vudh1.github.io" \
+            -H "Content-Type: application/json" \
+            --data '{"endpoint":"https://127.0.0.1/latest/meta-data/"}')"
+          test "$PUSH_STATUS" = "400" || { echo "::error::Expected IP-literal push endpoint rejection (400), got $PUSH_STATUS"; cat "$PUSH_BODY"; exit 1; }
+
+          PUSH_STATUS="$(curl --max-time 15 --silent --show-error \
+            --output "$PUSH_BODY" --write-out "%{http_code}" \
+            -X POST "$BASE_URL/web/push/challenge" \
+            -H "Origin: https://attacker.example" \
+            -H "Content-Type: application/json" \
+            --data '{"endpoint":"https://updates.push.services.mozilla.com/wpush/v2/synthetic"}')"
+          test "$PUSH_STATUS" = "403" || { echo "::error::Expected untrusted push-registration origin rejection (403), got $PUSH_STATUS"; cat "$PUSH_BODY"; exit 1; }
+          rm -f "$PUSH_BODY"
+          echo "Web Push security boundary verified."
 
           for path in /web/next-game /web/calendar; do
             BODY="/tmp/ballerwatch-$(echo "$path" | tr '/' '-').json"
