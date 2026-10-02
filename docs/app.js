@@ -417,7 +417,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=5.3.2", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=5.3.3", {
     scope: "./",
     updateViaCache: "none",
   });
