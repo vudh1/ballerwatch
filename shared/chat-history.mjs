@@ -19,6 +19,11 @@ function cleanText(value, max = 1200) {
   return String(value || "").trim().replace(/\s+/g, " ").slice(0, max);
 }
 
+function cleanExternalId(value) {
+  const id = String(value || "").trim().slice(0, 120);
+  return /^[A-Za-z0-9._:-]{8,120}$/.test(id) ? id : "";
+}
+
 function loadHistory() {
   try {
     const encrypted = JSON.parse(fs.readFileSync(HISTORY_PATH, "utf8"));
@@ -119,6 +124,7 @@ export async function recordChatExchange({
   messageId = 0,
   hint = "",
   source = "telegram",
+  externalId = "",
 } = {}) {
   const q = cleanText(question, 600);
   const a = cleanText(reply, 1200);
@@ -126,21 +132,42 @@ export async function recordChatExchange({
 
   const compact = await compactWithGroq(q, a, hint);
   const fallbackKind = hint === "negative_feedback" ? "negative_feedback" : "normal";
+  const safeExternalId = cleanExternalId(externalId);
   const entry = {
     createdAt: new Date().toISOString(),
     source: cleanText(source, 40) || "telegram",
     ...(Number(messageId) > 0 ? { messageId: Number(messageId) } : {}),
+    ...(safeExternalId ? { externalId: safeExternalId } : {}),
     kind: compact?.kind || fallbackKind,
     summary: compact?.summary || "Conversation retained for encrypted review; AI compaction was unavailable.",
     reason: compact?.reason || "",
   };
 
   const data = loadHistory();
-  data.entries = prune([...(data.entries || []), entry]);
+  const prior = prune(data.entries || []).filter(
+    (item) => !safeExternalId || item?.externalId !== safeExternalId,
+  );
+  data.entries = prune([...prior, entry]);
   fs.mkdirSync(path.dirname(HISTORY_PATH), { recursive: true });
   fs.writeFileSync(HISTORY_PATH, JSON.stringify(encryptState(data), null, 2) + "\n");
   fs.writeFileSync(REVIEW_PATH, JSON.stringify(safeReview(data.entries), null, 2) + "\n");
   return entry;
+}
+
+export function removeChatFeedback(externalId) {
+  const id = cleanExternalId(externalId);
+  if (!id) return false;
+
+  const data = loadHistory();
+  const before = prune(data.entries || []);
+  const after = before.filter((entry) => entry?.externalId !== id);
+  if (after.length === before.length) return false;
+
+  data.entries = after;
+  fs.mkdirSync(path.dirname(HISTORY_PATH), { recursive: true });
+  fs.writeFileSync(HISTORY_PATH, JSON.stringify(encryptState(data), null, 2) + "\n");
+  fs.writeFileSync(REVIEW_PATH, JSON.stringify(safeReview(data.entries), null, 2) + "\n");
+  return true;
 }
 
 export function findChatExchange(messageId) {

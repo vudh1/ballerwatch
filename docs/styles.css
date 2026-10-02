@@ -1491,3 +1491,54 @@ textarea {
     animation-duration: 2.4s;
   }
 }
+
+
+/* v5.1.4 interaction polish */
+.question-input-wrap {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ask-card .question-row {
+  align-items: start;
+}
+
+.question-suggestions {
+  position: static;
+  z-index: auto;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  width: 100%;
+  max-height: min(14rem, 35vh);
+  margin-top: 0.45rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 10px 26px rgba(0, 0, 0, 0.18);
+}
+
+.ask-card .question-row > button {
+  align-self: start;
+  min-height: 2.85rem;
+}
+
+.answer {
+  touch-action: manipulation;
+}
+
+.answer.answer-feedback-sent {
+  border-color: rgba(248, 113, 113, 0.30);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1px rgba(248, 113, 113, 0.05);
+}
+
+@media (max-width: 560px) {
+  .question-suggestions {
+    max-height: 12rem;
+  }
+}

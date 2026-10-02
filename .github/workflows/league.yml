@@ -112,6 +112,18 @@ jobs:
           BALLERWATCH_ALLOW_OFFLINE: ${{ inputs.external_fallback }}
         run: node shared/runtime-state.mjs push league
 
+      - name: Refresh weather after league schedule change
+        if: always() && steps.gate.outputs.should_run == 'true' && steps.calendar_gate.outputs.needsCalendar == 'true'
+        working-directory: .
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: |
+          node shared/runtime-state.mjs pull weather
+          node weather/update.mjs
+          node shared/runtime-state.mjs push weather
+
       - name: Signal installed web app
         if: steps.gate.outputs.should_run == 'true'
         working-directory: .

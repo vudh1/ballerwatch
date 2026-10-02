@@ -6,6 +6,9 @@ on:
     branches: [main]
     paths:
       - "weather/**"
+      - "pickup/update.mjs"
+      - ".github/workflows/pickup.yml"
+      - ".github/workflows/league.yml"
       - "shared/runtime-paths.mjs"
       - ".github/workflows/weather-refresh.yml"
 

@@ -16,13 +16,13 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=5\.1\.3/);
-  assert.match(html, /app\.js\?v=5\.1\.3/);
+  assert.match(html, /styles\.css\?v=5\.1\.4/);
+  assert.match(html, /app\.js\?v=5\.1\.4/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v5-1-3-shell/);
+  assert.match(sw, /ballerwatch-v5-1-4-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -63,7 +63,7 @@ test("Home Screen install card is removed in standalone mode and notifications u
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=5\.1\.3/);
+  assert.match(app, /sw\.js\?v=5\.1\.4/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -170,20 +170,27 @@ test("notification test control is deliberately subtle", () => {
 });
 
 
-test("answer supports owner-only long-press wrong-answer feedback", () => {
+test("answer supports owner-only double-click feedback toggle and cancellation", () => {
   const html = fs.readFileSync("docs/index.html", "utf8");
   const app = fs.readFileSync("docs/app.js", "utf8");
   const worker = fs.readFileSync("infra/telegram-webhook/worker.mjs", "utf8");
   const listener = fs.readFileSync("listener/bot.mjs", "utf8");
+  const history = fs.readFileSync("shared/chat-history.mjs", "utf8");
 
   assert.match(html, /id="answer-feedback-status"/);
-  assert.match(app, /setTimeout\(\(\) => \{[\s\S]*reportWrongAnswer\(\)[\s\S]*\}, 700\)/);
-  assert.match(app, /\/web\/feedback/);
-  assert.match(app, /headers: ownerHeaders\(\)/);
-  assert.match(app, /negative_feedback|Marked wrong/);
+  assert.match(app, /addEventListener\("dblclick"/);
+  assert.match(app, /action: "mark"/);
+  assert.match(app, /action: "cancel"/);
+  assert.match(app, /double-tap\/click again to cancel/);
+  assert.doesNotMatch(app, /startAnswerHold|answerHoldTimer|answerHoldStart/);
   assert.match(worker, /url\.pathname === "\/web\/feedback"/);
+  assert.match(worker, /action === "cancel"/);
+  assert.match(worker, /action: "cancel-feedback"/);
   assert.match(worker, /hint: "negative_feedback"/);
-  assert.match(listener, /web-pwa-feedback/);
+  assert.match(listener, /removeChatFeedback/);
+  assert.match(listener, /event\?\.action === "cancel-feedback"/);
+  assert.match(history, /export function removeChatFeedback/);
+  assert.match(history, /externalId/);
 });
 
 test("question autocomplete predicts full sentences from typed prefixes", () => {
@@ -331,4 +338,29 @@ test("calendar refresh preserves an explicitly selected future game", () => {
   assert.match(app, /let selectedCalendarGameId = ""/);
   assert.match(app, /availableGames\.find\(\(game\) => game\.id === selectedCalendarGameId\)/);
   assert.match(app, /renderNextGame\(selectedGame, "SELECTED GAME"\)/);
+});
+
+
+test("autocomplete stays in document flow instead of overlapping following content", () => {
+  const css = fs.readFileSync("docs/styles.css", "utf8");
+  assert.match(css, /\/\* v5\.1\.4 interaction polish \*\//);
+  assert.match(css, /\.question-suggestions \{[\s\S]*position:\s*static;/);
+  assert.match(css, /\.ask-card \.question-row \{[\s\S]*align-items:\s*start;/);
+  assert.match(css, /\.ask-card \.question-row > button \{[\s\S]*align-self:\s*start;/);
+  assert.match(css, /max-height:\s*min\(14rem, 35vh\)/);
+});
+
+test("weather refresh is immediate only for schedule-relevant changes", () => {
+  const pickup = fs.readFileSync("pickup/update.mjs", "utf8");
+  const pickupWorkflow = fs.readFileSync(".github/workflows/pickup.yml", "utf8");
+  const leagueWorkflow = fs.readFileSync(".github/workflows/league.yml", "utf8");
+  const relevance = fs.readFileSync("weather/relevance.mjs", "utf8");
+
+  assert.match(pickup, /pickupWeatherChanged/);
+  assert.match(pickup, /weather-refresh-needed/);
+  assert.match(pickupWorkflow, /Refresh weather after pickup schedule change/);
+  assert.match(pickupWorkflow, /node weather\/update\.mjs/);
+  assert.match(leagueWorkflow, /Refresh weather after league schedule change/);
+  assert.match(leagueWorkflow, /needsCalendar == 'true'/);
+  assert.doesNotMatch(relevance, /reserved|capacity|players|waitlist/);
 });
