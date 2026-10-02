@@ -36,6 +36,10 @@ function cleanText(value, max = 1200) {
   return String(value || "").trim().replace(/\s+/g, " ").slice(0, max);
 }
 
+function retainPrivateText(value, max = 12000) {
+  return String(value ?? "").trim().slice(0, max);
+}
+
 function bytesB64Url(value) {
   return bytesB64(value).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
@@ -378,6 +382,8 @@ async function persistFastChatHistory(env, event) {
     createdAt: new Date().toISOString(),
     source: cleanText(event.source, 40) || "cloudflare-fast-path",
     ...(Number(event.messageId) > 0 ? { messageId: Number(event.messageId) } : {}),
+    question: retainPrivateText(event.question, 4000),
+    reply: retainPrivateText(event.reply, 12000),
     kind: compact?.kind || "normal",
     summary: compact?.summary || `Fast-path ${cleanText(event.intent,60) || "read-only"} question answered.`,
     reason: compact?.reason || "",
@@ -1849,8 +1855,8 @@ export default {
         );
       }
 
-      const question = cleanText(body?.question, 600);
-      const reply = cleanText(body?.reply, 1200);
+      const question = retainPrivateText(body?.question, 4000);
+      const reply = retainPrivateText(body?.reply, 12000);
       if (!question || !reply) {
         return webJson(
           request,
