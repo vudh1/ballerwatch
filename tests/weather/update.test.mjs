@@ -74,9 +74,9 @@ test("summarizeMatchWeather uses the actual match window and maximum rain probab
         "2099-10-02T22:00",
         "2099-10-02T23:00",
       ],
-      precipitation_probability: [5, 10, 70, 45, 0],
+      precipitation_probability: [99, 10, 70, 45, 95],
       temperature_2m: [66, 64, 62, 60, 59],
-      weather_code: [1, 2, 61, 80, 0],
+      weather_code: [95, 2, 61, 80, 95],
     },
   );
 
@@ -107,4 +107,40 @@ test("league weather fallback is explicitly bounded to Seattle RATS games", () =
   assert.match(source, /source: "seattle-fallback"/);
   assert.match(source, /weatherApproximate/);
   assert.match(source, /Weather game \$\{game\.date\}/);
+});
+
+
+test("summarizeMatchWeather handles a match that crosses midnight", () => {
+  const weather = summarizeMatchWeather(
+    {
+      date: "2099-10-02",
+      startTime: "23:30",
+      endTime: "00:30",
+    },
+    {
+      time: [
+        "2099-10-02T22:00",
+        "2099-10-02T23:00",
+        "2099-10-03T00:00",
+        "2099-10-03T01:00",
+      ],
+      precipitation_probability: [99, 25, 60, 98],
+      temperature_2m: [58, 56, 54, 52],
+      weather_code: [95, 2, 61, 95],
+    },
+  );
+
+  assert.equal(weather.rainProbability, 60);
+  assert.equal(weather.temperatureF, 55);
+  assert.equal(weather.condition, "Rain");
+});
+
+test("Open-Meteo forecast requests Pacific-local hourly timestamps", () => {
+  const source = fs.readFileSync("weather/update.mjs", "utf8");
+  assert.match(source, /const TIME_ZONE = "America\/Los_Angeles"/);
+  assert.match(source, /url\.searchParams\.set\("timezone", TIME_ZONE\)/);
+  assert.match(
+    source,
+    /"precipitation_probability,temperature_2m,weather_code"/,
+  );
 });

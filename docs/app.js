@@ -417,7 +417,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=5.3.2", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=5.3.3", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -814,6 +814,34 @@ function buildSpotlightTrainCard(game) {
   return card;
 }
 
+function syncSpotlightCardDimensions() {
+  const carousel = els.spotlightCarousel;
+  const current = els.nextGameCard;
+  if (!carousel || !current) return;
+
+  carousel.style.removeProperty("--spotlight-card-height");
+
+  const probes = [];
+  for (const game of currentCalendar?.games || []) {
+    const probe = buildSpotlightTrainCard(game);
+    probe.classList.add("spotlight-measure-card");
+    carousel.append(probe);
+    probes.push(probe);
+  }
+
+  const heights = [
+    current.scrollHeight,
+    ...probes.map((probe) => probe.scrollHeight),
+  ].filter((height) => Number.isFinite(height) && height > 0);
+
+  for (const probe of probes) probe.remove();
+
+  const height = heights.length ? Math.ceil(Math.max(...heights)) : 0;
+  if (height > 0) {
+    carousel.style.setProperty("--spotlight-card-height", `${height}px`);
+  }
+}
+
 function addIsoDays(date, days) {
   const [year, month, day] = String(date).split("-").map(Number);
   return new Date(Date.UTC(year, month - 1, day + Number(days || 0), 12))
@@ -941,8 +969,6 @@ function installSpotlightSwipe() {
   const clearInlineMotion = () => {
     current.classList.remove("is-train-dragging", "is-train-settling");
     current.style.removeProperty("transform");
-    current.style.removeProperty("min-height");
-    carousel.style.removeProperty("height");
     document.documentElement.classList.remove("spotlight-swipe-active");
 
     if (train?.preview) train.preview.remove();
@@ -972,11 +998,6 @@ function installSpotlightSwipe() {
     const distance = carousel.clientWidth + gap();
     const baseOffset = direction * distance;
     preview.style.transform = `translate3d(${baseOffset}px, 0, 0)`;
-
-    const height = Math.max(current.offsetHeight, preview.offsetHeight);
-    carousel.style.height = `${height}px`;
-    current.style.minHeight = `${height}px`;
-    preview.style.minHeight = `${height}px`;
 
     current.classList.add("is-train-dragging");
     preview.classList.add("is-train-dragging");
@@ -1204,6 +1225,8 @@ function renderCalendar(calendar) {
     els.calendarGamePicker.hidden = true;
     renderNextGame(null, "NEXT GAME");
   }
+
+  window.requestAnimationFrame(syncSpotlightCardDimensions);
 }
 
 async function loadCalendar() {
@@ -1614,6 +1637,14 @@ els.bellPushToggle.addEventListener("change", async () => {
   await updatePushStatus();
 });
 els.installHelp?.addEventListener("click", () => els.installDialog.showModal());
+
+let spotlightResizeTimer = null;
+window.addEventListener("resize", () => {
+  window.clearTimeout(spotlightResizeTimer);
+  spotlightResizeTimer = window.setTimeout(() => {
+    window.requestAnimationFrame(syncSpotlightCardDimensions);
+  }, 120);
+});
 
 window.addEventListener("online", () => {
   setSystemState("live");
