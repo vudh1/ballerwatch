@@ -30,7 +30,7 @@ jobs:
         id: gate
         env:
           EXTERNAL_FALLBACK: ${{ inputs.external_fallback }}
-          TELEGRAM_WEBHOOK_HEALTH_URL: https://ballerwatch-telegram.vudhone.workers.dev/health
+          BALLERWATCH_WORKER_HEALTH_URL: https://ballerwatch-web.vudhone.workers.dev/health
         run: node infra/fallback-gate.mjs pickup
 
       - name: Restore encrypted failover state cache
@@ -45,8 +45,6 @@ jobs:
       - name: Pull GitHub runtime state
         if: steps.gate.outputs.should_run == 'true'
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
         run: node shared/runtime-state.mjs pull pickup
 
@@ -55,14 +53,11 @@ jobs:
         env:
           UPSTREAM_ENDPOINT: ${{ secrets.UPSTREAM_ENDPOINT }}
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: node pickup/update.mjs
 
       - name: Send pickup notifications
         if: steps.gate.outputs.should_run == 'true'
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
           OWNER_RSVP_NAME: ${{ secrets.OWNER_RSVP_NAME }}
         run: node pickup/notify.mjs
@@ -70,8 +65,6 @@ jobs:
       - name: Push GitHub runtime state
         if: always() && steps.gate.outputs.should_run == 'true'
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
           BALLERWATCH_ALLOW_OFFLINE: ${{ inputs.external_fallback }}
         run: node shared/runtime-state.mjs push pickup
@@ -79,8 +72,6 @@ jobs:
       - name: Refresh weather after pickup schedule change
         if: steps.gate.outputs.should_run == 'true' && hashFiles('.runtime/pickup/weather-refresh-needed') != ''
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
         run: |
           node shared/runtime-state.mjs pull weather
@@ -91,14 +82,12 @@ jobs:
         if: steps.gate.outputs.should_run == 'true'
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: node shared/web-push.mjs send-pending
 
       - name: Persist Web Push subscription cleanup
         if: always() && steps.gate.outputs.should_run == 'true'
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           BALLERWATCH_ALLOW_OFFLINE: ${{ inputs.external_fallback }}
         run: node shared/runtime-state.mjs push pickup
 
@@ -106,7 +95,6 @@ jobs:
         if: always() && steps.gate.outputs.should_run == 'true'
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: node shared/failover-state.mjs save pickup
 
       - name: Save encrypted failover state cache
@@ -121,3 +109,4 @@ jobs:
         run: |
           node shared/runtime-state.mjs clean pickup
           rm -rf .runtime
+
