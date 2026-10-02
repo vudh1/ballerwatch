@@ -1,16 +1,15 @@
 name: Deploy Telegram webhook
 
 on:
+  release:
+    types: [published]
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "infra/telegram-webhook/**"
-      - "infra/external-schedules.mjs"
-      - "shared/runtime-paths.mjs"
-      - "shared/intent-index.mjs"
-      - "shared/ai-provider.mjs"
-      - ".github/workflows/deploy-telegram-webhook.yml"
+    inputs:
+      release_ref:
+        description: "Published release tag or production ref to redeploy"
+        required: false
+        default: "production"
+        type: string
 
 permissions:
   contents: write
@@ -26,6 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
+          ref: ${{ github.event.release.tag_name || inputs.release_ref || 'production' }}
           fetch-depth: 1
 
       - name: Verify required secrets
@@ -166,6 +166,7 @@ jobs:
         env:
           CRON_JOB_ORG_API_KEY: ${{ secrets.CRON_JOB_ORG_API_KEY }}
           CRON_GITHUB_PAT: ${{ secrets.CRON_GITHUB_PAT }}
+          BALLERWATCH_BRANCH: production
         run: node infra/external-schedules.mjs ensure-enabled-optional
 
       - name: Clean temporary files
