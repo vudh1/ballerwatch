@@ -5,8 +5,7 @@
  */
 import fs from "node:fs";
 import crypto from "node:crypto";
-import { sendTelegram } from "../shared/telegram.mjs";
-import { loadBotSettings } from "../shared/bot-state.mjs";
+import { loadUserSettings } from "../shared/user-state.mjs";
 import { decryptState, encryptState } from "../shared/state-crypto.mjs";
 import { appendWebNotification } from "../shared/web-notifications.mjs";
 import { parseTime, selectPrimaryEvent, weekStart } from "./selection.mjs";
@@ -16,33 +15,23 @@ const STATE_PATH = "pickup/state/notify.json";
 const RUNTIME_PATH = ".runtime/pickup/events.json";
 const RUNTIME_INDEX_PATH = ".runtime/pickup/data/index.json";
 const RUNTIME_DATES_DIR = ".runtime/pickup/data/dates";
-const STATE_SECRET = (process.env.TRACKER_STATE_KEY || process.env.TELEGRAM_BOT_TOKEN || "").trim();
+const STATE_SECRET = (process.env.TRACKER_STATE_KEY || "").trim();
 
 if (!STATE_SECRET) {
   throw new Error("A private tracker state key is not available.");
 }
 
 async function deliverPickupNotification({
-  telegramText,
-  webText,
+  body,
   title = "Pickup update",
   tag = "ballerwatch-pickup",
 }) {
   appendWebNotification("pickup", {
     title,
-    body: webText,
+    body,
     tag,
   });
-
-  try {
-    await sendTelegram(telegramText);
-    return true;
-  } catch (error) {
-    console.warn(
-      `Telegram pickup delivery failed; web fallback remains available: ${error?.message || error}`,
-    );
-    return false;
-  }
+  return true;
 }
 
 function readJson(filePath) {
@@ -222,8 +211,7 @@ async function processNewDates(state, now, settings) {
     if (eventTime) lines.push(eventTime);
 
     await deliverPickupNotification({
-      telegramText: lines.join("\n"),
-      webText: lines.join("\n"),
+      body: lines.join("\n"),
       title: "New pickup date",
       tag: `pickup-new-${date}`,
     });
@@ -489,7 +477,7 @@ async function main() {
   const now = pacificParts();
   const nowIso = new Date().toISOString();
   let state = readState();
-  const settings = loadBotSettings();
+  const settings = loadUserSettings();
 
   state = await processNewDates(state, now, settings);
   writeState(state);
@@ -626,8 +614,8 @@ async function main() {
     webLines.push("RSVP list or match details changed.");
   }
 
-  const telegramSent = await deliverPickupNotification({
-    telegramText: lines.filter(Boolean).join("\n"),
+  const webRecorded = await deliverPickupNotification({
+    body: lines.filter(Boolean).join("\n"),
     webText: webLines.filter(Boolean).join("\n"),
     title: urgentCapacity
       ? `Pickup: ${remaining} ${remaining === 1 ? "spot" : "spots"} left`
@@ -650,7 +638,7 @@ async function main() {
 
   // Never log notification message content: workflow logs are public.
   console.log(
-    `${telegramSent ? "Telegram + web" : "Web fallback"} notification recorded (${
+    `${webRecorded ? "Web" : "No"} notification recorded (${
       ownerStatusChanged
         ? "owner status change"
         : urgentCapacity
