@@ -1,7 +1,25 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "5.1.3",
+  "currentVersion": "5.1.4",
   "releases": [
+    {
+      "version": "5.1.4",
+      "date": "2026-10-02",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Autocomplete, feedback toggle, and schedule-aware weather",
+      "telegramAnnouncement": "BallerWatch autocomplete no longer overlays nearby text, answer feedback toggles by double-click/tap, and weather refreshes immediately when a match date/time/location changes.",
+      "changes": [
+        "Moved question autocomplete into normal document flow so suggestions expand the Ask section instead of drawing over the content below it.",
+        "Changed wrong-answer feedback from long-press to double-click/double-tap: the first gesture queues negative feedback and the next identical gesture cancels it.",
+        "Added a stable private feedback identifier so cancellation removes the matching encrypted review entry and its sanitized review signal rather than only changing local UI state.",
+        "Diagnosed missing Wed 10/7 weather: the pickup game changed after the previous six-hour weather snapshot, so live schedule data was newer than weather state.",
+        "Pickup date/time/field/address changes now trigger one notification-silent weather refresh immediately; RSVP counts and roster changes are deliberately excluded.",
+        "League schedule/calendar changes also refresh weather after the new schedule is persisted.",
+        "The six-hour maintenance weather refresh remains as the periodic fallback, keeping normal forecast request volume low.",
+        "Bumped the PWA shell so installed Home Screen clients receive the interaction fixes."
+      ]
+    },
     {
       "version": "5.1.3",
       "date": "2026-10-01",
