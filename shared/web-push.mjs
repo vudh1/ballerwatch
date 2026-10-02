@@ -5,10 +5,13 @@
  * carry no payload; the PWA service worker fetches the latest public-safe notification board.
  */
 import crypto from "node:crypto";
+import { lookup as dnsLookup } from "node:dns/promises";
 import fs from "node:fs";
+import net from "node:net";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { decryptState, encryptState } from "./state-crypto.mjs";
+import { normalizeWebPushEndpoint } from "./web-push-endpoint.mjs";
 
 const STATE_PATH = "state/web-push.json";
 const MAX_SUBSCRIPTIONS = 8;
@@ -87,16 +90,142 @@ export function ensureWebPushState() {
 }
 
 function normalizedSubscription(value) {
-  const endpoint = clean(value?.endpoint, 5000);
-  if (!endpoint.startsWith("https://")) throw new Error("Invalid Web Push endpoint.");
   return {
-    endpoint,
+    endpoint: normalizeWebPushEndpoint(value?.endpoint),
     expirationTime: value?.expirationTime ?? null,
     keys: {
       p256dh: clean(value?.keys?.p256dh, 500),
       auth: clean(value?.keys?.auth, 500),
     },
   };
+}
+
+function ipv4Octets(value) {
+  const parts = String(value || "").split(".");
+  if (
+    parts.length !== 4 ||
+    parts.some((part) => !/^\d{1,3}$/.test(part) || Number(part) > 255)
+  ) {
+    return null;
+  }
+  return parts.map(Number);
+}
+
+function ipv6Words(value) {
+  let source = String(value || "").toLowerCase().split("%")[0];
+  if (source.startsWith("[") && source.endsWith("]")) source = source.slice(1, -1);
+  if (!source.includes(":")) return null;
+
+  const [leftRaw, rightRaw, extra] = source.split("::");
+  if (extra !== undefined) return null;
+  const expand = (part) => {
+    if (!part) return [];
+    const words = [];
+    for (const token of part.split(":")) {
+      if (!token) return null;
+      if (token.includes(".")) {
+        const ipv4 = ipv4Octets(token);
+        if (!ipv4) return null;
+        words.push((ipv4[0] << 8) | ipv4[1], (ipv4[2] << 8) | ipv4[3]);
+      } else {
+        if (!/^[0-9a-f]{1,4}$/.test(token)) return null;
+        words.push(Number.parseInt(token, 16));
+      }
+    }
+    return words;
+  };
+
+  const left = expand(leftRaw);
+  const right = expand(rightRaw);
+  if (!left || !right) return null;
+
+  if (source.includes("::")) {
+    const zeros = 8 - left.length - right.length;
+    if (zeros < 1) return null;
+    return [...left, ...Array(zeros).fill(0), ...right];
+  }
+  return left.length === 8 ? left : null;
+}
+
+function unsafeIpv4(value) {
+  const octets = ipv4Octets(value);
+  if (!octets) return true;
+  const [a, b, c] = octets;
+  return (
+    a === 0 ||
+    a === 10 ||
+    a === 127 ||
+    (a === 100 && b >= 64 && b <= 127) ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 0 && c === 0) ||
+    (a === 192 && b === 0 && c === 2) ||
+    (a === 192 && b === 168) ||
+    (a === 198 && (b === 18 || b === 19)) ||
+    (a === 198 && b === 51 && c === 100) ||
+    (a === 203 && b === 0 && c === 113) ||
+    a >= 224
+  );
+}
+
+function mappedIpv4(words) {
+  if (!Array.isArray(words) || words.length !== 8) return null;
+  const mapped =
+    words.slice(0, 5).every((word) => word === 0) &&
+    words[5] === 0xffff;
+  const nat64 =
+    words[0] === 0x0064 &&
+    words[1] === 0xff9b &&
+    words[2] === 0 &&
+    words[3] === 0 &&
+    words[4] === 0 &&
+    words[5] === 0;
+  if (!mapped && !nat64) return null;
+  return [
+    words[6] >> 8,
+    words[6] & 0xff,
+    words[7] >> 8,
+    words[7] & 0xff,
+  ].join(".");
+}
+
+function unsafeIpv6(value) {
+  const words = ipv6Words(value);
+  if (!words) return true;
+  if (words.every((word) => word === 0)) return true;
+  if (words.slice(0, 7).every((word) => word === 0) && words[7] === 1) return true;
+  if ((words[0] & 0xfe00) === 0xfc00) return true;
+  if ((words[0] & 0xffc0) === 0xfe80) return true;
+  if ((words[0] & 0xff00) === 0xff00) return true;
+  if (words[0] === 0x2001 && words[1] === 0x0db8) return true;
+  const mapped = mappedIpv4(words);
+  return mapped ? unsafeIpv4(mapped) : false;
+}
+
+export function isUnsafeWebPushAddress(value) {
+  const address = String(value || "").trim();
+  const family = net.isIP(address);
+  if (family === 4) return unsafeIpv4(address);
+  if (family === 6) return unsafeIpv6(address);
+  return true;
+}
+
+export async function validateWebPushDestination(
+  endpoint,
+  { resolveHost = dnsLookup } = {},
+) {
+  const normalized = normalizeWebPushEndpoint(endpoint);
+  const hostname = new URL(normalized).hostname;
+  const resolved = await resolveHost(hostname, { all: true, verbatim: true });
+  const addresses = Array.isArray(resolved) ? resolved : [resolved];
+  if (!addresses.length) throw new Error("Web Push service did not resolve.");
+  for (const item of addresses) {
+    const address = typeof item === "string" ? item : item?.address;
+    if (!address || isUnsafeWebPushAddress(address)) {
+      throw new Error("Web Push service resolved to a non-public address.");
+    }
+  }
+  return normalized;
 }
 
 export function applyRegistrationEvent(event) {
@@ -163,6 +292,7 @@ export function buildVapidAuthorization(state, endpoint, { now = new Date() } = 
 
 export async function sendWebPushSignals({
   fetchImpl = globalThis.fetch,
+  resolveHost = dnsLookup,
   now = new Date(),
 } = {}) {
   const state = loadWebPushState();
@@ -177,10 +307,12 @@ export async function sendWebPushSignals({
 
   for (const subscription of state.subscriptions) {
     try {
-      const response = await fetchImpl(subscription.endpoint, {
+      const endpoint = await validateWebPushDestination(subscription.endpoint, { resolveHost });
+      const response = await fetchImpl(endpoint, {
         method: "POST",
+        redirect: "error",
         headers: {
-          Authorization: buildVapidAuthorization(state, subscription.endpoint, { now }),
+          Authorization: buildVapidAuthorization(state, endpoint, { now }),
           TTL: "60",
           Urgency: "normal",
         },
@@ -196,7 +328,8 @@ export async function sendWebPushSignals({
       }
     } catch (error) {
       failed += 1;
-      console.warn(`Web Push signal failed: ${error?.message || error}`);
+      staleEndpoints.add(subscription.endpoint);
+      console.warn(`Web Push signal rejected or failed: ${error?.message || error}`);
     }
   }
 
