@@ -404,20 +404,46 @@ function bytesB64(value) {
   return btoa(binary);
 }
 
-async function stateKey(env) {
+function stateMasterSecret(env) {
   const source = cleanText(env.TRACKER_STATE_KEY || env.TELEGRAM_BOT_TOKEN, 5000);
   if (!source) throw new Error("State decryption key is unavailable.");
-  return crypto.subtle.digest("SHA-256", new TextEncoder().encode(source));
+  return new TextEncoder().encode(source);
+}
+
+async function legacyStateKeyBytes(env) {
+  return crypto.subtle.digest("SHA-256", stateMasterSecret(env));
+}
+
+async function hardenedStateKeyBytes(env) {
+  const master = await crypto.subtle.importKey(
+    "raw",
+    stateMasterSecret(env),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  return crypto.subtle.sign(
+    "HMAC",
+    master,
+    new TextEncoder().encode(KEY_CONTEXT.stateEncryption),
+  );
+}
+
+async function stateCryptoKey(env, hardened = true, usage = "decrypt") {
+  const bytes = hardened
+    ? await hardenedStateKeyBytes(env)
+    : await legacyStateKeyBytes(env);
+  return crypto.subtle.importKey(
+    "raw",
+    bytes,
+    { name: "AES-GCM" },
+    false,
+    [usage],
+  );
 }
 
 async function encryptState(value, env) {
-  const key = await crypto.subtle.importKey(
-    "raw",
-    await stateKey(env),
-    { name: "AES-GCM" },
-    false,
-    ["encrypt"],
-  );
+  const key = await stateCryptoKey(env, true, "encrypt");
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const encrypted = new Uint8Array(await crypto.subtle.encrypt(
     { name: "AES-GCM", iv, tagLength: 128 },
@@ -428,6 +454,7 @@ async function encryptState(value, env) {
   const data = encrypted.slice(0, encrypted.length - 16);
   return {
     v: 1,
+    kdf: "hmac-sha256-v1",
     iv: bytesB64(iv),
     tag: bytesB64(tag),
     data: bytesB64(data),
@@ -435,14 +462,16 @@ async function encryptState(value, env) {
 }
 
 async function decryptState(payload, env) {
-  if (!payload || payload.v !== 1) return null;
+  if (
+    !payload ||
+    payload.v !== 1 ||
+    (payload.kdf !== undefined && payload.kdf !== "hmac-sha256-v1")
+  ) return null;
   try {
-    const key = await crypto.subtle.importKey(
-      "raw",
-      await stateKey(env),
-      { name: "AES-GCM" },
-      false,
-      ["decrypt"],
+    const key = await stateCryptoKey(
+      env,
+      payload.kdf === "hmac-sha256-v1",
+      "decrypt",
     );
     const ciphertext = b64Bytes(payload.data);
     const tag = b64Bytes(payload.tag);
