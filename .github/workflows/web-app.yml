@@ -10,11 +10,6 @@ on:
         required: false
         default: ""
         type: string
-      release_ref:
-        description: "Published release tag or production ref to use"
-        required: false
-        default: "production"
-        type: string
 
 permissions:
   contents: write
@@ -30,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.release.tag_name || inputs.release_ref || 'production' }}
+          ref: ${{ github.event.release.tag_name || 'production' }}
           fetch-depth: 1
 
       - name: Pull encrypted web runtime state
