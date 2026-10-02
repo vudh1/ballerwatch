@@ -667,7 +667,7 @@ test("production rollout is gated by GitHub Releases instead of main pushes", ()
     assert.doesNotMatch(workflow, /push:\s*\n\s*branches:\s*\[main\]/);
   }
   assert.match(pages, /workflow_dispatch:/);
-  assert.match(pages, /release:\s*\n\s*types:\s*\[published\]/);
+  assert.doesNotMatch(pages, /release:\s*\n\s*types:\s*\[published\]/);
   assert.match(pages, /ref:\s*production/);
   assert.match(pages, /push:\s*\n\s*branches:\s*\[main\][\s\S]*paths:[\s\S]*\.github\/workflows\/pages\.yml/);
 
@@ -692,8 +692,9 @@ test("production rollout is gated by GitHub Releases instead of main pushes", ()
     assert.doesNotMatch(workflow, /inputs\.release_ref/);
     assert.match(workflow, /github\.event\.release\.tag_name \|\| 'production'/);
   }
-  assert.doesNotMatch(promote, /Deploy Pages from promoted production/);
-  assert.doesNotMatch(promote, /gh workflow run pages\.yml/);
+  assert.match(promote, /Deploy Pages from promoted production/);
+  assert.match(promote, /gh workflow run pages\.yml --repo "\$GITHUB_REPOSITORY" --ref main/);
+  assert.match(promote, /GH_TOKEN:\s*\$\{\{ secrets\.RELEASE_GITHUB_TOKEN \}\}/);
 
   for (const workflow of [pickup, league, listener, watchdog]) {
     assert.match(workflow, /ref:\s*production/);
