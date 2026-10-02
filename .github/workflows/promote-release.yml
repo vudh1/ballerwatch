@@ -4,6 +4,10 @@ on:
   schedule:
     - cron: "37 * * * *"
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/promote-release.yml"
 
 permissions:
   contents: write
@@ -34,7 +38,13 @@ jobs:
           test -n "$GH_TOKEN" || { echo "::error::RELEASE_GITHUB_TOKEN (preferred) or CRON_GITHUB_PAT with Contents read/write is required to publish GitHub Releases."; exit 1; }
 
           git fetch --no-tags origin main
-          sha="$(git rev-parse FETCH_HEAD)"
+          head_sha="$(git rev-parse FETCH_HEAD)"
+          sha="$head_sha"
+          if [ "$EVENT_NAME" = "push" ]; then
+            # One-time/manual maintenance trigger: promote the product commit
+            # that last changed the release ledger, not this workflow-only commit.
+            sha="$(git log -1 --format=%H "$head_sha" -- features/versions.json)"
+          fi
           git show "$sha:features/versions.json" > /tmp/ballerwatch-versions.json
 
           current_version="$(node -e 'const x=require("/tmp/ballerwatch-versions.json");process.stdout.write(String(x.currentVersion||""))')"
