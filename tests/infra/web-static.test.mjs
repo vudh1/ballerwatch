@@ -697,11 +697,16 @@ test("repository policy reserves SemVer for product behavior changes", () => {
 test("runtime deployment migrates every scope and audits full branch encryption", () => {
   const deploy = fs.readFileSync(".github/workflows/deploy-telegram-webhook.yml", "utf8");
   const watchdog = fs.readFileSync(".github/workflows/watchdog.yml", "utf8");
+  const worker = fs.readFileSync("infra/telegram-webhook/worker.mjs", "utf8");
 
   assert.match(deploy, /for scope in listener pickup league watchdog weather web/);
   assert.match(deploy, /node shared\/runtime-state\.mjs audit/);
   assert.match(watchdog, /Audit runtime-state encryption/);
   assert.match(watchdog, /node shared\/runtime-state\.mjs audit/);
+  assert.match(worker, /async function listenerStateDocument/);
+  assert.match(worker, /listenerStateDocument\(env, listenerState\)/);
+  assert.match(worker, /await encryptState\(next, env\)/);
+  assert.match(worker, /await encryptState\(\{/);
 });
 
 test("retired watchdog dispatches skip before runner allocation", () => {
