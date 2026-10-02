@@ -372,10 +372,12 @@ The next watcher runs rebuild current source state and built-in defaults.
 
 ## Required secrets
 
-### Telegram
+### Telegram adapter (optional for the PWA/API)
 
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_CHAT_ID`
+
+The Cloudflare PWA API, owner password sign-in, encrypted runtime access, and Web Push path use `TRACKER_STATE_KEY` and do not require Telegram credentials. Keep Telegram configured while using `/webpair` as recovery; once an owner password is set, normal Settings access no longer depends on Telegram.
 
 ### Runtime encryption and setup
 
@@ -437,7 +439,8 @@ BallerWatch should remain:
 
 - fast for normal Telegram and PWA read-only questions;
 - inexpensive to operate;
-- resilient when one infrastructure provider or Telegram is unavailable;
+- able to run the PWA/API, owner Settings, and Web Push without Telegram after owner-password bootstrap;
+- resilient when one infrastructure provider or the optional Telegram adapter is unavailable;
 - conservative about private data;
 - simple enough to maintain and onboard;
 - able to keep `main` ahead of the separately promoted production release;
