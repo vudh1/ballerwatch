@@ -1,8 +1,9 @@
 /**
- * Stores a privacy-minimized, 48-hour owner conversation history for automated review.
+ * Stores encrypted 48-hour owner conversation history for automated review.
  *
- * Documentation baseline: v2.4.0. Full exchange text is never persisted; Groq rewrites each
- * exchange into a short technical summary before the encrypted history is written.
+ * Documentation baseline: v5.4.0. The encrypted history retains the original owner question
+ * and bot answer so rejected answers can be reproduced later. The readable review index remains
+ * privacy-minimized and contains only sanitized engineering signals.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -17,6 +18,10 @@ const MAX_ENTRIES = 200;
 
 function cleanText(value, max = 1200) {
   return String(value || "").trim().replace(/\s+/g, " ").slice(0, max);
+}
+
+function retainPrivateText(value, max = 12000) {
+  return String(value ?? "").trim().slice(0, max);
 }
 
 function cleanExternalId(value) {
@@ -126,8 +131,8 @@ export async function recordChatExchange({
   source = "telegram",
   externalId = "",
 } = {}) {
-  const q = cleanText(question, 600);
-  const a = cleanText(reply, 1200);
+  const q = retainPrivateText(question, 4000);
+  const a = retainPrivateText(reply, 12000);
   if (!q && !a) return null;
 
   const compact = await compactWithGroq(q, a, hint);
@@ -138,6 +143,8 @@ export async function recordChatExchange({
     source: cleanText(source, 40) || "telegram",
     ...(Number(messageId) > 0 ? { messageId: Number(messageId) } : {}),
     ...(safeExternalId ? { externalId: safeExternalId } : {}),
+    question: q,
+    reply: a,
     kind: compact?.kind || fallbackKind,
     summary: compact?.summary || "Conversation retained for encrypted review; AI compaction was unavailable.",
     reason: compact?.reason || "",
