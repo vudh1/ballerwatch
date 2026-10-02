@@ -48,6 +48,14 @@
     </div>
 
     <div class="spotlight-carousel" id="spotlight-carousel">
+      <button class="spotlight-edge-control spotlight-edge-previous" id="spotlight-previous"
+        type="button" aria-label="Previous game" disabled>
+        <span aria-hidden="true">‹</span>
+      </button>
+      <button class="spotlight-edge-control spotlight-edge-next" id="spotlight-next"
+        type="button" aria-label="Next game" disabled>
+        <span aria-hidden="true">›</span>
+      </button>
       <section class="card next-game-card spotlight-card" id="next-game-card">
         <div class="spotlight-content">
           <div class="section-heading">
@@ -197,15 +205,26 @@
       </div>
 
       <section id="settings-pair-view">
-        <p class="muted">Pair this device to view and change your private BallerWatch settings.</p>
-        <p class="hint">One /webpair code can authorize multiple devices during its 10-minute window.</p>
-        <form id="owner-pair-form" class="settings-form">
-          <label for="owner-pair-code">Owner pairing code</label>
-          <input id="owner-pair-code" inputmode="numeric" autocomplete="one-time-code"
-            maxlength="6" pattern="[0-9]{6}" placeholder="6-digit code" required>
-          <button type="submit">Pair device</button>
+        <p class="muted">Sign in to manage your private BallerWatch settings on this device.</p>
+        <form id="owner-login-form" class="settings-form">
+          <label for="owner-login-password">Owner password</label>
+          <input id="owner-login-password" type="password" autocomplete="current-password"
+            maxlength="200" placeholder="Owner password" required>
+          <button type="submit">Sign in</button>
         </form>
-        <p class="hint" id="owner-pair-status"></p>
+        <p class="hint" id="owner-login-status"></p>
+
+        <details class="settings-recovery">
+          <summary>Use a pairing code instead</summary>
+          <p class="hint">Pairing is only needed for first-time setup or recovery. One /webpair code can authorize multiple devices during its 10-minute window.</p>
+          <form id="owner-pair-form" class="settings-form">
+            <label for="owner-pair-code">Owner pairing code</label>
+            <input id="owner-pair-code" inputmode="numeric" autocomplete="one-time-code"
+              maxlength="6" pattern="[0-9]{6}" placeholder="6-digit code" required>
+            <button type="submit">Pair device</button>
+          </form>
+          <p class="hint" id="owner-pair-status"></p>
+        </details>
       </section>
 
       <section id="settings-owner-view" hidden>
@@ -222,7 +241,19 @@
           <button type="submit">Save changes</button>
         </form>
         <p class="hint" id="owner-settings-status"></p>
-        <p class="privacy-note">Questions from this paired device use the same privacy-minimized 48-hour engineering review history.</p>
+
+        <div class="settings-divider"></div>
+        <form id="owner-password-form" class="settings-form">
+          <label for="owner-password-new">Owner sign-in password</label>
+          <input id="owner-password-new" type="password" autocomplete="new-password"
+            minlength="12" maxlength="200" placeholder="At least 12 characters" required>
+          <label for="owner-password-confirm">Confirm password</label>
+          <input id="owner-password-confirm" type="password" autocomplete="new-password"
+            minlength="12" maxlength="200" placeholder="Repeat owner password" required>
+          <button type="submit">Set or change password</button>
+        </form>
+        <p class="hint" id="owner-password-status"></p>
+        <p class="privacy-note">Once a password is set, new devices can sign in directly without a pairing code. Pairing remains available only as a recovery/bootstrap path.</p>
         <button class="subtle-action" id="owner-disconnect" type="button">Disconnect this device</button>
       </section>
     </div>
