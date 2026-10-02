@@ -4,7 +4,7 @@
  * Documentation baseline: v2.3.0. A healthy edge heartbeat skips duplicate source work;
  * an unavailable or stale edge allows the GitHub fallback workflow to proceed.
  */
-const DEFAULT_HEALTH_URL = "https://ballerwatch-telegram.vudhone.workers.dev/health";
+const DEFAULT_HEALTH_URL = "https://ballerwatch-web.vudhone.workers.dev/health";
 
 const THRESHOLDS = Object.freeze({
   pickup: 6,
@@ -27,7 +27,7 @@ export function evaluateFallback(component, health) {
 
 export async function checkFallbackGate(component, {
   externalFallback = false,
-  healthUrl = process.env.TELEGRAM_WEBHOOK_HEALTH_URL || DEFAULT_HEALTH_URL,
+  healthUrl = process.env.BALLERWATCH_WORKER_HEALTH_URL || DEFAULT_HEALTH_URL,
 } = {}) {
   if (!externalFallback) return { shouldRun: true, reason: "primary-dispatch" };
 
