@@ -1857,23 +1857,38 @@ textarea {
 }
 
 
-/* v5.3.1 fixed-frame calendar swipe */
-.spotlight-card {
-  touch-action: pan-y;
-}
-
-.spotlight-swipe-surface {
+/* v5.3.2 connected-card carousel swipe */
+.spotlight-carousel {
+  --spotlight-train-gap: 12px;
   position: relative;
-  z-index: 1;
-  transform: translate3d(0, 0, 0);
-  transition:
-    transform 190ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    opacity 160ms ease;
-  will-change: transform, opacity;
+  margin: 0.9rem 0;
+  overflow: hidden;
+  border-radius: 24px;
+  touch-action: pan-y;
+  overscroll-behavior-x: none;
 }
 
-.spotlight-swipe-surface.is-calendar-swiping {
-  transition: none;
+.spotlight-carousel .spotlight-card {
+  width: 100%;
+  margin: 0;
+  transform: translate3d(0, 0, 0);
+}
+
+.spotlight-train-card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.spotlight-card.is-train-dragging {
+  transition: none !important;
+  will-change: transform;
+}
+
+.spotlight-card.is-train-settling {
+  transition: transform 260ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  will-change: transform;
 }
 
 html.spotlight-swipe-active,
@@ -1883,7 +1898,7 @@ html.spotlight-swipe-active body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .spotlight-swipe-surface {
-    transition: none;
+  .spotlight-card.is-train-settling {
+    transition-duration: 1ms;
   }
 }
