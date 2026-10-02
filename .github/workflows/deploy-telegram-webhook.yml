@@ -1,4 +1,4 @@
-name: Deploy Telegram webhook
+name: Deploy BallerWatch Worker
 
 on:
   release:
