@@ -11,6 +11,16 @@ function secret() {
   return crypto.createHash("sha256").update(value).digest();
 }
 
+export function isEncryptedStateEnvelope(value) {
+  return Boolean(
+    value &&
+    value.v === 1 &&
+    typeof value.iv === "string" &&
+    typeof value.tag === "string" &&
+    typeof value.data === "string",
+  );
+}
+
 export function encryptState(value) {
   const iv = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv("aes-256-gcm", secret(), iv);
@@ -28,7 +38,7 @@ export function encryptState(value) {
 
 export function decryptState(payload) {
   try {
-    if (!payload || payload.v !== 1) return null;
+    if (!isEncryptedStateEnvelope(payload)) return null;
     const decipher = crypto.createDecipheriv(
       "aes-256-gcm",
       secret(),
