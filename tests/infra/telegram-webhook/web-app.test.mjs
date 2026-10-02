@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  dedupeWebBoardEntries,
   directIntent,
   issueOwnerToken,
   normalizeOwnerSettingsInput,
@@ -328,4 +329,42 @@ test("current match remains eligible until its end time", () => {
     new Date("2099-10-08T22:29:00-07:00"),
   );
   assert.equal(details.date, "2099-10-08");
+});
+
+
+test("web board keeps only the newest copy of identical historical notifications", () => {
+  const entries = [
+    {
+      id: "new",
+      channel: "pickup",
+      createdAt: "2026-10-02T16:26:00Z",
+      title: "Pickup update",
+      body: "12/16 reserved - Wed 10/7",
+      url: "https://vudh1.github.io/ballerwatch/",
+      tag: "pickup-2026-10-07",
+    },
+    {
+      id: "old",
+      channel: "pickup",
+      createdAt: "2026-10-02T15:24:00Z",
+      title: "Pickup update",
+      body: "12/16 reserved - Wed 10/7",
+      url: "https://vudh1.github.io/ballerwatch/",
+      tag: "pickup-2026-10-07",
+    },
+    {
+      id: "changed",
+      channel: "pickup",
+      createdAt: "2026-10-02T14:20:00Z",
+      title: "Pickup update",
+      body: "11/16 reserved - Wed 10/7",
+      url: "https://vudh1.github.io/ballerwatch/",
+      tag: "pickup-2026-10-07",
+    },
+  ];
+
+  assert.deepEqual(
+    dedupeWebBoardEntries(entries).map((entry) => entry.id),
+    ["new", "changed"],
+  );
 });

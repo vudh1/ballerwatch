@@ -1438,6 +1438,24 @@ async function webPushConfig(env) {
   }
 }
 
+export function dedupeWebBoardEntries(entries = []) {
+  const seen = new Set();
+  const unique = [];
+  for (const item of entries) {
+    const key = [
+      cleanText(item?.channel, 30),
+      cleanText(item?.tag, 120),
+      cleanText(item?.title, 120),
+      cleanText(item?.body, 900),
+      cleanText(item?.url, 500),
+    ].join("\u0000");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(item);
+  }
+  return unique;
+}
+
 async function webBoard(env, limit = 30) {
   const paths = [
     "state/web-board-pickup.json",
@@ -1463,7 +1481,8 @@ async function webBoard(env, limit = 30) {
     } catch {}
   }
   entries.sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0));
-  return entries.slice(0, Math.max(1, Math.min(Number(limit) || 30, 50)));
+  return dedupeWebBoardEntries(entries)
+    .slice(0, Math.max(1, Math.min(Number(limit) || 30, 50)));
 }
 
 export function validWebSubscription(value) {
