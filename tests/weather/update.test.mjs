@@ -1,4 +1,5 @@
 import test from "node:test";
+import fs from "node:fs";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import {
@@ -97,4 +98,14 @@ test("weather request stays inside the two-week free-tier window", () => {
   const source = fs.readFileSync("weather/update.mjs", "utf8");
   assert.match(source, /forecast_days", "14"/);
   assert.doesNotMatch(source, /forecast_days", "16"/);
+});
+
+
+test("league weather fallback is explicitly bounded to Seattle RATS games", () => {
+  const source = fs.readFileSync("weather/update.mjs", "utf8");
+  assert.match(source, /SEATTLE_WEATHER_FALLBACK/);
+  assert.match(source, /game\.kind === "league"/);
+  assert.match(source, /source: "seattle-fallback"/);
+  assert.match(source, /weatherApproximate/);
+  assert.match(source, /Weather game \$\{game\.date\}/);
 });
