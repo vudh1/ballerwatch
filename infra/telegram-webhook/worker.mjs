@@ -164,26 +164,40 @@ export async function verifyOwnerPassword(env, value, record) {
   }
 }
 
-async function ownerLoginAllowed(request) {
-  if (typeof caches === "undefined" || !caches.default) return true;
+async function ownerLoginRateRequest(request) {
+  if (typeof caches === "undefined" || !caches.default) return null;
   const source = [
     request.headers.get("cf-connecting-ip") || "",
     request.headers.get("user-agent") || "",
   ].join("|");
   const key = await sha256Hex(source || "unknown-owner-login");
-  const cacheRequest = new Request(
-    `https://ballerwatch.internal/owner-login/${key}`,
-  );
+  return new Request(`https://ballerwatch.internal/owner-login/${key}`);
+}
+
+async function ownerLoginAllowed(request) {
+  const cacheRequest = await ownerLoginRateRequest(request);
+  if (!cacheRequest) return true;
   const hit = await caches.default.match(cacheRequest);
-  const attempts = Number(await hit?.text().catch(() => "0") || 0);
-  if (attempts >= 10) return false;
+  const failures = Number(await hit?.text().catch(() => "0") || 0);
+  return failures < 10;
+}
+
+async function recordOwnerLoginFailure(request) {
+  const cacheRequest = await ownerLoginRateRequest(request);
+  if (!cacheRequest) return;
+  const hit = await caches.default.match(cacheRequest);
+  const failures = Number(await hit?.text().catch(() => "0") || 0);
   await caches.default.put(
     cacheRequest,
-    new Response(String(attempts + 1), {
+    new Response(String(failures + 1), {
       headers: { "cache-control": "public,max-age=600" },
     }),
   );
-  return true;
+}
+
+async function clearOwnerLoginFailures(request) {
+  const cacheRequest = await ownerLoginRateRequest(request);
+  if (cacheRequest) await caches.default.delete(cacheRequest);
 }
 
 
@@ -1974,6 +1988,7 @@ export default {
       try {
         const signedIn = await loginOwnerDevice(env, body?.password);
         if (!signedIn) {
+          await recordOwnerLoginFailure(request);
           return webJson(
             request,
             {
@@ -1983,6 +1998,7 @@ export default {
             { status: 401 },
           );
         }
+        await clearOwnerLoginFailures(request);
         return webJson(request, { ok: true, ...signedIn });
       } catch (error) {
         console.error("Owner password sign-in failed", error);
