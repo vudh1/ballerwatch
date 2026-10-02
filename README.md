@@ -2,17 +2,20 @@
 
 BallerWatch is a small soccer automation system for pickup games and Seattle RATS league games.
 
-It uses Telegram and an installable GitHub Pages web app for questions and alerts, Cloudflare Workers for the webhook/read-only API path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Gemini Flash with Groq fallback for bounded AI assistance, standards-based Web Push for a Telegram-independent notification channel, and Google Calendar for league match sync.
+It uses an installable GitHub Pages web app as a standalone questions/settings/notification surface, with Telegram retained as an optional messaging adapter, Cloudflare Workers for the public-safe API/webhook path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Gemini Flash with Groq fallback for bounded AI assistance, standards-based Web Push for Telegram-independent notifications, and Google Calendar for league match sync.
 
-**Current version: 5.6.0**
+**Current source version: 5.7.0**
+
+**Production:** pinned separately by the latest promoted commit on `production` / published GitHub Release.
 
 ## Recent changes
 
-- **5.6.x — Frictionless feedback + pairing.** Wrong-answer feedback no longer opens Settings or requires `/webpair`, mobile gets a one-tap feedback control, pairing codes can authorize multiple devices during their 10-minute window, and autocomplete now floats above the Ask card instead of stretching it.
+- **5.7.x — Release-gated rollout + standalone owner sign-in.** Desktop web users get subtle hover/click carousel edges, Settings supports an owner password so normal devices no longer need `/webpair`, and GitHub Releases now gate production after a 24-hour default soak or manual promotion.
+- **5.6.x — Frictionless feedback + pairing.** Wrong-answer feedback no longer opens Settings or requires `/webpair`, mobile gets a one-tap feedback control, pairing codes can authorize multiple devices during their 10-minute window, and autocomplete floats above the Ask card.
 - **5.5.x — iPhone-first dashboard refresh.** Reworked the web app around the approved demo direction with a larger glass header, date-first match spotlight, RSVP progress, brighter calendar selection, an integrated Ask panel, and a floating notification popover.
 - **5.4.x — Review fidelity + answer reliability.** Exact opted-in/owner review Q&A stays encrypted for 48 hours while readable review signals remain sanitized; weekday time/location questions are deterministic, and match-card/notification layouts are tighter.
 - **5.3.x — Connected match carousel.** Swipe between game dates with equal-size connected cards, stronger match-window weather verification, and duplicate pickup/notification suppression.
-- **5.2.x — Notification inbox + sharing.** Added unread/full-screen notification handling, swipe-to-delete, local Delete all, compact push controls, and generic native game sharing.
+
 Full release history and Telegram announcement text live in `features/versions.json`.
 
 ## Web app demo
@@ -21,13 +24,13 @@ Full release history and Telegram announcement text live in `features/versions.j
 
 Try the public-safe web app:
 
-1. Swipe the main match card left/right to move between upcoming game dates.
+1. On touch devices, swipe the main match card left/right. On desktop, move the pointer to an available left/right card edge and click the subtle arrow that appears.
 2. Tap a highlighted date in the 14-day calendar to inspect that match.
 3. Open the notification bell to view recent updates and the full-screen notification reader.
 4. Ask a read-only question such as `What time is Thursday?` or use a slash command like `/next`.
 5. On iPhone, add the site to the Home Screen to try the standalone PWA experience and Web Push controls.
 
-The public demo is read-only. Owner-only settings require pairing from **Settings**; wrong-answer feedback is available directly on each answer without granting settings access.
+The public demo is read-only. Owner-only settings use password sign-in from **Settings**; `/webpair` remains a first-time/recovery path. Wrong-answer feedback is available directly on each answer without granting settings access.
 
 ## Architecture
 
@@ -36,7 +39,7 @@ Telegram -------------------+
                             |
 GitHub Pages PWA -----------+--> Cloudflare Worker
                                  |-- public-safe Q&A / board
-                                 |-- owner-paired settings
+                                 |-- owner-authenticated settings
                                  |-- encrypted push registration
                                  '-- Telegram webhook
                                            |
@@ -103,18 +106,19 @@ It provides:
 
 - an installable iPhone-first Home Screen dashboard with larger frosted-glass surfaces, a date-first match spotlight, RSVP progress, and polished mobile controls;
 - a redesigned match dashboard with a next-game spotlight, Google Maps directions, and native device sharing;
-- a compact 14-day game calendar for pickup and monitored RATS teams, synchronized with left/right swipe navigation on the match spotlight;
+- a compact 14-day game calendar for pickup and monitored RATS teams, synchronized with touch swipes and subtle desktop hover/click edge navigation on the match spotlight;
 - match-window weather showing condition, temperature, and the maximum rain probability during the scheduled game window;
 - a compact notification inbox behind the top-right bell with unread counts, full-screen reading, animated per-device swipe-to-delete, and local Delete all;
 - one-question/one-answer Q&A with slash commands and a floating Google-style autocomplete overlay; paired-owner questions retain the original question and answer inside encrypted 48-hour review history, while anonymous questions are retained only if the visitor explicitly marks that answer wrong;
 - a one-tap **Wrong answer** control that uses an answer-scoped signed token instead of owner pairing; desktop double-click remains a shortcut, and feedback can be undone without opening Settings;
 - a compact Web Push On/Off control beside notification Refresh for pickup, real RATS schedule-change, and version notifications;
-- a manual local notification test for confirming iPhone notification display while the app is closed.
-- a Telegram footer shortcut beside GitHub and Wiki.
+- owner Settings with an app-native password sign-in; `/webpair` is retained only for first-time bootstrap/recovery;
+- a manual local notification test for confirming iPhone notification display while the app is closed;
+- a Telegram footer shortcut beside GitHub and Wiki while Telegram remains available as an optional adapter.
 
 On iPhone, open the site in Safari, choose **Share → Add to Home Screen**, open the installed BallerWatch app, then use the notification bell to turn Push notifications on.
 
-The anonymous public web surface remains read-only and deliberately strips RSVP participant names, waitlist names, owner-specific status, secrets, and private settings. An owner-paired device can view/change only the pickup RSVP name and monitored league teams through the Settings gear.
+The anonymous public web surface remains read-only and deliberately strips RSVP participant names, waitlist names, owner-specific status, secrets, and private settings. An owner-authenticated device can view/change only the pickup RSVP name and monitored league teams through the Settings gear. After the owner password is configured once, a new device can sign in directly without Telegram; `/webpair` remains a recovery/bootstrap option.
 
 ## 48-hour review history
 
@@ -122,7 +126,7 @@ BallerWatch no longer automatically turns every unanswered question into a featu
 
 Instead:
 
-1. an owner exchange from the private bot or owner-paired PWA retains the original question and original bot answer inside private review history; an anonymous web exchange is retained only when the visitor explicitly marks that answer wrong;
+1. an owner exchange from the private bot or owner-authenticated PWA retains the original question and original bot answer inside private review history; an anonymous web exchange is retained only when the visitor explicitly marks that answer wrong;
 2. Groq may add privacy-cleaned classification, summary, and reason metadata for engineering triage, but that generated metadata never replaces the source exchange;
 3. `state/chat-history.json` is AES-GCM encrypted on the `runtime-state` branch and pruned after at most **48 hours**;
 4. only actionable, sanitized signals are copied to the readable `state/chat-review.json`.
@@ -201,9 +205,13 @@ The watchdog does not require Workers KV.
 
 ### `main`
 
-`main` is release-oriented. It contains code, static configuration, docs, tests, and release history.
+`main` is the reviewed integration branch. Product code may merge here before it is available on the live site.
 
 Generated runtime data must not be committed to `main`.
+
+### `production`
+
+`production` points to the exact commit promoted by the latest published GitHub Release. Runtime workflows and production deployments use this branch/tag rather than unreleased `main` code.
 
 ### `runtime-state`
 
@@ -221,7 +229,23 @@ Private files remain encrypted before being written there, including:
 
 The only intentionally readable runtime-derived files are privacy-minimized summaries such as the chat review signal file and feature-request category summary.
 
-Keeping state on its own branch prevents frequent runtime commits from cluttering the version history on `main`.
+Keeping state on its own branch prevents frequent runtime commits from cluttering source history.
+
+## Production releases
+
+A GitHub Release is the production promotion record for one exact BallerWatch commit. The Release creates a version tag such as `v5.7.0`, carries the release notes, and triggers the production deployment workflows.
+
+Merging a product release to `main` therefore does **not** immediately change the live app:
+
+1. the release code merges to `main` after validation/smoke;
+2. the automatic **Promote production release** workflow waits until the candidate has been on `main` for at least 24 hours;
+3. it checks hourly and, on the first check after the 24-hour soak, verifies that the candidate commit has a successful **Validate code** run;
+4. it advances `production` to that exact commit and publishes the GitHub Release;
+5. the published Release triggers Pages/Worker/Calendar/web-runtime deployment from the tagged commit.
+
+To roll out a validated version sooner, run **Actions → Promote production release → Run workflow**. A manual promotion skips the 24-hour soak.
+
+If the current version already has a GitHub Release, the promoter does nothing. This allows documentation fixes, behavior-preserving refactors, tests, CI maintenance, and other housekeeping to merge to `main` without inventing a version or redeploying production.
 
 ## Runtime-state concurrency
 
@@ -241,13 +265,13 @@ Runtime pushes retry on branch races so overlapping watcher/listener runs do not
 | Telegram webhook | Event-driven | Cloudflare Worker |
 | Fast Telegram read-only reply | Event-driven | Cloudflare Worker |
 | PWA public-safe Q&A / board | Event-driven | GitHub Pages → Cloudflare Worker |
-| PWA owner settings | User-driven, paired device only | GitHub Pages → Worker → GitHub listener |
+| PWA owner settings | User-driven, owner-authenticated device | GitHub Pages → Worker → encrypted runtime/GitHub listener |
 | Web Push registration | User-driven | PWA → Worker → GitHub Action |
 | Web Push delivery | Only for allowed new notifications | GitHub Action → browser push service |
 | State-changing Telegram command | Event-driven | GitHub listener |
 | Calendar sync | Only when league snapshot requires it | GitHub Action |
 
-Cloudflare Cron Triggers remain disabled. The only native GitHub `schedule:` is the six-hour watchdog/weather maintenance run.
+Cloudflare Cron Triggers remain disabled. Native GitHub schedules are limited to the six-hour watchdog/weather maintenance run and the hourly production-promotion eligibility check.
 
 ## Cloudflare outage behavior
 
@@ -277,7 +301,7 @@ The repository is public, so the storage boundary is strict:
 - secrets stay in GitHub/Cloudflare secret stores;
 - private runtime payloads on `runtime-state` are AES-256-GCM encrypted;
 - plaintext runtime data exists only temporarily inside a Worker invocation or GitHub runner;
-- original owner question/answer text is retained only inside encrypted 48-hour chat history and never exposed in the readable review index;
+- original owner-authenticated question/answer text, plus an anonymous exchange explicitly marked wrong, is retained only inside encrypted 48-hour chat history and never exposed in the readable review index;
 - Web Push subscriptions and VAPID private material stay encrypted on `runtime-state`;
 - web-visible board/Q&A data excludes roster names, waitlist names, and owner-specific status;
 - chat review output is sanitized before it becomes readable;
@@ -334,23 +358,26 @@ The next watcher runs rebuild current source state and built-in defaults.
 | **RATS league watcher** | Refresh league schedules/scores and reconcile Calendar |
 | **Telegram listener** | Handle state-changing or unsupported Telegram commands |
 | **System watchdog** | Validate service/scheduler health |
-| **Deploy Telegram webhook** | Deploy the Telegram + PWA read-only Cloudflare Worker |
-| **Deploy Calendar bridge** | Deploy and verify the Apps Script Calendar bridge |
+| **Promote production release** | After the 24-hour default soak, or manually, advance `production` and publish the GitHub Release that triggers rollout |
+| **Deploy BallerWatch Worker** | Deploy the Cloudflare PWA API and optional Telegram adapter from a published release |
+| **Deploy Calendar bridge** | Deploy and verify the Apps Script Calendar bridge from a published release |
 | **Validate code** | Style, syntax, tests, privacy audit |
 | **Manual smoke test** | Notification-silent live-source verification |
 | **Purge current data** | Factory-reset generated runtime state |
 | **Configure external cron** | Create/repair the 2/5-minute cron-job.org schedules and disable retired listener/watchdog jobs |
 | **Web app runtime** | Initialize/update encrypted Web Push subscription state |
-| **Deploy GitHub Pages app** | Publish the installable PWA from `docs/` |
+| **Deploy GitHub Pages app** | Publish the installable PWA from the promoted release tag |
 | **Publish wiki** | Mirror `docs/wiki/` into the GitHub Wiki |
 | **Cleanup merged release branches** | Remove stale `release/*` and `fix/*` branches |
 
 ## Required secrets
 
-### Telegram
+### Telegram adapter (optional for the PWA/API)
 
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_CHAT_ID`
+
+The Cloudflare PWA API, owner password sign-in, encrypted runtime access, and Web Push path use `TRACKER_STATE_KEY` and do not require Telegram credentials. Keep Telegram configured while using `/webpair` as recovery; once an owner password is set, normal Settings access no longer depends on Telegram.
 
 ### Runtime encryption and setup
 
@@ -396,7 +423,7 @@ Read these before making changes:
 - `features/versions.json`
 - `docs/wiki/`
 
-Normal releases use `release/<version>`, run validation and the notification-silent smoke test, then squash merge to `main`.
+Product releases use `release/<version>`, run validation and the notification-silent smoke test, then squash merge to `main`. Production is promoted later through the GitHub Release gate: automatically after the 24-hour soak on the daily promotion cycle, or manually from **Promote production release**.
 
 Runtime code and tests use dependency-free Node.js 22 / ECMAScript modules; Python is no longer required by BallerWatch workflows.
 
@@ -404,14 +431,17 @@ All test-only code lives under `tests/`, mirroring the source areas. Production 
 
 Do not send Telegram messages from tests.
 
+Version numbers are reserved for actual product behavior changes. Documentation-only edits, behavior-preserving refactors, test changes, formatting/comments, and CI/tooling maintenance keep the existing product version and do not create another GitHub Release.
+
 ## Repository goals
 
 BallerWatch should remain:
 
 - fast for normal Telegram and PWA read-only questions;
 - inexpensive to operate;
-- resilient when one infrastructure provider or Telegram is unavailable;
+- able to run the PWA/API, owner Settings, and Web Push without Telegram after owner-password bootstrap;
+- resilient when one infrastructure provider or the optional Telegram adapter is unavailable;
 - conservative about private data;
 - simple enough to maintain and onboard;
-- release-oriented on `main`;
+- able to keep `main` ahead of the separately promoted production release;
 - able to learn from short-lived feedback while keeping original owner Q&A encrypted and readable review artifacts privacy-minimized.

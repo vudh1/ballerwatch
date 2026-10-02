@@ -1,11 +1,20 @@
 name: Deploy Calendar bridge
 
 on:
+  release:
+    types: [published]
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "league/google_apps_script/Code.gs"
+    inputs:
+      pair_calendar:
+        description: "Pair the intended Calendar after deploy"
+        required: false
+        default: false
+        type: boolean
+      purge_all:
+        description: "Factory-reset BallerWatch data after deploy"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -20,6 +29,9 @@ jobs:
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.release.tag_name || 'production' }}
+          fetch-depth: 1
       - uses: actions/setup-node@v6
         with:
           node-version: "22"
@@ -80,7 +92,7 @@ jobs:
           echo "Calendar bridge deployment verified."
 
       - name: Pair intended Calendar requested by release commit
-        if: github.event_name == 'push' && contains(github.event.head_commit.message, '[pair-calendar]')
+        if: github.event_name == 'workflow_dispatch' && inputs.pair_calendar == true
         env:
           GOOGLE_CALENDAR_WEBHOOK_URL: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_URL }}
           GOOGLE_CALENDAR_WEBHOOK_SECRET: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_SECRET }}
@@ -88,7 +100,7 @@ jobs:
         run: node league/google-calendar-pair.mjs
 
       - name: One-time full reset requested by release commit
-        if: github.event_name == 'push' && contains(github.event.head_commit.message, '[purge-all]')
+        if: github.event_name == 'workflow_dispatch' && inputs.purge_all == true
         env:
           GOOGLE_CALENDAR_WEBHOOK_URL: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_URL }}
           GOOGLE_CALENDAR_WEBHOOK_SECRET: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_SECRET }}

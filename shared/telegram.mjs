@@ -6,14 +6,22 @@
 const TOKEN = (process.env.TELEGRAM_BOT_TOKEN || "").trim();
 const CHAT_ID = (process.env.TELEGRAM_CHAT_ID || "").trim();
 
-if (!TOKEN) throw new Error("TELEGRAM_BOT_TOKEN is not configured.");
-if (!CHAT_ID) throw new Error("TELEGRAM_CHAT_ID is not configured.");
+export function telegramConfigured() {
+  return Boolean(TOKEN && CHAT_ID);
+}
+
+function requireTelegram() {
+  if (!telegramConfigured()) {
+    throw new Error("Telegram adapter is not configured.");
+  }
+}
 
 export function isOwnerChat(chatId) {
-  return String(chatId) === String(CHAT_ID);
+  return telegramConfigured() && String(chatId) === String(CHAT_ID);
 }
 
 export async function getTelegramUpdates(offset = 0, timeoutSeconds = 0) {
+  requireTelegram();
   const url = new URL(`https://api.telegram.org/bot${TOKEN}/getUpdates`);
   if (offset) url.searchParams.set("offset", String(offset));
   if (timeoutSeconds > 0) url.searchParams.set("timeout", String(timeoutSeconds));
@@ -34,6 +42,7 @@ export async function getTelegramUpdates(offset = 0, timeoutSeconds = 0) {
 }
 
 export async function sendTelegram(message, extra = {}) {
+  requireTelegram();
   const response = await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -54,6 +63,7 @@ export async function sendTelegram(message, extra = {}) {
 
 
 export async function sendTyping() {
+  if (!telegramConfigured()) return;
   try {
     const response = await fetch(`https://api.telegram.org/bot${TOKEN}/sendChatAction`, {
       method: "POST",

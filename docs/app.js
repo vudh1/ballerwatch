@@ -12,6 +12,9 @@ const els = {
   closeSettings: document.querySelector("#close-settings"),
   settingsPairView: document.querySelector("#settings-pair-view"),
   settingsOwnerView: document.querySelector("#settings-owner-view"),
+  ownerLoginForm: document.querySelector("#owner-login-form"),
+  ownerLoginPassword: document.querySelector("#owner-login-password"),
+  ownerLoginStatus: document.querySelector("#owner-login-status"),
   ownerPairForm: document.querySelector("#owner-pair-form"),
   ownerPairCode: document.querySelector("#owner-pair-code"),
   ownerPairStatus: document.querySelector("#owner-pair-status"),
@@ -19,6 +22,10 @@ const els = {
   ownerName: document.querySelector("#owner-name"),
   ownerTeams: document.querySelector("#owner-teams"),
   ownerSettingsStatus: document.querySelector("#owner-settings-status"),
+  ownerPasswordForm: document.querySelector("#owner-password-form"),
+  ownerPasswordNew: document.querySelector("#owner-password-new"),
+  ownerPasswordConfirm: document.querySelector("#owner-password-confirm"),
+  ownerPasswordStatus: document.querySelector("#owner-password-status"),
   ownerDisconnect: document.querySelector("#owner-disconnect"),
   notificationBadge: document.querySelector("#notification-badge"),
   notificationDialog: document.querySelector("#notification-dialog"),
@@ -40,6 +47,8 @@ const els = {
   installHelp: document.querySelector("#install-help"),
   installDialog: document.querySelector("#install-dialog"),
   spotlightCarousel: document.querySelector("#spotlight-carousel"),
+  spotlightPrevious: document.querySelector("#spotlight-previous"),
+  spotlightNext: document.querySelector("#spotlight-next"),
   nextGameCard: document.querySelector("#next-game-card"),
   spotlightLabel: document.querySelector("#spotlight-label"),
   nextGameTitle: document.querySelector("#next-game-title"),
@@ -302,7 +311,8 @@ async function api(path, options = {}) {
 function showPairSettings(message = "") {
   els.settingsPairView.hidden = false;
   els.settingsOwnerView.hidden = true;
-  els.ownerPairStatus.textContent = message;
+  els.ownerLoginStatus.textContent = message;
+  els.ownerPairStatus.textContent = "";
 }
 
 function showOwnerSettings(settings) {
@@ -310,6 +320,9 @@ function showOwnerSettings(settings) {
   els.settingsOwnerView.hidden = false;
   els.ownerName.value = settings?.ownerName || "";
   els.ownerTeams.value = Array.isArray(settings?.teams) ? settings.teams.join("\n") : "";
+  els.ownerPasswordStatus.textContent = settings?.passwordConfigured
+    ? "Owner password is set. New devices can sign in directly."
+    : "Set an owner password so new devices can sign in without /webpair.";
 }
 
 async function loadOwnerSettings() {
@@ -328,7 +341,7 @@ async function loadOwnerSettings() {
   } catch (error) {
     if (error.status === 401) {
       localStorage.removeItem(OWNER_TOKEN_KEY);
-      showPairSettings("Pair this device again to edit owner settings.");
+      showPairSettings("Sign in again to edit owner settings.");
       return;
     }
     showOwnerSettings({});
@@ -339,6 +352,27 @@ async function loadOwnerSettings() {
 async function openSettings() {
   els.settingsDialog.showModal();
   await loadOwnerSettings();
+}
+
+async function loginOwnerDevice(event) {
+  event.preventDefault();
+  const password = els.ownerLoginPassword.value;
+  const button = els.ownerLoginForm.querySelector("button");
+  button.disabled = true;
+  els.ownerLoginStatus.textContent = "Signing in…";
+  try {
+    const payload = await api("/web/owner/login", {
+      method: "POST",
+      body: JSON.stringify({ password }),
+    });
+    localStorage.setItem(OWNER_TOKEN_KEY, payload.token);
+    els.ownerLoginPassword.value = "";
+    await loadOwnerSettings();
+  } catch (error) {
+    els.ownerLoginStatus.textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
 }
 
 async function pairOwnerDevice(event) {
@@ -355,6 +389,10 @@ async function pairOwnerDevice(event) {
     localStorage.setItem(OWNER_TOKEN_KEY, payload.token);
     els.ownerPairCode.value = "";
     await loadOwnerSettings();
+    if (!payload.passwordConfigured) {
+      els.ownerPasswordStatus.textContent =
+        "Paired. Set an owner password below so future devices can sign in directly.";
+    }
   } catch (error) {
     els.ownerPairStatus.textContent = error.message;
   } finally {
@@ -386,7 +424,7 @@ async function saveOwnerSettings(event) {
   } catch (error) {
     if (error.status === 401) {
       localStorage.removeItem(OWNER_TOKEN_KEY);
-      showPairSettings("Pair this device again to edit owner settings.");
+      showPairSettings("Sign in again to edit owner settings.");
     } else {
       els.ownerSettingsStatus.textContent = error.message;
     }
@@ -395,9 +433,44 @@ async function saveOwnerSettings(event) {
   }
 }
 
+async function saveOwnerPassword(event) {
+  event.preventDefault();
+  const password = els.ownerPasswordNew.value;
+  const confirm = els.ownerPasswordConfirm.value;
+  const button = els.ownerPasswordForm.querySelector("button");
+
+  if (password !== confirm) {
+    els.ownerPasswordStatus.textContent = "Passwords do not match.";
+    return;
+  }
+
+  button.disabled = true;
+  els.ownerPasswordStatus.textContent = "Saving owner password…";
+  try {
+    const payload = await api("/web/owner/password", {
+      method: "POST",
+      headers: ownerHeaders(),
+      body: JSON.stringify({ password }),
+    });
+    els.ownerPasswordNew.value = "";
+    els.ownerPasswordConfirm.value = "";
+    els.ownerPasswordStatus.textContent = payload.message ||
+      "Owner password saved. New devices can now sign in directly.";
+  } catch (error) {
+    if (error.status === 401) {
+      localStorage.removeItem(OWNER_TOKEN_KEY);
+      showPairSettings("Sign in again to change the owner password.");
+    } else {
+      els.ownerPasswordStatus.textContent = error.message;
+    }
+  } finally {
+    button.disabled = false;
+  }
+}
+
 function disconnectOwnerDevice() {
   localStorage.removeItem(OWNER_TOKEN_KEY);
-  showPairSettings("This device is disconnected from private settings.");
+  showPairSettings("This device is signed out of private settings.");
 }
 
 function setSystemState(state) {
@@ -422,7 +495,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=5.6.0", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=5.7.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -947,6 +1020,7 @@ function selectCalendarDate(date, { scrollToSpotlight = false } = {}) {
   renderCalendarGamePicker(games, game.id || "");
   renderNextGame(game, "SELECTED GAME");
   els.nextGameCard.classList.add("spotlight-selected");
+  syncSpotlightEdgeControls();
 
   if (scrollToSpotlight) {
     els.nextGameCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -984,6 +1058,11 @@ function selectAdjacentCalendarGameDate(direction) {
   if (!selection) return false;
   selectCalendarDate(selection.date);
   return true;
+}
+
+function syncSpotlightEdgeControls() {
+  els.spotlightPrevious.disabled = !adjacentCalendarSelection(-1);
+  els.spotlightNext.disabled = !adjacentCalendarSelection(1);
 }
 
 function installSpotlightSwipe() {
@@ -1093,6 +1172,19 @@ function installSpotlightSwipe() {
       resetGesture();
     }, 270);
   };
+
+  const activateEdgeStep = (direction) => {
+    if (settling) return;
+    const activeTrain = prepareTrain(direction);
+    if (!activeTrain) {
+      syncSpotlightEdgeControls();
+      return;
+    }
+    window.requestAnimationFrame(completeTrain);
+  };
+
+  els.spotlightPrevious.addEventListener("click", () => activateEdgeStep(-1));
+  els.spotlightNext.addEventListener("click", () => activateEdgeStep(1));
 
   els.nextGameCard.addEventListener("touchstart", (event) => {
     if (settling || event.target.closest?.("a, button")) return;
@@ -1263,6 +1355,7 @@ function renderCalendar(calendar) {
     renderNextGame(null, "NEXT GAME");
   }
 
+  syncSpotlightEdgeControls();
   window.requestAnimationFrame(syncSpotlightCardDimensions);
 }
 
@@ -1275,6 +1368,7 @@ async function loadCalendar() {
     els.calendarGrid.replaceChildren();
     els.calendarGamePicker.hidden = true;
     els.calendarUpdated.textContent = "Calendar offline";
+    syncSpotlightEdgeControls();
     await loadNextGame();
   }
 }
@@ -1657,8 +1751,10 @@ els.answer.addEventListener("selectstart", (event) => event.preventDefault());
 els.notificationBell.addEventListener("click", openNotifications);
 els.settingsButton.addEventListener("click", openSettings);
 els.closeSettings.addEventListener("click", () => els.settingsDialog.close());
+els.ownerLoginForm.addEventListener("submit", loginOwnerDevice);
 els.ownerPairForm.addEventListener("submit", pairOwnerDevice);
 els.ownerSettingsForm.addEventListener("submit", saveOwnerSettings);
+els.ownerPasswordForm.addEventListener("submit", saveOwnerPassword);
 els.ownerDisconnect.addEventListener("click", disconnectOwnerDevice);
 els.nextGameShare.addEventListener("click", shareNextGame);
 els.testNotification.addEventListener("click", scheduleTestNotification);

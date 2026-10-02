@@ -26,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: main
+          ref: production
           fetch-depth: 1
 
       - name: Restore encrypted watchdog state cache

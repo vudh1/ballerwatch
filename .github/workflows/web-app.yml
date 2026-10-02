@@ -1,6 +1,8 @@
 name: Web app runtime
 
 on:
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       event_b64:
@@ -8,14 +10,6 @@ on:
         required: false
         default: ""
         type: string
-  push:
-    branches: [main]
-    paths:
-      - "docs/**"
-      - "shared/web-push.mjs"
-      - "shared/web-notifications.mjs"
-      - "shared/runtime-paths.mjs"
-      - ".github/workflows/web-app.yml"
 
 permissions:
   contents: write
@@ -31,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: main
+          ref: ${{ github.event.release.tag_name || 'production' }}
           fetch-depth: 1
 
       - name: Pull encrypted web runtime state

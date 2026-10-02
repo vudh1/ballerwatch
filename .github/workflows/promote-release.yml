@@ -1,0 +1,159 @@
+name: Promote production release
+
+on:
+  schedule:
+    - cron: "37 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: ballerwatch-production-promotion
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Resolve release candidate
+        id: candidate
+        env:
+          GH_TOKEN: ${{ secrets.CRON_GITHUB_PAT }}
+          EVENT_NAME: ${{ github.event_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$GH_TOKEN" || { echo "::error::CRON_GITHUB_PAT is required to publish a release that can trigger deploy workflows."; exit 1; }
+
+          git fetch --no-tags origin main
+          sha="$(git rev-parse FETCH_HEAD)"
+          git show "$sha:features/versions.json" > /tmp/ballerwatch-versions.json
+
+          current_version="$(node -e 'const x=require("/tmp/ballerwatch-versions.json");process.stdout.write(String(x.currentVersion||""))')"
+          version="$current_version"
+          test -n "$version" || { echo "::error::No currentVersion was found."; exit 1; }
+
+          node - "$version" <<'NODE'
+          const fs = require("fs");
+          const version = process.argv[2];
+          const data = JSON.parse(fs.readFileSync("/tmp/ballerwatch-versions.json", "utf8"));
+          const release = (data.releases || []).find((item) => item.version === version);
+          if (!release) {
+            console.error(`::error::Version ${version} is not present in features/versions.json on main.`);
+            process.exit(1);
+          }
+          fs.writeFileSync("/tmp/ballerwatch-release.json", JSON.stringify(release));
+          NODE
+
+          tag="v$version"
+          release_state="$(
+            gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json isDraft               --jq 'if .isDraft then "draft" else "published" end' 2>/dev/null               || printf 'missing'
+          )"
+          if [ "$release_state" = "published" ]; then
+            echo "eligible=false" >> "$GITHUB_OUTPUT"
+            echo "reason=Published GitHub Release $tag already exists; no production rollout is needed." >> "$GITHUB_OUTPUT"
+            echo "Release $tag is already published. Leaving production unchanged."
+            exit 0
+          fi
+          if [ "$release_state" = "draft" ]; then
+            tag_sha="$(gh api "/repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" --jq '.object.sha')"
+            if [ "$tag_sha" != "$sha" ]; then
+              echo "::error::Draft release $tag points to $tag_sha instead of candidate $sha."
+              exit 1
+            fi
+          fi
+
+          if [ "$EVENT_NAME" = "schedule" ]; then
+            version_commit_epoch="$(git log -1 "$sha" --format=%ct -- features/versions.json)"
+            now_epoch="$(date +%s)"
+            age_seconds="$((now_epoch - version_commit_epoch))"
+            if [ "$age_seconds" -lt 86400 ]; then
+              remaining="$((86400 - age_seconds))"
+              echo "eligible=false" >> "$GITHUB_OUTPUT"
+              echo "reason=Candidate is still inside the 24-hour soak window ($remaining seconds remaining)." >> "$GITHUB_OUTPUT"
+              echo "Candidate $tag is only $age_seconds seconds old; waiting for the 24-hour rollout window."
+              exit 0
+            fi
+          fi
+
+          successful_validation="$(gh api -X GET             "/repos/$GITHUB_REPOSITORY/actions/workflows/validate.yml/runs"             -f head_sha="$sha"             -f status=completed             -f per_page=20             --jq '[.workflow_runs[] | select(.conclusion == "success")] | length')"
+          if [ "$successful_validation" -lt 1 ]; then
+            echo "::error::No successful Validate code run was found for candidate $sha."
+            exit 1
+          fi
+
+          echo "eligible=true" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "release_state=$release_state" >> "$GITHUB_OUTPUT"
+
+      - name: Build release notes
+        if: steps.candidate.outputs.eligible == 'true'
+        env:
+          VERSION: ${{ steps.candidate.outputs.version }}
+        run: |
+          node - <<'NODE'
+          const fs = require("fs");
+          const release = JSON.parse(fs.readFileSync("/tmp/ballerwatch-release.json", "utf8"));
+          const lines = [
+            `# BallerWatch ${release.version}`,
+            "",
+            release.title || "BallerWatch release",
+            "",
+            ...(release.changes || []).map((change) => `- ${change}`),
+            "",
+            "Production rollout is pinned to this GitHub Release and its tagged commit.",
+          ];
+          fs.writeFileSync("/tmp/ballerwatch-release-notes.md", lines.join("\n") + "\n");
+          fs.writeFileSync("/tmp/ballerwatch-release-title.txt",
+            `BallerWatch ${release.version} — ${release.title || "release"}`);
+          NODE
+
+      - name: Promote candidate and publish GitHub Release
+        if: steps.candidate.outputs.eligible == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.CRON_GITHUB_PAT }}
+          SHA: ${{ steps.candidate.outputs.sha }}
+          TAG: ${{ steps.candidate.outputs.tag }}
+          RELEASE_STATE: ${{ steps.candidate.outputs.release_state }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          title="$(cat /tmp/ballerwatch-release-title.txt)"
+          if [ "$RELEASE_STATE" != "draft" ]; then
+            gh release create "$TAG"               --repo "$GITHUB_REPOSITORY"               --target "$SHA"               --title "$title"               --notes-file /tmp/ballerwatch-release-notes.md               --draft
+          fi
+
+          gh api --method PATCH             "/repos/$GITHUB_REPOSITORY/git/refs/heads/production"             -f sha="$SHA"             -F force=true >/dev/null
+
+          gh release edit "$TAG"             --repo "$GITHUB_REPOSITORY"             --draft=false             --title "$title"             --notes-file /tmp/ballerwatch-release-notes.md
+
+          {
+            echo "### Production promoted"
+            echo
+            echo "- Release: **$TAG**"
+            echo "- Commit: `$SHA`"
+            echo "- Production branch now points to the same commit."
+            echo "- Release-triggered deployment workflows will deploy this tagged version."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Explain no-op promotion
+        if: steps.candidate.outputs.eligible != 'true'
+        env:
+          REASON: ${{ steps.candidate.outputs.reason }}
+        run: |
+          {
+            echo "### No production promotion"
+            echo
+            echo "$REASON"
+          } >> "$GITHUB_STEP_SUMMARY"

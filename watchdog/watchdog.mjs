@@ -2,7 +2,7 @@
  * Performs deep health, privacy, validation, edge, and external-scheduler checks.
  *
  * v2.5.0: caches encrypted scheduler audits for 6 hours; other checks remain every run.
- * v2.6.0: health failures are state/log-only; Telegram is reserved for one combined daily version announcement. Runtime/private data must never be committed to Git.
+ * v5.7.0: health checks treat the Cloudflare service as the BallerWatch Worker, while Telegram is an optional notification adapter. Runtime/private data must never be committed to Git.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -64,19 +64,23 @@ async function github(pathname) {
   return payload;
 }
 
-async function telegramWebhookHealth() {
+async function workerHealth() {
   const url = String(process.env.TELEGRAM_WEBHOOK_HEALTH_URL || "").trim();
   if (!url) return { healthy: true, problem: null };
 
   try {
     const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok || payload?.ok !== true || payload?.service !== "ballerwatch-telegram-webhook") {
+    const knownService = new Set([
+      "ballerwatch-worker",
+      "ballerwatch-telegram-webhook",
+    ]);
+    if (!response.ok || payload?.ok !== true || !knownService.has(payload?.service)) {
       return {
         healthy: false,
         problem: {
-          key: "telegram-webhook:unhealthy",
-          message: "Telegram webhook: health check failed",
+          key: "ballerwatch-worker:unhealthy",
+          message: "BallerWatch Worker: health check failed",
         },
       };
     }
@@ -121,8 +125,8 @@ async function telegramWebhookHealth() {
     return {
       healthy: false,
       problem: {
-        key: "telegram-webhook:unreachable",
-        message: "Telegram webhook: health endpoint is unreachable",
+        key: "ballerwatch-worker:unreachable",
+        message: "BallerWatch Worker: health endpoint is unreachable",
       },
     };
   }
@@ -180,7 +184,7 @@ export async function runWatchdog() {
   const previous = loadState();
   const problems = [];
 
-  const edge = await telegramWebhookHealth();
+  const edge = await workerHealth();
   if (edge.problem) problems.push(edge.problem);
 
   const validation = await validationProblem();
@@ -234,7 +238,7 @@ export async function runWatchdog() {
     console.log("All BallerWatch components are healthy.");
   } else {
     console.log(
-      `Watchdog found ${problems.length} problem(s); Telegram health alerts are disabled by policy.`,
+      `Watchdog found ${problems.length} problem(s); proactive health alerts are disabled by policy.`,
     );
   }
   return { healthy, problems };

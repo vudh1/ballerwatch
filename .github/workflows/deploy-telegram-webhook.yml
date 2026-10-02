@@ -1,16 +1,9 @@
-name: Deploy Telegram webhook
+name: Deploy BallerWatch Worker
 
 on:
+  release:
+    types: [published]
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "infra/telegram-webhook/**"
-      - "infra/external-schedules.mjs"
-      - "shared/runtime-paths.mjs"
-      - "shared/intent-index.mjs"
-      - "shared/ai-provider.mjs"
-      - ".github/workflows/deploy-telegram-webhook.yml"
 
 permissions:
   contents: write
@@ -26,30 +19,23 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
+          ref: ${{ github.event.release.tag_name || 'production' }}
           fetch-depth: 1
 
-      - name: Verify required secrets
+      - name: Verify required core secrets
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           CRON_GITHUB_PAT: ${{ secrets.CRON_GITHUB_PAT }}
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-          OWNER_RSVP_NAME: ${{ secrets.OWNER_RSVP_NAME }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          UPSTREAM_ENDPOINT: ${{ secrets.UPSTREAM_ENDPOINT }}
           CRON_JOB_ORG_API_KEY: ${{ secrets.CRON_JOB_ORG_API_KEY }}
         run: |
-          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID CRON_GITHUB_PAT CRON_JOB_ORG_API_KEY; do
+          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID CRON_GITHUB_PAT TRACKER_STATE_KEY CRON_JOB_ORG_API_KEY; do
             test -n "${!name}" || { echo "::error::Missing $name"; exit 1; }
           done
 
       - name: Migrate and verify GitHub runtime-state branch
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
         run: |
           for scope in listener pickup league watchdog; do
@@ -87,14 +73,14 @@ jobs:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           UPSTREAM_ENDPOINT: ${{ secrets.UPSTREAM_ENDPOINT }}
         run: |
-          WEBHOOK_SECRET="$(node -e 'const c=require("crypto");const s=process.env.TELEGRAM_BOT_TOKEN+"|"+process.env.TELEGRAM_CHAT_ID+"|ballerwatch-webhook-v1";process.stdout.write(c.createHash("sha256").update(s).digest("hex"))')"
+          WEBHOOK_SECRET="$(node -e 'const c=require("crypto");const s=process.env.TRACKER_STATE_KEY+"|ballerwatch-webhook-v2";process.stdout.write(c.createHash("sha256").update(s).digest("hex"))')"
           printf '%s' "$WEBHOOK_SECRET" > /tmp/telegram-webhook-secret
           node -e 'process.stdout.write(JSON.stringify({
-            TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
-            TELEGRAM_CHAT_ID: process.env.TELEGRAM_CHAT_ID,
             GITHUB_DISPATCH_TOKEN: process.env.CRON_GITHUB_PAT,
+            TRACKER_STATE_KEY: process.env.TRACKER_STATE_KEY,
             TELEGRAM_WEBHOOK_SECRET: require("fs").readFileSync("/tmp/telegram-webhook-secret","utf8"),
-            ...(process.env.TRACKER_STATE_KEY ? { TRACKER_STATE_KEY: process.env.TRACKER_STATE_KEY } : {}),
+            ...(process.env.TELEGRAM_BOT_TOKEN ? { TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN } : {}),
+            ...(process.env.TELEGRAM_CHAT_ID ? { TELEGRAM_CHAT_ID: process.env.TELEGRAM_CHAT_ID } : {}),
             ...(process.env.OWNER_RSVP_NAME ? { OWNER_RSVP_NAME: process.env.OWNER_RSVP_NAME } : {}),
             ...(process.env.GEMINI_API_KEY ? { GEMINI_API_KEY: process.env.GEMINI_API_KEY } : {}),
             ...(process.env.GROQ_API_KEY ? { GROQ_API_KEY: process.env.GROQ_API_KEY } : {}),
@@ -120,23 +106,19 @@ jobs:
           test "$COUNT" = "0" || { echo "::error::Expected zero Cloudflare Cron Triggers, found $COUNT"; exit 1; }
           echo "Verified zero Cloudflare Cron Triggers."
 
-      - name: Discover workers.dev URL and configure Telegram
+      - name: Verify Worker and configure Telegram only when enabled
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
+          set -euo pipefail
           SUBDOMAIN="$(curl --fail --silent             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain"             | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.parse(s).result.subdomain))')"
-          WEBHOOK_URL="https://ballerwatch-telegram.$SUBDOMAIN.workers.dev/telegram"
-          SECRET="$(cat /tmp/telegram-webhook-secret)"
-          curl --fail --silent --show-error             -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook"             -H "content-type: application/json"             -d "$(node -e 'process.stdout.write(JSON.stringify({url:process.argv[1],secret_token:process.argv[2],allowed_updates:["message"],drop_pending_updates:false}))' "$WEBHOOK_URL" "$SECRET")"
-          echo
-          curl --fail --silent --show-error "https://ballerwatch-telegram.$SUBDOMAIN.workers.dev/health"
-          echo
-          echo "Telegram webhook: $WEBHOOK_URL"
-
-          echo "Verifying webhook/PWA Worker health..."
           BASE_URL="https://ballerwatch-telegram.$SUBDOMAIN.workers.dev"
+          SECRET="$(cat /tmp/telegram-webhook-secret)"
+
+          echo "Verifying BallerWatch Worker health..."
           curl --max-time 15 --fail-with-body --silent --show-error "$BASE_URL/health"
           echo
 
@@ -148,24 +130,27 @@ jobs:
           echo "Verifying owner-pairing error response and CORS..."
           PAIR_HEADERS="/tmp/ballerwatch-pair-headers"
           PAIR_BODY="/tmp/ballerwatch-pair-body"
-          PAIR_STATUS="$(curl --max-time 15 --silent --show-error \
-            --dump-header "$PAIR_HEADERS" \
-            --output "$PAIR_BODY" \
-            --write-out "%{http_code}" \
-            -X POST "$BASE_URL/web/owner/pair" \
-            -H "Origin: https://vudh1.github.io" \
-            -H "Content-Type: application/json" \
-            --data '{"code":"000000"}')"
+          PAIR_STATUS="$(curl --max-time 15 --silent --show-error             --dump-header "$PAIR_HEADERS"             --output "$PAIR_BODY"             --write-out "%{http_code}"             -X POST "$BASE_URL/web/owner/pair"             -H "Origin: https://vudh1.github.io"             -H "Content-Type: application/json"             --data '{"code":"000000"}')"
           test "$PAIR_STATUS" = "401" || { echo "::error::Expected invalid pair code to return 401, got $PAIR_STATUS"; cat "$PAIR_BODY"; exit 1; }
           grep -qi '^access-control-allow-origin: https://vudh1.github.io' "$PAIR_HEADERS" || { echo "::error::Pairing response is missing expected CORS origin"; cat "$PAIR_HEADERS"; exit 1; }
           node -e 'const fs=require("fs");const x=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));if(x.ok!==false||!x.error)process.exit(1)' "$PAIR_BODY"
           rm -f "$PAIR_HEADERS" "$PAIR_BODY"
           echo "Owner-pairing error response verified."
 
+          if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_CHAT_ID:-}" ]; then
+            WEBHOOK_URL="$BASE_URL/telegram"
+            curl --fail --silent --show-error               -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook"               -H "content-type: application/json"               -d "$(node -e 'process.stdout.write(JSON.stringify({url:process.argv[1],secret_token:process.argv[2],allowed_updates:["message"],drop_pending_updates:false}))' "$WEBHOOK_URL" "$SECRET")"
+            echo
+            echo "Telegram adapter enabled: $WEBHOOK_URL"
+          else
+            echo "Telegram adapter disabled; PWA/API operation remains enabled."
+          fi
+
       - name: Ensure primary GitHub schedules stay enabled
         env:
           CRON_JOB_ORG_API_KEY: ${{ secrets.CRON_JOB_ORG_API_KEY }}
           CRON_GITHUB_PAT: ${{ secrets.CRON_GITHUB_PAT }}
+          BALLERWATCH_BRANCH: production
         run: node infra/external-schedules.mjs ensure-enabled-optional
 
       - name: Clean temporary files
