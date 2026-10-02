@@ -4,43 +4,31 @@ BallerWatch is a small soccer automation system for pickup games and Seattle RAT
 
 It uses Telegram and an installable GitHub Pages web app for questions and alerts, Cloudflare Workers for the webhook/read-only API path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Gemini Flash with Groq fallback for bounded AI assistance, standards-based Web Push for a Telegram-independent notification channel, and Google Calendar for league match sync.
 
-**Current version: 5.4.1**
+**Current version: 5.4.2**
 
 ## Recent changes
 
-- **5.4.1** — Align the current README with exact encrypted owner-review history and the double-tap/click feedback toggle.
-- **5.4.0** — Tighten match-card sizing, contain opened notifications, retain exact encrypted review Q&A, and fix weekday time/detail answers.
-- **5.3.5** — Collapse identical historical notification-board entries so the inbox shows only the newest copy of each unchanged payload.
-- **5.3.4** — Suppress unchanged pickup reminder notifications and deduplicate identical web-board/push entries.
-- **5.3.3** — Keep every swipe-carousel match card the same measured size and harden exact match-window weather verification.
-- **5.3.2** — Turn match swiping into a connected two-card carousel so outgoing and incoming game cards move together like a train.
-- **5.3.1** — Keep the match card frame fixed during swipe navigation so only its contents move on iPhone.
-- **5.3.0** — Swipe the match spotlight left/right to move between game dates while keeping the calendar highlight synchronized.
-- **5.2.1** — Restore generic Share, keep the notification popup bounded, animate swipe-left deletion, and add local Delete all.
-- **5.2.0** — Notification inbox with unread state/full-screen reading/swipe delete, compact push controls, Tesla destination sharing, and a Telegram footer shortcut.
-- **5.1.5** — Prevent first-launch placeholder hangs during PWA release updates by hydrating live data without a startup reload race.
-- **5.1.3** — Expire completed matches by Pacific end time, pulse the Live indicator, and auto-refresh both live data and installed app updates.
-- **5.1.2** — Restore league weather when exact venue geocoding fails and show pickup RSVP capacity in the match spotlight.
-- **5.1.1** — Normalize typography across the Liquid Glass app with one native system font stack and consistent type scale.
-- **5.1.0** — Liquid Glass UI and calendar-day selection through the main match spotlight.
-- **5.0.1** — Request exactly 14 forecast days and bootstrap weather state after weather-related releases.
-- **5.0.0** — Redesigned match dashboard with a 14-day game calendar, match-window weather, and a leaner scheduler.
-- **4.1.2** — Fix owner pairing “Load failed” by consuming pairing codes through the listener workflow and returning readable web errors.
-- **4.1.1** — Keep Settings and notification bell aligned on one row in the installed mobile app.
-- **4.1.0** — Long-press wrong-answer feedback plus Google-style sentence autocomplete.
-- **4.0.0** — Owner-paired settings plus shared 48-hour review history for paired web Q&A.
-- **3.3.0** — Slash-command/autosuggest Q&A, footer install help, bell-only push controls, and two-hour league fallback windows.
-- **3.2.0** — Next-game card with Directions/Share plus a closed-app notification test.
-- **3.1.2** — Push notification on/off switch inside the notification bell panel.
-- **3.1.1** — Force installed PWA clients to refresh release assets.
-- **3.1.0** — Home Screen-aware app layout with bell notifications and bottom push settings.
-- **3.0.2** — Least-privilege GitHub Pages activation and deployment recovery.
-- **3.0.1** — Automatic Pages enablement and push-reset recovery.
-- **3.0.0** — Installable web app and Web Push fallback.
-- **2.8.1** — Automatic GitHub Wiki synchronization.
-- **2.8.0** — Unified Node.js runtime.
+- **5.4.x — Review fidelity + answer reliability.** Exact owner Q&A stays encrypted for 48 hours while readable review signals remain sanitized; weekday time/location questions are deterministic, and match-card/notification layouts are tighter.
+- **5.3.x — Connected match carousel.** Swipe between game dates with equal-size connected cards, stronger match-window weather verification, and duplicate pickup/notification suppression.
+- **5.2.x — Notification inbox + sharing.** Added unread/full-screen notification handling, swipe-to-delete, local Delete all, compact push controls, and generic native game sharing.
+- **5.1.x — Liquid Glass + live refresh.** Introduced the polished mobile dashboard, calendar selection, pickup capacity, weather fallbacks, automatic data/app refresh, and reliable first launch after releases.
+- **5.0.x — 14-day match dashboard.** Added the two-week game calendar, match-window weather, next-game spotlight, and a leaner monitoring schedule.
 
 Full release history and Telegram announcement text live in `features/versions.json`.
+
+## Web app demo
+
+**Live demo:** [Open BallerWatch](https://vudh1.github.io/ballerwatch/)
+
+Try the public-safe web app:
+
+1. Swipe the main match card left/right to move between upcoming game dates.
+2. Tap a highlighted date in the 14-day calendar to inspect that match.
+3. Open the notification bell to view recent updates and the full-screen notification reader.
+4. Ask a read-only question such as `What time is Thursday?` or use a slash command like `/next`.
+5. On iPhone, add the site to the Home Screen to try the standalone PWA experience and Web Push controls.
+
+The public demo is read-only. Owner-only settings and wrong-answer feedback require pairing from **Settings**.
 
 ## Architecture
 
@@ -230,7 +218,7 @@ Private files remain encrypted before being written there, including:
 - encrypted Web Push VAPID keys/subscriptions and notification-board state
 - watchdog state
 - explicit private feature-request archive
-- 48-hour condensed Telegram history
+- encrypted 48-hour owner conversation history, including original question/answer text
 
 The only intentionally readable runtime-derived files are privacy-minimized summaries such as the chat review signal file and feature-request category summary.
 
@@ -290,7 +278,7 @@ The repository is public, so the storage boundary is strict:
 - secrets stay in GitHub/Cloudflare secret stores;
 - private runtime payloads on `runtime-state` are AES-256-GCM encrypted;
 - plaintext runtime data exists only temporarily inside a Worker invocation or GitHub runner;
-- raw Telegram conversation text is not persisted as chat history;
+- original owner question/answer text is retained only inside encrypted 48-hour chat history and never exposed in the readable review index;
 - Web Push subscriptions and VAPID private material stay encrypted on `runtime-state`;
 - web-visible board/Q&A data excludes roster names, waitlist names, and owner-specific status;
 - chat review output is sanitized before it becomes readable;
@@ -302,7 +290,7 @@ The state encryption key comes from `TRACKER_STATE_KEY`. Existing compatibility 
 
 BallerWatch keeps AI bounded and optional. Deterministic intent matching and action handling remain authoritative.
 
-For safe natural-language answering, Gemini Flash is tried first when deterministic handling does not resolve the request. If Gemini is unavailable, rate-limited, or cannot answer, BallerWatch falls back to Groq and then deterministic/non-AI handling where appropriate. The PWA reuses this bounded read-only classification path after private roster/owner data is stripped. Groq remains responsible for privacy-minimized Telegram chat condensation. Models receive no action tools.
+For safe natural-language answering, Gemini Flash is tried first when deterministic handling does not resolve the request. If Gemini is unavailable, rate-limited, or cannot answer, BallerWatch falls back to Groq and then deterministic/non-AI handling where appropriate. The PWA reuses this bounded read-only classification path after private roster/owner data is stripped. Groq remains responsible for privacy-minimized review classification/summary metadata. Models receive no action tools.
 
 ## Google Calendar
 
@@ -427,4 +415,4 @@ BallerWatch should remain:
 - conservative about private data;
 - simple enough to maintain and onboard;
 - release-oriented on `main`;
-- able to learn from short-lived, privacy-minimized feedback without keeping raw chat logs.
+- able to learn from short-lived feedback while keeping original owner Q&A encrypted and readable review artifacts privacy-minimized.
