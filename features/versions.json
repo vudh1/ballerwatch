@@ -1,7 +1,25 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "5.7.0",
+  "currentVersion": "5.8.0",
   "releases": [
+    {
+      "version": "5.8.0",
+      "date": "2026-10-03",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "User-first settings, fully encrypted runtime state, and interaction polish",
+      "telegramAnnouncement": "BallerWatch 5.8 makes Settings user-first, encrypts every runtime-state file, softens desktop carousel edge navigation, and adds a blurred iPhone status-area layer.",
+      "changes": [
+        "Changed app-facing authentication language from owner to user and moved the PWA to /web/user routes while retaining legacy owner routes and existing device tokens for compatibility.",
+        "Made every canonical file on runtime-state a complete AES-GCM envelope, including listener metadata, engineering review signals, and feature-summary projections; deployment migrates legacy files and refuses unencrypted writes.",
+        "Added recurring runtime-state encryption audits so a readable canonical payload fails deployment/maintenance checks instead of silently persisting.",
+        "Redesigned desktop match-card navigation as wide transparent edge hit zones with a soft blurred glow and borderless arrow cue, while preserving the connected-card carousel animation.",
+        "Added an installed-iPhone status-area glass layer so scrolling content is visually separated from the Dynamic Island and system status icons.",
+        "Carried forward the useful retired-watchdog dispatch guard from the stale 5.0.2 branch and simplified external-cron setup to a manual recovery workflow because normal Worker deployment already owns scheduler synchronization.",
+        "Added support for a dedicated RELEASE_GITHUB_TOKEN for GitHub Release publication while retaining CRON_GITHUB_PAT as a compatibility fallback.",
+        "Refactored runtime storage documentation, tests, and onboarding around explicit main/production/runtime-state boundaries and future scale."
+      ]
+    },
     {
       "version": "5.7.0",
       "date": "2026-10-02",
