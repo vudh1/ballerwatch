@@ -174,7 +174,7 @@ The live PWA is no longer deployed by every push to `main`. BallerWatch uses thr
 - `production` — the exact commit currently promoted for production runtime/deployment;
 - a published GitHub Release/tag — the immutable promotion record that triggers production deployment workflows.
 
-For a normal product release, code first merges to `main`. The **Promote production release** workflow then waits for at least a 24-hour soak on its daily automatic path and requires a successful validation run for the candidate commit. Promotion advances `production`, creates the version tag/GitHub Release, and the Release publication triggers Pages, Worker, Calendar-bridge/bootstrap, weather-bootstrap, and web-runtime deployment.
+For a normal product release, code first merges to `main`. The **Promote production release** workflow requires at least a 24-hour soak, checks eligibility hourly, and requires a successful validation run for the candidate commit before the first eligible promotion. Promotion advances `production`, creates the version tag/GitHub Release, and the Release publication triggers Pages, Worker, Calendar-bridge/bootstrap, weather-bootstrap, and web-runtime deployment.
 
 A validated version can be rolled out immediately with **Actions → Promote production release → Run workflow**. Manual promotion skips the soak period.
 
