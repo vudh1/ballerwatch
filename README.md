@@ -1,447 +1,344 @@
 # BallerWatch
 
-BallerWatch is a small soccer automation system for pickup games and Seattle RATS league games.
+BallerWatch is a small soccer operations app for pickup games and Seattle RATS league matches. The installable web app is the primary user surface; Telegram is an optional messaging/recovery adapter.
 
-It uses an installable GitHub Pages web app as a standalone questions/settings/notification surface, with Telegram retained as an optional messaging adapter, Cloudflare Workers for the public-safe API/webhook path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Gemini Flash with Groq fallback for bounded AI assistance, standards-based Web Push for Telegram-independent notifications, and Google Calendar for league match sync.
+**Current source version: 5.8.0**
 
-**Current source version: 5.7.0**
+**Production source of truth:** the commit pointed to by `production` and the corresponding published GitHub Release. `main` may be newer without changing the live app.
 
-**Production:** pinned separately by the latest promoted commit on `production` / published GitHub Release.
+## What you can do
+
+- See the next pickup or league match, RSVP capacity, field, and match-window weather.
+- Browse a 14-day game calendar.
+- Swipe between match cards on touch devices or use the desktop card-edge controls.
+- Ask read-only questions such as `What time is Thursday?` or `/next`.
+- Receive Web Push notifications for the narrow production notification allowlist.
+- Sign in to **User settings** to change the pickup RSVP display name and monitored league teams.
+- Mark a bad answer with **Wrong answer** without signing in or opening Settings.
+- Keep using the PWA if the optional Telegram adapter is disabled.
 
 ## Recent changes
 
-- **5.7.x — Release-gated rollout + standalone owner sign-in.** Desktop web users get subtle hover/click carousel edges, Settings supports an owner password so normal devices no longer need `/webpair`, and GitHub Releases now gate production after a 24-hour default soak or manual promotion.
-- **5.6.x — Frictionless feedback + pairing.** Wrong-answer feedback no longer opens Settings or requires `/webpair`, mobile gets a one-tap feedback control, pairing codes can authorize multiple devices during their 10-minute window, and autocomplete floats above the Ask card.
-- **5.5.x — iPhone-first dashboard refresh.** Reworked the web app around the approved demo direction with a larger glass header, date-first match spotlight, RSVP progress, brighter calendar selection, an integrated Ask panel, and a floating notification popover.
-- **5.4.x — Review fidelity + answer reliability.** Exact opted-in/owner review Q&A stays encrypted for 48 hours while readable review signals remain sanitized; weekday time/location questions are deterministic, and match-card/notification layouts are tighter.
-- **5.3.x — Connected match carousel.** Swipe between game dates with equal-size connected cards, stronger match-window weather verification, and duplicate pickup/notification suppression.
+- **5.8.x — User-first settings + runtime encryption hardening.** Settings uses user-facing language, every `runtime-state` file is a complete AES-GCM envelope, desktop carousel edges are softer and easier to hit, and installed iPhone content gets a blurred status-area separation layer.
+- **5.7.x — Release-gated rollout + standalone sign-in.** Added app-native password sign-in, desktop click navigation, and a separate `production` branch so merging to `main` no longer means immediate deployment.
+- **5.6.x — Frictionless feedback + multi-device recovery.** Wrong-answer feedback became answer-scoped and one-tap; pairing codes became reusable across multiple devices for their 10-minute lifetime.
+- **5.5.x — iPhone-first dashboard.** Reworked the app around the glass dashboard, larger match spotlight, RSVP progress, calendar selection, Ask panel, and notification popover.
+- **5.4.x — Review fidelity + deterministic schedule answers.** Improved weekday time/location answers and short-lived engineering-review fidelity while keeping retained source exchanges encrypted.
 
-Full release history and Telegram announcement text live in `features/versions.json`.
+Full release history lives in `features/versions.json`.
 
-## Web app demo
+## Try the web app
 
-**Live demo:** [Open BallerWatch](https://vudh1.github.io/ballerwatch/)
+**Live app:** https://vudh1.github.io/ballerwatch/
 
-Try the public-safe web app:
+A useful first pass:
 
-1. On touch devices, swipe the main match card left/right. On desktop, move the pointer to an available left/right card edge and click the subtle arrow that appears.
-2. Tap a highlighted date in the 14-day calendar to inspect that match.
-3. Open the notification bell to view recent updates and the full-screen notification reader.
-4. Ask a read-only question such as `What time is Thursday?` or use a slash command like `/next`.
-5. On iPhone, add the site to the Home Screen to try the standalone PWA experience and Web Push controls.
+1. Open the next-game card.
+2. On iPhone, swipe left/right. On desktop, move the pointer near an available card edge; the edge softly lights up and can be clicked.
+3. Tap a highlighted date in the 14-day calendar.
+4. Open the notification bell.
+5. Ask `What time is Thursday?` or `/next`.
+6. Open **Settings**. A configured device can sign in with the user password; `/webpair` is a bootstrap/recovery path rather than the normal flow.
+7. On iPhone, use Safari → Share → **Add to Home Screen** for standalone mode and Web Push.
 
-The public demo is read-only. Owner-only settings use password sign-in from **Settings**; `/webpair` remains a first-time/recovery path. Wrong-answer feedback is available directly on each answer without granting settings access.
+Anonymous use stays read-only.
 
-## Architecture
-
-```text
-Telegram -------------------+
-                            |
-GitHub Pages PWA -----------+--> Cloudflare Worker
-                                 |-- public-safe Q&A / board
-                                 |-- owner-authenticated settings
-                                 |-- encrypted push registration
-                                 '-- Telegram webhook
-                                           |
-                                           v
-                                  GitHub runtime-state
-
-cron-job.org
-   |-- every 2 min --> Pickup watcher
-   '-- every 5 min --> RATS league watcher
-
-GitHub schedule
-   '-- every 6 hr --> Watchdog + match weather
-                        |
-                        v
-                   GitHub Actions
-                         |
-                         +--> encrypted runtime-state
-                         +--> Telegram alerts
-                         +--> Web Push signals
-                         '--> Google Calendar when needed
-```
-
-Cloudflare has **no Workers KV binding** and **no Cloudflare Cron Triggers** in the production configuration.
-
-## User interfaces
-
-### Telegram
-
-Telegram sends updates to the Cloudflare webhook.
-
-Common read-only questions are answered directly by the Worker when possible:
-
-- today's game
-- next game
-- pickup count / capacity
-- field and time
-- monitored league teams
-- bot version
-- help
-
-The Worker reads an encrypted snapshot from the `runtime-state` branch and caches it briefly with the Workers Cache API. This avoids starting a GitHub Action for ordinary questions.
-
-Commands that change state, or questions the fast path cannot safely answer, are dispatched to the GitHub listener.
-
-Examples:
+## Architecture at a glance
 
 ```text
-/version
-/setup
-/feature <request>
-snooze for 30 minutes
-don't watch 10/8
-add league team <name>
+                         +----------------------+
+GitHub Pages PWA ------->| Cloudflare Worker    |
+                         | public-safe API       |
+Telegram (optional) ---->| + webhook adapter    |
+                         +----------+-----------+
+                                    |
+                                    v
+                         encrypted runtime-state
+                                    ^
+                                    |
+           +------------------------+------------------------+
+           |                        |                        |
+     Pickup watcher           RATS watcher             Listener / web
+     every 2 min              every 5 min             state changes
+     cron-job.org             cron-job.org            event driven
+
+GitHub native schedule
+  every 6 hr ---> watchdog + 14-day weather
+
+RATS changes ---> Google Calendar bridge
+Allowed alerts -> Telegram (optional) + Web Push
 ```
 
+The important boundaries are:
 
-### iPhone / web app
+| Boundary | Responsibility |
+| --- | --- |
+| `main` | Reviewed integration code. May be ahead of production. |
+| `production` | Exact commit currently approved for production execution/deployment. |
+| `runtime-state` | Generated runtime data only. Every canonical file must be a complete AES-GCM envelope. |
+| Cloudflare Worker | Fast read-only PWA/Q&A path, user authentication, push registration, optional Telegram webhook. |
+| GitHub Actions | Reconciliation, notifications, Calendar work, release promotion, validation, and recovery. |
+| cron-job.org | High-frequency pickup (2 min) and league (5 min) dispatch only. |
 
-The v3 PWA is published at:
+Cloudflare Workers KV and Cloudflare Cron Triggers are intentionally not part of production.
 
-`https://vudh1.github.io/ballerwatch/`
+## User settings and recovery
 
-It provides:
+Settings is private but intentionally narrow. An authenticated device can change only:
 
-- an installable iPhone-first Home Screen dashboard with larger frosted-glass surfaces, a date-first match spotlight, RSVP progress, and polished mobile controls;
-- a redesigned match dashboard with a next-game spotlight, Google Maps directions, and native device sharing;
-- a compact 14-day game calendar for pickup and monitored RATS teams, synchronized with touch swipes and subtle desktop hover/click edge navigation on the match spotlight;
-- match-window weather showing condition, temperature, and the maximum rain probability during the scheduled game window;
-- a compact notification inbox behind the top-right bell with unread counts, full-screen reading, animated per-device swipe-to-delete, and local Delete all;
-- one-question/one-answer Q&A with slash commands and a floating Google-style autocomplete overlay; paired-owner questions retain the original question and answer inside encrypted 48-hour review history, while anonymous questions are retained only if the visitor explicitly marks that answer wrong;
-- a one-tap **Wrong answer** control that uses an answer-scoped signed token instead of owner pairing; desktop double-click remains a shortcut, and feedback can be undone without opening Settings;
-- a compact Web Push On/Off control beside notification Refresh for pickup, real RATS schedule-change, and version notifications;
-- owner Settings with an app-native password sign-in; `/webpair` is retained only for first-time bootstrap/recovery;
-- a manual local notification test for confirming iPhone notification display while the app is closed;
-- a Telegram footer shortcut beside GitHub and Wiki while Telegram remains available as an optional adapter.
+- the pickup RSVP display name;
+- monitored RATS teams.
 
-On iPhone, open the site in Safari, choose **Share → Add to Home Screen**, open the installed BallerWatch app, then use the notification bell to turn Push notifications on.
+After initial setup, the normal flow is **User password → Sign in**. Each device receives its own signed local capability token.
 
-The anonymous public web surface remains read-only and deliberately strips RSVP participant names, waitlist names, owner-specific status, secrets, and private settings. An owner-authenticated device can view/change only the pickup RSVP name and monitored league teams through the Settings gear. After the owner password is configured once, a new device can sign in directly without Telegram; `/webpair` remains a recovery/bootstrap option.
+`/webpair` remains a bootstrap/recovery mechanism while Telegram is configured:
 
-## 48-hour review history
+1. request `/webpair`;
+2. enter the six-digit code in **Settings → Use a pairing code instead**;
+3. the same code can authorize multiple devices until its 10-minute expiry;
+4. set or rotate the user password so future devices can sign in directly.
 
-BallerWatch no longer automatically turns every unanswered question into a feature request.
+Existing pre-5.8 device tokens and legacy API aliases remain accepted during migration, but current app copy and current API calls use **user** terminology.
 
-Instead:
+## Privacy and runtime storage
 
-1. an owner exchange from the private bot or owner-authenticated PWA retains the original question and original bot answer inside private review history; an anonymous web exchange is retained only when the visitor explicitly marks that answer wrong;
-2. Groq may add privacy-cleaned classification, summary, and reason metadata for engineering triage, but that generated metadata never replaces the source exchange;
-3. `state/chat-history.json` is AES-GCM encrypted on the `runtime-state` branch and pruned after at most **48 hours**;
-4. only actionable, sanitized signals are copied to the readable `state/chat-review.json`.
+The public repository must never become a data store.
 
-The readable review file can contain only:
+### Everything on `runtime-state` is encrypted
 
-- `bug_candidate`
-- `feature_candidate`
-- `negative_feedback`
-- timestamp
-- short technical summary
-- short reason
+In 5.8, **every canonical runtime file is stored as one authenticated AES-256-GCM envelope**, including data that is already privacy-minimized:
 
-It must not contain raw Telegram text, names, IDs, tokens, URLs, exact addresses, or quoted messages.
+- listener/user settings and update cursor;
+- pickup and league snapshots;
+- monitored teams;
+- Calendar reconciliation state;
+- weather/geocode cache;
+- watchdog state;
+- Web Push VAPID private material and subscriptions;
+- notification-board state;
+- exact retained Q&A;
+- sanitized chat-review signals;
+- private feature requests;
+- the aggregate feature-request projection.
 
-This lets scheduled ChatGPT maintenance inspect privacy-minimized engineering signals without exposing or decrypting the original question/answer text; the exact source exchange remains inside the encrypted 48-hour history.
+`shared/runtime-state.mjs` enforces this boundary. It:
 
-Explicit `/feature <request>` is still supported when you intentionally want to submit a feature request.
+- migrates legacy partial/readable runtime formats during deployment;
+- refuses to persist a canonical file that is not an encrypted envelope;
+- audits the whole runtime branch during Worker deployment and the six-hour watchdog run;
+- keeps `runtime-state` as a one-snapshot parentless branch rather than an accumulating readable history.
 
-Replying **👎** to a bot answer records that exchange as negative feedback for review rather than automatically creating a feature request.
+A public endpoint may return a deliberately allowlisted projection, but the Worker decrypts that projection only at the API boundary. The stored branch copy remains encrypted.
 
-## Pickup watcher
+### Short-lived answer review
 
-cron-job.org dispatches the pickup GitHub Action every **2 minutes**.
+Exact question/answer text is retained for at most 48 hours only when:
 
-The workflow:
+- the exchange came from an authenticated user surface; or
+- an anonymous visitor explicitly marks that answer **Wrong answer**.
 
-1. loads encrypted runtime state from `runtime-state`;
-2. reads the current RSVP source;
-3. compares with prior state;
-4. records a public-safe web-board entry and attempts Telegram delivery only when the production rules require a notification;
-5. signals subscribed web apps through Web Push without depending on Telegram delivery;
-6. writes only changed encrypted state back to `runtime-state`;
-7. removes local runtime files.
+The engineering-review projection contains only sanitized signals such as category, short summary, reason, and timestamp—and is encrypted at rest too.
 
-The GitHub workflow remains responsible for the mature notification rules.
+Anonymous public-web questions are not retained by default.
 
-## RATS league watcher
+### Temporary plaintext
 
-cron-job.org dispatches the RATS league workflow every **5 minutes**.
+GitHub runners or one Worker invocation may temporarily hold decrypted data in memory/local ephemeral files while doing authorized work. Workflows clean transient runtime paths after use. Tests use synthetic/encrypted fixtures and must never upload decrypted runtime artifacts.
 
-The workflow:
+## Notifications
 
-1. restores monitored teams and last-known league state;
-2. checks the most likely current season first;
-3. retrieves independent team schedules concurrently with bounded retries for transient source failures;
-4. retains a previously validated last-good schedule when RATS is temporarily unavailable;
-5. compares schedules and scores;
-6. records the public-safe web fallback and attempts Telegram delivery for real schedule changes;
-7. signals subscribed web apps through Web Push when a new allowed notification exists;
-8. updates Google Calendar only when the applied Calendar snapshot differs;
-9. persists changed encrypted state.
+Production proactive notifications are intentionally narrow:
 
-This avoids unnecessary Calendar calls when nothing changed.
+- pickup RSVP/capacity changes;
+- real RATS schedule changes;
+- one combined version-change announcement per Pacific day.
 
-### Match weather
+Direct replies to authenticated Telegram input are allowed when that adapter is enabled.
 
-Weather is refreshed every six hours from Open-Meteo for the actual scheduled match window. BallerWatch reports the maximum hourly rain probability that overlaps the game, plus temperature and a compact condition label. Venue coordinates are cached so recurring fields are not repeatedly geocoded; new public venue names/addresses are resolved conservatively through OpenStreetMap Nominatim.
-
-Weather data and cached coordinates live in encrypted `state/weather.json` on `runtime-state`. No weather API key is required.
-
-## Watchdog and match weather
-
-The watchdog runs on a native GitHub Actions schedule every **6 hours**. The same maintenance run refreshes the encrypted 14-day match-weather cache.
-
-It checks:
-
-- Cloudflare Telegram webhook health;
-- latest repository validation health;
-- privacy rules;
-- cron-job.org scheduler existence, cadence, target, and enabled state.
-
-The watchdog does not require Workers KV.
-
-## Runtime storage
-
-### `main`
-
-`main` is the reviewed integration branch. Product code may merge here before it is available on the live site.
-
-Generated runtime data must not be committed to `main`.
-
-### `production`
-
-`production` points to the exact commit promoted by the latest published GitHub Release. Runtime workflows and production deployments use this branch/tag rather than unreleased `main` code.
-
-### `runtime-state`
-
-The dedicated `runtime-state` branch is the durable state store.
-
-Private files remain encrypted before being written there, including:
-
-- listener settings/state
-- pickup snapshots and notification state
-- league teams/schedule/today/Calendar reconciliation state
-- encrypted Web Push VAPID keys/subscriptions and notification-board state
-- watchdog state
-- explicit private feature-request archive
-- encrypted 48-hour owner conversation history, including original question/answer text
-
-The only intentionally readable runtime-derived files are privacy-minimized summaries such as the chat review signal file and feature-request category summary.
-
-Keeping state on its own branch prevents frequent runtime commits from cluttering source history.
-
-## Production releases
-
-A GitHub Release is the production promotion record for one exact BallerWatch commit. The Release creates a version tag such as `v5.7.0`, carries the release notes, and triggers the production deployment workflows.
-
-Merging a product release to `main` therefore does **not** immediately change the live app:
-
-1. the release code merges to `main` after validation/smoke;
-2. the automatic **Promote production release** workflow waits until the candidate has been on `main` for at least 24 hours;
-3. it checks hourly and, on the first check after the 24-hour soak, verifies that the candidate commit has a successful **Validate code** run;
-4. it advances `production` to that exact commit and publishes the GitHub Release;
-5. the published Release triggers Pages/Worker/Calendar/web-runtime deployment from the tagged commit.
-
-To roll out a validated version sooner, run **Actions → Promote production release → Run workflow**. A manual promotion skips the 24-hour soak.
-
-If the current version already has a GitHub Release, the promoter does nothing. This allows documentation fixes, behavior-preserving refactors, tests, CI maintenance, and other housekeeping to merge to `main` without inventing a version or redeploying production.
-
-## Runtime-state concurrency
-
-A workflow records the blob hash of every state file it loaded.
-
-When it finishes, it pushes only files that actually changed during that run. This prevents a pickup or league workflow from rewriting unrelated state it merely read.
-
-Runtime pushes retry on branch races so overlapping watcher/listener runs do not silently discard each other's changes.
+Tests, smoke runs, builds, deploys, watchdog health events, commits, PRs, score-only changes, and setup reminders must not generate Telegram or Web Push notifications.
 
 ## Scheduling
 
-| Work | Cadence | Primary executor |
+| Work | Cadence | Executor |
 | --- | --- | --- |
-| Pickup watcher | Every 2 minutes | cron-job.org → GitHub Action |
-| RATS watcher | Every 5 minutes | cron-job.org → GitHub Action |
-| System watchdog + match weather | Every 6 hours | GitHub Actions native schedule |
-| Telegram webhook | Event-driven | Cloudflare Worker |
-| Fast Telegram read-only reply | Event-driven | Cloudflare Worker |
-| PWA public-safe Q&A / board | Event-driven | GitHub Pages → Cloudflare Worker |
-| PWA owner settings | User-driven, owner-authenticated device | GitHub Pages → Worker → encrypted runtime/GitHub listener |
-| Web Push registration | User-driven | PWA → Worker → GitHub Action |
-| Web Push delivery | Only for allowed new notifications | GitHub Action → browser push service |
-| State-changing Telegram command | Event-driven | GitHub listener |
-| Calendar sync | Only when league snapshot requires it | GitHub Action |
+| Pickup watcher | every 2 minutes | cron-job.org → GitHub Actions |
+| RATS watcher | every 5 minutes | cron-job.org → GitHub Actions |
+| Watchdog + match weather | every 6 hours | GitHub Actions schedule |
+| Release eligibility check | hourly | GitHub Actions; promotes only after the 24-hour soak |
+| PWA / Telegram webhook | event-driven | Cloudflare Worker |
+| User settings / feedback | user-driven | PWA → Worker → encrypted runtime flow |
+| Calendar sync | only when schedule reconciliation requires it | GitHub Actions → Apps Script |
 
-Cloudflare Cron Triggers remain disabled. Native GitHub schedules are limited to the six-hour watchdog/weather maintenance run and the hourly production-promotion eligibility check.
+## Release model
 
-## Cloudflare outage behavior
+A merge to `main` is **not** a deployment.
 
-Cloudflare is the Telegram webhook and PWA read-only API endpoint, so a total Cloudflare outage temporarily prevents new inbound Telegram commands, fast replies, live PWA Q&A, and notification-board refreshes.
+For a product release:
 
-Core monitoring and subscribed-device signaling continue independently:
+1. create `release/<version>` from current `main`;
+2. implement first;
+3. get **Validate code** green;
+4. for runtime-affecting work, run the notification-silent **Manual smoke test**;
+5. update the version ledger/docs only after implementation is green;
+6. mark the PR ready and squash merge;
+7. leave the candidate on `main` for the default 24-hour soak;
+8. the hourly **Promote production release** check validates the candidate, advances `production`, publishes the GitHub Release/tag, and release-triggered deploy workflows use that exact version.
 
-- cron-job.org still dispatches pickup/league;
-- GitHub's six-hour maintenance schedule can still refresh watchdog/weather state;
-- GitHub Actions can still retrieve soccer sources;
-- GitHub can still attempt Telegram delivery;
-- GitHub Actions can send Web Push signals directly to registered browser push endpoints;
-- if the PWA cannot fetch the latest board entry during a push, its service worker shows a generic BallerWatch update;
-- league Calendar reconciliation can continue;
-- runtime state remains on GitHub rather than Cloudflare.
+A manual promotion skips the soak but not validation.
 
-## GitHub/runtime-state failure behavior
+Maintenance work—docs, comments, behavior-preserving refactors, test-only changes, formatting, or CI/tooling cleanup—does **not** consume a product version and does not create another release.
 
-If the runtime-state branch cannot be read, workflows can restore an encrypted last-known copy from GitHub Actions cache.
+### GitHub Release credential
 
-If a Worker cannot directly save a fast-path chat-history entry, it can dispatch the GitHub listener as a persistence fallback.
+Prefer a fine-grained repository secret named `RELEASE_GITHUB_TOKEN` with **Contents: read/write** for Release/tag publication. `CRON_GITHUB_PAT` remains the compatibility fallback for existing scheduler dispatches.
 
-## Privacy
+Promotion fails closed if the available credential cannot publish the GitHub Release; it should not silently move production without the release record.
 
-The repository is public, so the storage boundary is strict:
+## Workflow responsibilities
 
-- secrets stay in GitHub/Cloudflare secret stores;
-- private runtime payloads on `runtime-state` are AES-256-GCM encrypted;
-- plaintext runtime data exists only temporarily inside a Worker invocation or GitHub runner;
-- original owner-authenticated question/answer text, plus an anonymous exchange explicitly marked wrong, is retained only inside encrypted 48-hour chat history and never exposed in the readable review index;
-- Web Push subscriptions and VAPID private material stay encrypted on `runtime-state`;
-- web-visible board/Q&A data excludes roster names, waitlist names, and owner-specific status;
-- chat review output is sanitized before it becomes readable;
-- `privacy-audit.mjs` prevents runtime paths from being tracked on `main`.
+The workflow set is intentionally split by failure domain rather than by file count:
 
-The state encryption key comes from `TRACKER_STATE_KEY`. Existing compatibility fallback to `TELEGRAM_BOT_TOKEN` remains supported.
+| Workflow | Responsibility |
+| --- | --- |
+| **Validate code** | style, syntax, unit tests, Worker bundle, version ledger, privacy audit |
+| **Manual smoke test** | notification-silent live-source validation |
+| **Promote production release** | 24-hour/manual promotion gate and GitHub Release publication |
+| **Deploy GitHub Pages app** | static PWA deployment |
+| **Deploy BallerWatch Worker** | Worker deploy, runtime-state migration/audit, optional Telegram setup, normal external-scheduler sync |
+| **Deploy Calendar bridge** | Apps Script Calendar bridge |
+| **Web app runtime** | VAPID/push-registration runtime initialization |
+| **Refresh match weather** | notification-silent release/bootstrap weather refresh |
+| **Pickup watcher** | pickup refresh + allowed pickup notifications |
+| **RATS league watcher** | league refresh + Calendar reconciliation + allowed schedule notifications |
+| **Telegram listener** | event-driven Telegram/state-changing fallback path |
+| **System watchdog** | six-hour health checks, weather, runtime encryption audit |
+| **Repair external cron schedules** | manual recovery only; normal deployment already maintains scheduler posture |
+| **Purge current data** | factory-reset generated BallerWatch state |
+| **Publish wiki** | mirror `docs/wiki/` to the GitHub Wiki |
+| **Cleanup merged release branches** | delete closed stale `release/*` / `fix/*` branches |
 
-## AI usage
+The 5.8 audit deliberately removed the release trigger from external-cron repair because Worker deployment already performs that normal synchronization. Other deploy/runtime workflows remain separate because they use different credentials, failure domains, and rollback surfaces.
 
-BallerWatch keeps AI bounded and optional. Deterministic intent matching and action handling remain authoritative.
-
-For safe natural-language answering, Gemini Flash is tried first when deterministic handling does not resolve the request. If Gemini is unavailable, rate-limited, or cannot answer, BallerWatch falls back to Groq and then deterministic/non-AI handling where appropriate. The PWA reuses this bounded read-only classification path after private roster/owner data is stripped. Groq remains responsible for privacy-minimized review classification/summary metadata. Models receive no action tools.
-
-## Google Calendar
-
-The league watcher keeps an applied Calendar snapshot in encrypted runtime state.
-
-Google Calendar is called only when a future league match materially needs to be created or updated. Deleting a managed event can therefore be repaired when the watcher detects that the applied state no longer matches.
-
-## Manual purge
-
-Run **Actions → Purge current data** and type:
+## Repository layout
 
 ```text
-PURGE
+docs/                    PWA + maintained wiki source
+infra/                   Cloudflare and scheduler integration
+listener/                event-driven command/state-changing listener
+pickup/                  pickup source + notification logic
+league/                  RATS source + Calendar reconciliation
+weather/                 match-window forecast pipeline
+shared/                  encryption, runtime-state, push, AI, common logic
+features/                product version ledger
+tests/                   test-only source mirroring production areas
+.github/workflows/       validation, runtime, release, recovery workflows
 ```
 
-The action removes generated files from the `runtime-state` branch, including:
+When a runtime module starts mixing domains, extract pure parsing/formatting/state-boundary logic into `shared/` and test it there. Keep provider-specific adapters at the edges.
 
-- pickup and league snapshots
-- Calendar reconciliation state
-- notification/watchdog state
-- listener settings
-- custom monitored-team state
-- encrypted Web Push subscriptions/VAPID state and notification boards
-- 48-hour chat history/review
-- explicit private feature-request runtime data
+## Developer quick start
 
-It does **not** delete:
+Read these first:
 
-- source code
-- repository or Worker secrets
-- unrelated Google Calendar events
+1. `AGENTS.md`
+2. `STYLE_GUIDE.md`
+3. `features/versions.json`
+4. the relevant page under `docs/wiki/`
 
-BallerWatch-managed RATS Calendar events are deleted by the authenticated Calendar bridge before runtime state is cleared.
+Runtime code uses dependency-free Node.js 22 / ECMAScript modules. Test-only source belongs under `tests/`.
 
-The next watcher runs rebuild current source state and built-in defaults.
+Useful local checks:
 
-## Important workflows
+```bash
+node --test
+node infra/validate-versions.mjs
+node privacy-audit.mjs
+```
 
-| Workflow | Purpose |
-| --- | --- |
-| **Pickup watcher** | Refresh RSVP state and send pickup alerts |
-| **RATS league watcher** | Refresh league schedules/scores and reconcile Calendar |
-| **Telegram listener** | Handle state-changing or unsupported Telegram commands |
-| **System watchdog** | Validate service/scheduler health |
-| **Promote production release** | After the 24-hour default soak, or manually, advance `production` and publish the GitHub Release that triggers rollout |
-| **Deploy BallerWatch Worker** | Deploy the Cloudflare PWA API and optional Telegram adapter from a published release |
-| **Deploy Calendar bridge** | Deploy and verify the Apps Script Calendar bridge from a published release |
-| **Validate code** | Style, syntax, tests, privacy audit |
-| **Manual smoke test** | Notification-silent live-source verification |
-| **Purge current data** | Factory-reset generated runtime state |
-| **Configure external cron** | Create/repair the 2/5-minute cron-job.org schedules and disable retired listener/watchdog jobs |
-| **Web app runtime** | Initialize/update encrypted Web Push subscription state |
-| **Deploy GitHub Pages app** | Publish the installable PWA from the promoted release tag |
-| **Publish wiki** | Mirror `docs/wiki/` into the GitHub Wiki |
-| **Cleanup merged release branches** | Remove stale `release/*` and `fix/*` branches |
+For runtime-state work, also validate the encryption invariant against an authenticated repository checkout:
 
-## Required secrets
+```bash
+node shared/runtime-state.mjs audit
+```
 
-### Telegram adapter (optional for the PWA/API)
+Never send Telegram/Web Push or mutate Calendar from tests.
 
-- `TELEGRAM_BOT_TOKEN`
-- `TELEGRAM_CHAT_ID`
+## Required configuration
 
-The Cloudflare PWA API, owner password sign-in, encrypted runtime access, and Web Push path use `TRACKER_STATE_KEY` and do not require Telegram credentials. Keep Telegram configured while using `/webpair` as recovery; once an owner password is set, normal Settings access no longer depends on Telegram.
+### Core PWA / encrypted runtime
 
-### Runtime encryption and setup
+- `TRACKER_STATE_KEY` — preferred independent state key.
+- `OWNER_RSVP_NAME` — legacy-compatible secret name for the default user RSVP display name.
+- `UPSTREAM_ENDPOINT` — pickup data source.
 
-- `TRACKER_STATE_KEY`
-- `OWNER_RSVP_NAME`
-- `UPSTREAM_ENDPOINT`
+The state crypto code can still fall back to `TELEGRAM_BOT_TOKEN` for migration compatibility, but a dedicated `TRACKER_STATE_KEY` is the scalable target.
 
-### GitHub / external scheduler
+### GitHub and scheduling
 
 - `CRON_GITHUB_PAT`
 - `CRON_JOB_ORG_API_KEY`
+- `RELEASE_GITHUB_TOKEN` — preferred for GitHub Release publication.
 
 ### Cloudflare
 
 - `CLOUDFLARE_ACCOUNT_ID`
 - `CLOUDFLARE_API_TOKEN`
 
-A Workers KV namespace is **not required** in 2.4.0.
+### Optional Telegram adapter
 
-### Groq
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_CHAT_ID`
 
-- `GROQ_API_KEY`
+Normal PWA Settings/Q&A/Web Push should not depend on these once user-password bootstrap is complete.
+
+### AI
+
+- `GEMINI_API_KEY` — primary bounded read-only answer fallback.
+- `GROQ_API_KEY` — secondary answer fallback and privacy-minimized review classification.
 
 ### Google Calendar bridge
 
 - `GOOGLE_CALENDAR_WEBHOOK_URL`
 - `GOOGLE_CALENDAR_WEBHOOK_SECRET`
 
-### Web Push
+Web Push VAPID material is generated by BallerWatch and stored encrypted on `runtime-state`; no repository VAPID secret is required.
 
-No new repository secret is required. The Web app runtime workflow generates the VAPID key pair when needed and stores both the private VAPID material and device subscriptions inside AES-GCM-encrypted `runtime-state`.
+## Operations
 
-### Wiki publishing
+### Factory reset
 
-The GitHub Wiki is mirrored automatically from `docs/wiki/` using the workflow-scoped `GITHUB_TOKEN`; no extra Wiki token is required.
+Run **Actions → Purge current data**, enter `PURGE`, and confirm. The workflow removes BallerWatch-managed Calendar events first, then generated runtime-state. It does not delete source code, repository/Worker secrets, or unrelated Calendar events.
 
-## Development
+### Failure behavior
 
-Read these before making changes:
+- Cloudflare down: PWA live API and Telegram webhook are unavailable, but pickup/league GitHub workflows and native watchdog/weather still run.
+- Telegram down/disabled: the PWA, user-password Settings, Web Push, monitoring, and Calendar reconciliation remain usable.
+- Runtime branch temporarily unreadable: workflows may use the encrypted Actions-cache failover snapshot.
+- RATS temporarily unavailable: league logic keeps the validated last-good schedule rather than replacing it with an empty transient result.
+- GitHub Release credential invalid: promotion fails closed; `production` stays pinned.
 
-- `AGENTS.md`
-- `STYLE_GUIDE.md`
-- `features/versions.json`
-- `docs/wiki/`
+## Scale-up principles
 
-Product releases use `release/<version>`, run validation and the notification-silent smoke test, then squash merge to `main`. Production is promoted later through the GitHub Release gate: automatically after the 24-hour soak on the daily promotion cycle, or manually from **Promote production release**.
+BallerWatch is intentionally small, but the boundaries are meant to scale:
 
-Runtime code and tests use dependency-free Node.js 22 / ECMAScript modules; Python is no longer required by BallerWatch workflows.
+- **Keep product state provider-neutral.** Telegram, Web Push, Cloudflare, and Google Calendar are adapters—not the domain model.
+- **Keep reads fast and writes narrow.** Common questions are deterministic/edge-served; state changes go through explicit authenticated paths.
+- **Encrypt before storage.** A future storage backend can replace GitHub without changing the state envelope contract.
+- **Pin production.** Integration work can continue on `main` without changing live behavior.
+- **Separate failure domains.** Pages, Worker, Calendar, schedulers, and monitoring can fail/recover independently.
+- **Prefer idempotent reconciliation.** Watchers compare desired/current state instead of blindly rewriting external systems.
+- **Keep tests notification-silent.** Verification must be safe to run repeatedly.
 
-All test-only code lives under `tests/`, mirroring the source areas. Production folders should contain runtime code only.
+## More documentation
 
-Do not send Telegram messages from tests.
+The maintained wiki source is under `docs/wiki/`:
 
-Version numbers are reserved for actual product behavior changes. Documentation-only edits, behavior-preserving refactors, test changes, formatting/comments, and CI/tooling maintenance keep the existing product version and do not create another GitHub Release.
+- `Architecture.md`
+- `Data-and-Privacy.md`
+- `Development.md`
+- `Operations.md`
+- `Release-Process.md`
+- `Runtime-and-Failover.md`
+- `Web-App.md`
 
-## Repository goals
-
-BallerWatch should remain:
-
-- fast for normal Telegram and PWA read-only questions;
-- inexpensive to operate;
-- able to run the PWA/API, owner Settings, and Web Push without Telegram after owner-password bootstrap;
-- resilient when one infrastructure provider or the optional Telegram adapter is unavailable;
-- conservative about private data;
-- simple enough to maintain and onboard;
-- able to keep `main` ahead of the separately promoted production release;
-- able to learn from short-lived feedback while keeping original owner Q&A encrypted and readable review artifacts privacy-minimized.
+Those pages hold the deeper operational details so this README can stay useful for both users and new contributors.
