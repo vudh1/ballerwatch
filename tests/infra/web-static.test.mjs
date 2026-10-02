@@ -376,7 +376,7 @@ test("installed app refreshes data and release updates automatically", () => {
   assert.match(app, /visibilitychange/);
   assert.match(app, /window\.setInterval/);
   assert.match(app, /registration\.update\(\)/);
-  assert.match(app, /setSystemState\("live"\)/);
+  assert.match(app, /calendarOk && boardOk \? "live" : "offline"/);
   assert.match(css, /@keyframes ballerwatch-live-pulse/);
   assert.match(css, /\.system-line\.is-live \.system-dot/);
 });
