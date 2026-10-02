@@ -1,7 +1,7 @@
 /**
  * Routes Telegram webhooks, edge Q&A, runtime-state APIs, health checks, and scheduled edge work.
  *
- * Updated v5.4.0: preserves exact owner review exchanges only inside encrypted runtime state, keeps readable review signals sanitized, and routes common weekday match-detail questions deterministically.
+ * Updated v5.6.0: adds answer-scoped signed feedback authorization, preserves exact opted-in wrong-answer exchanges only inside encrypted runtime state, and keeps owner pairing separate from feedback.
  */
 import {
   fetchPickupSnapshot,
@@ -72,6 +72,7 @@ async function ownerSigningKey(env) {
 export async function issueOwnerToken(env) {
   const payload = {
     v: 1,
+    kind: "owner",
     exp: Date.now() + 90 * 24 * 60 * 60 * 1000,
     nonce: bytesB64Url(crypto.getRandomValues(new Uint8Array(18))),
   };
@@ -101,7 +102,58 @@ export async function verifyOwnerToken(env, token) {
     );
     if (!valid) return false;
     const payload = JSON.parse(new TextDecoder().decode(b64UrlBytes(encoded)));
-    return payload?.v === 1 && Number(payload.exp) > Date.now();
+    const ownerKind = payload?.kind === undefined || payload?.kind === "owner";
+    return payload?.v === 1 && ownerKind && Number(payload.exp) > Date.now();
+  } catch {
+    return false;
+  }
+}
+
+
+async function feedbackExchangeDigest(question, reply) {
+  return sha256Hex(
+    `${retainPrivateText(question, 4000)}\u0000${retainPrivateText(reply, 12000)}`,
+  );
+}
+
+export async function issueFeedbackToken(env, question, reply) {
+  const payload = {
+    v: 1,
+    kind: "feedback",
+    exp: Date.now() + 48 * 60 * 60 * 1000,
+    digest: await feedbackExchangeDigest(question, reply),
+  };
+  const encoded = bytesB64Url(new TextEncoder().encode(JSON.stringify(payload)));
+  const signature = new Uint8Array(
+    await crypto.subtle.sign(
+      "HMAC",
+      await ownerSigningKey(env),
+      new TextEncoder().encode(encoded),
+    ),
+  );
+  return `${encoded}.${bytesB64Url(signature)}`;
+}
+
+export async function verifyFeedbackToken(env, token, question, reply) {
+  const [encoded, signatureText, extra] = String(token || "").split(".");
+  if (!encoded || !signatureText || extra) return false;
+  try {
+    const valid = await crypto.subtle.verify(
+      "HMAC",
+      await ownerSigningKey(env),
+      b64UrlBytes(signatureText),
+      new TextEncoder().encode(encoded),
+    );
+    if (!valid) return false;
+    const payload = JSON.parse(new TextDecoder().decode(b64UrlBytes(encoded)));
+    if (
+      payload?.v !== 1 ||
+      payload?.kind !== "feedback" ||
+      Number(payload.exp) <= Date.now()
+    ) {
+      return false;
+    }
+    return payload.digest === await feedbackExchangeDigest(question, reply);
   } catch {
     return false;
   }
@@ -278,14 +330,9 @@ async function pairOwnerDevice(env, code) {
   const expected = cleanText(settings.webPairCodeHash, 128);
   if (!expected || expected !== await sha256Hex(normalized)) return null;
 
-  const paired = await issueOwnerToken(env);
-  await dispatchWorkflow(env, "listener.yml", {
-    web_settings_event_b64: base64Json({
-      action: "consume-pair-code",
-      pairCodeHash: expected,
-    }),
-  });
-  return paired;
+  // Keep the temporary code valid until its existing expiry so the owner can
+  // authorize more than one device without requesting a fresh code per device.
+  return issueOwnerToken(env);
 }
 
 async function ownerSettingsView(env) {
@@ -1819,17 +1866,34 @@ export default {
     }
 
     if (request.method === "POST" && url.pathname === "/web/feedback") {
-      const token = bearerToken(request);
-      if (!(await verifyOwnerToken(env, token))) {
-        return webJson(request, { ok: false, error: "Owner pairing is required." }, { status: 401 });
-      }
-
       let body;
       try { body = await request.json(); }
       catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
 
+      const question = retainPrivateText(body?.question, 4000);
+      const reply = retainPrivateText(body?.reply, 12000);
+      const ownerAuthorized = await verifyOwnerToken(env, bearerToken(request));
+      const feedbackAuthorized = await verifyFeedbackToken(
+        env,
+        body?.feedbackToken,
+        question,
+        reply,
+      );
+      if (!ownerAuthorized && !feedbackAuthorized) {
+        return webJson(
+          request,
+          {
+            ok: false,
+            error: "Feedback authorization expired. Ask the question again and mark the new answer wrong.",
+          },
+          { status: 401 },
+        );
+      }
+
       const action = cleanText(body?.action || "mark", 20).toLowerCase();
-      const feedbackId = cleanText(body?.feedbackId, 120);
+      const feedbackId = feedbackAuthorized
+        ? `web-feedback:${(await sha256Hex(body.feedbackToken)).slice(0, 64)}`
+        : cleanText(body?.feedbackId, 120);
       if (!/^[A-Za-z0-9._:-]{8,120}$/.test(feedbackId)) {
         return webJson(
           request,
@@ -1861,8 +1925,6 @@ export default {
         );
       }
 
-      const question = retainPrivateText(body?.question, 4000);
-      const reply = retainPrivateText(body?.reply, 12000);
       if (!question || !reply) {
         return webJson(
           request,
@@ -1893,6 +1955,9 @@ export default {
       try { body = await request.json(); }
       catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
       const answer = await webAnswer(env, body?.question, body?.context || {});
+      const feedbackToken = answer.ok
+        ? await issueFeedbackToken(env, body?.question, answer.reply)
+        : "";
       const token = bearerToken(request);
       if (await verifyOwnerToken(env, token)) {
         const history = {
@@ -1911,7 +1976,11 @@ export default {
           );
         }
       }
-      return webJson(request, answer, { status: answer.ok ? 200 : 400 });
+      return webJson(
+        request,
+        feedbackToken ? { ...answer, feedbackToken } : answer,
+        { status: answer.ok ? 200 : 400 },
+      );
     }
     if (
       request.method === "POST" &&
