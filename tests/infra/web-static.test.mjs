@@ -372,6 +372,7 @@ test("autocomplete floats above the Ask card without resizing the input row", ()
 
   assert.match(css, /\/\* v5\.6 autocomplete overlay \*\//);
   assert.match(css, /\.ask-card \{[\s\S]*overflow:\s*visible;/);
+  assert.match(css, /\.ask-card form \{[\s\S]*z-index:\s*10;/);
   assert.match(css, /\.question-input-wrap \{[\s\S]*position:\s*relative;/);
   const overlay = css.slice(css.indexOf("/* v5.6 autocomplete overlay */"));
   assert.match(overlay, /\.question-suggestions \{/);
