@@ -5,11 +5,6 @@ on:
     types: [published]
   workflow_dispatch:
     inputs:
-      release_ref:
-        description: "Published release tag or production ref to redeploy"
-        required: false
-        default: "production"
-        type: string
       pair_calendar:
         description: "Pair the intended Calendar after deploy"
         required: false
@@ -35,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.release.tag_name || inputs.release_ref || 'production' }}
+          ref: ${{ github.event.release.tag_name || 'production' }}
           fetch-depth: 1
       - uses: actions/setup-node@v6
         with:
