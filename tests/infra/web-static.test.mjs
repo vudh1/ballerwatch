@@ -16,8 +16,8 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=5\.1\.4/);
-  assert.match(html, /app\.js\?v=5\.1\.4/);
+  assert.match(html, /styles\.css\?v=5\.1\.5/);
+  assert.match(html, /app\.js\?v=5\.1\.5/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
@@ -63,7 +63,7 @@ test("Home Screen install card is removed in standalone mode and notifications u
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=5\.1\.4/);
+  assert.match(app, /sw\.js\?v=5\.1\.5/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -343,7 +343,7 @@ test("calendar refresh preserves an explicitly selected future game", () => {
 
 test("autocomplete stays in document flow instead of overlapping following content", () => {
   const css = fs.readFileSync("docs/styles.css", "utf8");
-  assert.match(css, /\/\* v5\.1\.4 interaction polish \*\//);
+  assert.match(css, /\/\* v5\.1\.5 interaction polish \*\//);
   assert.match(css, /\.question-suggestions \{[\s\S]*position:\s*static;/);
   assert.match(css, /\.ask-card \.question-row \{[\s\S]*align-items:\s*start;/);
   assert.match(css, /\.ask-card \.question-row > button \{[\s\S]*align-self:\s*start;/);
