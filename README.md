@@ -359,7 +359,7 @@ The next watcher runs rebuild current source state and built-in defaults.
 | **Telegram listener** | Handle state-changing or unsupported Telegram commands |
 | **System watchdog** | Validate service/scheduler health |
 | **Promote production release** | After the 24-hour default soak, or manually, advance `production` and publish the GitHub Release that triggers rollout |
-| **Deploy Telegram webhook** | Deploy the Cloudflare PWA API + Telegram adapter from a published release |
+| **Deploy BallerWatch Worker** | Deploy the Cloudflare PWA API and optional Telegram adapter from a published release |
 | **Deploy Calendar bridge** | Deploy and verify the Apps Script Calendar bridge from a published release |
 | **Validate code** | Style, syntax, tests, privacy audit |
 | **Manual smoke test** | Notification-silent live-source verification |
