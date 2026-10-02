@@ -11,8 +11,8 @@ import { KEY_CONTEXT } from "./security-contexts.mjs";
 const KDF_ID = "hmac-sha256-v1";
 
 function masterSecret() {
-  const value = (process.env.TRACKER_STATE_KEY || process.env.TELEGRAM_BOT_TOKEN || "").trim();
-  if (!value) throw new Error("TRACKER_STATE_KEY or TELEGRAM_BOT_TOKEN is required.");
+  const value = (process.env.TRACKER_STATE_KEY || "").trim();
+  if (!value) throw new Error("TRACKER_STATE_KEY is required.");
   return Buffer.from(value, "utf8");
 }
 
