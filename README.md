@@ -4,10 +4,11 @@ BallerWatch is a small soccer automation system for pickup games and Seattle RAT
 
 It uses Telegram and an installable GitHub Pages web app for questions and alerts, Cloudflare Workers for the webhook/read-only API path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Gemini Flash with Groq fallback for bounded AI assistance, standards-based Web Push for a Telegram-independent notification channel, and Google Calendar for league match sync.
 
-**Current version: 5.4.0**
+**Current version: 5.4.1**
 
 ## Recent changes
 
+- **5.4.1** — Align the current README with exact encrypted owner-review history and the double-tap/click feedback toggle.
 - **5.4.0** — Tighten match-card sizing, contain opened notifications, retain exact encrypted review Q&A, and fix weekday time/detail answers.
 - **5.3.5** — Collapse identical historical notification-board entries so the inbox shows only the newest copy of each unchanged payload.
 - **5.3.4** — Suppress unchanged pickup reminder notifications and deduplicate identical web-board/push entries.
@@ -118,8 +119,8 @@ It provides:
 - a compact 14-day game calendar for pickup and monitored RATS teams, synchronized with left/right swipe navigation on the match spotlight;
 - match-window weather showing condition, temperature, and the maximum rain probability during the scheduled game window;
 - a compact notification inbox behind the top-right bell with unread counts, full-screen reading, animated per-device swipe-to-delete, and local Delete all;
-- one-question/one-answer Q&A with slash commands and Google-style full-sentence autocomplete; paired-owner questions join the same privacy-minimized 48-hour review history while anonymous web questions are not retained;
-- owner-paired long-press feedback on an answer to mark it wrong for the next engineering review;
+- one-question/one-answer Q&A with slash commands and Google-style full-sentence autocomplete; paired-owner questions retain the original question and answer only inside encrypted 48-hour review history while anonymous web questions are not retained;
+- owner-paired double-tap/double-click feedback on an answer to mark it wrong for the next engineering review; repeat the gesture to cancel that feedback;
 - a compact Web Push On/Off control beside notification Refresh for pickup, real RATS schedule-change, and version notifications;
 - a manual local notification test for confirming iPhone notification display while the app is closed.
 - a Telegram footer shortcut beside GitHub and Wiki.
@@ -134,10 +135,10 @@ BallerWatch no longer automatically turns every unanswered question into a featu
 
 Instead:
 
-1. an owner exchange from the private bot or an owner-paired PWA is shortened and privacy-cleaned with Groq;
-2. the condensed record is stored for at most **48 hours**;
-3. the detailed condensed history is AES-GCM encrypted in `state/chat-history.json` on the `runtime-state` branch;
-4. only actionable, sanitized signals are copied to `state/chat-review.json`.
+1. an owner exchange from the private bot or an owner-paired PWA retains the original question and original bot answer inside private review history;
+2. Groq may add privacy-cleaned classification, summary, and reason metadata for engineering triage, but that generated metadata never replaces the source exchange;
+3. `state/chat-history.json` is AES-GCM encrypted on the `runtime-state` branch and pruned after at most **48 hours**;
+4. only actionable, sanitized signals are copied to the readable `state/chat-review.json`.
 
 The readable review file can contain only:
 
@@ -150,7 +151,7 @@ The readable review file can contain only:
 
 It must not contain raw Telegram text, names, IDs, tokens, URLs, exact addresses, or quoted messages.
 
-This lets the scheduled ChatGPT maintenance task look for bugs and worthwhile feature ideas without needing the repository encryption key or retaining full chat text.
+This lets scheduled ChatGPT maintenance inspect privacy-minimized engineering signals without exposing or decrypting the original question/answer text; the exact source exchange remains inside the encrypted 48-hour history.
 
 Explicit `/feature <request>` is still supported when you intentionally want to submit a feature request.
 
