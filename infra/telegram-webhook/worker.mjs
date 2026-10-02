@@ -952,6 +952,12 @@ export function directIntent(text) {
   if (/^\/next(?:\s|$)/.test(lower)) return "next_game";
   if (/^\/teams(?:\s|$)/.test(lower)) return "league_teams";
   if (/^\/(?:count|field|time)(?:\s|$)/.test(lower)) return "pickup_status";
+  if (
+    /\b(?:today|tomorrow|sunday|monday|tuesday|wednesday|thursday|friday|saturday|\d{1,2}\/\d{1,2})\b/.test(lower) &&
+    /\b(?:time|when|where|field|location|address)\b/.test(lower)
+  ) {
+    return "pickup_status";
+  }
   return classifyIndexedIntent(clean);
 }
 
