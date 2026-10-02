@@ -141,7 +141,8 @@ test("question box supports slash commands and autosuggestions", () => {
 test("app-facing copy mentions Telegram only for the explicit footer shortcut", () => {
   const html = fs.readFileSync("docs/index.html", "utf8");
   const manifest = fs.readFileSync("docs/manifest.webmanifest", "utf8");
-  const withoutFooterShortcut = html.replace(
+  const body = html.slice(html.indexOf("<body"));
+  const withoutFooterShortcut = body.replace(
     /<a href="https:\/\/t\.me\/ttf_rsvp_tracker_bot"[^>]*>Telegram<\/a>/,
     "",
   );
@@ -250,30 +251,23 @@ test("mobile header keeps settings and bell on the same row", () => {
 });
 
 
-test("owner pairing code can authorize multiple devices until expiry", () => {
+test("user pairing codes are high-entropy, attempt-limited, and single-use", () => {
   const html = fs.readFileSync("docs/index.html", "utf8");
   const worker = fs.readFileSync("infra/telegram-webhook/worker.mjs", "utf8");
   const listener = fs.readFileSync("listener/bot.mjs", "utf8");
 
-  const pairFunction = worker.match(/async function pairOwnerDevice[\s\S]*?\n}\n/);
-  assert.ok(pairFunction);
-  assert.doesNotMatch(pairFunction[0], /dispatchWorkflow\(env, "listener\.yml"/);
-  assert.doesNotMatch(pairFunction[0], /action: "consume-pair-code"/);
-  assert.match(pairFunction[0], /issueOwnerToken\(env\)/);
-  assert.match(pairFunction[0], /passwordConfigured/);
-
-  assert.match(html, /multiple devices during its 10-minute window/);
-  assert.match(listener, /same code in BallerWatch Settings on multiple devices before it expires/);
-  assert.match(
-    listener,
-    /event\?\.action === "consume-pair-code"[\s\S]*Pairing codes are intentionally reusable until expiry[\s\S]*return settings;/,
-  );
-  assert.doesNotMatch(
-    listener.match(/if \(event\?\.action === "consume-pair-code"\)[\s\S]*?\n  }/)?.[0] || "",
-    /webPairCodeHash:\s*""/,
-  );
-  assert.match(worker, /Pairing service is temporarily unavailable/);
-  assert.match(worker, /webJson\([\s\S]*status: 503/);
+  assert.match(html, /single-use and expires after 10 minutes/);
+  assert.match(html, /placeholder="XXXX-XXXX-XXXX"/);
+  assert.match(listener, /WEB_PAIR_ALPHABET/);
+  assert.match(listener, /for \(let index = 0; index < 12; index \+= 1\)/);
+  assert.match(listener, /Single use\. Expires in 10 minutes\./);
+  assert.match(worker, /\^\[A-HJ-NP-Z2-9\]\{12\}\$/);
+  assert.match(worker, /delete nextSettings\.webPairCodeHash/);
+  assert.match(worker, /delete nextSettings\.webPairExpiresAt/);
+  assert.match(worker, /ownerPairAllowed\(request\)/);
+  assert.match(worker, /recordOwnerPairFailure\(request\)/);
+  assert.match(worker, /issueOwnerToken\(env, ownerAuthVersion\(nextSettings\)\)/);
+  assert.match(worker, /Pairing code is invalid, expired, or already used/);
 });
 
 
