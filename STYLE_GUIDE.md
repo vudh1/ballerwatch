@@ -9,6 +9,8 @@ This repository uses one consistent style across runtime code, workflows, tests,
 - Every runtime source file starts with a short module documentation block describing responsibility, inputs/outputs, privacy boundaries, and the release in which its documentation baseline was added.
 - Public functions should have descriptive names; avoid unexplained abbreviations.
 - Secrets, participant identities, runtime snapshots, and other private state never appear in source, logs, fixtures, or documentation.
+- Every canonical `runtime-state` file is stored as one complete AES-GCM envelope. Do not add readable projections or metadata files to that branch.
+- User-facing product copy says **user**, not **owner**. Legacy internal identifiers may remain only when changing them would break persisted tokens, API compatibility, or external secret names; add a compatibility comment when that distinction is non-obvious.
 - Comments explain **why** a rule exists, not line-by-line syntax.
 
 ## JavaScript / MJS
@@ -33,6 +35,7 @@ This repository uses one consistent style across runtime code, workflows, tests,
 - YAML uses 2-space indentation.
 - GitHub Actions should have explicit permissions, timeouts, and concurrency where appropriate.
 - Production workflows must not commit runtime data.
+- A workflow should own one operational failure domain. Prefer a manual repair workflow over a second automatic trigger when normal deployment already performs the same reconciliation.
 - Test workflows must not send Telegram notifications or mutate Calendar data.
 
 ## Releases
