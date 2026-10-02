@@ -4,10 +4,11 @@ BallerWatch is a small soccer automation system for pickup games and Seattle RAT
 
 It uses Telegram and an installable GitHub Pages web app for questions and alerts, Cloudflare Workers for the webhook/read-only API path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Gemini Flash with Groq fallback for bounded AI assistance, standards-based Web Push for a Telegram-independent notification channel, and Google Calendar for league match sync.
 
-**Current version: 5.1.2**
+**Current version: 5.1.3**
 
 ## Recent changes
 
+- **5.1.3** — Expire completed matches by Pacific end time, pulse the Live indicator, and auto-refresh both live data and installed app updates.
 - **5.1.2** — Restore league weather when exact venue geocoding fails and show pickup RSVP capacity in the match spotlight.
 - **5.1.1** — Normalize typography across the Liquid Glass app with one native system font stack and consistent type scale.
 - **5.1.0** — Liquid Glass UI and calendar-day selection through the main match spotlight.
