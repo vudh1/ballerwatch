@@ -78,7 +78,7 @@ function legacyRuntimeValue(file, parsed) {
   if (file === "state/listener.json" && parsed?.settings) {
     const settings = decryptState(parsed.settings);
     if (!settings || typeof settings !== "object") {
-      throw new Error("Unable to decrypt legacy listener settings during migration.");
+      throw new Error("Unable to decrypt legacy user settings during migration.");
     }
     return {
       lastUpdateId: Number(parsed.lastUpdateId || 0),
