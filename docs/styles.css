@@ -1930,3 +1930,659 @@ html.spotlight-swipe-active body {
     transition-duration: 1ms;
   }
 }
+
+
+/* v5.5 iPhone dashboard visual refresh */
+:root {
+  --v55-glass: rgba(22, 31, 49, 0.52);
+  --v55-glass-strong: rgba(22, 31, 49, 0.70);
+  --v55-line: rgba(255, 255, 255, 0.18);
+  --v55-highlight: rgba(255, 255, 255, 0.25);
+  --v55-blue: #2f8cff;
+  --v55-green: #45e47c;
+  --v55-shadow: rgba(1, 7, 18, 0.42);
+}
+
+body {
+  background:
+    radial-gradient(circle at 78% 8%, rgba(255, 141, 92, 0.32), transparent 24rem),
+    radial-gradient(circle at 20% 6%, rgba(95, 139, 218, 0.45), transparent 28rem),
+    radial-gradient(circle at 88% 42%, rgba(224, 126, 87, 0.18), transparent 24rem),
+    linear-gradient(180deg, #21314c 0%, #152236 24%, #0d1727 58%, #08121f 100%);
+  background-attachment: fixed;
+}
+
+body::before {
+  top: -5rem;
+  left: -7rem;
+  width: 25rem;
+  height: 25rem;
+  background: rgba(96, 165, 250, 0.28);
+}
+
+body::after {
+  right: -7rem;
+  bottom: 8%;
+  width: 24rem;
+  height: 24rem;
+  background: rgba(251, 146, 60, 0.18);
+}
+
+.shell {
+  width: min(720px, 100%);
+  padding-inline: clamp(0.9rem, 3vw, 1.35rem);
+}
+
+.hero {
+  padding: 1.55rem 0 0.35rem;
+  align-items: center;
+}
+
+.brand-lockup {
+  gap: 0;
+}
+
+.brand-mark,
+.brand-lockup .eyebrow {
+  display: none;
+}
+
+.hero h1,
+h1 {
+  font-size: clamp(2.45rem, 9vw, 3.4rem);
+  font-weight: 800;
+  line-height: 0.98;
+  letter-spacing: -0.055em;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.24);
+}
+
+.hero .subtitle {
+  display: block;
+  margin-top: 0.42rem;
+  color: rgba(239, 246, 255, 0.84);
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.hero-actions {
+  gap: 0.65rem;
+}
+
+.utility-button {
+  width: 3.15rem;
+  height: 3.15rem;
+  border-color: rgba(255, 255, 255, 0.20);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.035)),
+    rgba(70, 79, 102, 0.34);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 12px 30px rgba(0, 0, 0, 0.22);
+  -webkit-backdrop-filter: blur(22px) saturate(170%);
+  backdrop-filter: blur(22px) saturate(170%);
+}
+
+.utility-button svg {
+  width: 1.45rem;
+  height: 1.45rem;
+  stroke-width: 1.7;
+}
+
+.notification-badge {
+  top: 0.18rem;
+  right: 0.16rem;
+  border-color: rgba(31, 41, 55, 0.92);
+}
+
+.system-line {
+  margin: 0.18rem 0 0.8rem;
+  min-height: 1.2rem;
+  color: rgba(203, 213, 225, 0.72);
+}
+
+.card,
+.footer-install {
+  border-radius: 30px;
+  border-color: var(--v55-line);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.025) 38%, rgba(8, 15, 28, 0.12)),
+    var(--v55-glass);
+  box-shadow:
+    inset 0 1px 0 var(--v55-highlight),
+    0 26px 70px var(--v55-shadow);
+  -webkit-backdrop-filter: blur(30px) saturate(185%);
+  backdrop-filter: blur(30px) saturate(185%);
+}
+
+.spotlight-carousel {
+  border-radius: 32px;
+  margin: 0.75rem 0 1rem;
+}
+
+.spotlight-card {
+  min-height: 25rem;
+  padding: clamp(1.35rem, 4vw, 1.8rem);
+  border-radius: 32px;
+  border-color: rgba(255, 255, 255, 0.23);
+  background:
+    radial-gradient(circle at 88% 25%, rgba(255, 166, 104, 0.44), transparent 16rem),
+    radial-gradient(circle at 72% 8%, rgba(120, 174, 255, 0.38), transparent 18rem),
+    linear-gradient(100deg, rgba(8, 17, 30, 0.93) 0%, rgba(14, 25, 41, 0.76) 46%, rgba(57, 48, 55, 0.47) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.30),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05),
+    0 28px 80px rgba(0, 0, 0, 0.35);
+}
+
+.spotlight-card::before {
+  background:
+    linear-gradient(115deg, rgba(255, 255, 255, 0.15), transparent 27%, transparent 62%, rgba(255, 188, 139, 0.12)),
+    linear-gradient(180deg, transparent 62%, rgba(5, 12, 22, 0.34));
+}
+
+.spotlight-card::after {
+  width: 16rem;
+  height: 8rem;
+  right: -2rem;
+  bottom: 4.9rem;
+  border-radius: 60% 0 0 0;
+  background:
+    linear-gradient(178deg, transparent 0 40%, rgba(10, 20, 31, 0.42) 41% 48%, transparent 49%),
+    linear-gradient(168deg, transparent 0 55%, rgba(8, 18, 28, 0.34) 56% 61%, transparent 62%);
+  filter: none;
+  opacity: 0.72;
+}
+
+.spotlight-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(7rem, 9rem);
+  grid-template-areas:
+    "heading heading"
+    "meta weather"
+    "location weather"
+    "capacity weather"
+    "actions actions"
+    "hint hint";
+  column-gap: 1rem;
+  align-items: end;
+}
+
+.spotlight-content .section-heading {
+  grid-area: heading;
+  align-items: flex-start;
+}
+
+.spotlight-card .eyebrow {
+  color: rgba(226, 232, 240, 0.82);
+  font-size: 0.76rem;
+  letter-spacing: 0.12em;
+}
+
+.spotlight-card h2 {
+  max-width: 100%;
+  margin-top: 0.36rem;
+  font-size: clamp(2.2rem, 9vw, 3.25rem);
+  font-weight: 800;
+  line-height: 0.98;
+  letter-spacing: -0.055em;
+}
+
+.spotlight-card .status-dot {
+  margin-top: 0.05rem;
+  color: rgba(240, 249, 255, 0.90);
+  background: rgba(255, 255, 255, 0.10);
+  border-color: rgba(255, 255, 255, 0.16);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+.next-game-meta {
+  grid-area: meta;
+  margin: 1.05rem 0 0;
+  color: #f8fafc;
+  font-size: 1.12rem;
+  font-weight: 700;
+}
+
+.next-game-location {
+  grid-area: location;
+  display: flex;
+  align-items: center;
+  gap: 0.42rem;
+  margin: 0.7rem 0 0;
+  color: rgba(241, 245, 249, 0.92);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.next-game-location:not(:empty)::before {
+  content: "⌖";
+  flex: 0 0 auto;
+  color: #dbeafe;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.next-game-capacity {
+  grid-area: capacity;
+  min-width: 0;
+  margin-top: 0.95rem;
+}
+
+.next-game-capacity-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: #f8fafc;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.next-game-capacity-spots {
+  color: rgba(203, 213, 225, 0.72);
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.next-game-capacity-track {
+  height: 0.48rem;
+  margin-top: 0.5rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(226, 232, 240, 0.20);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.22);
+}
+
+.next-game-capacity-fill {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #40dc77, #59e68c);
+  box-shadow: 0 0 16px rgba(69, 228, 124, 0.24);
+  transition: width 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.next-game-weather {
+  grid-area: weather;
+  align-self: end;
+  justify-self: stretch;
+  width: auto;
+  max-width: 9rem;
+  margin: 0;
+  padding: 0.8rem 0.85rem;
+  border-radius: 20px;
+  color: #f8fafc;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.035)),
+    rgba(78, 78, 93, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  font-size: 0.76rem;
+  line-height: 1.45;
+  text-align: left;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 10px 28px rgba(0, 0, 0, 0.18);
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
+  backdrop-filter: blur(18px) saturate(170%);
+}
+
+.next-game-actions {
+  grid-area: actions;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 1.35rem;
+}
+
+.next-game-actions .button-link,
+.next-game-actions button {
+  width: 100%;
+  min-height: 3.35rem;
+  border-radius: 999px;
+  color: #f8fafc;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04)),
+    rgba(71, 85, 105, 0.36);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.20),
+    0 8px 22px rgba(0, 0, 0, 0.16);
+}
+
+#next-game-directions::before {
+  content: "➤";
+  margin-right: 0.5rem;
+}
+
+#next-game-share::before {
+  content: "⇧";
+  margin-right: 0.5rem;
+}
+
+.next-game-hint {
+  grid-area: hint;
+}
+
+.calendar-card,
+.ask-card {
+  padding: clamp(1.15rem, 4vw, 1.5rem);
+}
+
+.calendar-card .section-heading,
+.ask-card .section-heading {
+  align-items: flex-start;
+}
+
+.calendar-card h2,
+.ask-card h2 {
+  font-size: clamp(1.45rem, 5vw, 1.85rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+}
+
+.calendar-card .eyebrow,
+.ask-card .eyebrow {
+  color: rgba(191, 219, 254, 0.72);
+}
+
+.calendar-updated,
+.ask-shortcut {
+  margin-top: 0.3rem;
+  color: rgba(203, 213, 225, 0.64);
+}
+
+.calendar-grid {
+  gap: 0.42rem;
+}
+
+.calendar-day {
+  min-height: 5rem;
+  padding: 0.58rem 0.16rem 0.45rem;
+  border-radius: 17px;
+  border-color: rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.015)),
+    rgba(65, 77, 101, 0.28);
+}
+
+.calendar-day:disabled {
+  opacity: 0.70;
+}
+
+.calendar-day[aria-selected="true"] {
+  color: #fff;
+  border-color: rgba(124, 190, 255, 0.75);
+  background:
+    linear-gradient(145deg, rgba(72, 161, 255, 0.98), rgba(29, 112, 246, 0.92));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    0 8px 28px rgba(39, 125, 255, 0.30);
+}
+
+.calendar-weekday {
+  color: rgba(203, 213, 225, 0.64);
+  font-size: 0.64rem;
+}
+
+.calendar-number {
+  font-size: 1.08rem;
+}
+
+.calendar-signal {
+  height: 0.6rem;
+  line-height: 0.55rem;
+}
+
+.calendar-signal.has-game {
+  color: var(--v55-green);
+  text-shadow: 0 0 12px rgba(69, 228, 124, 0.55);
+}
+
+.calendar-mini-weather {
+  color: rgba(226, 232, 240, 0.66);
+}
+
+.calendar-game-choice {
+  min-height: 2.45rem;
+  border-color: rgba(255, 255, 255, 0.12);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.02)),
+    rgba(56, 66, 88, 0.32);
+}
+
+.ask-card h2::before {
+  content: "✦";
+  display: inline-block;
+  margin-right: 0.48rem;
+  color: #5aa2ff;
+  text-shadow: 0 0 18px rgba(90, 162, 255, 0.42);
+}
+
+.ask-card .question-row {
+  align-items: center;
+  padding: 0.34rem 0.36rem 0.34rem 0.62rem;
+  border-radius: 999px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.025)),
+    rgba(79, 92, 117, 0.34);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.ask-card input {
+  min-height: 3.15rem;
+  padding-left: 0.35rem;
+}
+
+.ask-card .question-row > button {
+  width: 3.1rem;
+  min-width: 3.1rem;
+  min-height: 3.1rem;
+  align-self: center;
+  overflow: hidden;
+  border-radius: 999px;
+  padding: 0;
+  font-size: 0;
+  color: #fff;
+  background: linear-gradient(145deg, #4a9cff, #2878ee);
+}
+
+.ask-card .question-row > button::before {
+  content: "➤";
+  font-size: 1.2rem;
+}
+
+.question-suggestions {
+  border-radius: 20px;
+}
+
+.answer {
+  margin-top: 0.85rem;
+  border-radius: 20px;
+  color: #eff6ff;
+  background:
+    linear-gradient(145deg, rgba(90, 162, 255, 0.12), rgba(255, 255, 255, 0.025)),
+    rgba(64, 77, 101, 0.30);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.notification-dialog {
+  position: fixed;
+  top: max(5.8rem, calc(env(safe-area-inset-top) + 4.8rem));
+  right: max(0.85rem, env(safe-area-inset-right));
+  bottom: auto;
+  left: auto;
+  width: min(31rem, calc(100vw - 1.7rem));
+  margin: 0;
+  border-radius: 28px;
+  border-color: rgba(255, 255, 255, 0.20);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.025)),
+    rgba(45, 51, 72, 0.62);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 28px 80px rgba(0, 0, 0, 0.38);
+  -webkit-backdrop-filter: blur(34px) saturate(185%);
+  backdrop-filter: blur(34px) saturate(185%);
+}
+
+.notification-dialog::backdrop {
+  background: rgba(4, 10, 20, 0.18);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+
+.notice {
+  min-height: 5.25rem;
+  max-height: 6.2rem;
+  padding: 0.85rem 0.85rem 0.85rem 3.75rem;
+  border-radius: 19px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.015)),
+    rgba(31, 41, 59, 0.30);
+}
+
+.notice::before {
+  content: "✦";
+  position: absolute;
+  top: 0.95rem;
+  left: 0.85rem;
+  width: 2.15rem;
+  height: 2.15rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: linear-gradient(145deg, #4a9cff, #2563eb);
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);
+}
+
+.notification-reader {
+  background:
+    radial-gradient(circle at 80% 5%, rgba(255, 142, 93, 0.16), transparent 28rem),
+    linear-gradient(180deg, #18263d, #08121f);
+}
+
+.notification-reader-content {
+  border-radius: 28px;
+}
+
+.settings-dialog,
+#install-dialog {
+  border-radius: 28px;
+  border-color: rgba(255, 255, 255, 0.18);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.02)),
+    rgba(25, 34, 52, 0.86);
+  -webkit-backdrop-filter: blur(30px) saturate(175%);
+  backdrop-filter: blur(30px) saturate(175%);
+}
+
+@media (max-width: 560px) {
+  .shell {
+    padding-inline: 0.8rem;
+  }
+
+  .hero {
+    padding-top: 1.15rem;
+  }
+
+  .hero h1 {
+    font-size: clamp(2.15rem, 11vw, 2.75rem);
+  }
+
+  .hero .subtitle {
+    display: block;
+    font-size: 0.9rem;
+  }
+
+  .hero-actions {
+    gap: 0.45rem;
+  }
+
+  .utility-button {
+    width: 2.85rem;
+    height: 2.85rem;
+  }
+
+  .spotlight-card {
+    min-height: 24rem;
+    border-radius: 28px;
+  }
+
+  .spotlight-content {
+    grid-template-columns: minmax(0, 1fr) minmax(6.4rem, 7.6rem);
+    column-gap: 0.7rem;
+  }
+
+  .spotlight-card h2 {
+    font-size: clamp(2rem, 11vw, 2.75rem);
+  }
+
+  .next-game-meta {
+    font-size: 1rem;
+  }
+
+  .next-game-location {
+    font-size: 0.9rem;
+  }
+
+  .next-game-weather {
+    max-width: 7.6rem;
+    padding: 0.7rem;
+    font-size: 0.68rem;
+  }
+
+  .next-game-capacity-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+
+  .next-game-actions {
+    gap: 0.55rem;
+  }
+
+  .next-game-actions .button-link,
+  .next-game-actions button {
+    min-height: 3.15rem;
+    padding-inline: 0.65rem;
+  }
+
+  .calendar-grid {
+    gap: 0.28rem;
+  }
+
+  .calendar-day {
+    min-height: 4.45rem;
+    border-radius: 14px;
+  }
+
+  .calendar-weekday {
+    font-size: 0.56rem;
+  }
+
+  .calendar-number {
+    font-size: 0.98rem;
+  }
+
+  .calendar-mini-weather {
+    font-size: 0.58rem;
+  }
+
+  .notification-dialog {
+    top: max(5.2rem, calc(env(safe-area-inset-top) + 4.2rem));
+    right: 0.45rem;
+    width: calc(100vw - 0.9rem);
+    max-width: calc(100vw - 0.9rem);
+    border-radius: 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .next-game-capacity-fill {
+    transition: none;
+  }
+}
