@@ -1,0 +1,10 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ballerwatch-web",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-09-30",
+  "workers_dev": true,
+  "triggers": {
+    "crons": []
+  }
+}
