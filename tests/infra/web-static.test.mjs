@@ -464,3 +464,27 @@ test("notification popup stays bounded and offers local Delete all beside Send t
   assert.match(css, /\.notification-dialog \.board \{[\s\S]*overflow-y:\s*auto;/);
   assert.match(css, /\.notification-test-row \{[\s\S]*flex-wrap:\s*wrap;/);
 });
+
+
+test("match spotlight swipes between game dates and keeps calendar highlight in sync", () => {
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  const css = fs.readFileSync("docs/styles.css", "utf8");
+
+  assert.match(app, /function calendarGameDates/);
+  assert.match(app, /function selectAdjacentCalendarGameDate/);
+  assert.match(app, /function installSpotlightSwipe/);
+  assert.match(app, /nextGameCard\.addEventListener\("touchstart"/);
+  assert.match(app, /nextGameCard\.addEventListener\("touchmove"/);
+  assert.match(app, /nextGameCard\.addEventListener\("touchend"/);
+  assert.match(app, /const direction = deltaX < 0 \? 1 : -1/);
+  assert.match(app, /selectAdjacentCalendarGameDate\(direction\)/);
+  assert.match(
+    app,
+    /button\.setAttribute\("aria-selected", String\(button\.dataset\.date === date\)\)/,
+  );
+  assert.match(app, /renderCalendarGamePicker\(games, game\.id \|\| ""\)/);
+  assert.match(app, /event\.target\.closest\?\.\("a, button"\)/);
+  assert.match(css, /\/\* v5\.3 calendar spotlight swipe navigation \*\//);
+  assert.match(css, /\.spotlight-card \{[\s\S]*touch-action:\s*pan-y;/);
+  assert.match(css, /\.spotlight-card\.is-calendar-swiping/);
+});
