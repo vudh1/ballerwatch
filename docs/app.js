@@ -1,3 +1,11 @@
+/**
+ * BallerWatch PWA client: renders the dashboard, read-only Q&A, notifications,
+ * user Settings, connected-card navigation, and installed-app update behavior.
+ *
+ * v5.8 keeps legacy `owner-*` DOM IDs and the existing localStorage token key
+ * so already-installed 5.7 clients stay signed in; current UI copy and API calls
+ * use user terminology.
+ */
 const API = "https://ballerwatch-telegram.vudhone.workers.dev";
 
 const els = {
