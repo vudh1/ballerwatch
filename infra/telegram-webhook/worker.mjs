@@ -1885,11 +1885,12 @@ export default {
     if (request.method === "GET" && url.pathname === "/health") {
       return Response.json({
         ok:true,
-        service:"ballerwatch-telegram-webhook",
+        service:"ballerwatch-worker",
         fastPath:true,
-        runtime:"cloudflare-webhook",
+        runtime:"cloudflare-worker",
         storage:"github-runtime-state",
         scheduler:"cron-job.org",
+        telegramEnabled:Boolean(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID),
         kv:false,
       });
     }
@@ -2277,6 +2278,10 @@ export default {
     }
     if (request.method !== "POST" || url.pathname !== "/telegram") {
       return new Response("Not found", { status: 404 });
+    }
+
+    if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) {
+      return new Response("Telegram adapter disabled", { status: 404 });
     }
 
     const secret = request.headers.get("x-telegram-bot-api-secret-token") || "";
