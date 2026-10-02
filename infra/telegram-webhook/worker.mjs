@@ -61,7 +61,7 @@ async function sha256Hex(value) {
 
 async function ownerSigningKey(env) {
   const secret = cleanText(env.TRACKER_STATE_KEY || env.TELEGRAM_WEBHOOK_SECRET, 5000);
-  if (!secret) throw new Error("Owner pairing key is unavailable.");
+  if (!secret) throw new Error("User authentication key is unavailable.");
   return crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(secret),
@@ -119,7 +119,7 @@ export async function verifyOwnerToken(env, token) {
 export function normalizeOwnerPassword(value) {
   const password = String(value ?? "");
   if (password.length < 12 || password.length > 200) {
-    throw new Error("Owner password must be between 12 and 200 characters.");
+    throw new Error("User password must be between 12 and 200 characters.");
   }
   return password;
 }
@@ -258,6 +258,13 @@ export async function verifyFeedbackToken(env, token, question, reply) {
 function bearerToken(request) {
   const match = String(request.headers.get("authorization") || "").match(/^Bearer\s+(.+)$/i);
   return match ? match[1].trim() : "";
+}
+
+function userRoute(pathname, action) {
+  return (
+    pathname === `/web/user/${action}` ||
+    pathname === `/web/owner/${action}`
+  );
 }
 
 function b64Bytes(value) {
@@ -452,7 +459,7 @@ async function pairOwnerDevice(env, code) {
   const expected = cleanText(settings.webPairCodeHash, 128);
   if (!expected || expected !== await sha256Hex(normalized)) return null;
 
-  // Keep the temporary code valid until its existing expiry so the owner can
+  // Keep the temporary code valid until its existing expiry so the user can
   // authorize more than one device without requesting a fresh code per device.
   return {
     ...(await issueOwnerToken(env)),
@@ -1976,7 +1983,7 @@ export default {
       }
     }
 
-    if (request.method === "POST" && url.pathname === "/web/owner/pair") {
+    if (request.method === "POST" && userRoute(url.pathname, "pair")) {
       let body;
       try { body = await request.json(); }
       catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
@@ -1992,7 +1999,7 @@ export default {
         }
         return webJson(request, { ok: true, ...paired });
       } catch (error) {
-        console.error("Owner pairing failed", error);
+        console.error("User pairing failed", error);
         return webJson(
           request,
           { ok: false, error: "Pairing service is temporarily unavailable. Request a new /webpair code and try again." },
@@ -2001,7 +2008,7 @@ export default {
       }
     }
 
-    if (request.method === "POST" && url.pathname === "/web/owner/login") {
+    if (request.method === "POST" && userRoute(url.pathname, "login")) {
       if (!(await ownerLoginAllowed(request))) {
         return webJson(
           request,
@@ -2022,7 +2029,7 @@ export default {
             request,
             {
               ok: false,
-              error: "Owner password is incorrect or has not been configured yet. Use pairing-code recovery if needed.",
+              error: "User password is incorrect or has not been configured yet. Use pairing-code recovery if needed.",
             },
             { status: 401 },
           );
@@ -2030,18 +2037,18 @@ export default {
         await clearOwnerLoginFailures(request);
         return webJson(request, { ok: true, ...signedIn });
       } catch (error) {
-        console.error("Owner password sign-in failed", error);
+        console.error("User password sign-in failed", error);
         return webJson(
           request,
-          { ok: false, error: "Owner sign-in is temporarily unavailable." },
+          { ok: false, error: "User sign-in is temporarily unavailable." },
           { status: 503 },
         );
       }
     }
 
-    if (request.method === "POST" && url.pathname === "/web/owner/password") {
+    if (request.method === "POST" && userRoute(url.pathname, "password")) {
       if (!(await verifyOwnerToken(env, bearerToken(request)))) {
-        return webJson(request, { ok: false, error: "Owner sign-in is required." }, { status: 401 });
+        return webJson(request, { ok: false, error: "User sign-in is required." }, { status: 401 });
       }
 
       let body;
@@ -2053,7 +2060,7 @@ export default {
         return webJson(request, {
           ok: true,
           passwordConfigured: true,
-          message: "Owner password saved. New devices can sign in directly.",
+          message: "User password saved. New devices can sign in directly.",
         });
       } catch (error) {
         const message = cleanText(error?.message, 200);
@@ -2062,7 +2069,7 @@ export default {
           request,
           {
             ok: false,
-            error: status === 400 ? message : "Unable to update owner password right now.",
+            error: status === 400 ? message : "Unable to update user password right now.",
           },
           { status },
         );
@@ -2071,11 +2078,11 @@ export default {
 
     if (
       (request.method === "GET" || request.method === "POST") &&
-      url.pathname === "/web/owner/settings"
+      userRoute(url.pathname, "settings")
     ) {
       const token = bearerToken(request);
       if (!(await verifyOwnerToken(env, token))) {
-        return webJson(request, { ok: false, error: "Owner sign-in is required." }, { status: 401 });
+        return webJson(request, { ok: false, error: "User sign-in is required." }, { status: 401 });
       }
 
       if (request.method === "GET") {
@@ -2108,14 +2115,14 @@ export default {
 
       const question = retainPrivateText(body?.question, 4000);
       const reply = retainPrivateText(body?.reply, 12000);
-      const ownerAuthorized = await verifyOwnerToken(env, bearerToken(request));
+      const userAuthorized = await verifyOwnerToken(env, bearerToken(request));
       const feedbackAuthorized = await verifyFeedbackToken(
         env,
         body?.feedbackToken,
         question,
         reply,
       );
-      if (!ownerAuthorized && !feedbackAuthorized) {
+      if (!userAuthorized && !feedbackAuthorized) {
         return webJson(
           request,
           {
@@ -2199,7 +2206,7 @@ export default {
         const history = {
           question: cleanText(body?.question, 600),
           reply: cleanText(answer?.reply || answer?.error, 1200),
-          source: "web-pwa-owner",
+          source: "web-pwa-user",
           intent: "web",
         };
         if (history.question && history.reply) {
