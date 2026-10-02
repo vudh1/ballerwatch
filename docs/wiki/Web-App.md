@@ -75,6 +75,12 @@ Weather is computed from the actual scheduled game window rather than a generic 
 
 Recurring venues use cached coordinates. Only new public field names/addresses are geocoded. The app credits **Open-Meteo** for forecast data and **OpenStreetMap contributors** for geocoding data.
 
+## Liquid Glass dashboard
+
+The v5.1 interface uses translucent, layered surfaces with backdrop blur, soft edge highlights, and depth while keeping strong text contrast for outdoor/mobile use. Browsers without backdrop-filter support fall back to opaque dark surfaces.
+
+The top match spotlight is also the single detail surface for the 14-day calendar. Initial load shows the next game. Tapping a game day changes that same spotlight to **Selected game** with its match-window weather, field/location, Directions, and Share controls. Empty days are not interactive. If more than one match exists on a date, the calendar shows a compact selector and each choice updates the same spotlight.
+
 ## Next game and notification test
 
 The main screen loads the same earliest-upcoming pickup/RATS selection used by the Telegram fast path. The card exposes only public-safe game details and provides:
