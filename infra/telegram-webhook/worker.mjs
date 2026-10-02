@@ -218,26 +218,26 @@ export async function verifyOwnerPassword(env, value, record) {
   }
 }
 
-async function ownerLoginRateRequest(request) {
+async function authRateRequest(request, namespace) {
   if (typeof caches === "undefined" || !caches.default) return null;
   const source = [
     request.headers.get("cf-connecting-ip") || "",
     request.headers.get("user-agent") || "",
   ].join("|");
-  const key = await sha256Hex(source || "unknown-owner-login");
-  return new Request(`https://ballerwatch.internal/owner-login/${key}`);
+  const key = await sha256Hex(source || "unknown-client");
+  return new Request(`https://ballerwatch.internal/${namespace}/${key}`);
 }
 
-async function ownerLoginAllowed(request) {
-  const cacheRequest = await ownerLoginRateRequest(request);
+async function authAttemptAllowed(request, namespace, limit) {
+  const cacheRequest = await authRateRequest(request, namespace);
   if (!cacheRequest) return true;
   const hit = await caches.default.match(cacheRequest);
   const failures = Number(await hit?.text().catch(() => "0") || 0);
-  return failures < 10;
+  return failures < limit;
 }
 
-async function recordOwnerLoginFailure(request) {
-  const cacheRequest = await ownerLoginRateRequest(request);
+async function recordAuthFailure(request, namespace) {
+  const cacheRequest = await authRateRequest(request, namespace);
   if (!cacheRequest) return;
   const hit = await caches.default.match(cacheRequest);
   const failures = Number(await hit?.text().catch(() => "0") || 0);
@@ -249,11 +249,42 @@ async function recordOwnerLoginFailure(request) {
   );
 }
 
-async function clearOwnerLoginFailures(request) {
-  const cacheRequest = await ownerLoginRateRequest(request);
+async function clearAuthFailures(request, namespace) {
+  const cacheRequest = await authRateRequest(request, namespace);
   if (cacheRequest) await caches.default.delete(cacheRequest);
 }
 
+async function ownerLoginAllowed(request) {
+  return authAttemptAllowed(request, "owner-login", 10);
+}
+
+async function recordOwnerLoginFailure(request) {
+  return recordAuthFailure(request, "owner-login");
+}
+
+async function clearOwnerLoginFailures(request) {
+  return clearAuthFailures(request, "owner-login");
+}
+
+async function ownerPairAllowed(request) {
+  return authAttemptAllowed(request, "owner-pair", 5);
+}
+
+async function recordOwnerPairFailure(request) {
+  return recordAuthFailure(request, "owner-pair");
+}
+
+async function clearOwnerPairFailures(request) {
+  return clearAuthFailures(request, "owner-pair");
+}
+
+async function pushRegistrationAllowed(request) {
+  return authAttemptAllowed(request, "push-registration", 20);
+}
+
+async function recordPushRegistrationFailure(request) {
+  return recordAuthFailure(request, "push-registration");
+}
 
 async function feedbackExchangeDigest(question, reply) {
   return sha256Hex(
