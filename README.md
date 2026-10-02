@@ -4,10 +4,11 @@ BallerWatch is a small soccer automation system for pickup games and Seattle RAT
 
 It uses Telegram and an installable GitHub Pages web app for questions and alerts, Cloudflare Workers for the webhook/read-only API path, cron-job.org for scheduling, GitHub Actions for watcher/reconciliation work, Gemini Flash with Groq fallback for bounded AI assistance, standards-based Web Push for a Telegram-independent notification channel, and Google Calendar for league match sync.
 
-**Current version: 5.3.4**
+**Current version: 5.3.5**
 
 ## Recent changes
 
+- **5.3.5** — Collapse identical historical notification-board entries so the inbox shows only the newest copy of each unchanged payload.
 - **5.3.4** — Suppress unchanged pickup reminder notifications and deduplicate identical web-board/push entries.
 - **5.3.3** — Keep every swipe-carousel match card the same measured size and harden exact match-window weather verification.
 - **5.3.2** — Turn match swiping into a connected two-card carousel so outgoing and incoming game cards move together like a train.
