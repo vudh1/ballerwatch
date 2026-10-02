@@ -1,7 +1,24 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "5.3.2",
+  "currentVersion": "5.3.3",
   "releases": [
+    {
+      "version": "5.3.3",
+      "date": "2026-10-02",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Equal carousel dimensions and weather-window verification",
+      "telegramAnnouncement": "BallerWatch carousel cards now stay the same size across matches, with stronger verification that weather reflects each game's actual start/end window.",
+      "changes": [
+        "Measures every available match card at the current viewport width and locks the carousel to the maximum required card height so all outgoing and incoming cards have identical dimensions.",
+        "Recomputes the shared card dimension after calendar refreshes and screen-size/orientation changes.",
+        "Removed pair-specific height changes during swipes so the carousel no longer grows or shrinks between neighboring games.",
+        "Verified that weather requests use America/Los_Angeles and that only hourly Open-Meteo slots overlapping the actual match start/end window are included.",
+        "Strengthened weather regression coverage so higher rain probabilities outside the match window are ignored.",
+        "Added overnight-match coverage to verify weather selection correctly crosses midnight.",
+        "Bumped the installed PWA shell and service-worker cache to 5.3.3."
+      ]
+    },
     {
       "version": "5.3.2",
       "date": "2026-10-02",
