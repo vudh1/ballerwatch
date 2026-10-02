@@ -1,7 +1,23 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "5.1.0",
+  "currentVersion": "5.1.1",
   "releases": [
+    {
+      "version": "5.1.1",
+      "date": "2026-10-01",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Typography normalization",
+      "telegramAnnouncement": "BallerWatch now uses a consistent native system font and normalized type scale across the Liquid Glass interface.",
+      "changes": [
+        "Removed the unloaded Inter-first font declaration and standardized the PWA on the native system UI font stack.",
+        "Normalized caption, small text, metadata, body, control, and section-heading sizes instead of many one-off font sizes.",
+        "Replaced synthetic 650/750 font weights with standard 600/700 weights for more consistent rendering across Safari and the installed iPhone PWA.",
+        "Kept question/settings inputs at 16px to prevent iOS focus zoom.",
+        "Aligned typography for spotlight metadata, calendar labels/weather, Q&A, notifications, settings, footer, and multi-game selectors.",
+        "Bumped the PWA shell so installed clients refresh to the corrected typography."
+      ]
+    },
     {
       "version": "5.1.0",
       "date": "2026-10-01",
