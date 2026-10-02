@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "5.4.1",
+  "currentVersion": "5.4.2",
   "releases": [
+    {
+      "version": "5.4.2",
+      "date": "2026-10-02",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Concise README highlights and live web demo",
+      "changes": [
+        "Condensed the README release summary into five prominent grouped version highlights instead of listing every patch release.",
+        "Added a live BallerWatch web-app demo section with a direct launch link and a short guided flow for carousel, calendar, notifications, Q&A, and iPhone PWA behavior.",
+        "Aligned remaining README privacy wording with the current encrypted 48-hour original owner Q&A review design.",
+        "Kept runtime code, PWA assets, scheduling, notifications, and service-worker cache unchanged because this release is documentation-only."
+      ]
+    },
     {
       "version": "5.4.1",
       "date": "2026-10-02",
