@@ -288,7 +288,7 @@ test("liquid glass visual system has blur, translucent layers, and fallback", ()
 
 test("typography uses one native system stack and normalized scale", () => {
   const css = fs.readFileSync("docs/styles.css", "utf8");
-  assert.match(css, /\/\* v5\.1\.2 typography system \*\//);
+  assert.match(css, /\/\* v5\.1\.1 typography system \*\//);
   assert.match(css, /--font-ui:\s*-apple-system, BlinkMacSystemFont/);
   assert.match(css, /--type-caption:\s*0\.6875rem/);
   assert.match(css, /--type-small:\s*0\.75rem/);
