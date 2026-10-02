@@ -1,7 +1,7 @@
 /**
  * Implements the GitHub-hosted Telegram fallback bot, state-changing commands, and deterministic replies.
  *
- * Documentation baseline: v2.6.0. The listener is webhook-input only and sends Telegram messages only as direct replies to owner input; unsolicited setup, health, and release reminders are disabled. Runtime/private data must never be committed to Git.
+ * Documentation baseline: v5.4.0. The listener is webhook-input only, uses deterministic date/detail routing before AI fallback, and stores owner review source only through encrypted runtime state. Unsolicited setup, health, and release reminders are disabled.
  */
 import { recordUnknownQuestion, refreshPublicRequests } from "../shared/feature-requests.mjs";
 import { answerUnknownWithAi } from "../shared/ai-fallback.mjs";
