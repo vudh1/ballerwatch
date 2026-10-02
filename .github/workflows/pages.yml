@@ -4,12 +4,6 @@ on:
   release:
     types: [published]
   workflow_dispatch:
-    inputs:
-      release_ref:
-        description: "Published release tag or production ref to redeploy"
-        required: false
-        default: "production"
-        type: string
 
 permissions:
   contents: read
@@ -30,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.release.tag_name || inputs.release_ref || 'production' }}
+          ref: ${{ github.event.release.tag_name || 'production' }}
           fetch-depth: 1
       - name: Check GitHub Pages activation
         id: pages
