@@ -5,7 +5,6 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - "listener/**"
       - "pickup/**"
       - "league/**"
       - "shared/**"
@@ -41,8 +40,6 @@ jobs:
 
       - name: Pull runtime fixtures from GitHub state branch
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           node shared/runtime-state.mjs pull pickup
           node shared/runtime-state.mjs pull league
@@ -51,14 +48,12 @@ jobs:
         env:
           UPSTREAM_ENDPOINT: ${{ secrets.UPSTREAM_ENDPOINT }}
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           OWNER_RSVP_NAME: ${{ secrets.OWNER_RSVP_NAME }}
         run: node pickup/update.mjs
 
       - name: Prepare league runtime
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           SMOKE_ALLOW_TRANSIENT_SOURCE_FAILURE: "true"
         shell: bash
         run: |
@@ -74,7 +69,6 @@ jobs:
       - name: Verify refreshed data without notifications
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           OWNER_RSVP_NAME: ${{ secrets.OWNER_RSVP_NAME }}
         run: node tests/smoke/manual-smoke.mjs
 
@@ -91,4 +85,5 @@ jobs:
           rm -rf .runtime
           rm -f league/teams.json
           rm -f league/schedule.json league/today.json league/calendar-snapshot.json
-          rm -f league/score-changes.json league/calendar-changes.json league/telegram-update.json league/status.json
+          rm -f league/score-changes.json league/calendar-changes.json league/notification-update.json league/status.json
+
