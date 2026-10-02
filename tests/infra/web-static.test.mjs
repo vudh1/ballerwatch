@@ -298,3 +298,13 @@ test("typography uses one native system stack and normalized scale", () => {
   assert.doesNotMatch(css, /font-family:\s*Inter/);
   assert.doesNotMatch(css, /font-weight:\s*(650|750)/);
 });
+
+
+test("pickup spotlight shows reserved and capacity", () => {
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  assert.match(app, /game\.kind === "pickup" && game\.reserved != null/);
+  assert.match(app, /\$\{game\.reserved\} \/ \$\{game\.capacity\} reserved/);
+  assert.match(app, /capacityText/);
+  assert.match(app, /weatherApproximate/);
+  assert.match(app, /Seattle-area/);
+});
