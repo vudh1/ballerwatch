@@ -21,7 +21,4 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for workflow in             pages.yml             deploy-telegram-webhook.yml             web-app.yml             weather-refresh.yml             deploy-apps-script.yml             setup-cron.yml
-          do
-            gh workflow run "$workflow" --repo "$GITHUB_REPOSITORY" --ref main
-          done
+          gh workflow run deploy-telegram-webhook.yml --repo "$GITHUB_REPOSITORY" --ref main
