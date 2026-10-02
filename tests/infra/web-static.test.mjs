@@ -638,10 +638,11 @@ test("production rollout is gated by GitHub Releases instead of main pushes", ()
   assert.match(promote, /release_state/);
   assert.match(promote, /git\/refs\/heads\/production/);
   assert.match(promote, /RELEASE_GITHUB_TOKEN/);
-  assert.match(promote, /CRON_GITHUB_PAT/);
+  assert.doesNotMatch(promote, /secrets\.CRON_GITHUB_PAT/);
   assert.doesNotMatch(promote, /inputs\.target_ref|REQUESTED_REF/);
   assert.doesNotMatch(promote, /inputs\.version|REQUESTED_VERSION/);
   assert.match(promote, /git fetch --no-tags origin main/);
+  assert.match(promote, /git log -1 --format=%H "\$head_sha" -- features\/versions\.json/);
 
   for (const workflow of [pages, worker, webRuntime, calendarBridge]) {
     assert.doesNotMatch(workflow, /inputs\.release_ref/);
