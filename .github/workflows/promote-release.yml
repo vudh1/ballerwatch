@@ -54,11 +54,21 @@ jobs:
           NODE
 
           tag="v$version"
-          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+          release_state="$(
+            gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json isDraft               --jq 'if .isDraft then "draft" else "published" end' 2>/dev/null               || printf 'missing'
+          )"
+          if [ "$release_state" = "published" ]; then
             echo "eligible=false" >> "$GITHUB_OUTPUT"
-            echo "reason=GitHub Release $tag already exists; no production rollout is needed." >> "$GITHUB_OUTPUT"
-            echo "Release $tag already exists. Leaving production unchanged."
+            echo "reason=Published GitHub Release $tag already exists; no production rollout is needed." >> "$GITHUB_OUTPUT"
+            echo "Release $tag is already published. Leaving production unchanged."
             exit 0
+          fi
+          if [ "$release_state" = "draft" ]; then
+            tag_sha="$(gh api "/repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" --jq '.object.sha')"
+            if [ "$tag_sha" != "$sha" ]; then
+              echo "::error::Draft release $tag points to $tag_sha instead of candidate $sha."
+              exit 1
+            fi
           fi
 
           if [ "$EVENT_NAME" = "schedule" ]; then
@@ -84,6 +94,7 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "release_state=$release_state" >> "$GITHUB_OUTPUT"
 
       - name: Build release notes
         if: steps.candidate.outputs.eligible == 'true'
@@ -113,14 +124,19 @@ jobs:
           GH_TOKEN: ${{ secrets.CRON_GITHUB_PAT }}
           SHA: ${{ steps.candidate.outputs.sha }}
           TAG: ${{ steps.candidate.outputs.tag }}
+          RELEASE_STATE: ${{ steps.candidate.outputs.release_state }}
         shell: bash
         run: |
           set -euo pipefail
 
+          title="$(cat /tmp/ballerwatch-release-title.txt)"
+          if [ "$RELEASE_STATE" != "draft" ]; then
+            gh release create "$TAG"               --repo "$GITHUB_REPOSITORY"               --target "$SHA"               --title "$title"               --notes-file /tmp/ballerwatch-release-notes.md               --draft
+          fi
+
           gh api --method PATCH             "/repos/$GITHUB_REPOSITORY/git/refs/heads/production"             -f sha="$SHA"             -F force=true >/dev/null
 
-          title="$(cat /tmp/ballerwatch-release-title.txt)"
-          gh release create "$TAG"             --repo "$GITHUB_REPOSITORY"             --target "$SHA"             --title "$title"             --notes-file /tmp/ballerwatch-release-notes.md
+          gh release edit "$TAG"             --repo "$GITHUB_REPOSITORY"             --draft=false             --title "$title"             --notes-file /tmp/ballerwatch-release-notes.md
 
           {
             echo "### Production promoted"
