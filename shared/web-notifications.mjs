@@ -52,6 +52,16 @@ export function appendWebNotification(channel, entry, { now = new Date() } = {})
     tag: clean(entry?.tag, 120) || `ballerwatch-${channel}`,
   };
 
+  const duplicate = [...current.entries]
+    .reverse()
+    .find((item) =>
+      clean(item?.tag, 120) === nextEntry.tag &&
+      clean(item?.title, 120) === nextEntry.title &&
+      clean(item?.body, 900) === nextEntry.body &&
+      clean(item?.url, 500) === nextEntry.url
+    );
+  if (duplicate) return duplicate;
+
   const cutoff = now.getTime() - 30 * 24 * 60 * 60 * 1000;
   const entries = [...current.entries, nextEntry]
     .filter((item) => Date.parse(String(item?.createdAt || "")) >= cutoff)

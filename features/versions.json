@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "5.3.3",
+  "currentVersion": "5.3.4",
   "releases": [
+    {
+      "version": "5.3.4",
+      "date": "2026-10-02",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Duplicate pickup notification suppression",
+      "telegramAnnouncement": "BallerWatch now suppresses unchanged pickup reminder notifications and prevents identical web-board entries from creating another push.",
+      "changes": [
+        "Removed time-only hourly and 15-minute pickup reminders when the underlying match state has not changed.",
+        "Pickup notifications now require a meaningful change in RSVP/capacity, roster, location, primary match selection, or owner status.",
+        "Added a second dedupe guard in shared web notifications: identical tag/title/body/URL payloads reuse the existing board entry instead of creating a new entry or Web Push event.",
+        "Kept the two-minute pickup refresh cadence unchanged so monitoring remains fast without generating duplicate notifications.",
+        "Added regression coverage for unchanged pickup suppression and duplicate web-board/Web Push suppression."
+      ]
+    },
     {
       "version": "5.3.3",
       "date": "2026-10-02",

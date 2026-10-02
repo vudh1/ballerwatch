@@ -16,8 +16,6 @@ const STATE_PATH = "pickup/state/notify.json";
 const RUNTIME_PATH = ".runtime/pickup/events.json";
 const RUNTIME_INDEX_PATH = ".runtime/pickup/data/index.json";
 const RUNTIME_DATES_DIR = ".runtime/pickup/data/dates";
-const HEARTBEAT_MS = 60 * 60 * 1000;
-const URGENT_REMINDER_MS = 15 * 60 * 1000;
 const STATE_SECRET = (process.env.TRACKER_STATE_KEY || process.env.TELEGRAM_BOT_TOKEN || "").trim();
 
 if (!STATE_SECRET) {
@@ -539,9 +537,6 @@ async function main() {
   const sameEventAsPrevious = previousSnapshot?.date === snapshot.date;
   const selectionChanged = Boolean(state.eventDate && state.eventDate !== event.date);
   const rosterChanges = diffRoster(previousSnapshot, snapshot);
-  const lastSentMs = Date.parse(state.lastSentAt || "");
-  const elapsedSinceSend =
-    Number.isFinite(lastSentMs) ? Date.now() - lastSentMs : Infinity;
 
   const nextState = {
     ...state,
@@ -568,15 +563,9 @@ async function main() {
   const remaining = Number.isFinite(capacity) ? capacity - reserved : null;
   const urgentCapacity = Number.isFinite(remaining) && remaining > 0 && remaining < 4;
   const isFull = Number.isFinite(remaining) && remaining <= 0;
-  const reminderMs = urgentCapacity ? URGENT_REMINDER_MS : HEARTBEAT_MS;
-  const reminderDue = elapsedSinceSend >= reminderMs;
 
-  if (!changed && !ownerStatusChanged && !reminderDue) {
-    console.log(
-      urgentCapacity
-        ? "No site change and urgent 15-minute reminder is not due."
-        : "No site change and hourly reminder is not due.",
-    );
+  if (!changed && !ownerStatusChanged) {
+    console.log("No meaningful pickup change; duplicate notification suppressed.");
     return;
   }
 
@@ -654,13 +643,9 @@ async function main() {
     lastSentFingerprint: currentFingerprint,
     lastSendReason: ownerStatusChanged
       ? "owner-status-change"
-      : changed
-      ? urgentCapacity
-        ? "change-urgent-capacity"
-        : "change"
       : urgentCapacity
-        ? "urgent-15m"
-        : "hourly",
+        ? "change-urgent-capacity"
+        : "change",
   });
 
   // Never log notification message content: workflow logs are public.
@@ -668,13 +653,9 @@ async function main() {
     `${telegramSent ? "Telegram + web" : "Web fallback"} notification recorded (${
       ownerStatusChanged
         ? "owner status change"
-        : changed
-        ? urgentCapacity
+        : urgentCapacity
           ? "site change + urgent capacity"
           : "site change"
-        : urgentCapacity
-          ? "urgent 15-minute reminder"
-          : "hourly reminder"
     }).`,
   );
 }
