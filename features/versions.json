@@ -1,7 +1,24 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "5.3.1",
+  "currentVersion": "5.3.2",
   "releases": [
+    {
+      "version": "5.3.2",
+      "date": "2026-10-02",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Connected-card match carousel",
+      "telegramAnnouncement": "BallerWatch match swiping now behaves like connected cards on one track: the current and next/previous game cards move together smoothly as you swipe.",
+      "changes": [
+        "Replaced the fixed-frame content swipe with a true two-card horizontal carousel.",
+        "Pre-renders the adjacent game as a separate full glass card beside the current card before it enters view.",
+        "Moves the outgoing and incoming cards together with a fixed gap so the gesture feels like connected train cars rather than a page shift or content swap.",
+        "Completes the same continuous motion after release, then synchronizes the selected calendar date and multi-match picker when the incoming card settles.",
+        "Keeps empty dates skipped, preserves vertical scrolling, ignores swipes that begin on Directions or Share, and eases back smoothly at the first or last game date.",
+        "Added regression coverage for paired card transforms, pre-rendered neighbor cards, carousel clipping, and synchronized calendar selection.",
+        "Bumped the installed PWA shell and service-worker cache to 5.3.2."
+      ]
+    },
     {
       "version": "5.3.1",
       "date": "2026-10-02",
