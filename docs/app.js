@@ -483,10 +483,11 @@ function disconnectOwnerDevice() {
 
 function setSystemState(state) {
   const live = state === "live";
-  els.system.textContent = live ? "Live" : "Offline";
-  els.system.style.color = live ? "#86efac" : "#fde68a";
+  const checking = state === "checking";
+  els.system.textContent = live ? "Live" : checking ? "Checking…" : "Offline";
+  els.system.style.color = live ? "#86efac" : checking ? "" : "#fde68a";
   els.systemLine?.classList.toggle("is-live", live);
-  els.systemLine?.classList.toggle("is-offline", !live);
+  els.systemLine?.classList.toggle("is-offline", !live && !checking);
 }
 
 async function registerServiceWorker() {
@@ -503,7 +504,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=5.8.0", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=5.8.1", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -515,10 +516,11 @@ async function registerServiceWorker() {
 async function loadConfig() {
   try {
     config = await api("/web/config");
-    setSystemState("live");
     els.version.textContent = `BallerWatch v${config.version}`;
+    return true;
   } catch {
     setSystemState("offline");
+    return false;
   }
 }
 
@@ -1371,6 +1373,7 @@ async function loadCalendar() {
   try {
     const payload = await api("/web/calendar");
     renderCalendar(payload.calendar || null);
+    return true;
   } catch (error) {
     currentCalendar = null;
     els.calendarGrid.replaceChildren();
@@ -1378,15 +1381,17 @@ async function loadCalendar() {
     els.calendarUpdated.textContent = "Calendar offline";
     syncSpotlightEdgeControls();
     await loadNextGame();
+    return false;
   }
 }
 
 async function refreshLiveData() {
   if (liveRefreshInFlight || document.hidden) return;
   liveRefreshInFlight = true;
+  setSystemState("checking");
   try {
-    await Promise.all([loadCalendar(), loadBoard()]);
-    setSystemState("live");
+    const [calendarOk, boardOk] = await Promise.all([loadCalendar(), loadBoard()]);
+    setSystemState(calendarOk && boardOk ? "live" : "offline");
   } catch {
     setSystemState("offline");
   } finally {
@@ -1406,6 +1411,7 @@ async function loadNextGame() {
   try {
     const payload = await api("/web/next-game");
     renderNextGame(payload.game || null);
+    return true;
   } catch (error) {
     els.nextGameTitle.textContent = "Next game unavailable";
     els.nextGameType.textContent = "Offline";
@@ -1413,6 +1419,7 @@ async function loadNextGame() {
     els.nextGameLocation.textContent = "";
     els.nextGameActions.hidden = true;
     els.nextGameHint.textContent = error.message;
+    return false;
   }
 }
 
@@ -1478,12 +1485,14 @@ async function loadBoard() {
   try {
     const payload = await api("/web/board?limit=30");
     renderBoard(payload.entries || []);
+    return true;
   } catch (error) {
     els.board.replaceChildren();
     const message = document.createElement("p");
     message.className = "muted";
     message.textContent = error.message;
     els.board.append(message);
+    return false;
   } finally {
     els.refresh.disabled = false;
   }
@@ -1791,7 +1800,7 @@ window.addEventListener("resize", () => {
 });
 
 window.addEventListener("online", () => {
-  setSystemState("live");
+  setSystemState("checking");
   refreshLiveData().catch(() => null);
   checkForAppUpdate().catch(() => null);
 });
@@ -1808,12 +1817,14 @@ document.addEventListener("visibilitychange", () => {
 
 document.documentElement.classList.toggle("is-standalone", standalone());
 applyInstallState();
-await Promise.all([
+setSystemState("checking");
+const [, configOk, boardOk, calendarOk] = await Promise.all([
   registerServiceWorker().catch(() => null),
   loadConfig(),
   loadBoard(),
   loadCalendar(),
 ]);
+setSystemState(configOk && boardOk && calendarOk ? "live" : "offline");
 initialLoadComplete = true;
 await updatePushStatus();
 
