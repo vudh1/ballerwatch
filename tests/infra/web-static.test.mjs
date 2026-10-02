@@ -611,6 +611,10 @@ test("production rollout is gated by GitHub Releases instead of main pushes", ()
   assert.match(promote, /cron:\s*"37 17 \* \* \*"/);
   assert.match(promote, /86400/);
   assert.match(promote, /gh release create/);
+  assert.match(promote, /--draft/);
+  assert.match(promote, /gh release edit/);
+  assert.match(promote, /--draft=false/);
+  assert.match(promote, /release_state/);
   assert.match(promote, /git\/refs\/heads\/production/);
   assert.match(promote, /CRON_GITHUB_PAT/);
   assert.doesNotMatch(promote, /inputs\.target_ref|REQUESTED_REF/);
