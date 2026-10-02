@@ -4,6 +4,10 @@ on:
   schedule:
     - cron: "37 * * * *"
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/promote-release.yml"
 
 permissions:
   contents: write
@@ -35,6 +39,11 @@ jobs:
 
           git fetch --no-tags origin main
           sha="$(git rev-parse FETCH_HEAD)"
+          if [ "$EVENT_NAME" = "push" ]; then
+            # One-time maintenance trigger: promote the already-validated
+            # product commit immediately before this workflow-only commit.
+            sha="$(git rev-parse "$sha^")"
+          fi
           git show "$sha:features/versions.json" > /tmp/ballerwatch-versions.json
 
           current_version="$(node -e 'const x=require("/tmp/ballerwatch-versions.json");process.stdout.write(String(x.currentVersion||""))')"
