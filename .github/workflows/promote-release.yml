@@ -4,12 +4,6 @@ on:
   schedule:
     - cron: "37 17 * * *"
   workflow_dispatch:
-    inputs:
-      version:
-        description: "Version to publish (blank = currentVersion from target ref)"
-        required: false
-        default: ""
-        type: string
 
 permissions:
   contents: write
@@ -33,7 +27,6 @@ jobs:
         id: candidate
         env:
           GH_TOKEN: ${{ secrets.CRON_GITHUB_PAT }}
-          REQUESTED_VERSION: ${{ inputs.version }}
           EVENT_NAME: ${{ github.event_name }}
         shell: bash
         run: |
@@ -45,8 +38,8 @@ jobs:
           git show "$sha:features/versions.json" > /tmp/ballerwatch-versions.json
 
           current_version="$(node -e 'const x=require("/tmp/ballerwatch-versions.json");process.stdout.write(String(x.currentVersion||""))')"
-          version="${REQUESTED_VERSION:-$current_version}"
-          test -n "$version" || { echo "::error::No release version was found."; exit 1; }
+          version="$current_version"
+          test -n "$version" || { echo "::error::No currentVersion was found."; exit 1; }
 
           node - "$version" <<'NODE'
           const fs = require("fs");
@@ -54,7 +47,7 @@ jobs:
           const data = JSON.parse(fs.readFileSync("/tmp/ballerwatch-versions.json", "utf8"));
           const release = (data.releases || []).find((item) => item.version === version);
           if (!release) {
-            console.error(`::error::Version ${version} is not present in features/versions.json on the target ref.`);
+            console.error(`::error::Version ${version} is not present in features/versions.json on main.`);
             process.exit(1);
           }
           fs.writeFileSync("/tmp/ballerwatch-release.json", JSON.stringify(release));
