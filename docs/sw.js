@@ -1,13 +1,13 @@
-const CACHE = "ballerwatch-v5-8-2-shell";
+const CACHE = "ballerwatch-v6-0-0-shell";
 const SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=5.8.2",
-  "./app.js?v=5.8.2",
+  "./styles.css?v=6.0.0",
+  "./app.js?v=6.0.0",
   "./manifest.webmanifest",
   "./icon.svg",
 ];
-const API = "https://ballerwatch-telegram.vudhone.workers.dev";
+const API = "https://ballerwatch-web.vudhone.workers.dev";
 const APP_URL = "https://vudh1.github.io/ballerwatch/";
 
 function safeAppUrl(value) {
