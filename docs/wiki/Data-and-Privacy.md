@@ -6,7 +6,7 @@ BallerWatch treats the public source repository, the generated runtime branch, a
 
 Generated state lives on the dedicated `runtime-state` branch.
 
-Starting with 5.8, **every canonical file on that branch is a complete AES-256-GCM envelope**. There are no intentionally readable runtime files. This includes already-sanitized projections and operational metadata.
+Starting with 5.8, **every canonical file on that branch is a complete AES-256-GCM envelope**. There are no intentionally readable runtime files. Starting with 5.8.2, the AES key is derived in a dedicated runtime-encryption domain rather than reusing the same master-secret transformation as authentication. Deployment can read legacy envelopes only long enough to reseal them under the current KDF.
 
 Encrypted runtime data includes:
 
@@ -71,9 +71,11 @@ Private user settings are never exposed to anonymous visitors. A signed device c
 - pickup RSVP display name;
 - monitored league teams.
 
-Normal access uses the user password. `/webpair` is a temporary bootstrap/recovery path while Telegram remains configured. The six-digit code is stored only as a hash inside encrypted listener state and expires after 10 minutes.
+Normal access uses the user password. `/webpair` is a temporary bootstrap/recovery path while Telegram remains configured. Recovery codes are 12-character high-entropy human-readable values, stored only as a hash inside encrypted listener state, single-use, attempt-limited per client, and expire after 10 minutes.
 
-The password itself is never stored. BallerWatch stores a random salt and a server-keyed verifier inside encrypted runtime state.
+The password itself is never stored. BallerWatch stores a random salt and a server-keyed verifier inside encrypted runtime state. Password verification, user-token signing, feedback-token signing, push-registration challenge signing, and runtime encryption use separate derived key domains.
+
+User capability tokens may be valid for up to 90 days, but each token includes the current server-side authentication revision. Password changes and **Sign out all devices** advance that revision, so older tokens fail verification even if their embedded expiration time has not passed.
 
 ## Match weather
 
@@ -83,7 +85,17 @@ The password itself is never stored. BallerWatch stores a random salt and a serv
 
 VAPID private material and browser `PushSubscription` objects are stored only inside encrypted `state/web-push.json`.
 
+Push endpoints are treated as network capabilities, not trusted data. Registration accepts only recognized browser push-service hosts over normal HTTPS, rejects userinfo, IP literals, unusual ports, and malformed/unrecognized hosts, and requires a short-lived server-issued challenge bound to the exact normalized endpoint from the trusted PWA origin.
+
+Before GitHub Actions sends a signal, the endpoint is validated again. DNS is resolved immediately before delivery and **every** returned address must be public; private, loopback, link-local, multicast, documentation, carrier-grade-NAT, and unsafe mapped addresses fail closed. Delivery uses `redirect: "error"`, so a push service cannot redirect the runner to another destination. Invalid or unsafe persisted subscriptions are pruned.
+
 Public notification-board responses are derived from encrypted branch state and must pass the same public-safe boundary as other PWA responses.
+
+## Browser response policies
+
+The Cloudflare Worker API sets a restrictive CSP, `frame-ancestors 'none'`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, Referrer-Policy, and Permissions-Policy.
+
+The static GitHub Pages document declares a restrictive CSP and no-referrer policy, and the service worker clamps notification navigation to the BallerWatch Pages path. GitHub Pages does not allow this repository to set arbitrary HTTP response headers for the static site, so anti-framing, X-Content-Type-Options, and Permissions-Policy cannot be truthfully claimed as response headers on the Pages document itself.
 
 ## Temporary plaintext
 
