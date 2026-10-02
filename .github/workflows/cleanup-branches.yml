@@ -1,4 +1,4 @@
-name: Cleanup merged release branches
+name: Cleanup merged working branches
 
 on:
   push:
@@ -22,7 +22,7 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Delete stale release branches
+      - name: Delete stale working branches
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -31,6 +31,7 @@ jobs:
           open_heads="$(gh api --paginate "/repos/${GITHUB_REPOSITORY}/pulls?state=open&per_page=100" --jq '.[].head.ref')"
           {
             git ls-remote --heads origin 'refs/heads/release/*'
+            git ls-remote --heads origin 'refs/heads/maintenance/*'
             git ls-remote --heads origin 'refs/heads/fix/*'
           } |
             awk '{sub("refs/heads/","",$2); print $2}' |
