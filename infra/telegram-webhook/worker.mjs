@@ -1958,15 +1958,15 @@ async function webBoard(env, limit = 30) {
 }
 
 export function validWebSubscription(value) {
-  const endpoint = cleanText(value?.endpoint, 5000);
-  if (!endpoint.startsWith("https://")) return null;
+  const endpoint = validWebPushEndpoint(value?.endpoint);
+  if (!endpoint) return null;
+  const p256dh = cleanText(value?.keys?.p256dh, 500);
+  const auth = cleanText(value?.keys?.auth, 500);
+  if (!p256dh || !auth) return null;
   return {
     endpoint,
     expirationTime: value?.expirationTime ?? null,
-    keys: {
-      p256dh: cleanText(value?.keys?.p256dh, 500),
-      auth: cleanText(value?.keys?.auth, 500),
-    },
+    keys: { p256dh, auth },
   };
 }
 
