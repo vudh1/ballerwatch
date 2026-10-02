@@ -852,7 +852,7 @@ function handleOwnerNameCommand(command, settings) {
       },
       reply: process.env.OWNER_RSVP_NAME
         ? "Cleared the encrypted user-name override. Using the default GitHub Secret again."
-        : ["Cleared your pickup RSVP/owner name.", setupPrompt("ownerRsvpName")].join("\n"),
+        : ["Cleared your pickup RSVP/user name.", setupPrompt("ownerRsvpName")].join("\n"),
     };
   }
 
@@ -874,7 +874,7 @@ function handleOwnerNameCommand(command, settings) {
             ? ""
             : settings?.pendingSetupField || "",
       },
-      reply: `Saved your pickup RSVP/owner name as: ${name}\nIt is stored encrypted.`,
+      reply: `Saved your pickup RSVP/user name as: ${name}\nIt is stored encrypted.`,
     };
   }
 
