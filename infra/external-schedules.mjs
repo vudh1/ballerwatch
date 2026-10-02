@@ -1,7 +1,7 @@
 /**
  * Manages cron-job.org primary GitHub schedules and validates their target/cadence posture.
  *
- * Documentation baseline: v2.5.2. Primary scheduler sync also disables any legacy Telegram polling schedule when the management API is available. Temporary scheduler-API unavailability remains optional for release/deployment flows; verified bad posture and non-transient errors still fail. Runtime/private data must never be committed to Git.
+ * Documentation baseline: v5.7.0. Primary scheduler sync targets the promoted production branch, disables legacy Telegram polling/watchdog schedules when possible, and treats temporary scheduler-API outages as optional only in deployment flows.
  */
 const API = "https://api.cron-job.org";
 
@@ -217,7 +217,7 @@ export async function syncExternalSchedules(mode, {
   apiKey = process.env.CRON_JOB_ORG_API_KEY || "",
   githubPat = process.env.CRON_GITHUB_PAT || "",
   repo = process.env.GITHUB_REPOSITORY || "vudh1/ballerwatch",
-  branch = process.env.BALLERWATCH_BRANCH || "main",
+  branch = process.env.BALLERWATCH_BRANCH || "production",
 } = {}) {
   if (!apiKey) throw new Error("CRON_JOB_ORG_API_KEY is required");
   if (!["enable", "disable", "ensure-enabled", "ensure-disabled"].includes(mode)) {
