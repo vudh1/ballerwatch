@@ -16,13 +16,13 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=5\.3\.0/);
-  assert.match(html, /app\.js\?v=5\.3\.0/);
+  assert.match(html, /styles\.css\?v=5\.3\.1/);
+  assert.match(html, /app\.js\?v=5\.3\.1/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v5-3-0-shell/);
+  assert.match(sw, /ballerwatch-v5-3-1-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -63,7 +63,7 @@ test("Home Screen install card is removed in standalone mode and notifications u
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=5\.3\.0/);
+  assert.match(app, /sw\.js\?v=5\.3\.1/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -466,16 +466,21 @@ test("notification popup stays bounded and offers local Delete all beside Send t
 });
 
 
-test("match spotlight swipes between game dates and keeps calendar highlight in sync", () => {
+test("match spotlight swipes between game dates with a fixed card frame", () => {
+  const html = fs.readFileSync("docs/index.html", "utf8");
   const app = fs.readFileSync("docs/app.js", "utf8");
   const css = fs.readFileSync("docs/styles.css", "utf8");
 
+  assert.match(html, /id="spotlight-swipe-surface"/);
   assert.match(app, /function calendarGameDates/);
   assert.match(app, /function selectAdjacentCalendarGameDate/);
   assert.match(app, /function installSpotlightSwipe/);
+  assert.match(app, /spotlightSwipeSurface/);
   assert.match(app, /nextGameCard\.addEventListener\("touchstart"/);
   assert.match(app, /nextGameCard\.addEventListener\("touchmove"/);
   assert.match(app, /nextGameCard\.addEventListener\("touchend"/);
+  assert.match(app, /surface\.style\.transform = `translate3d/);
+  assert.match(app, /document\.documentElement\.classList\.add\("spotlight-swipe-active"\)/);
   assert.match(app, /const direction = deltaX < 0 \? 1 : -1/);
   assert.match(app, /selectAdjacentCalendarGameDate\(direction\)/);
   assert.match(
@@ -484,7 +489,10 @@ test("match spotlight swipes between game dates and keeps calendar highlight in 
   );
   assert.match(app, /renderCalendarGamePicker\(games, game\.id \|\| ""\)/);
   assert.match(app, /event\.target\.closest\?\.\("a, button"\)/);
-  assert.match(css, /\/\* v5\.3 calendar spotlight swipe navigation \*\//);
+  assert.doesNotMatch(app, /nextGameCard\.style\.(?:transform|opacity)/);
+  assert.match(css, /\/\* v5\.3\.1 fixed-frame calendar swipe \*\//);
   assert.match(css, /\.spotlight-card \{[\s\S]*touch-action:\s*pan-y;/);
-  assert.match(css, /\.spotlight-card\.is-calendar-swiping/);
+  assert.match(css, /\.spotlight-swipe-surface \{[\s\S]*transform:\s*translate3d/);
+  assert.match(css, /\.spotlight-swipe-surface\.is-calendar-swiping/);
+  assert.match(css, /html\.spotlight-swipe-active[\s\S]*overscroll-behavior-x:\s*none;/);
 });

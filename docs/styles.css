@@ -1857,22 +1857,33 @@ textarea {
 }
 
 
-/* v5.3 calendar spotlight swipe navigation */
+/* v5.3.1 fixed-frame calendar swipe */
 .spotlight-card {
   touch-action: pan-y;
+}
+
+.spotlight-swipe-surface {
+  position: relative;
+  z-index: 1;
+  transform: translate3d(0, 0, 0);
   transition:
     transform 190ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    opacity 160ms ease,
-    border-color 160ms ease;
+    opacity 160ms ease;
   will-change: transform, opacity;
 }
 
-.spotlight-card.is-calendar-swiping {
+.spotlight-swipe-surface.is-calendar-swiping {
   transition: none;
 }
 
+html.spotlight-swipe-active,
+html.spotlight-swipe-active body {
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .spotlight-card {
+  .spotlight-swipe-surface {
     transition: none;
   }
 }

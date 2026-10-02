@@ -11,7 +11,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
-  <link rel="stylesheet" href="./styles.css?v=5.3.0">
+  <link rel="stylesheet" href="./styles.css?v=5.3.1">
 </head>
 <body>
   <main class="shell">
@@ -48,21 +48,23 @@
     </div>
 
     <section class="card next-game-card spotlight-card" id="next-game-card">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow" id="spotlight-label">NEXT GAME</p>
-          <h2 id="next-game-title">Loading…</h2>
+      <div class="spotlight-swipe-surface" id="spotlight-swipe-surface">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow" id="spotlight-label">NEXT GAME</p>
+            <h2 id="next-game-title">Loading…</h2>
+          </div>
+          <span class="status-dot" id="next-game-type">Upcoming</span>
         </div>
-        <span class="status-dot" id="next-game-type">Upcoming</span>
+        <p class="next-game-meta" id="next-game-meta"></p>
+        <p class="next-game-location muted" id="next-game-location"></p>
+        <div class="next-game-weather" id="next-game-weather" hidden></div>
+        <div class="button-row next-game-actions" id="next-game-actions" hidden>
+          <a class="button-link" id="next-game-directions" target="_blank" rel="noopener">Directions</a>
+          <button class="secondary" id="next-game-share" type="button">Share</button>
+        </div>
+        <p class="hint" id="next-game-hint"></p>
       </div>
-      <p class="next-game-meta" id="next-game-meta"></p>
-      <p class="next-game-location muted" id="next-game-location"></p>
-      <div class="next-game-weather" id="next-game-weather" hidden></div>
-      <div class="button-row next-game-actions" id="next-game-actions" hidden>
-        <a class="button-link" id="next-game-directions" target="_blank" rel="noopener">Directions</a>
-        <button class="secondary" id="next-game-share" type="button">Share</button>
-      </div>
-      <p class="hint" id="next-game-hint"></p>
     </section>
 
     <section class="card calendar-card" id="two-week-calendar">
@@ -226,6 +228,6 @@
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=5.3.0"></script>
+  <script type="module" src="./app.js?v=5.3.1"></script>
 </body>
 </html>

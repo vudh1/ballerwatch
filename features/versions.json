@@ -1,7 +1,23 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "5.3.0",
+  "currentVersion": "5.3.1",
   "releases": [
+    {
+      "version": "5.3.1",
+      "date": "2026-10-02",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Fixed-frame match swipe animation",
+      "telegramAnnouncement": "BallerWatch swipe navigation now keeps the match card frame fixed while only the match content moves, eliminating the page-sliding feel on iPhone.",
+      "changes": [
+        "Changed horizontal calendar swipe animation so the glass spotlight card itself never translates or fades.",
+        "Added an inner spotlight swipe surface so only match content follows the finger while the card border/background remains stationary.",
+        "Suppress horizontal page overscroll while a match swipe is actively recognized, while preserving normal vertical scrolling.",
+        "Kept Directions and Share controls excluded from swipe capture.",
+        "Added regression coverage that prevents transforms or opacity animation from being applied directly to the match card.",
+        "Bumped the installed PWA shell and service-worker cache to 5.3.1."
+      ]
+    },
     {
       "version": "5.3.0",
       "date": "2026-10-02",

@@ -39,6 +39,7 @@ const els = {
   installHelp: document.querySelector("#install-help"),
   installDialog: document.querySelector("#install-dialog"),
   nextGameCard: document.querySelector("#next-game-card"),
+  spotlightSwipeSurface: document.querySelector("#spotlight-swipe-surface"),
   spotlightLabel: document.querySelector("#spotlight-label"),
   nextGameTitle: document.querySelector("#next-game-title"),
   nextGameType: document.querySelector("#next-game-type"),
@@ -416,7 +417,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=5.3.0", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=5.3.1", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -854,13 +855,22 @@ function selectAdjacentCalendarGameDate(direction) {
 function installSpotlightSwipe() {
   let touchStartX = null;
   let touchStartY = null;
+  let horizontalGesture = false;
+
+  const surface = els.spotlightSwipeSurface;
+
+  const clearSurfaceMotion = () => {
+    surface.classList.remove("is-calendar-swiping");
+    surface.style.removeProperty("transform");
+    surface.style.removeProperty("opacity");
+    document.documentElement.classList.remove("spotlight-swipe-active");
+  };
 
   const reset = () => {
-    els.nextGameCard.classList.remove("is-calendar-swiping");
-    els.nextGameCard.style.removeProperty("transform");
-    els.nextGameCard.style.removeProperty("opacity");
+    clearSurfaceMotion();
     touchStartX = null;
     touchStartY = null;
+    horizontalGesture = false;
   };
 
   els.nextGameCard.addEventListener("touchstart", (event) => {
@@ -869,6 +879,7 @@ function installSpotlightSwipe() {
     if (!touch) return;
     touchStartX = touch.clientX;
     touchStartY = touch.clientY;
+    horizontalGesture = false;
   }, { passive: true });
 
   els.nextGameCard.addEventListener("touchmove", (event) => {
@@ -877,14 +888,23 @@ function installSpotlightSwipe() {
 
     const deltaX = touch.clientX - touchStartX;
     const deltaY = touch.clientY - touchStartY;
-    if (Math.abs(deltaX) < 8 || Math.abs(deltaX) <= Math.abs(deltaY)) return;
+
+    if (!horizontalGesture) {
+      if (Math.abs(deltaX) < 8) return;
+      if (Math.abs(deltaX) <= Math.abs(deltaY) * 1.1) {
+        reset();
+        return;
+      }
+      horizontalGesture = true;
+      document.documentElement.classList.add("spotlight-swipe-active");
+      surface.classList.add("is-calendar-swiping");
+    }
 
     event.preventDefault();
-    els.nextGameCard.classList.add("is-calendar-swiping");
-    const offset = Math.max(-72, Math.min(72, deltaX));
-    const progress = Math.min(1, Math.abs(offset) / 72);
-    els.nextGameCard.style.transform = `translateX(${offset}px)`;
-    els.nextGameCard.style.opacity = String(1 - progress * 0.18);
+    const offset = Math.max(-88, Math.min(88, deltaX));
+    const progress = Math.min(1, Math.abs(offset) / 88);
+    surface.style.transform = `translate3d(${offset}px, 0, 0)`;
+    surface.style.opacity = String(1 - progress * 0.16);
   }, { passive: false });
 
   els.nextGameCard.addEventListener("touchend", (event) => {
@@ -897,6 +917,7 @@ function installSpotlightSwipe() {
     const deltaX = touch.clientX - touchStartX;
     const deltaY = touch.clientY - touchStartY;
     const isHorizontalSwipe =
+      horizontalGesture &&
       Math.abs(deltaX) >= 56 &&
       Math.abs(deltaX) > Math.abs(deltaY) * 1.2;
 
@@ -913,18 +934,21 @@ function installSpotlightSwipe() {
       return;
     }
 
-    const entryOffset = direction > 0 ? 30 : -30;
-    els.nextGameCard.style.transform = `translateX(${entryOffset}px)`;
-    els.nextGameCard.style.opacity = "0.82";
-    void els.nextGameCard.offsetWidth;
-    els.nextGameCard.classList.remove("is-calendar-swiping");
+    const entryOffset = direction > 0 ? 34 : -34;
+    surface.style.transform = `translate3d(${entryOffset}px, 0, 0)`;
+    surface.style.opacity = "0.84";
+    void surface.offsetWidth;
+    surface.classList.remove("is-calendar-swiping");
+    document.documentElement.classList.remove("spotlight-swipe-active");
+
     window.requestAnimationFrame(() => {
-      els.nextGameCard.style.removeProperty("transform");
-      els.nextGameCard.style.removeProperty("opacity");
+      surface.style.removeProperty("transform");
+      surface.style.removeProperty("opacity");
     });
 
     touchStartX = null;
     touchStartY = null;
+    horizontalGesture = false;
   }, { passive: false });
 
   els.nextGameCard.addEventListener("touchcancel", reset);
