@@ -205,3 +205,40 @@ test("web calendar merges public games with cached match-window weather", () => 
   assert.doesNotMatch(JSON.stringify(calendar), /Private Person/);
   assert.equal(calendar.refreshHours, 6);
 });
+
+
+test("calendar exposes approximate weather markers", () => {
+  const snapshot = {
+    pickup: { dates: [], events: {} },
+    pickupPrivate: { events: {} },
+    league: {
+      teams: [{
+        name: "Team Alpha",
+        matches: [{
+          key: "v2:weather-fallback",
+          date: "2099-10-06",
+          start: "2099-10-06T19:00:00-07:00",
+          end: "2099-10-06T21:00:00-07:00",
+          team: "Team Alpha",
+          opponent: "Team Beta",
+          location: "Unresolved League Field",
+        }],
+      }],
+    },
+  };
+  const weatherState = {
+    games: [{
+      id: "league:v2:weather-fallback",
+      weather: {
+        rainProbability: 30,
+        temperatureF: 58,
+        weatherCode: 2,
+        condition: "Partly cloudy",
+      },
+      weatherApproximate: true,
+    }],
+  };
+  const calendar = webCalendarDetails(snapshot, weatherState, 14, "2099-10-01");
+  assert.equal(calendar.games[0].weatherApproximate, true);
+  assert.equal(calendar.games[0].weather.rainProbability, 30);
+});

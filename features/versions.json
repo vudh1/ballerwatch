@@ -1,7 +1,23 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "5.1.1",
+  "currentVersion": "5.1.2",
   "releases": [
+    {
+      "version": "5.1.2",
+      "date": "2026-10-01",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "League weather fallback and pickup capacity",
+      "telegramAnnouncement": "BallerWatch now falls back to Seattle-area match weather when a RATS venue cannot be geocoded, and pickup spotlight details show reserved/capacity.",
+      "changes": [
+        "Diagnosed missing Tue 10/6 weather as a location-resolution gap: weather refresh completed successfully, but one league venue did not resolve to coordinates.",
+        "Added a Seattle-area weather fallback only for Seattle RATS league games when exact venue geocoding is unavailable; exact venue coordinates remain preferred.",
+        "Marks fallback weather as approximate in runtime/web data and labels it Seattle-area in the PWA.",
+        "Added public-safe per-game weather refresh diagnostics so future missing weather can be traced by date/kind without exposing private roster data.",
+        "Pickup spotlight and Share text now include reserved/capacity such as 12 / 16 reserved.",
+        "Bumped the PWA shell so installed clients refresh to the corrected behavior."
+      ]
+    },
     {
       "version": "5.1.1",
       "date": "2026-10-01",

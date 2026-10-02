@@ -17,7 +17,11 @@ const LEAGUE_PATH = "league/state/schedule.json";
 const GEOCODE_RETRY_MS = 7 * 24 * 60 * 60 * 1000;
 const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
 const OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast";
-const USER_AGENT = "BallerWatch/5.0 (https://github.com/vudh1/ballerwatch)";
+const USER_AGENT = "BallerWatch/5.1 (https://github.com/vudh1/ballerwatch)";
+const SEATTLE_WEATHER_FALLBACK = Object.freeze({
+  latitude: 47.6062,
+  longitude: -122.3321,
+});
 
 function readJson(file) {
   try {
@@ -130,6 +134,26 @@ function locationQuery(game) {
 
 function locationKey(query) {
   return clean(query, 260).toLocaleLowerCase("en-US");
+}
+
+function coordinatesForGame(game, locations) {
+  const geo = locations[locationKey(game.locationQuery)];
+  if (Number.isFinite(Number(geo?.latitude)) && Number.isFinite(Number(geo?.longitude))) {
+    return {
+      latitude: Number(geo.latitude),
+      longitude: Number(geo.longitude),
+      approximate: false,
+      source: "venue",
+    };
+  }
+  if (game.kind === "league") {
+    return {
+      ...SEATTLE_WEATHER_FALLBACK,
+      approximate: true,
+      source: "seattle-fallback",
+    };
+  }
+  return null;
 }
 
 function gameId(kind, value) {
@@ -376,17 +400,14 @@ async function main() {
 
   const forecastByCoordinate = new Map();
   for (const game of games) {
-    const key = locationKey(game.locationQuery);
-    const geo = locations[key];
-    if (!Number.isFinite(Number(geo?.latitude)) || !Number.isFinite(Number(geo?.longitude))) {
-      continue;
-    }
-    const coordinateKey = `${geo.latitude},${geo.longitude}`;
+    const coordinates = coordinatesForGame(game, locations);
+    if (!coordinates) continue;
+    const coordinateKey = `${coordinates.latitude},${coordinates.longitude}`;
     if (forecastByCoordinate.has(coordinateKey)) continue;
     try {
       forecastByCoordinate.set(
         coordinateKey,
-        await fetchForecast(geo.latitude, geo.longitude),
+        await fetchForecast(coordinates.latitude, coordinates.longitude),
       );
     } catch (error) {
       console.warn(`Weather forecast unavailable for one venue: ${error?.message || error}`);
@@ -396,19 +417,28 @@ async function main() {
 
   const previousGames = new Map((previous.games || []).map((game) => [game.id, game]));
   const enriched = games.map((game) => {
-    const key = locationKey(game.locationQuery);
-    const geo = locations[key];
-    const coordinateKey = geo ? `${geo.latitude},${geo.longitude}` : "";
+    const coordinates = coordinatesForGame(game, locations);
+    const coordinateKey = coordinates
+      ? `${coordinates.latitude},${coordinates.longitude}`
+      : "";
     const forecast = coordinateKey ? forecastByCoordinate.get(coordinateKey) : null;
     const weather = forecast ? summarizeMatchWeather(game, forecast.hourly || {}) : null;
     const old = previousGames.get(game.id);
+    const effectiveWeather = weather || old?.weather || null;
+    const weatherApproximate = coordinates?.approximate === true;
+    console.log(
+      `Weather game ${game.date} ${game.kind}: ` +
+      `${effectiveWeather ? "ready" : "missing"}; ` +
+      `location=${coordinates?.source || "unresolved"}`,
+    );
     return {
       ...game,
       locationQuery: undefined,
-      coordinates: geo?.latitude != null && geo?.longitude != null
-        ? { latitude: Number(geo.latitude), longitude: Number(geo.longitude) }
+      coordinates: coordinates
+        ? { latitude: coordinates.latitude, longitude: coordinates.longitude }
         : null,
-      weather: weather || old?.weather || null,
+      weather: effectiveWeather,
+      weatherApproximate,
       weatherStale: !weather && Boolean(old?.weather),
     };
   });

@@ -387,7 +387,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=5.1.1", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=5.1.2", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -469,7 +469,7 @@ function weatherGlyph(code) {
   return "🌡️";
 }
 
-function weatherSummary(weather, stale = false) {
+function weatherSummary(weather, stale = false, approximate = false) {
   if (!weather) return "";
   const parts = [
     weatherGlyph(weather.weatherCode),
@@ -478,6 +478,7 @@ function weatherSummary(weather, stale = false) {
     Number.isFinite(Number(weather.rainProbability))
       ? `${Math.round(Number(weather.rainProbability))}% rain`
       : "",
+    approximate ? "Seattle-area" : "",
     stale ? "cached" : "",
   ].filter(Boolean);
   return parts.join("  ");
@@ -493,6 +494,13 @@ function renderNextGame(game, label = "NEXT GAME") {
           game.dateLabel,
           game.time,
           game.location,
+          game.kind === "pickup" && game.reserved != null
+            ? (
+                game.capacity == null
+                  ? `${game.reserved} reserved`
+                  : `${game.reserved} / ${game.capacity} reserved`
+              )
+            : "",
         ].filter(Boolean).join("\n"),
       }
     : null;
@@ -511,7 +519,18 @@ function renderNextGame(game, label = "NEXT GAME") {
 
   els.nextGameTitle.textContent = game.title || "Upcoming game";
   els.nextGameType.textContent = game.kind === "pickup" ? "Pickup" : "League";
-  els.nextGameMeta.textContent = [game.dateLabel, game.time].filter(Boolean).join(" • ");
+  const capacityText = game.kind === "pickup" && game.reserved != null
+    ? (
+        game.capacity == null
+          ? `${game.reserved} reserved`
+          : `${game.reserved} / ${game.capacity} reserved`
+      )
+    : "";
+  els.nextGameMeta.textContent = [
+    game.dateLabel,
+    game.time,
+    capacityText,
+  ].filter(Boolean).join(" • ");
 
   const locationParts = [];
   if (game.location) locationParts.push(game.location);
@@ -519,7 +538,11 @@ function renderNextGame(game, label = "NEXT GAME") {
   if (game.jerseyColor) locationParts.push(`${game.jerseyColor} jersey`);
   els.nextGameLocation.textContent = locationParts.join(" • ");
 
-  const weatherText = weatherSummary(game.weather, game.weatherStale);
+  const weatherText = weatherSummary(
+    game.weather,
+    game.weatherStale,
+    game.weatherApproximate,
+  );
   els.nextGameWeather.textContent = weatherText;
   els.nextGameWeather.hidden = !weatherText;
 

@@ -1113,6 +1113,7 @@ export function webCalendarDetails(
       capacity: facts.capacity,
       jerseyColor: "",
       weather: sourceWeather,
+      weatherApproximate: Boolean(weatherById.get(id)?.weatherApproximate),
       weatherStale: Boolean(weatherById.get(id)?.weatherStale),
     });
   }
@@ -1146,6 +1147,7 @@ export function webCalendarDetails(
       capacity: null,
       jerseyColor: cleanText(game?.jerseyColor, 80),
       weather: sourceWeather,
+      weatherApproximate: Boolean(weatherById.get(id)?.weatherApproximate),
       weatherStale: Boolean(weatherById.get(id)?.weatherStale),
     });
   }

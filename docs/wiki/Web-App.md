@@ -163,3 +163,12 @@ Tests, builds, deployments, watchdog failures/recovery, score-only changes, and 
 ## Release refresh behavior
 
 Static JavaScript and CSS URLs carry the current patch version, the service worker is registered with `updateViaCache: "none"`, and same-origin network reads bypass the browser HTTP cache before updating the offline shell. When a new worker takes control, the installed app reloads once automatically. This prevents an iPhone Home Screen installation from remaining on an older BallerWatch interface after a Pages deployment.
+
+
+### League weather fallback
+
+BallerWatch prefers weather from the exact geocoded match venue. Some RATS field names are not recognized by the venue geocoder even though the schedule itself is valid. For Seattle RATS league matches only, the weather refresh therefore falls back to Seattle-area coordinates so a match does not lose weather entirely. The PWA labels that result **Seattle-area** to distinguish it from exact-venue weather.
+
+Pickup matches do not use the city fallback because their private field/address state is expected to provide a resolvable booked location.
+
+Pickup spotlight details also show the live RSVP load as **reserved / capacity** when both values are available.

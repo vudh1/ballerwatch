@@ -16,13 +16,13 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=5\.1\.1/);
-  assert.match(html, /app\.js\?v=5\.1\.1/);
+  assert.match(html, /styles\.css\?v=5\.1\.2/);
+  assert.match(html, /app\.js\?v=5\.1\.2/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v5-1-1-shell/);
+  assert.match(sw, /ballerwatch-v5-1-2-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -63,7 +63,7 @@ test("Home Screen install card is removed in standalone mode and notifications u
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=5\.1\.1/);
+  assert.match(app, /sw\.js\?v=5\.1\.2/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -297,4 +297,14 @@ test("typography uses one native system stack and normalized scale", () => {
   assert.match(css, /input,[\s\S]*textarea \{[\s\S]*font-size:\s*1rem/);
   assert.doesNotMatch(css, /font-family:\s*Inter/);
   assert.doesNotMatch(css, /font-weight:\s*(650|750)/);
+});
+
+
+test("pickup spotlight shows reserved and capacity", () => {
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  assert.match(app, /game\.kind === "pickup" && game\.reserved != null/);
+  assert.match(app, /\$\{game\.reserved\} \/ \$\{game\.capacity\} reserved/);
+  assert.match(app, /capacityText/);
+  assert.match(app, /weatherApproximate/);
+  assert.match(app, /Seattle-area/);
 });
