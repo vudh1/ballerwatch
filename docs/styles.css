@@ -946,3 +946,311 @@ dialog {
     width: auto;
   }
 }
+
+
+/* v5.1 liquid glass */
+:root {
+  --glass-fill: rgba(12, 22, 38, 0.46);
+  --glass-fill-strong: rgba(15, 28, 47, 0.62);
+  --glass-line: rgba(255, 255, 255, 0.14);
+  --glass-highlight: rgba(255, 255, 255, 0.22);
+  --glass-shadow: rgba(0, 0, 0, 0.34);
+  --glass-cyan: rgba(103, 232, 249, 0.2);
+  --glass-blue: rgba(96, 165, 250, 0.16);
+}
+
+html {
+  background: #020617;
+}
+
+body {
+  position: relative;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% 5%, rgba(56, 189, 248, 0.24), transparent 30rem),
+    radial-gradient(circle at 88% 12%, rgba(45, 212, 191, 0.16), transparent 28rem),
+    radial-gradient(circle at 55% 82%, rgba(99, 102, 241, 0.13), transparent 34rem),
+    linear-gradient(180deg, #07111f 0%, #030817 52%, #020617 100%);
+  background-attachment: fixed;
+}
+
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  width: 18rem;
+  height: 18rem;
+  border-radius: 50%;
+  filter: blur(56px);
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+body::before {
+  top: 10%;
+  left: -7rem;
+  background: rgba(14, 165, 233, 0.28);
+}
+
+body::after {
+  right: -8rem;
+  bottom: 7%;
+  background: rgba(45, 212, 191, 0.18);
+}
+
+.card,
+.footer-install,
+.question-suggestions,
+dialog {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.025) 34%, rgba(6, 12, 24, 0.18)),
+    var(--glass-fill);
+  border: 1px solid var(--glass-line);
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.03),
+    0 24px 70px var(--glass-shadow);
+  -webkit-backdrop-filter: blur(26px) saturate(175%);
+  backdrop-filter: blur(26px) saturate(175%);
+}
+
+.card {
+  overflow: hidden;
+}
+
+.card::before,
+dialog::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.12), transparent 24%, transparent 70%, rgba(255, 255, 255, 0.035));
+  pointer-events: none;
+}
+
+.card > *,
+dialog > * {
+  position: relative;
+  z-index: 1;
+}
+
+.spotlight-card {
+  background:
+    radial-gradient(circle at 84% 8%, rgba(103, 232, 249, 0.24), transparent 18rem),
+    radial-gradient(circle at 10% 110%, rgba(45, 212, 191, 0.14), transparent 17rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.11), rgba(10, 24, 42, 0.40)),
+    rgba(8, 20, 36, 0.52);
+  border-color: rgba(165, 243, 252, 0.24);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 22px 68px rgba(0, 0, 0, 0.32),
+    0 0 0 1px rgba(103, 232, 249, 0.04);
+  -webkit-backdrop-filter: blur(30px) saturate(190%);
+  backdrop-filter: blur(30px) saturate(190%);
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.spotlight-card.spotlight-selected {
+  border-color: rgba(103, 232, 249, 0.36);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 24px 72px rgba(0, 0, 0, 0.34),
+    0 0 0 1px rgba(103, 232, 249, 0.08);
+}
+
+.utility-button,
+.icon-button,
+.button-link,
+.secondary,
+.question-row > button,
+.settings-form button {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.04)),
+    rgba(15, 23, 42, 0.44);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 8px 24px rgba(0, 0, 0, 0.18);
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
+  backdrop-filter: blur(18px) saturate(170%);
+}
+
+.button-link,
+.question-row > button,
+.settings-form button:not(.secondary) {
+  color: #effcff;
+  background:
+    linear-gradient(145deg, rgba(125, 211, 252, 0.26), rgba(56, 189, 248, 0.12)),
+    rgba(8, 47, 73, 0.48);
+}
+
+.utility-button:hover,
+.icon-button:hover,
+.calendar-day:not(:disabled):hover,
+.calendar-game-choice:hover {
+  border-color: rgba(255, 255, 255, 0.24);
+  background-color: rgba(30, 41, 59, 0.58);
+}
+
+.calendar-card,
+.ask-card {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.02)),
+    rgba(9, 18, 32, 0.44);
+}
+
+.calendar-day {
+  min-height: 5.2rem;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background:
+    linear-gradient(155deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.02)),
+    rgba(15, 23, 42, 0.28);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: blur(14px) saturate(155%);
+  backdrop-filter: blur(14px) saturate(155%);
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+
+.calendar-day:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+.calendar-day:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.calendar-day[aria-selected="true"] {
+  color: #f8fdff;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(103, 232, 249, 0.18), transparent 75%),
+    linear-gradient(155deg, rgba(255, 255, 255, 0.12), rgba(56, 189, 248, 0.07)),
+    rgba(9, 37, 58, 0.46);
+  border-color: rgba(165, 243, 252, 0.32);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.17),
+    0 8px 24px rgba(2, 132, 199, 0.12);
+}
+
+.calendar-game-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+
+.calendar-game-choice {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.42rem;
+  padding: 0.52rem 0.72rem;
+  border-radius: 999px;
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(15, 23, 42, 0.34);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  backdrop-filter: blur(14px) saturate(150%);
+}
+
+.calendar-game-choice[aria-pressed="true"] {
+  color: #ecfeff;
+  border-color: rgba(103, 232, 249, 0.34);
+  background: rgba(14, 116, 144, 0.20);
+}
+
+.calendar-game-choice strong {
+  font-size: 0.72rem;
+}
+
+.calendar-game-choice span {
+  color: #94a3b8;
+  font-size: 0.66rem;
+}
+
+.ask-card .question-row {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.015)),
+    rgba(2, 6, 23, 0.38);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: blur(18px) saturate(165%);
+  backdrop-filter: blur(18px) saturate(165%);
+}
+
+.question-suggestions {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.025)),
+    rgba(9, 18, 32, 0.76);
+}
+
+.notification-push-row,
+.answer,
+.next-game-weather {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)),
+    rgba(14, 165, 233, 0.07);
+  border-color: rgba(255, 255, 255, 0.11);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.switch-track {
+  background: rgba(51, 65, 85, 0.50);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.26);
+}
+
+.switch input:checked + .switch-track {
+  background: rgba(34, 197, 94, 0.48);
+  border-color: rgba(134, 239, 172, 0.34);
+}
+
+footer {
+  opacity: 0.9;
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .card,
+  .footer-install,
+  .question-suggestions,
+  dialog,
+  .utility-button,
+  .calendar-day,
+  .calendar-game-choice {
+    background-color: rgba(10, 18, 32, 0.94);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spotlight-card,
+  .calendar-day,
+  .utility-button {
+    transition: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .card {
+    border-radius: 20px;
+  }
+
+  .calendar-day {
+    min-height: 4.85rem;
+  }
+
+  .calendar-game-picker {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 0.15rem;
+    scrollbar-width: none;
+  }
+
+  .calendar-game-picker::-webkit-scrollbar {
+    display: none;
+  }
+
+  .calendar-game-choice {
+    flex: 0 0 auto;
+  }
+}

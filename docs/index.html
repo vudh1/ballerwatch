@@ -11,7 +11,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
-  <link rel="stylesheet" href="./styles.css?v=5.0.0">
+  <link rel="stylesheet" href="./styles.css?v=5.1.0">
 </head>
 <body>
   <main class="shell">
@@ -50,7 +50,7 @@
     <section class="card next-game-card spotlight-card" id="next-game-card">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">NEXT GAME</p>
+          <p class="eyebrow" id="spotlight-label">NEXT GAME</p>
           <h2 id="next-game-title">Loading…</h2>
         </div>
         <span class="status-dot" id="next-game-type">Upcoming</span>
@@ -74,7 +74,7 @@
         <span class="calendar-updated" id="calendar-updated">Weather every 6h</span>
       </div>
       <div class="calendar-grid" id="calendar-grid" aria-label="Two-week game calendar"></div>
-      <div class="calendar-detail" id="calendar-detail"></div>
+      <div class="calendar-game-picker" id="calendar-game-picker" hidden></div>
       <p class="weather-credit">Weather: Open-Meteo · Venue geocoding: © OpenStreetMap contributors</p>
     </section>
 
@@ -211,6 +211,6 @@
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=5.0.0"></script>
+  <script type="module" src="./app.js?v=5.1.0"></script>
 </body>
 </html>

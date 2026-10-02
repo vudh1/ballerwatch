@@ -16,13 +16,13 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=5\.0\.0/);
-  assert.match(html, /app\.js\?v=5\.0\.0/);
+  assert.match(html, /styles\.css\?v=5\.1\.0/);
+  assert.match(html, /app\.js\?v=5\.1\.0/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v5-0-0-shell/);
+  assert.match(sw, /ballerwatch-v5-1-0-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -63,7 +63,7 @@ test("Home Screen install card is removed in standalone mode and notifications u
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=5\.0\.0/);
+  assert.match(app, /sw\.js\?v=5\.1\.0/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -230,12 +230,10 @@ test("two-week dashboard renders cached match weather", () => {
 
   assert.match(html, /id="two-week-calendar"/);
   assert.match(html, /id="calendar-grid"/);
-  assert.match(html, /id="calendar-detail"/);
   assert.match(html, /Open-Meteo/);
   assert.match(html, /OpenStreetMap contributors/);
   assert.match(app, /\/web\/calendar/);
   assert.match(app, /weatherSummary/);
-  assert.match(app, /renderCalendarDetail/);
   assert.match(css, /\.calendar-grid/);
   assert.match(css, /\.spotlight-card/);
   assert.match(css, /\/\* v5 dashboard \*\//);
@@ -261,4 +259,28 @@ test("weather release bootstrap stays notification-silent", () => {
   assert.match(workflow, /node weather\/update\.mjs/);
   assert.match(workflow, /node shared\/runtime-state\.mjs push weather/);
   assert.doesNotMatch(workflow, /send-pending|sendMessage|telegram-notify|shared\/telegram/i);
+});
+
+
+test("calendar selection reuses the main spotlight instead of a second detail panel", () => {
+  const html = fs.readFileSync("docs/index.html", "utf8");
+  const app = fs.readFileSync("docs/app.js", "utf8");
+
+  assert.match(html, /id="spotlight-label"/);
+  assert.match(html, /id="calendar-game-picker"/);
+  assert.doesNotMatch(html, /id="calendar-detail"/);
+  assert.match(app, /function selectCalendarDate/);
+  assert.match(app, /renderNextGame\(game, "SELECTED GAME"\)/);
+  assert.match(app, /nextGameCard\.classList\.add\("spotlight-selected"\)/);
+  assert.match(app, /scrollIntoView\(\{ behavior: "smooth"/);
+});
+
+test("liquid glass visual system has blur, translucent layers, and fallback", () => {
+  const css = fs.readFileSync("docs/styles.css", "utf8");
+  assert.match(css, /\/\* v5\.1 liquid glass \*\//);
+  assert.match(css, /backdrop-filter:\s*blur\(/);
+  assert.match(css, /-webkit-backdrop-filter:\s*blur\(/);
+  assert.match(css, /--glass-fill:/);
+  assert.match(css, /@supports not \(\(backdrop-filter:/);
+  assert.match(css, /\.calendar-game-choice/);
 });
