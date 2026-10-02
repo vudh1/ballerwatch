@@ -5,8 +5,11 @@ import {
   dedupeWebBoardEntries,
   directIntent,
   issueOwnerToken,
+  issuePushRegistrationChallenge,
   normalizeOwnerSettingsInput,
+  normalizeWebPairCode,
   verifyOwnerToken,
+  verifyPushRegistrationChallenge,
   validWebSubscription,
   webCalendarDetails,
   webNextGameDetails,
@@ -42,15 +45,27 @@ test("web snapshot strips private pickup roster and owner settings", () => {
   assert.doesNotMatch(JSON.stringify(safe), /Private Person|Private Owner|secret/);
 });
 
-test("web push subscription accepts only HTTPS endpoints", () => {
+test("web push subscription accepts only recognized browser push endpoints", () => {
+  const endpoint = "https://updates.push.services.mozilla.com/wpush/v2/synthetic";
   const subscription = validWebSubscription({
-    endpoint: "https://push.example.test/subscription",
+    endpoint,
     expirationTime: null,
     keys: { p256dh: "key", auth: "auth" },
   });
-  assert.equal(subscription.endpoint, "https://push.example.test/subscription");
-  assert.equal(validWebSubscription({ endpoint: "http://example.test" }), null);
-  assert.equal(validWebSubscription({ endpoint: "" }), null);
+  assert.equal(subscription.endpoint, endpoint);
+  assert.equal(validWebSubscription({
+    endpoint: "https://example.test/push",
+    keys: { p256dh: "key", auth: "auth" },
+  }), null);
+  assert.equal(validWebSubscription({
+    endpoint: "https://127.0.0.1/push",
+    keys: { p256dh: "key", auth: "auth" },
+  }), null);
+  assert.equal(validWebSubscription({
+    endpoint: "https://user:pass@updates.push.services.mozilla.com/wpush/v2/synthetic",
+    keys: { p256dh: "key", auth: "auth" },
+  }), null);
+  assert.equal(validWebSubscription({ endpoint }), null);
 });
 
 
@@ -137,13 +152,30 @@ test("league next-game details expose a two-hour time window from normalized end
 });
 
 
-test("owner capability tokens are signed and expire-bound", async () => {
+test("user capability tokens are revision-bound for server-side revocation", async () => {
   const env = { TRACKER_STATE_KEY: "test-owner-secret" };
-  const issued = await issueOwnerToken(env);
+  const issued = await issueOwnerToken(env, 3);
   assert.match(issued.token, /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
-  assert.equal(await verifyOwnerToken(env, issued.token), true);
-  assert.equal(await verifyOwnerToken(env, issued.token + "x"), false);
-  assert.equal(await verifyOwnerToken({TRACKER_STATE_KEY: "wrong"}, issued.token), false);
+  assert.equal(await verifyOwnerToken(env, issued.token, 3), true);
+  assert.equal(await verifyOwnerToken(env, issued.token, 2), false);
+  assert.equal(await verifyOwnerToken(env, issued.token, 4), false);
+  assert.equal(await verifyOwnerToken(env, issued.token + "x", 3), false);
+  assert.equal(await verifyOwnerToken({TRACKER_STATE_KEY: "wrong"}, issued.token, 3), false);
+});
+
+test("push registration challenge is short-lived and bound to one recognized endpoint", async () => {
+  const env = { TRACKER_STATE_KEY: "test-push-challenge-secret" };
+  const endpoint = "https://updates.push.services.mozilla.com/wpush/v2/synthetic";
+  const other = "https://fcm.googleapis.com/fcm/send/other";
+  const token = await issuePushRegistrationChallenge(env, endpoint);
+  assert.equal(await verifyPushRegistrationChallenge(env, token, endpoint), true);
+  assert.equal(await verifyPushRegistrationChallenge(env, token, other), false);
+  assert.equal(await verifyPushRegistrationChallenge(env, token + "x", endpoint), false);
+});
+
+test("pairing code normalization accepts grouped high-entropy codes", () => {
+  assert.equal(normalizeWebPairCode("ABCD-EFGH-JK23"), "ABCDEFGHJK23");
+  assert.equal(normalizeWebPairCode(" abcd efgh jk23 "), "ABCDEFGHJK23");
 });
 
 test("owner settings input normalizes and deduplicates teams", () => {
