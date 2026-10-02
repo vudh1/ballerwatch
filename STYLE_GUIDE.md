@@ -45,3 +45,13 @@ Each release should update:
 - module comments when responsibilities or boundaries change.
 
 Historical release snapshots are not rewritten merely to add comments; current documentation explains the evolution without falsifying old source snapshots.
+
+
+## Web typography
+
+- Use the native system UI stack: `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif`.
+- Do not reference an external font unless the font is actually shipped and intentionally approved.
+- Reuse the PWA type tokens in `docs/styles.css` instead of adding one-off font sizes.
+- Prefer standard font weights 400, 500, 600, 700, and 800; avoid synthetic intermediate weights such as 650 or 750.
+- Keep text inputs and textareas at 1rem/16px or larger so iOS does not zoom the page on focus.
+- Preserve hierarchy through the shared scale rather than arbitrary size changes.
