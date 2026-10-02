@@ -1,11 +1,11 @@
 /**
- * Canonical runtime-file scopes shared by GitHub workflows and the Cloudflare Worker.
+ * Canonical runtime-file scopes shared by GitHub workflows and the BallerWatch web Worker.
  *
  * Documentation baseline: v2.4.0. Keeping this list in one module prevents state-path drift.
  */
 
 export const RUNTIME_SCOPES = Object.freeze({
-  listener: Object.freeze([
+  user: Object.freeze([
     "state/listener.json",
     "state/chat-history.json",
     "state/chat-review.json",
