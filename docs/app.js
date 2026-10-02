@@ -38,8 +38,8 @@ const els = {
   installCard: document.querySelector("#install-card"),
   installHelp: document.querySelector("#install-help"),
   installDialog: document.querySelector("#install-dialog"),
+  spotlightCarousel: document.querySelector("#spotlight-carousel"),
   nextGameCard: document.querySelector("#next-game-card"),
-  spotlightSwipeSurface: document.querySelector("#spotlight-swipe-surface"),
   spotlightLabel: document.querySelector("#spotlight-label"),
   nextGameTitle: document.querySelector("#next-game-title"),
   nextGameType: document.querySelector("#next-game-type"),
@@ -417,7 +417,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=5.3.1", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=5.3.2", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -677,8 +677,85 @@ function weatherSummary(weather, stale = false, approximate = false) {
   return parts.join("  ");
 }
 
+function spotlightModel(game, label = "NEXT GAME") {
+  if (!game) {
+    return {
+      label,
+      title: "No upcoming game",
+      type: "None",
+      meta: "No pickup or RATS game is currently published.",
+      location: "",
+      weather: "",
+      directions: "",
+      actionsHidden: true,
+    };
+  }
+
+  const capacityText = game.kind === "pickup" && game.reserved != null
+    ? (
+        game.capacity == null
+          ? `${game.reserved} reserved`
+          : `${game.reserved} / ${game.capacity} reserved`
+      )
+    : "";
+
+  const locationParts = [];
+  if (game.location) locationParts.push(game.location);
+  if (game.address && game.address !== game.location) locationParts.push(game.address);
+  if (game.jerseyColor) locationParts.push(`${game.jerseyColor} jersey`);
+
+  return {
+    label,
+    title: game.title || "Upcoming game",
+    type: game.kind === "pickup" ? "Pickup" : "League",
+    meta: [game.dateLabel, game.time, capacityText].filter(Boolean).join(" • "),
+    location: locationParts.join(" • "),
+    weather: weatherSummary(
+      game.weather,
+      game.weatherStale,
+      game.weatherApproximate,
+    ),
+    directions: googleMapsUrl(game.mapsQuery),
+    actionsHidden: false,
+  };
+}
+
+function applySpotlightModel(targets, game, label = "NEXT GAME") {
+  const model = spotlightModel(game, label);
+  targets.label.textContent = model.label;
+  targets.title.textContent = model.title;
+  targets.type.textContent = model.type;
+  targets.meta.textContent = model.meta;
+  targets.location.textContent = model.location;
+  targets.weather.textContent = model.weather;
+  targets.weather.hidden = !model.weather;
+  targets.actions.hidden = model.actionsHidden;
+  targets.hint.textContent = "";
+
+  if (model.directions) {
+    targets.directions.href = model.directions;
+    targets.directions.hidden = false;
+  } else {
+    targets.directions.removeAttribute("href");
+    targets.directions.hidden = true;
+  }
+}
+
+function currentSpotlightTargets() {
+  return {
+    label: els.spotlightLabel,
+    title: els.nextGameTitle,
+    type: els.nextGameType,
+    meta: els.nextGameMeta,
+    location: els.nextGameLocation,
+    weather: els.nextGameWeather,
+    actions: els.nextGameActions,
+    directions: els.nextGameDirections,
+    hint: els.nextGameHint,
+  };
+}
+
 function renderNextGame(game, label = "NEXT GAME") {
-  els.spotlightLabel.textContent = label;
   currentNextGame = game
     ? {
         ...game,
@@ -698,59 +775,44 @@ function renderNextGame(game, label = "NEXT GAME") {
       }
     : null;
 
-  if (!game) {
-    els.nextGameTitle.textContent = "No upcoming game";
-    els.nextGameType.textContent = "None";
-    els.nextGameMeta.textContent = "No pickup or RATS game is currently published.";
-    els.nextGameLocation.textContent = "";
-    els.nextGameWeather.hidden = true;
-    els.nextGameWeather.textContent = "";
-    els.nextGameActions.hidden = true;
-    els.nextGameHint.textContent = "";
-    return;
-  }
-
-  els.nextGameTitle.textContent = game.title || "Upcoming game";
-  els.nextGameType.textContent = game.kind === "pickup" ? "Pickup" : "League";
-  const capacityText = game.kind === "pickup" && game.reserved != null
-    ? (
-        game.capacity == null
-          ? `${game.reserved} reserved`
-          : `${game.reserved} / ${game.capacity} reserved`
-      )
-    : "";
-  els.nextGameMeta.textContent = [
-    game.dateLabel,
-    game.time,
-    capacityText,
-  ].filter(Boolean).join(" • ");
-
-  const locationParts = [];
-  if (game.location) locationParts.push(game.location);
-  if (game.address && game.address !== game.location) locationParts.push(game.address);
-  if (game.jerseyColor) locationParts.push(`${game.jerseyColor} jersey`);
-  els.nextGameLocation.textContent = locationParts.join(" • ");
-
-  const weatherText = weatherSummary(
-    game.weather,
-    game.weatherStale,
-    game.weatherApproximate,
-  );
-  els.nextGameWeather.textContent = weatherText;
-  els.nextGameWeather.hidden = !weatherText;
-
-  const directions = googleMapsUrl(game.mapsQuery);
-  if (directions) {
-    els.nextGameDirections.href = directions;
-    els.nextGameDirections.hidden = false;
-  } else {
-    els.nextGameDirections.hidden = true;
-  }
-
-  els.nextGameActions.hidden = false;
-  els.nextGameHint.textContent = "";
+  applySpotlightModel(currentSpotlightTargets(), currentNextGame, label);
 }
 
+function buildSpotlightTrainCard(game) {
+  const card = els.nextGameCard.cloneNode(true);
+  card.removeAttribute("id");
+  card.classList.remove("spotlight-selected");
+  card.classList.add("spotlight-train-card");
+  card.setAttribute("aria-hidden", "true");
+
+  for (const node of card.querySelectorAll("[id]")) {
+    node.dataset.spotlightRole = node.id;
+    node.removeAttribute("id");
+  }
+
+  const role = (name) => card.querySelector(`[data-spotlight-role="${name}"]`);
+  applySpotlightModel(
+    {
+      label: role("spotlight-label"),
+      title: role("next-game-title"),
+      type: role("next-game-type"),
+      meta: role("next-game-meta"),
+      location: role("next-game-location"),
+      weather: role("next-game-weather"),
+      actions: role("next-game-actions"),
+      directions: role("next-game-directions"),
+      hint: role("next-game-hint"),
+    },
+    game,
+    "SELECTED GAME",
+  );
+
+  for (const control of card.querySelectorAll("a, button")) {
+    control.tabIndex = -1;
+  }
+
+  return card;
+}
 
 function addIsoDays(date, days) {
   const [year, month, day] = String(date).split("-").map(Number);
@@ -837,18 +899,25 @@ function calendarGameDates() {
   )].sort();
 }
 
-function selectAdjacentCalendarGameDate(direction) {
+function adjacentCalendarSelection(direction) {
   const gameDates = calendarGameDates();
-  if (!gameDates.length || !direction) return false;
+  if (!gameDates.length || !direction) return null;
 
   const currentDate = selectedCalendarDate || currentNextGame?.date || gameDates[0];
   let currentIndex = gameDates.indexOf(currentDate);
   if (currentIndex < 0) currentIndex = direction > 0 ? -1 : gameDates.length;
 
   const targetDate = gameDates[currentIndex + Math.sign(direction)];
-  if (!targetDate) return false;
+  if (!targetDate) return null;
 
-  selectCalendarDate(targetDate);
+  const game = (currentCalendar?.games || []).find((item) => item.date === targetDate);
+  return game ? { date: targetDate, game } : null;
+}
+
+function selectAdjacentCalendarGameDate(direction) {
+  const selection = adjacentCalendarSelection(direction);
+  if (!selection) return false;
+  selectCalendarDate(selection.date);
   return true;
 }
 
@@ -856,25 +925,119 @@ function installSpotlightSwipe() {
   let touchStartX = null;
   let touchStartY = null;
   let horizontalGesture = false;
+  let train = null;
+  let settling = false;
 
-  const surface = els.spotlightSwipeSurface;
+  const carousel = els.spotlightCarousel;
+  const current = els.nextGameCard;
 
-  const clearSurfaceMotion = () => {
-    surface.classList.remove("is-calendar-swiping");
-    surface.style.removeProperty("transform");
-    surface.style.removeProperty("opacity");
-    document.documentElement.classList.remove("spotlight-swipe-active");
+  const gap = () => {
+    const value = Number.parseFloat(
+      getComputedStyle(carousel).getPropertyValue("--spotlight-train-gap"),
+    );
+    return Number.isFinite(value) ? value : 12;
   };
 
-  const reset = () => {
-    clearSurfaceMotion();
+  const clearInlineMotion = () => {
+    current.classList.remove("is-train-dragging", "is-train-settling");
+    current.style.removeProperty("transform");
+    current.style.removeProperty("min-height");
+    carousel.style.removeProperty("height");
+    document.documentElement.classList.remove("spotlight-swipe-active");
+
+    if (train?.preview) train.preview.remove();
+    train = null;
+  };
+
+  const resetGesture = () => {
+    clearInlineMotion();
     touchStartX = null;
     touchStartY = null;
     horizontalGesture = false;
+    settling = false;
+  };
+
+  const prepareTrain = (direction) => {
+    if (train?.direction === direction) return train;
+
+    if (train?.preview) train.preview.remove();
+    train = null;
+
+    const target = adjacentCalendarSelection(direction);
+    if (!target) return null;
+
+    const preview = buildSpotlightTrainCard(target.game);
+    carousel.append(preview);
+
+    const distance = carousel.clientWidth + gap();
+    const baseOffset = direction * distance;
+    preview.style.transform = `translate3d(${baseOffset}px, 0, 0)`;
+
+    const height = Math.max(current.offsetHeight, preview.offsetHeight);
+    carousel.style.height = `${height}px`;
+    current.style.minHeight = `${height}px`;
+    preview.style.minHeight = `${height}px`;
+
+    current.classList.add("is-train-dragging");
+    preview.classList.add("is-train-dragging");
+
+    train = {
+      direction,
+      target,
+      preview,
+      distance,
+      baseOffset,
+    };
+    return train;
+  };
+
+  const settleBack = () => {
+    settling = true;
+    current.classList.remove("is-train-dragging");
+    current.classList.add("is-train-settling");
+    current.style.transform = "translate3d(0, 0, 0)";
+
+    if (train?.preview) {
+      train.preview.classList.remove("is-train-dragging");
+      train.preview.classList.add("is-train-settling");
+      train.preview.style.transform = `translate3d(${train.baseOffset}px, 0, 0)`;
+    }
+
+    window.setTimeout(resetGesture, 270);
+  };
+
+  const completeTrain = () => {
+    if (!train?.preview) {
+      resetGesture();
+      return;
+    }
+
+    settling = true;
+    const committedTrain = train;
+    current.classList.remove("is-train-dragging");
+    committedTrain.preview.classList.remove("is-train-dragging");
+    current.classList.add("is-train-settling");
+    committedTrain.preview.classList.add("is-train-settling");
+
+    current.style.transform =
+      `translate3d(${-committedTrain.direction * committedTrain.distance}px, 0, 0)`;
+    committedTrain.preview.style.transform = "translate3d(0, 0, 0)";
+
+    window.setTimeout(() => {
+      selectCalendarDate(committedTrain.target.date);
+
+      current.classList.remove("is-train-settling");
+      current.style.transition = "none";
+      current.style.transform = "translate3d(0, 0, 0)";
+      void current.offsetWidth;
+      current.style.removeProperty("transition");
+
+      resetGesture();
+    }, 270);
   };
 
   els.nextGameCard.addEventListener("touchstart", (event) => {
-    if (event.target.closest?.("a, button")) return;
+    if (settling || event.target.closest?.("a, button")) return;
     const touch = event.changedTouches?.[0];
     if (!touch) return;
     touchStartX = touch.clientX;
@@ -884,7 +1047,7 @@ function installSpotlightSwipe() {
 
   els.nextGameCard.addEventListener("touchmove", (event) => {
     const touch = event.changedTouches?.[0];
-    if (!touch || touchStartX == null || touchStartY == null) return;
+    if (!touch || touchStartX == null || touchStartY == null || settling) return;
 
     const deltaX = touch.clientX - touchStartX;
     const deltaY = touch.clientY - touchStartY;
@@ -892,25 +1055,37 @@ function installSpotlightSwipe() {
     if (!horizontalGesture) {
       if (Math.abs(deltaX) < 8) return;
       if (Math.abs(deltaX) <= Math.abs(deltaY) * 1.1) {
-        reset();
+        resetGesture();
         return;
       }
       horizontalGesture = true;
       document.documentElement.classList.add("spotlight-swipe-active");
-      surface.classList.add("is-calendar-swiping");
     }
 
     event.preventDefault();
-    const offset = Math.max(-88, Math.min(88, deltaX));
-    const progress = Math.min(1, Math.abs(offset) / 88);
-    surface.style.transform = `translate3d(${offset}px, 0, 0)`;
-    surface.style.opacity = String(1 - progress * 0.16);
+    const direction = deltaX < 0 ? 1 : -1;
+    const activeTrain = prepareTrain(direction);
+
+    if (!activeTrain) {
+      const resistedOffset = deltaX * 0.18;
+      current.classList.add("is-train-dragging");
+      current.style.transform = `translate3d(${resistedOffset}px, 0, 0)`;
+      return;
+    }
+
+    const offset = Math.max(
+      -activeTrain.distance,
+      Math.min(activeTrain.distance, deltaX),
+    );
+    current.style.transform = `translate3d(${offset}px, 0, 0)`;
+    activeTrain.preview.style.transform =
+      `translate3d(${activeTrain.baseOffset + offset}px, 0, 0)`;
   }, { passive: false });
 
   els.nextGameCard.addEventListener("touchend", (event) => {
     const touch = event.changedTouches?.[0];
-    if (!touch || touchStartX == null || touchStartY == null) {
-      reset();
+    if (!touch || touchStartX == null || touchStartY == null || settling) {
+      if (!settling) resetGesture();
       return;
     }
 
@@ -921,37 +1096,16 @@ function installSpotlightSwipe() {
       Math.abs(deltaX) >= 56 &&
       Math.abs(deltaX) > Math.abs(deltaY) * 1.2;
 
-    if (!isHorizontalSwipe) {
-      reset();
-      return;
-    }
-
     event.preventDefault();
-    const direction = deltaX < 0 ? 1 : -1;
-    const moved = selectAdjacentCalendarGameDate(direction);
-    if (!moved) {
-      reset();
+    if (!isHorizontalSwipe || !train?.target) {
+      settleBack();
       return;
     }
 
-    const entryOffset = direction > 0 ? 34 : -34;
-    surface.style.transform = `translate3d(${entryOffset}px, 0, 0)`;
-    surface.style.opacity = "0.84";
-    void surface.offsetWidth;
-    surface.classList.remove("is-calendar-swiping");
-    document.documentElement.classList.remove("spotlight-swipe-active");
-
-    window.requestAnimationFrame(() => {
-      surface.style.removeProperty("transform");
-      surface.style.removeProperty("opacity");
-    });
-
-    touchStartX = null;
-    touchStartY = null;
-    horizontalGesture = false;
+    completeTrain();
   }, { passive: false });
 
-  els.nextGameCard.addEventListener("touchcancel", reset);
+  els.nextGameCard.addEventListener("touchcancel", settleBack);
 }
 
 function renderCalendar(calendar) {
