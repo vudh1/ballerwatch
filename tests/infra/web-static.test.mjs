@@ -134,10 +134,14 @@ test("question box supports slash commands and autosuggestions", () => {
   assert.match(app, /activeSuggestionIndex/);
 });
 
-test("app-facing copy does not mention Telegram", () => {
+test("app-facing copy mentions Telegram only for the explicit footer shortcut", () => {
   const html = fs.readFileSync("docs/index.html", "utf8");
   const manifest = fs.readFileSync("docs/manifest.webmanifest", "utf8");
-  assert.doesNotMatch(html, /Telegram/i);
+  const withoutFooterShortcut = html.replace(
+    /<a href="https:\/\/t\.me\/ttf_rsvp_tracker_bot"[^>]*>Telegram<\/a>/,
+    "",
+  );
+  assert.doesNotMatch(withoutFooterShortcut, /Telegram/i);
   assert.doesNotMatch(manifest, /Telegram/i);
 });
 
