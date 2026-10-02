@@ -176,13 +176,13 @@ jobs:
               exit 1;
             }
             node - "$path" "$BODY" <<'NODE'
-const fs = require("fs");
-const path = process.argv[2];
-const value = JSON.parse(fs.readFileSync(process.argv[3], "utf8"));
-if (value.ok !== true) process.exit(1);
-if (path === "/web/calendar" && !value.calendar) process.exit(1);
-if (path === "/web/next-game" && !Object.prototype.hasOwnProperty.call(value, "game")) process.exit(1);
-NODE
+          const fs = require("fs");
+          const path = process.argv[2];
+          const value = JSON.parse(fs.readFileSync(process.argv[3], "utf8"));
+          if (value.ok !== true) process.exit(1);
+          if (path === "/web/calendar" && !value.calendar) process.exit(1);
+          if (path === "/web/next-game" && !Object.prototype.hasOwnProperty.call(value, "game")) process.exit(1);
+          NODE
             rm -f "$BODY" "$HEADERS"
           done
           echo "PWA runtime-backed API verified."
