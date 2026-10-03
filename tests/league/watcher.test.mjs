@@ -158,6 +158,23 @@ test("team matching ignores case and collapses spaces", () => {
   assert.equal(output.teams[1].name, "Team   Beta");
 });
 
+test("aggregate-only extra event is ignored", () => {
+  const data = fixtures();
+  data.aggregate.events.push({
+    home_team_name: "Team Alpha",
+    away_team_name: "Extra Team",
+    location: "Field 2",
+    notes: "",
+    start_date: "2026-10-19",
+    start_time: "20:30:00",
+    home_color: "White",
+    away_color: "Blue",
+  });
+
+  const output = normalized(data);
+  assert.equal(output.teams[0].publishedMatchCount, 1);
+});
+
 test("source mismatches and malformed schemas fail closed", () => {
   const mismatch = fixtures();
   mismatch.exportsByTeam["Team Alpha"][1][8] = "Another field";
