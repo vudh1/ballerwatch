@@ -364,9 +364,16 @@ export function normalize(
       );
       const rows = dateSideRows.filter((row) => row["Opponent/Event Title"] === opponent);
       if (rows.length !== 1) {
+        const sameDate = exportGames.filter((row) => row["Start Date"] === date).length;
+        const sameSide = exportGames.filter(
+          (row) =>
+            String(row["Home or Away"]).toLocaleLowerCase("en-US") === expectedSide,
+        ).length;
+        const sameTime = exportGames.filter((row) => row["Start Time"] === clock).length;
         throw new Error(
           "Aggregate/export match identity mismatch " +
-          `(exact=${rows.length}, normalized=${normalizedRows.length}, dateSide=${dateSideRows.length})`,
+          `(exact=${rows.length}, normalized=${normalizedRows.length}, dateSide=${dateSideRows.length}, ` +
+          `date=${sameDate}, side=${sameSide}, time=${sameTime}, export=${exportGames.length})`,
         );
       }
       const row = rows[0];
