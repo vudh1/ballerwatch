@@ -557,34 +557,30 @@ async function decryptRuntimeDocument(env, value) {
   return (await decryptState(value, env)) || value;
 }
 
-async function listenerStateDocument(env, value) {
-  if (!value || typeof value !== "object") {
-    return { lastUpdateId: 0, settings: {} };
-  }
+async function userStateDocument(env, value) {
+  if (!value || typeof value !== "object") return { settings: {} };
   const current = await decryptState(value, env);
   if (current && typeof current === "object") {
     return {
-      lastUpdateId: Number(current.lastUpdateId || 0),
       settings: current.settings && typeof current.settings === "object"
         ? current.settings
         : {},
     };
   }
 
-  // Compatibility with pre-v5.8 runtime-state where only settings were sealed.
+  // Compatibility with older runtime-state where only settings were sealed.
   const settings = value.settings ? await decryptState(value.settings, env) : null;
   return {
-    lastUpdateId: Number(value.lastUpdateId || 0),
     settings: settings && typeof settings === "object" ? settings : {},
   };
 }
 
 async function ownerSettingsRecord(env) {
-  const [listenerRecord, teamsRecord] = await Promise.all([
-    githubStateRecord(env, "state/listener.json"),
+  const [userRecord, teamsRecord] = await Promise.all([
+    githubStateRecord(env, "state/user.json"),
     githubStateRecord(env, "league/state/teams.json"),
   ]);
-  const listenerState = await listenerStateDocument(env, listenerRecord.value);
+  const userState = await userStateDocument(env, userRecord.value);
   const teamsPayload = teamsRecord.value
     ? await decryptState(teamsRecord.value, env)
     : null;
@@ -592,10 +588,10 @@ async function ownerSettingsRecord(env) {
     ? teamsPayload.teams.map((name) => cleanText(name, 120)).filter(Boolean)
     : [];
   return {
-    listenerRecord,
+    userRecord,
     teamsRecord,
-    listenerState,
-    settings: listenerState.settings,
+    userState,
+    settings: userState.settings,
     teams,
   };
 }
@@ -613,12 +609,11 @@ async function saveOwnerPassword(env, value, { rotateAuth = true } = {}) {
   const passwordRecord = await createOwnerPasswordRecord(env, value);
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      const record = await githubStateRecord(env, "state/listener.json");
-      const current = await listenerStateDocument(env, record.value);
+      const record = await githubStateRecord(env, "state/user.json");
+      const current = await userStateDocument(env, record.value);
       const previousVersion = ownerAuthVersion(current.settings);
       const authVersion = rotateAuth ? previousVersion + 1 : previousVersion;
       const next = {
-        lastUpdateId: current.lastUpdateId,
         settings: {
           ...current.settings,
           webOwnerPassword: passwordRecord,
@@ -627,7 +622,7 @@ async function saveOwnerPassword(env, value, { rotateAuth = true } = {}) {
       };
       await githubStatePut(
         env,
-        "state/listener.json",
+        "state/user.json",
         await encryptState(next, env),
         record.sha,
         "runtime(user): update web user password and auth revision",
@@ -643,14 +638,13 @@ async function saveOwnerPassword(env, value, { rotateAuth = true } = {}) {
 async function rotateOwnerAuthVersion(env) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      const record = await githubStateRecord(env, "state/listener.json");
-      const current = await listenerStateDocument(env, record.value);
+      const record = await githubStateRecord(env, "state/user.json");
+      const current = await userStateDocument(env, record.value);
       const authVersion = ownerAuthVersion(current.settings) + 1;
       await githubStatePut(
         env,
-        "state/listener.json",
+        "state/user.json",
         await encryptState({
-          lastUpdateId: current.lastUpdateId,
           settings: {
             ...current.settings,
             webAuthVersion: authVersion,
@@ -704,22 +698,21 @@ async function saveOwnerSettingsDirect(env, input) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       const {
-        listenerRecord,
+        userRecord,
         teamsRecord,
-        listenerState,
         settings,
       } = await ownerSettingsRecord(env);
 
       await githubStatePut(
         env,
-        "state/listener.json",
+        "state/user.json",
         await encryptState({
           settings: {
             ...settings,
             ownerRsvpName: input.ownerName,
           },
         }, env),
-        listenerRecord.sha,
+        userRecord.sha,
         "runtime(user): update web user settings",
       );
 
@@ -952,10 +945,10 @@ async function syncDerivedRuntimeFile(env, path, raw) {
   } else if (path === "league/state/today.json") {
     const value = await decryptState(parsed, env);
     if (value) await kvJsonPut(env, "snapshot:today", value);
-  } else if (path === "state/listener.json") {
-    const listenerState = await listenerStateDocument(env, parsed);
-    if (listenerState.settings) {
-      await kvJsonPut(env, "runtime:listener-settings", listenerState.settings);
+  } else if (path === "state/user.json") {
+    const userState = await userStateDocument(env, parsed);
+    if (userState.settings) {
+      await kvJsonPut(env, "runtime:user-settings", userState.settings);
     }
   } else if (path === "requests/unknown.json") {
     const summary = await decryptRuntimeDocument(env, parsed);
@@ -975,51 +968,19 @@ async function runtimeFilePut(env, path, raw) {
 }
 
 async function runtimeSettings(env) {
-  const cached = await kvJsonGet(env, "runtime:listener-settings");
+  const cached = await kvJsonGet(env, "runtime:user-settings");
   if (cached && typeof cached === "object") return cached;
-  const raw = await runtimeFileGet(env, "state/listener.json");
+  const raw = await runtimeFileGet(env, "state/user.json");
   if (!raw) return {};
   try {
     const parsed = JSON.parse(raw);
-    const current = await listenerStateDocument(env, parsed);
+    const current = await userStateDocument(env, parsed);
     if (current.settings) {
-      await kvJsonPut(env, "runtime:listener-settings", current.settings);
+      await kvJsonPut(env, "runtime:user-settings", current.settings);
       return current.settings;
     }
   } catch {}
   return {};
-}
-
-async function rememberFastReplyInRuntime(env, question, reply, messageId, lastDate) {
-  const raw = await runtimeFileGet(env, "state/listener.json");
-  if (!raw) return;
-  try {
-    const parsed = JSON.parse(raw);
-    const current = await listenerStateDocument(env, parsed);
-    const settings = current.settings;
-    const id = Number(messageId || 0);
-    const recent = Array.isArray(settings.recentBotReplies) ? settings.recentBotReplies : [];
-    const nextSettings = {
-      ...settings,
-      ...(lastDate ? { lastReferencedDate: lastDate } : {}),
-      recentBotReplies: id
-        ? [
-            ...recent.filter(item => Number(item?.messageId) !== id),
-            {
-              messageId: id,
-              question: cleanText(question, 500),
-              reply: String(reply || "").slice(0, 1200),
-              createdAt: new Date().toISOString(),
-            },
-          ].slice(-20)
-        : recent,
-    };
-    const next = await encryptState({
-      lastUpdateId: current.lastUpdateId,
-      settings: nextSettings,
-    }, env);
-    await runtimeFilePut(env, "state/listener.json", JSON.stringify(next, null, 2) + "\n");
-  } catch {}
 }
 
 async function cachedJson(key, ttlSeconds, loader) {
@@ -1041,28 +1002,28 @@ async function cachedJson(key, ttlSeconds, loader) {
 
 async function loadGitHubSnapshot(env) {
   return cachedJson("github-runtime-snapshot-v2", 45, async () => {
-    const [pickupEncrypted, privateEncrypted, leagueEncrypted, todayEncrypted, teamsEncrypted, listenerState, versions] =
+    const [pickupEncrypted, privateEncrypted, leagueEncrypted, todayEncrypted, teamsEncrypted, userState, versions] =
       await Promise.all([
         githubFile(env, "pickup/state/feed.json", "runtime-state"),
         githubFile(env, "pickup/state/events.json", "runtime-state"),
         githubFile(env, "league/state/schedule.json", "runtime-state"),
         githubFile(env, "league/state/today.json", "runtime-state"),
         githubFile(env, "league/state/teams.json", "runtime-state"),
-        githubFile(env, "state/listener.json", "runtime-state").catch(() => null),
+        githubFile(env, "state/user.json", "runtime-state").catch(() => null),
         githubFile(env, "features/versions.json", PRODUCTION_REF),
       ]);
 
-    const [pickup, pickupPrivate, league, today, teamsPayload, listener] = await Promise.all([
+    const [pickup, pickupPrivate, league, today, teamsPayload, user] = await Promise.all([
       decryptState(pickupEncrypted, env),
       decryptState(privateEncrypted, env),
       decryptState(leagueEncrypted, env),
       decryptState(todayEncrypted, env),
       decryptState(teamsEncrypted, env),
-      listenerStateDocument(env, listenerState),
+      userStateDocument(env, userState),
     ]);
 
     const teams = Array.isArray(teamsPayload?.teams) ? teamsPayload.teams : [];
-    const settings = listener.settings;
+    const settings = user.settings;
     if (!pickup || !league || !teams.length) {
       throw new Error("GitHub runtime snapshot is incomplete.");
     }
@@ -2562,7 +2523,7 @@ export default {
         ok:true,
         deleted,
         preserved:[],
-        defaultsRebuild:["league-teams","pickup/league snapshots","listener defaults"],
+        defaultsRebuild:["league-teams","pickup/league snapshots","user defaults"],
       });
     }
     if (request.method === "POST" && url.pathname === "/admin/shadow-refresh") {
