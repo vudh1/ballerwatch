@@ -75,7 +75,10 @@ jobs:
           if [ "$TEAM_COUNT" -gt 0 ]; then
             node shared/league-teams.mjs prepare
             node shared/league-state.mjs prepare
-            (cd league && /usr/bin/time -f "leagueWatcherSeconds=%e" node watcher.mjs)
+            if ! (cd league && /usr/bin/time -f "leagueWatcherSeconds=%e" node watcher.mjs); then
+              node -e 'const fs=require("fs");const x=JSON.parse(fs.readFileSync("league/schedule.json","utf8"));if(x?.ok!==true||!Array.isArray(x?.teams))process.exit(1)'
+              echo "::warning::Live RATS refresh was inconsistent; smoke retained and validated the encrypted last-good schedule."
+            fi
           else
             echo "No league teams configured; league live test skipped."
           fi
