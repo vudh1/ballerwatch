@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "6.0.6",
+  "currentVersion": "6.0.7",
   "releases": [
+    {
+      "version": "6.0.7",
+      "date": "2026-10-02",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Reviewed Q&A date routing, weekly schedules, and feedback collection",
+      "changes": [
+        "Fixed pickup date routing so explicit weekday/date questions never fall back to a previous conversation date or a different sole future pickup; if no pickup exists on the requested day, the answer stays on that day.",
+        "Added deterministic multi-game schedule answers for this week, next week, the coming week, and next N weeks across pickup and monitored league matches.",
+        "Restored signed-in feature-request collection: /feature requests and unsupported signed-in Q&A are stored only in encrypted requests/private.json while requests/unknown.json remains a category/count-only encrypted projection.",
+        "Improved chat history/review fallback so answer intent survives when AI compaction is unavailable, Wrong answer feedback identifies the original Q&A intent, and operational/unsupported failures can still become actionable review signals.",
+        "Moved privacy-safe feature-request category/projection logic into a runtime-agnostic shared module used by both Node workflows and the Cloudflare Worker."
+      ]
+    },
     {
       "version": "6.0.6",
       "date": "2026-10-02",
