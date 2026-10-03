@@ -64,6 +64,17 @@ test("Home Screen install card is removed in standalone mode and notifications u
 });
 
 
+
+
+test("Home Screen install prompt uses the same card layout system as dashboard cards", () => {
+  const html = fs.readFileSync("docs/index.html", "utf8");
+  const css = fs.readFileSync("docs/styles.css", "utf8");
+  assert.match(html, /class="card footer-install" id="install-card"/);
+  assert.match(html, /class="footer-install-copy"/);
+  assert.match(css, /\.footer-install\.card \{[\s\S]*padding:\s*clamp/);
+  assert.match(css, /\.footer-install\.card \{[\s\S]*border-radius:\s*30px/);
+});
+
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
@@ -91,13 +102,15 @@ test("notification bell exposes a synchronized push switch", () => {
 });
 
 
-test("next-game card exposes directions and native share", () => {
+test("next-game card exposes pickup RSVP, directions, and native share", () => {
   const html = fs.readFileSync("docs/index.html", "utf8");
   const app = fs.readFileSync("docs/app.js", "utf8");
   assert.match(html, /id="next-game-card"/);
+  assert.match(html, /id="next-game-rsvp"/);
   assert.match(html, /id="next-game-directions"/);
   assert.match(html, /id="next-game-share"/);
   assert.match(app, /\/web\/next-game/);
+  assert.match(app, /model\.rsvp/);
   assert.match(app, /google\.com\/maps\/search\/\?api=1/);
   assert.match(app, /navigator\.share/);
   assert.match(app, /navigator\.clipboard\.writeText/);
@@ -170,6 +183,7 @@ test("user settings support password-only sign-in with repository recovery", () 
   assert.match(app, /\/web\/user\/login/);
   assert.match(app, /\/web\/user\/password/);
   assert.match(app, /\/web\/user\/settings/);
+  assert.match(app, /retryNetwork:\s*true/);
   assert.doesNotMatch(app, /\/web\/user\/pair/);
   assert.match(app, /ownerLoginForm\.addEventListener\("submit", loginOwnerDevice\)/);
   assert.match(app, /ownerPasswordForm\.addEventListener\("submit", saveOwnerPassword\)/);
@@ -178,6 +192,8 @@ test("user settings support password-only sign-in with repository recovery", () 
   assert.match(worker, /export async function verifyOwnerPassword/);
   assert.match(worker, /userRoute\(url\.pathname, "login"\)/);
   assert.match(worker, /userRoute\(url\.pathname, "password"\)/);
+  assert.match(worker, /freshTeamsRecord = await githubStateRecord/);
+  assert.match(worker, /User settings load failed/);
   assert.doesNotMatch(worker, /userRoute\(url\.pathname, "pair"\)/);
 
   assert.match(recovery, /BALLERWATCH_RECOVERY_PASSWORD/);
@@ -274,6 +290,24 @@ test("two-week dashboard renders cached match weather", () => {
   assert.match(watchdog, /cron: "17 \*\/6 \* \* \*"/);
   assert.match(watchdog, /node weather\/update\.mjs/);
 });
+
+test("calendar rolls by week with spotlight navigation and expands through the latest match week", () => {
+  const html = fs.readFileSync("docs/index.html", "utf8");
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  const css = fs.readFileSync("docs/styles.css", "utf8");
+
+  assert.match(html, /id="calendar-expand-toggle"/);
+  assert.match(html, /id="two-week-calendar" aria-expanded="false"/);
+  assert.match(app, /let calendarWindowStart = ""/);
+  assert.match(app, /let calendarExpanded = false/);
+  assert.match(app, /function ensureCalendarDateVisible/);
+  assert.match(app, /start = addIsoDays\(start, 7\)/);
+  assert.match(app, /Math\.ceil\(span \/ 7\) \* 7/);
+  assert.match(app, /function setCalendarExpanded/);
+  assert.match(app, /calendarCard\?\.addEventListener\("click"/);
+  assert.match(css, /\.calendar-card\.is-expanded \.calendar-grid/);
+});
+
 
 test("cron-job.org is reserved for pickup and league while watchdog is retired", () => {
   const schedules = fs.readFileSync("infra/external-schedules.mjs", "utf8");
@@ -606,7 +640,7 @@ test("v5.5 dashboard matches the iPhone-first demo direction", () => {
   const css = fs.readFileSync("docs/styles.css", "utf8");
 
   assert.match(html, /Pickup \+ RATS monitor/);
-  assert.match(html, /<h2>14-Day Calendar<\/h2>/);
+  assert.match(html, /<h2 id="calendar-title">14-Day Calendar<\/h2>/);
   assert.match(html, /<h2>Ask BallerWatch<\/h2>/);
   assert.match(html, /id="next-game-capacity"/);
   assert.match(app, /capacityPercent/);
