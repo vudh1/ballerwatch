@@ -13,7 +13,9 @@
         "Added context-aware follow-up handling so short questions such as “what color?”, “who do we play?”, “where is it?”, and “what time?” reuse the previously referenced game date.",
         "Added targeted date-game answers for opponent, jersey, time, venue, and pickup RSVP/capacity questions instead of requiring exact canned wording.",
         "Expanded deterministic intent matching with more natural phrasing and one-edit typo tolerance for meaningful words.",
-        "Rebuilt autocomplete from upcoming calendar data, broader question templates, and private on-device recent successful questions; matching now accepts word reordering and small typos."
+        "Rebuilt autocomplete from upcoming calendar data, broader question templates, and private on-device recent successful questions; matching now accepts word reordering and small typos.",
+        "Removed redundant GitHub Actions workflows for stale branch cleanup, standalone manual smoke, and duplicate standalone weather refresh; weather remains covered by schedule-change refreshes and the watchdog.",
+        "Aligned the 6.0.9 service-worker revision and regression coverage after the Q&A/autocomplete changes so the fixed release candidate is fully validation-gated."
       ]
     },
     {
