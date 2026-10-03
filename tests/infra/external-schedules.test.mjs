@@ -5,6 +5,7 @@ import {
   analyzeExternalSchedules,
   syncExternalSchedulesOptional,
   verifyExternalSchedules,
+  verifyGithubDispatchCredential,
 } from "../../infra/external-schedules.mjs";
 
 function job(spec, enabled = true) {
@@ -15,6 +16,24 @@ function job(spec, enabled = true) {
     schedule: { minutes: spec.minutes, hours: spec.hours || [-1] },
   };
 }
+
+test("scheduler GitHub credential accepts an accessible workflow endpoint", async () => {
+  const result = await verifyGithubDispatchCredential({
+    githubPat: "x",
+    fetchImpl: async () => ({ok: true, status: 200}),
+  });
+  assert.equal(result, true);
+});
+
+test("scheduler GitHub credential rejects unauthorized access", async () => {
+  await assert.rejects(
+    verifyGithubDispatchCredential({
+      githubPat: "x",
+      fetchImpl: async () => ({ok: false, status: 401}),
+    }),
+    /HTTP 401/,
+  );
+});
 
 test("healthy scheduler posture has two enabled primary jobs", () => {
   const problems = analyzeExternalSchedules(EXTERNAL_SCHEDULE_SPECS.map((spec) => job(spec)), {
@@ -94,7 +113,6 @@ test("optional scheduler synchronization still fails on auth errors", async () =
     /401/,
   );
 });
-
 
 test("retired external watchdog is reported when enabled", () => {
   const jobs = [
