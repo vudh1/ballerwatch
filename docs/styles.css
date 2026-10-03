@@ -2993,3 +2993,139 @@ html.is-standalone .status-bar-glass {
     width: 100%;
   }
 }
+
+
+/* v6.0.5 portrait surfaces, card-only calendar expansion, RSVP state, and edge waterfall */
+:root {
+  --app-portrait-width: 430px;
+}
+
+.shell {
+  width: min(var(--app-portrait-width), 100%);
+}
+
+.notification-dialog,
+.settings-dialog,
+#install-dialog {
+  width: min(var(--app-portrait-width), calc(100vw - 1.25rem));
+  max-width: min(var(--app-portrait-width), calc(100vw - 1.25rem));
+}
+
+.notification-dialog {
+  top: max(5.2rem, calc(env(safe-area-inset-top) + 4.2rem));
+  right: auto;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.notification-reader {
+  width: min(var(--app-portrait-width), 100vw);
+  max-width: var(--app-portrait-width);
+  height: 100dvh;
+  margin: 0 auto;
+}
+
+.notification-reader-shell {
+  width: 100%;
+  max-width: 100%;
+}
+
+.calendar-card .calendar-day,
+.calendar-card .calendar-game-choice {
+  cursor: pointer;
+}
+
+#next-game-rsvp::before {
+  content: none;
+}
+
+.pickup-rsvp-link {
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04)),
+    rgba(71, 85, 105, 0.36) !important;
+}
+
+.pickup-rsvp-link.is-confirmed {
+  border-color: rgba(74, 222, 128, 0.40) !important;
+  background:
+    linear-gradient(145deg, rgba(74, 222, 128, 0.26), rgba(34, 197, 94, 0.09)),
+    rgba(22, 101, 52, 0.30) !important;
+}
+
+.pickup-rsvp-link.is-confirmed::before {
+  content: "✓";
+  margin-right: 0.5rem;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .spotlight-edge-control {
+    top: 0;
+    bottom: 0;
+    width: min(5.75rem, 20%);
+    border-radius: 0;
+  }
+
+  .spotlight-edge-previous {
+    left: 0;
+    border-radius: 32px 0 0 32px;
+  }
+
+  .spotlight-edge-next {
+    right: 0;
+    border-radius: 0 32px 32px 0;
+  }
+
+  .spotlight-edge-control::before {
+    opacity: var(--edge-opacity, 0.10);
+    transition: opacity 90ms linear;
+    -webkit-backdrop-filter: blur(13px) saturate(160%);
+    backdrop-filter: blur(13px) saturate(160%);
+  }
+
+  .spotlight-edge-previous::before {
+    background: linear-gradient(
+      90deg,
+      rgba(186, 230, 253, 0.30) 0%,
+      rgba(125, 211, 252, 0.19) 18%,
+      rgba(96, 165, 250, 0.09) 44%,
+      rgba(96, 165, 250, 0.025) 68%,
+      transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(90deg, #000 0%, rgba(0, 0, 0, 0.86) 36%, transparent 100%);
+    mask-image: linear-gradient(90deg, #000 0%, rgba(0, 0, 0, 0.86) 36%, transparent 100%);
+  }
+
+  .spotlight-edge-next::before {
+    background: linear-gradient(
+      270deg,
+      rgba(186, 230, 253, 0.30) 0%,
+      rgba(125, 211, 252, 0.19) 18%,
+      rgba(96, 165, 250, 0.09) 44%,
+      rgba(96, 165, 250, 0.025) 68%,
+      transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(270deg, #000 0%, rgba(0, 0, 0, 0.86) 36%, transparent 100%);
+    mask-image: linear-gradient(270deg, #000 0%, rgba(0, 0, 0, 0.86) 36%, transparent 100%);
+  }
+
+  .spotlight-edge-control span,
+  .spotlight-edge-control:not(:disabled):hover span,
+  .spotlight-edge-control:not(:disabled):focus-visible span {
+    opacity: var(--edge-arrow-opacity, 0);
+  }
+}
+
+@media (max-width: 560px) {
+  .notification-dialog,
+  .settings-dialog,
+  #install-dialog {
+    width: calc(100vw - 0.75rem);
+    max-width: calc(100vw - 0.75rem);
+  }
+
+  .notification-dialog {
+    right: auto;
+    left: 50%;
+  }
+}
