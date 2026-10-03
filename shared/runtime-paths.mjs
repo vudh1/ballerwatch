@@ -6,7 +6,7 @@
 
 export const RUNTIME_SCOPES = Object.freeze({
   user: Object.freeze([
-    "state/listener.json",
+    "state/user.json",
     "state/chat-history.json",
     "state/chat-review.json",
     "league/state/teams.json",
@@ -19,7 +19,7 @@ export const RUNTIME_SCOPES = Object.freeze({
     "state/web-push.json",
   ]),
   pickup: Object.freeze([
-    "state/listener.json",
+    "state/user.json",
     "pickup/state/feed.json",
     "pickup/state/events.json",
     "pickup/state/notify.json",
