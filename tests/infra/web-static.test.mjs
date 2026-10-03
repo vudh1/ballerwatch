@@ -557,6 +557,8 @@ test("match spotlight swipe uses connected neighboring cards like a carousel tra
   assert.doesNotMatch(app, /current\.scrollHeight/);
   assert.match(app, /window\.addEventListener\("resize"/);
   assert.match(app, /function adjacentCalendarSelection/);
+  assert.match(app, /\.filter\(\(date\) => date >= firstDate\)/);
+  assert.doesNotMatch(app, /const lastDate = addIsoDays\(firstDate, 13\)/);
   assert.match(app, /function selectAdjacentCalendarGameDate/);
   assert.match(app, /function installSpotlightSwipe/);
   assert.match(app, /spotlightCarousel/);
