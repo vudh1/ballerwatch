@@ -1,7 +1,19 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "6.0.3",
+  "currentVersion": "6.0.4",
   "releases": [
+    {
+      "version": "6.0.4",
+      "date": "2026-10-02",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Settings authentication hotfix",
+      "changes": [
+        "Restored the missing web user capability verifier used by Settings, password change, session revoke, and authenticated feedback routes, eliminating the Cloudflare 1101 exception that surfaced in Safari as Load failed.",
+        "Kept user session revocation semantics by validating bearer tokens against the current encrypted web authentication revision before allowing authenticated web actions.",
+        "Added regression coverage for empty, current-revision, and revoked-revision capability tokens."
+      ]
+    },
     {
       "version": "6.0.3",
       "date": "2026-10-02",
