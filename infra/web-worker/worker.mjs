@@ -16,6 +16,7 @@ import {
   kvTextPut,
 } from "./edge-runtime.mjs";
 import { aiProviders, requestAiJson } from "../../shared/ai-provider.mjs";
+import { publicRequestSummary } from "../../shared/feature-request-summary.mjs";
 import { classifyIndexedIntent } from "../../shared/intent-index.mjs";
 import { ALL_RUNTIME_FILE_PATHS } from "../../shared/runtime-paths.mjs";
 import { DEFAULT_LEAGUE_TEAMS } from "../../shared/defaults.mjs";
