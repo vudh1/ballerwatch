@@ -1,4 +1,6 @@
 /**
+ * Copyright © 2026 BallerWatch. All rights reserved.
+ *
  * Serves BallerWatch web/PWA APIs, user authentication, runtime-state access, health checks, and scheduled edge work.
  *
  * Updated v5.8.0: uses user-facing authentication terminology, supports /web/user routes,
