@@ -6,6 +6,7 @@ import {
   directIntent,
   issueOwnerToken,
   issuePushRegistrationChallenge,
+  verifyOwnerCapability,
   normalizeOwnerSettingsInput,  verifyOwnerToken,
   verifyPushRegistrationChallenge,
   validWebSubscription,
@@ -42,6 +43,15 @@ test("web snapshot strips private pickup roster and owner settings", () => {
   assert.equal(safe.ownerName, "");
   assert.doesNotMatch(JSON.stringify(safe), /Private Person|Private Owner|secret/);
 });
+
+test("web user capability verification honors the current auth revision", async () => {
+  const env = { TRACKER_STATE_KEY: "test-runtime-key" };
+  const issued = await issueOwnerToken(env, 3);
+  assert.equal(await verifyOwnerCapability(env, "", { webAuthVersion: 3 }), false);
+  assert.equal(await verifyOwnerCapability(env, issued.token, { webAuthVersion: 3 }), true);
+  assert.equal(await verifyOwnerCapability(env, issued.token, { webAuthVersion: 4 }), false);
+});
+
 
 test("web push subscription accepts only recognized browser push endpoints", () => {
   const endpoint = "https://updates.push.services.mozilla.com/wpush/v2/synthetic";
