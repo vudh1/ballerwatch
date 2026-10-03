@@ -235,6 +235,80 @@ test("web calendar merges public games with cached match-window weather", () => 
 });
 
 
+test("web calendar keeps future league matches beyond the 14-day weather window", () => {
+  const snapshot = {
+    pickup: {
+      dates: [
+        { date: "2099-10-08" },
+        { date: "2099-10-20" },
+      ],
+      events: {
+        "2099-10-08": {
+          ok: true,
+          reserved: 8,
+          capacity: 16,
+          startTime: "20:00",
+          endTime: "22:00",
+        },
+        "2099-10-20": {
+          ok: true,
+          reserved: 8,
+          capacity: 16,
+          startTime: "20:00",
+          endTime: "22:00",
+        },
+      },
+    },
+    pickupPrivate: {
+      events: {
+        "2099-10-08": {
+          fieldName: "Near Pickup Field",
+          address: "Seattle, WA",
+        },
+        "2099-10-20": {
+          fieldName: "Far Pickup Field",
+          address: "Seattle, WA",
+        },
+      },
+    },
+    league: {
+      teams: [{
+        name: "Team Alpha",
+        matches: [
+          {
+            key: "v2:near-league",
+            date: "2099-10-06",
+            startTime: "20:00",
+            endTime: "22:00",
+            team: "Team Alpha",
+            opponent: "Team Beta",
+            location: "Near League Field",
+          },
+          {
+            key: "v2:far-league",
+            date: "2099-10-20",
+            startTime: "20:00",
+            endTime: "22:00",
+            team: "Team Alpha",
+            opponent: "Team Gamma",
+            location: "Far League Field",
+          },
+        ],
+      }],
+    },
+  };
+
+  const calendar = webCalendarDetails(snapshot, {}, 14, "2099-10-01");
+  assert.deepEqual(
+    calendar.games.map((game) => [game.kind, game.date]),
+    [
+      ["league", "2099-10-06"],
+      ["pickup", "2099-10-08"],
+      ["league", "2099-10-20"],
+    ],
+  );
+});
+
 test("calendar exposes approximate weather markers", () => {
   const snapshot = {
     pickup: { dates: [], events: {} },
