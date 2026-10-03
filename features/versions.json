@@ -1,18 +1,36 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "5.8.2",
+  "currentVersion": "6.0.0",
   "releases": [
+    {
+      "version": "6.0.0",
+      "date": "2026-10-02",
+      "type": "major",
+      "source": "user-requested",
+      "title": "Web-only BallerWatch runtime",
+      "webAnnouncement": "BallerWatch 6 moves fully to the web app, with Web Push notifications and repository-admin password recovery.",
+      "changes": [
+        "Removed the retired messaging adapter, inbound webhook route, listener workflow, adapter source modules, credentials, tests, documentation, scheduler compatibility code, and app shortcut.",
+        "Renamed the Cloudflare service to ballerwatch-web and moved its source to infra/web-worker; the PWA and service worker now use the new web-only endpoint.",
+        "Replaced pairing-code bootstrap/recovery with the manual Reset web user password workflow backed by a temporary BALLERWATCH_RECOVERY_PASSWORD Actions secret; resets advance the authentication revision and revoke older sessions.",
+        "Moved canonical encrypted user settings to state/user.json and added a release migration that reads the previous encrypted user-state file once, rewrites the new canonical path, and compacts the obsolete path away.",
+        "Changed pickup, league, and release notifications to Web Push/notification-board only; tests, smoke, deployment, and health checks remain notification-silent.",
+        "Changed authenticated Settings and answer-feedback persistence to write encrypted runtime state directly through the web Worker rather than dispatching a legacy listener workflow.",
+        "Changed release rollout ordering so the web Worker must deploy and pass live runtime/security readiness before GitHub Pages is dispatched, reducing the chance of publishing a PWA that points at an unavailable API.",
+        "Added regression coverage to prevent the retired messaging integration, old credentials, webhook route, and removed source/workflow paths from being reintroduced."
+      ]
+    },
     {
       "version": "5.8.2",
       "date": "2026-10-03",
       "type": "patch",
       "source": "user-requested",
       "title": "Web Push SSRF closure and authentication hardening",
-      "telegramAnnouncement": "BallerWatch 5.8.2 hardens Web Push registration, recovery pairing, user sessions, browser policies, workflow dependencies, and cryptographic key separation.",
+      "webAnnouncement": "BallerWatch 5.8.2 hardens Web Push registration, recovery pairing, user sessions, browser policies, workflow dependencies, and cryptographic key separation.",
       "changes": [
         "Closed the delayed blind Web Push SSRF path by allowing only recognized browser push-service hosts, rejecting IP literals/userinfo/nonstandard ports, validating every DNS answer as public before GitHub Actions delivery, and disabling HTTP redirects.",
         "Added a short-lived server-issued Web Push registration challenge bound to the normalized endpoint, exact PWA-origin checks, and registration rate limits before subscription events can enter encrypted runtime state.",
-        "Changed /webpair recovery from six numeric reusable digits to a 12-character high-entropy human-readable code that is single-use, expires after 10 minutes, and is protected by per-client failed-attempt limits.",
+        "Changed legacy pairing command recovery from six numeric reusable digits to a 12-character high-entropy human-readable code that is single-use, expires after 10 minutes, and is protected by per-client failed-attempt limits.",
         "Added server-side authentication revisions to the 90-day user capability tokens; password changes revoke prior sessions and Settings now includes an explicit Sign out all devices action.",
         "Separated cryptographic domains for runtime encryption, user-token signing, feedback-token signing, password verification, and push-registration challenges; deployment transparently reads legacy encrypted state and reseals it under the new runtime key domain.",
         "Added Worker security headers, a restrictive document CSP/referrer policy for the GitHub Pages PWA, and service-worker navigation checks that refuse notification destinations outside the BallerWatch Pages path.",
@@ -26,7 +44,7 @@
       "type": "patch",
       "source": "user-requested",
       "title": "Runtime-state recovery and trustworthy live health",
-      "telegramAnnouncement": "BallerWatch 5.8.1 restores web game/calendar data and makes the Live indicator reflect real runtime readiness.",
+      "webAnnouncement": "BallerWatch 5.8.1 restores web game/calendar data and makes the Live indicator reflect real runtime readiness.",
       "changes": [
         "Separated GitHub runtime-state content access from workflow dispatch credentials so the Worker uses the dedicated release/content token for encrypted state reads and writes instead of the scheduler dispatch token.",
         "Changed Worker health and web config readiness to fail when encrypted runtime-state cannot be loaded, rather than reporting a healthy shell while game data is unavailable.",
@@ -41,7 +59,7 @@
       "type": "minor",
       "source": "user-requested",
       "title": "User-first settings, fully encrypted runtime state, and interaction polish",
-      "telegramAnnouncement": "BallerWatch 5.8 makes Settings user-first, encrypts every runtime-state file, softens desktop carousel edge navigation, and adds a blurred iPhone status-area layer.",
+      "webAnnouncement": "BallerWatch 5.8 makes Settings user-first, encrypts every runtime-state file, softens desktop carousel edge navigation, and adds a blurred iPhone status-area layer.",
       "changes": [
         "Changed app-facing authentication language from owner to user and moved the PWA to /web/user routes while retaining legacy owner routes and existing device tokens for compatibility.",
         "Made every canonical file on runtime-state a complete AES-GCM envelope, including listener metadata, engineering review signals, and feature-summary projections; deployment migrates legacy files and refuses unencrypted writes.",
@@ -59,17 +77,17 @@
       "type": "minor",
       "source": "user-requested",
       "title": "Release-gated rollout, desktop carousel controls, and owner sign-in",
-      "telegramAnnouncement": "BallerWatch 5.7 adds desktop carousel edge navigation, app-native owner sign-in, and a safer release-gated production rollout.",
+      "webAnnouncement": "BallerWatch 5.7 adds desktop carousel edge navigation, app-native owner sign-in, and a safer release-gated production rollout.",
       "changes": [
         "Added subtle previous/next controls to the desktop match carousel: moving the pointer onto an available card edge reveals a glass arrow, and one click advances the same connected-card train animation used by touch swipes.",
-        "Added app-native owner password sign-in for Settings so normal use on new devices no longer requires a /webpair code after the owner password is configured.",
-        "Kept /webpair as a first-time bootstrap and recovery option; paired devices can set or rotate the owner password from Settings.",
+        "Added app-native owner password sign-in for Settings so normal use on new devices no longer requires a legacy pairing command code after the owner password is configured.",
+        "Kept legacy pairing command as a first-time bootstrap and recovery option; paired devices can set or rotate the owner password from Settings.",
         "Stores only a server-keyed salted password verifier inside encrypted runtime state; plaintext owner passwords are never persisted or sent through GitHub Actions.",
         "Introduced a production branch and GitHub Release promotion gate so merging product code to main no longer deploys the Pages app, Worker, Calendar bridge, weather bootstrap, or web runtime immediately.",
         "Added an hourly production eligibility check that requires a green validation run and at least a 24-hour candidate soak before publishing the version's GitHub Release; manual promotion can publish the validated version immediately.",
         "Pinned watcher, listener, watchdog, and external scheduler runtime execution to the promoted production branch so unreleased main code does not silently become production behavior.",
         "Changed repository versioning policy so documentation-only changes, behavior-preserving refactors, tests, CI/workflow maintenance, formatting, and other internal housekeeping do not receive a new SemVer version.",
-        "Decoupled the PWA/Worker from mandatory Telegram credentials: owner-authenticated web settings, public-safe Q&A, Web Push, and core Worker deployment can remain available with the Telegram adapter disabled."
+        "Decoupled the PWA/Worker from mandatory legacy messaging credentials: owner-authenticated web settings, public-safe Q&A, Web Push, and core Worker deployment can remain available with the legacy messaging adapter disabled."
       ]
     },
     {
@@ -78,12 +96,12 @@
       "type": "minor",
       "source": "user-requested",
       "title": "Frictionless feedback and multi-device pairing",
-      "telegramAnnouncement": "BallerWatch 5.6 makes wrong-answer feedback one tap on mobile without opening Settings, lets one /webpair code authorize multiple devices for 10 minutes, and restores autocomplete as a floating dropdown.",
+      "webAnnouncement": "BallerWatch 5.6 makes wrong-answer feedback one tap on mobile without opening Settings, lets one legacy pairing command code authorize multiple devices for 10 minutes, and restores autocomplete as a floating dropdown.",
       "changes": [
         "Decoupled wrong-answer feedback from owner settings: each successful web answer now carries a short-lived signed feedback token scoped to that exact question/answer, so marking an answer wrong does not grant or require owner-settings access.",
         "Added a visible one-tap Wrong answer / Undo wrong answer control for mobile while retaining desktop double-click as a shortcut.",
         "Prevented long-press selection/copy on the answer surface and used touch-action manipulation so the feedback interaction does not require globally disabling pinch zoom.",
-        "Changed /webpair codes from single-use to reusable for multiple devices until their existing 10-minute expiry; each paired device still receives its own independent 90-day signed owner token.",
+        "Changed legacy pairing command codes from single-use to reusable for multiple devices until their existing 10-minute expiry; each paired device still receives its own independent 90-day signed owner token.",
         "Stopped wrong-answer feedback from opening the owner/team Settings dialog on unpaired or expired devices; expired feedback authorization now asks the user to re-ask the question instead.",
         "Changed Ask BallerWatch autocomplete back to a floating glass overlay under the input, with bounded scrolling, so suggestions no longer stretch or squeeze the Ask card.",
         "Updated privacy documentation: anonymous Q&A is still not retained by default; the exact exchange is retained encrypted for up to 48 hours only if the visitor explicitly marks that answer wrong.",
@@ -96,7 +114,7 @@
       "type": "minor",
       "source": "user-requested",
       "title": "iPhone-first BallerWatch dashboard refresh",
-      "telegramAnnouncement": "BallerWatch 5.5 brings a new iPhone-first glass dashboard with a larger match spotlight, RSVP progress, brighter calendar selection, a polished Ask panel, and a floating notification inbox.",
+      "webAnnouncement": "BallerWatch 5.5 brings a new iPhone-first glass dashboard with a larger match spotlight, RSVP progress, brighter calendar selection, a polished Ask panel, and a floating notification inbox.",
       "changes": [
         "Reworked the PWA visual system to match the approved iPhone-first demo direction while preserving the existing public/private behavior and interaction model.",
         "Made the match spotlight date-first, added a dedicated pickup RSVP progress bar with spots-left status, strengthened weather presentation, and kept Directions/Share as large pill actions.",
@@ -137,7 +155,7 @@
       "type": "minor",
       "source": "user-requested",
       "title": "Compact carousel, exact review source, and review-driven fixes",
-      "telegramAnnouncement": "BallerWatch now sizes match cards from the true tallest match, contains long opened notifications, retains exact encrypted review Q&A, and answers weekday time/location questions deterministically.",
+      "webAnnouncement": "BallerWatch now sizes match cards from the true tallest match, contains long opened notifications, retains exact encrypted review Q&A, and answers weekday time/location questions deterministically.",
       "changes": [
         "Changed equal carousel sizing to measure only clean rendered match cards, excluding transient hint/error text that could make every card unnecessarily tall.",
         "Kept every outgoing/incoming carousel card at the same width and true tallest-match height for the current viewport.",
@@ -145,7 +163,7 @@
         "Changed encrypted 48-hour owner chat history to retain the original question and original bot answer as the review source; Groq summaries/classifications remain separate metadata only.",
         "Kept state/chat-review.json privacy-minimized and readable with only sanitized engineering signals, never raw question/answer text.",
         "Expanded authenticated web feedback capture limits and preserved original whitespace/text before encrypted persistence.",
-        "Fixed the runtime-state negative-feedback issue where weekday time/location questions such as 'Thursday time' could fall through to a broad AI schedule answer; both Telegram/listener and Worker fast paths now route them deterministically to pickup details first.",
+        "Fixed the runtime-state negative-feedback issue where weekday time/location questions such as 'Thursday time' could fall through to a broad AI schedule answer; both legacy messaging/listener and Worker fast paths now route them deterministically to pickup details first.",
         "Re-audited weather behavior: Open-Meteo uses America/Los_Angeles hourly data and only slots overlapping the actual match start/end window are summarized; existing regression tests reject whole-day/out-of-window rain spikes and cover overnight matches.",
         "Rechecked runtime-state request indexes: there are no open explicit feature requests, and the single readable negative-feedback signal is addressed by this release.",
         "Bumped the installed PWA shell and service-worker cache to 5.4.0."
@@ -157,7 +175,7 @@
       "type": "patch",
       "source": "user-reported",
       "title": "Historical notification-board deduplication",
-      "telegramAnnouncement": "BallerWatch now collapses older identical notification-board entries, keeping only the newest copy while preserving genuinely changed updates.",
+      "webAnnouncement": "BallerWatch now collapses older identical notification-board entries, keeping only the newest copy while preserving genuinely changed updates.",
       "changes": [
         "Deduplicates notification-board results after newest-first sorting using channel, tag, title, body, and URL as the visible payload identity.",
         "Keeps the newest copy of an identical historical notification and hides older duplicates already stored in runtime state.",
@@ -172,7 +190,7 @@
       "type": "patch",
       "source": "user-reported",
       "title": "Duplicate pickup notification suppression",
-      "telegramAnnouncement": "BallerWatch now suppresses unchanged pickup reminder notifications and prevents identical web-board entries from creating another push.",
+      "webAnnouncement": "BallerWatch now suppresses unchanged pickup reminder notifications and prevents identical web-board entries from creating another push.",
       "changes": [
         "Removed time-only hourly and 15-minute pickup reminders when the underlying match state has not changed.",
         "Pickup notifications now require a meaningful change in RSVP/capacity, roster, location, primary match selection, or owner status.",
@@ -187,7 +205,7 @@
       "type": "patch",
       "source": "user-requested",
       "title": "Equal carousel dimensions and weather-window verification",
-      "telegramAnnouncement": "BallerWatch carousel cards now stay the same size across matches, with stronger verification that weather reflects each game's actual start/end window.",
+      "webAnnouncement": "BallerWatch carousel cards now stay the same size across matches, with stronger verification that weather reflects each game's actual start/end window.",
       "changes": [
         "Measures every available match card at the current viewport width and locks the carousel to the maximum required card height so all outgoing and incoming cards have identical dimensions.",
         "Recomputes the shared card dimension after calendar refreshes and screen-size/orientation changes.",
@@ -204,7 +222,7 @@
       "type": "patch",
       "source": "user-reported",
       "title": "Connected-card match carousel",
-      "telegramAnnouncement": "BallerWatch match swiping now behaves like connected cards on one track: the current and next/previous game cards move together smoothly as you swipe.",
+      "webAnnouncement": "BallerWatch match swiping now behaves like connected cards on one track: the current and next/previous game cards move together smoothly as you swipe.",
       "changes": [
         "Replaced the fixed-frame content swipe with a true two-card horizontal carousel.",
         "Pre-renders the adjacent game as a separate full glass card beside the current card before it enters view.",
@@ -221,7 +239,7 @@
       "type": "patch",
       "source": "user-reported",
       "title": "Fixed-frame match swipe animation",
-      "telegramAnnouncement": "BallerWatch swipe navigation now keeps the match card frame fixed while only the match content moves, eliminating the page-sliding feel on iPhone.",
+      "webAnnouncement": "BallerWatch swipe navigation now keeps the match card frame fixed while only the match content moves, eliminating the page-sliding feel on iPhone.",
       "changes": [
         "Changed horizontal calendar swipe animation so the glass spotlight card itself never translates or fades.",
         "Added an inner spotlight swipe surface so only match content follows the finger while the card border/background remains stationary.",
@@ -237,7 +255,7 @@
       "type": "minor",
       "source": "user-requested",
       "title": "Swipe navigation between calendar game dates",
-      "telegramAnnouncement": "BallerWatch match cards can now be swiped left or right to move between game dates while the 14-day calendar highlight stays synchronized.",
+      "webAnnouncement": "BallerWatch match cards can now be swiped left or right to move between game dates while the 14-day calendar highlight stays synchronized.",
       "changes": [
         "Added horizontal swipe navigation to the main match spotlight on touch devices.",
         "Swipe left selects the next date in the 14-day calendar that has a published game; swipe right selects the previous game date.",
@@ -255,7 +273,7 @@
       "type": "patch",
       "source": "user-reported",
       "title": "Notification popup and sharing polish",
-      "telegramAnnouncement": "BallerWatch now uses generic Share, keeps the notification popup contained on iPhone, animates swipe-to-delete, and adds a subtle local Delete all action.",
+      "webAnnouncement": "BallerWatch now uses generic Share, keeps the notification popup contained on iPhone, animates swipe-to-delete, and adds a subtle local Delete all action.",
       "changes": [
         "Changed Send to Tesla back to a generic Share action so the iOS share sheet can expose whichever apps are actually available, including Tesla when present.",
         "Restored full game details plus the map link in the native share payload and clipboard fallback.",
@@ -272,15 +290,15 @@
       "type": "minor",
       "source": "user-requested",
       "title": "Notification inbox and Tesla destination sharing",
-      "telegramAnnouncement": "BallerWatch now has compact unread notifications with full-screen reading and swipe-to-delete, a smaller push toggle, Tesla destination sharing, and a Telegram footer shortcut.",
+      "webAnnouncement": "BallerWatch now has compact unread notifications with full-screen reading and swipe-to-delete, a smaller push toggle, Tesla destination sharing, and a legacy messaging footer shortcut.",
       "changes": [
         "Changed the notification popup into a compact inbox with truncated previews and stable local per-device read/deleted state.",
         "Opening a notification marks it read, opens a full-screen reader, and immediately decreases the bell badge because the badge now counts only unread non-deleted entries.",
         "Added swipe-left deletion that hides a notification locally on the current device without mutating the shared public notification-board history.",
         "Moved Web Push enable/disable into a smaller On/Off slider beside Refresh in the notification header while retaining the local notification test.",
         "Changed the match Share action to Send to Tesla and optimized the iOS share payload for Tesla's supported Share-to-car flow; clipboard/Tesla-app fallback is used when native sharing is unavailable.",
-        "Added a Telegram footer shortcut beside GitHub and Wiki.",
-        "Added regression coverage for unread counts, full-screen notification reading, swipe deletion, compact push controls, Tesla sharing, and the Telegram shortcut.",
+        "Added a legacy messaging footer shortcut beside GitHub and Wiki.",
+        "Added regression coverage for unread counts, full-screen notification reading, swipe deletion, compact push controls, Tesla sharing, and the legacy messaging shortcut.",
         "Bumped the installed PWA shell and service-worker cache to 5.2.0."
       ]
     },
@@ -290,7 +308,7 @@
       "type": "patch",
       "source": "user-reported",
       "title": "Reliable first launch after PWA releases",
-      "telegramAnnouncement": "BallerWatch no longer gets stuck on loading placeholders on the first Home Screen launch after a release; live data now loads without the service-worker update race.",
+      "webAnnouncement": "BallerWatch no longer gets stuck on loading placeholders on the first Home Screen launch after a release; live data now loads without the service-worker update race.",
       "changes": [
         "Diagnosed the first-launch placeholder state as a startup race: service-worker registration/update could delay live data hydration, while controllerchange could reload the page before initialization finished.",
         "Run service-worker registration and config, notification-board, and calendar hydration concurrently so slow iOS service-worker work cannot block visible match data.",
@@ -305,7 +323,7 @@
       "type": "patch",
       "source": "user-reported",
       "title": "Autocomplete, feedback toggle, and schedule-aware weather",
-      "telegramAnnouncement": "BallerWatch autocomplete no longer overlays nearby text, answer feedback toggles by double-click/tap, and weather refreshes immediately when a match date/time/location changes.",
+      "webAnnouncement": "BallerWatch autocomplete no longer overlays nearby text, answer feedback toggles by double-click/tap, and weather refreshes immediately when a match date/time/location changes.",
       "changes": [
         "Moved question autocomplete into normal document flow so suggestions expand the Ask section instead of drawing over the content below it.",
         "Changed wrong-answer feedback from long-press to double-click/double-tap: the first gesture queues negative feedback and the next identical gesture cancels it.",
@@ -323,7 +341,7 @@
       "type": "patch",
       "source": "user-reported",
       "title": "Live match expiry and automatic refresh",
-      "telegramAnnouncement": "BallerWatch now removes completed matches from Next Game by their Pacific end time, pulses the Live indicator, and refreshes data/app updates automatically while open.",
+      "webAnnouncement": "BallerWatch now removes completed matches from Next Game by their Pacific end time, pulses the Live indicator, and refreshes data/app updates automatically while open.",
       "changes": [
         "Fixed Next Game eligibility to use the match end time in America/Los_Angeles instead of keeping every game dated today until midnight.",
         "Pickup matches use their published end time, with a three-hour fallback only when no end time exists; league matches use their normalized two-hour window.",
@@ -341,7 +359,7 @@
       "type": "patch",
       "source": "user-reported",
       "title": "League weather fallback and pickup capacity",
-      "telegramAnnouncement": "BallerWatch now falls back to Seattle-area match weather when a RATS venue cannot be geocoded, and pickup spotlight details show reserved/capacity.",
+      "webAnnouncement": "BallerWatch now falls back to Seattle-area match weather when a RATS venue cannot be geocoded, and pickup spotlight details show reserved/capacity.",
       "changes": [
         "Diagnosed missing Tue 10/6 weather as a location-resolution gap: weather refresh completed successfully, but one league venue did not resolve to coordinates.",
         "Added a Seattle-area weather fallback only for Seattle RATS league games when exact venue geocoding is unavailable; exact venue coordinates remain preferred.",
@@ -357,7 +375,7 @@
       "type": "patch",
       "source": "user-reported",
       "title": "Typography normalization",
-      "telegramAnnouncement": "BallerWatch now uses a consistent native system font and normalized type scale across the Liquid Glass interface.",
+      "webAnnouncement": "BallerWatch now uses a consistent native system font and normalized type scale across the Liquid Glass interface.",
       "changes": [
         "Removed the unloaded Inter-first font declaration and standardized the PWA on the native system UI font stack.",
         "Normalized caption, small text, metadata, body, control, and section-heading sizes instead of many one-off font sizes.",
@@ -373,7 +391,7 @@
       "type": "minor",
       "source": "user-requested",
       "title": "Liquid Glass match spotlight",
-      "telegramAnnouncement": "BallerWatch now uses a Liquid Glass-style interface, and tapping a game day reuses the main match spotlight for the selected game.",
+      "webAnnouncement": "BallerWatch now uses a Liquid Glass-style interface, and tapping a game day reuses the main match spotlight for the selected game.",
       "changes": [
         "Reworked the PWA visual system with translucent glass surfaces, backdrop blur, specular highlights, softer depth, glass controls, and a non-blur fallback.",
         "Calendar game-day taps now update the existing top match spotlight with the selected game, weather, field, Directions, and Share instead of rendering a second detail section.",
@@ -389,7 +407,7 @@
       "type": "patch",
       "source": "implementation-refinement",
       "title": "Weather bootstrap and exact forecast window",
-      "telegramAnnouncement": "BallerWatch weather now requests exactly the 14 days shown in the calendar and refreshes once automatically after weather-related releases.",
+      "webAnnouncement": "BallerWatch weather now requests exactly the 14 days shown in the calendar and refreshes once automatically after weather-related releases.",
       "changes": [
         "Reduced Open-Meteo forecast_days from 16 to exactly 14 so the weather request matches the UI horizon and avoids unnecessary forecast volume.",
         "Added a notification-silent Refresh match weather workflow that runs once after weather/runtime-path releases and remains manually dispatchable.",
@@ -402,7 +420,7 @@
       "type": "major",
       "source": "user-requested",
       "title": "Two-week match weather dashboard",
-      "telegramAnnouncement": "BallerWatch now has a redesigned dashboard with a 14-day game calendar and match-window rain/weather, while the scheduler uses fewer unnecessary recurring jobs.",
+      "webAnnouncement": "BallerWatch now has a redesigned dashboard with a 14-day game calendar and match-window rain/weather, while the scheduler uses fewer unnecessary recurring jobs.",
       "changes": [
         "Redesigned the PWA into a match-day dashboard with a stronger next-game spotlight, compact app header, cleaner Q&A/search surface, and responsive two-week calendar.",
         "Added a 14-day calendar covering published pickup games with locations and monitored RATS league matches, with per-day game details and Google Maps directions.",
@@ -420,7 +438,7 @@
       "type": "patch",
       "source": "user-reported",
       "title": "Owner pairing reliability fix",
-      "telegramAnnouncement": "BallerWatch owner pairing now consumes codes through the listener workflow and returns readable errors instead of iPhone “Load failed” failures.",
+      "webAnnouncement": "BallerWatch owner pairing now consumes codes through the listener workflow and returns readable errors instead of iPhone “Load failed” failures.",
       "changes": [
         "Removed the direct runtime-state write from the successful Cloudflare owner-pairing path.",
         "Pair-code consumption now dispatches the existing listener workflow, which owns durable encrypted listener-state writes.",
@@ -434,7 +452,7 @@
       "type": "patch",
       "source": "user-requested",
       "title": "Inline mobile header actions",
-      "telegramAnnouncement": "BallerWatch now keeps the Settings gear and notification bell aligned on one row in the installed mobile app.",
+      "webAnnouncement": "BallerWatch now keeps the Settings gear and notification bell aligned on one row in the installed mobile app.",
       "changes": [
         "Removed the narrow-screen rule that stacked header actions vertically.",
         "Kept Settings and notification bell on one row in the installed iPhone PWA and mobile browser layout.",
@@ -448,7 +466,7 @@
       "type": "minor",
       "source": "user-requested",
       "title": "Wrong-answer feedback and sentence autocomplete",
-      "telegramAnnouncement": "BallerWatch web Q&A now supports full-sentence autocomplete and owner-paired press-and-hold feedback when an answer is wrong.",
+      "webAnnouncement": "BallerWatch web Q&A now supports full-sentence autocomplete and owner-paired press-and-hold feedback when an answer is wrong.",
       "changes": [
         "Added owner-paired press-and-hold feedback on the web answer card; holding for about 0.7 seconds queues the current question/answer as negative_feedback for the next review.",
         "Kept review feedback protected by the existing owner capability token so anonymous public visitors cannot inject engineering-review signals.",
@@ -465,10 +483,10 @@
       "type": "major",
       "source": "user-requested",
       "title": "Owner-paired web settings and shared review history",
-      "telegramAnnouncement": "BallerWatch web settings can now be securely paired to an owner device, and paired web Q&A joins the same privacy-minimized 48-hour review loop.",
+      "webAnnouncement": "BallerWatch web settings can now be securely paired to an owner device, and paired web Q&A joins the same privacy-minimized 48-hour review loop.",
       "changes": [
         "Added a top-right Settings gear with owner pairing, current pickup RSVP name, current monitored league teams, and encrypted settings updates.",
-        "Added a six-digit /webpair owner code flow. Pair codes are hashed in encrypted listener settings, expire after 10 minutes, and are consumed after successful pairing.",
+        "Added a six-digit legacy pairing command owner code flow. Pair codes are hashed in encrypted listener settings, expire after 10 minutes, and are consumed after successful pairing.",
         "Paired devices receive a signed 90-day owner capability token stored only in local browser storage; anonymous web access remains read-only and cannot retrieve private owner settings.",
         "Paired web Q&A now uses the same privacy-minimized 48-hour encrypted review-history pipeline as private bot conversations, including bug_candidate and feature_candidate classification. Anonymous web Q&A is not retained.",
         "Owner settings writes are narrowly scoped to pickup RSVP name and monitored league teams and are dispatched through the existing encrypted listener/runtime-state workflow.",
@@ -482,13 +500,13 @@
       "type": "minor",
       "source": "user-requested",
       "title": "Command suggestions and two-hour league windows",
-      "telegramAnnouncement": "BallerWatch web Q&A now supports slash commands and autosuggestions, the app layout is cleaner, and league games without a published end time use a two-hour window.",
+      "webAnnouncement": "BallerWatch web Q&A now supports slash commands and autosuggestions, the app layout is cleaner, and league games without a published end time use a two-hour window.",
       "changes": [
         "Removed the standalone main-page Push notifications card; enable/disable now lives only in the notification bell slider.",
         "Moved Home Screen installation help to a compact footer section for browser visits while keeping it hidden in the installed Home Screen app.",
         "Added a slash-command dropdown and natural-language autosuggestions to the one-question/one-answer box, with tap and keyboard selection.",
         "Added read-only web shortcuts for /today, /next, /teams, /count [day], /field [day], /time [day], /version, and /help.",
-        "Removed Telegram references from app-facing HTML and manifest description.",
+        "Removed legacy messaging references from app-facing HTML and manifest description.",
         "Changed the RATS fallback duration from one hour to two hours when the source does not publish an end time, and updated Calendar explanatory text and tests.",
         "Bumped the versioned PWA shell so installed devices refresh to the new interface."
       ]
@@ -499,7 +517,7 @@
       "type": "minor",
       "source": "user-requested",
       "title": "Next game card and closed-app notification test",
-      "telegramAnnouncement": "BallerWatch now shows the next upcoming game with Directions/Share and includes a safe notification test for the iPhone Home Screen app.",
+      "webAnnouncement": "BallerWatch now shows the next upcoming game with Directions/Share and includes a safe notification test for the iPhone Home Screen app.",
       "changes": [
         "Added a public-safe Next game card that selects the earliest upcoming pickup or RATS game using the same runtime data and ordering used by the existing fast path.",
         "Added a Google Maps Directions button using the published field/address and a native device Share action with clipboard fallback.",
@@ -514,7 +532,7 @@
       "type": "patch",
       "source": "user-requested",
       "title": "Bell push notification switch",
-      "telegramAnnouncement": "The BallerWatch notification bell now includes a quick Push notifications switch that stays synchronized with the full Settings controls.",
+      "webAnnouncement": "The BallerWatch notification bell now includes a quick Push notifications switch that stays synchronized with the full Settings controls.",
       "changes": [
         "Added a compact Push notifications on/off switch to the top-right notification bell panel.",
         "The bell switch uses the same Web Push subscribe/unsubscribe path as Settings, so both surfaces stay synchronized with the device's real browser subscription.",
@@ -528,7 +546,7 @@
       "type": "patch",
       "source": "user-requested",
       "title": "Reliable installed-app refresh",
-      "telegramAnnouncement": "BallerWatch Home Screen installs now refresh new web-app releases more aggressively instead of staying on stale cached assets.",
+      "webAnnouncement": "BallerWatch Home Screen installs now refresh new web-app releases more aggressively instead of staying on stale cached assets.",
       "changes": [
         "Versioned the deployed CSS, JavaScript, and service-worker URLs so each PWA release has cache-distinct static assets.",
         "Registered the service worker with updateViaCache disabled, explicitly checks for updates, and reloads once when a new worker takes control.",
@@ -542,7 +560,7 @@
       "type": "minor",
       "source": "user-requested",
       "title": "Installed app navigation",
-      "telegramAnnouncement": "The BallerWatch Home Screen app now hides installation help, opens recent updates from a top-right bell, and keeps push controls in Settings at the bottom.",
+      "webAnnouncement": "The BallerWatch Home Screen app now hides installation help, opens recent updates from a top-right bell, and keeps push controls in Settings at the bottom.",
       "changes": [
         "Hide and remove the Home Screen installation section whenever BallerWatch is already running as an installed standalone app, while retaining install help for normal browser visits.",
         "Moved the recent notification board out of the main page into a top-right bell button that opens a dedicated notification dialog with refresh and close controls.",
@@ -557,7 +575,7 @@
       "type": "patch",
       "source": "user-requested",
       "title": "Least-privilege GitHub Pages activation",
-      "telegramAnnouncement": "BallerWatch web app deployment now follows GitHub's standard Pages activation path without requiring an admin-level automation token.",
+      "webAnnouncement": "BallerWatch web app deployment now follows GitHub's standard Pages activation path without requiring an admin-level automation token.",
       "changes": [
         "Removed the failed attempt to self-enable GitHub Pages with CRON_GITHUB_PAT; GitHub requires repository Administration-write in addition to Pages-write for that operation.",
         "Changed the Pages workflow to detect whether the site is activated, report the exact one-time Settings step when it is not, and avoid turning that external setup requirement into a failed release workflow.",
@@ -571,10 +589,10 @@
       "type": "patch",
       "source": "user-requested",
       "title": "Automatic Pages enablement and push-reset recovery",
-      "telegramAnnouncement": "The BallerWatch web app deployment now enables GitHub Pages automatically and Web Push recovers cleanly after a factory reset.",
+      "webAnnouncement": "The BallerWatch web app deployment now enables GitHub Pages automatically and Web Push recovers cleanly after a factory reset.",
       "changes": [
         "Changed the GitHub Pages deployment to self-enable Pages using the existing CRON_GITHUB_PAT when no Pages site has been configured yet, avoiding a manual Settings step when the token has sufficient permission.",
-        "Added deployment verification for the live Cloudflare PWA API surface in addition to the existing Telegram webhook/health verification.",
+        "Added deployment verification for the live Cloudflare PWA API surface in addition to the existing legacy messaging webhook/health verification.",
         "Changed PURGE to recreate a fresh empty encrypted VAPID identity immediately after clearing subscriptions and board state so the PWA can be re-enabled without another deployment.",
         "Made the installed PWA detect a rotated VAPID application key, discard its stale browser subscription, and guide the user to enable push again."
       ]
@@ -585,12 +603,12 @@
       "type": "minor",
       "source": "user-requested",
       "title": "iPhone web app and Web Push fallback",
-      "telegramAnnouncement": "BallerWatch now has an installable iPhone web app with a notification board, read-only Q&A, and Web Push fallback when Telegram is unavailable.",
+      "webAnnouncement": "BallerWatch now has an installable iPhone web app with a notification board, read-only Q&A, and Web Push fallback when legacy messaging is unavailable.",
       "changes": [
         "Added an installable GitHub Pages PWA at vudh1.github.io/ballerwatch with an iPhone Home Screen experience, offline app shell, dedicated touch icon, notification board, and one-question/one-answer read-only Q&A.",
         "Added standards-based Web Push without a new database or notification provider: VAPID keys and browser subscriptions are generated/managed by GitHub Actions and stored AES-GCM encrypted on runtime-state.",
-        "Added Cloudflare Worker endpoints for public-safe web configuration, board reads, read-only Q&A, and encrypted subscribe/unsubscribe registration while keeping state-changing commands on Telegram.",
-        "Extended the existing pickup, real RATS schedule-change, and daily version notification allowlist to a Telegram-independent Web Push channel; Telegram delivery failure no longer prevents the public-safe fallback from being recorded and signaled.",
+        "Added Cloudflare Worker endpoints for public-safe web configuration, board reads, read-only Q&A, and encrypted subscribe/unsubscribe registration while keeping state-changing commands on legacy messaging.",
+        "Extended the existing pickup, real RATS schedule-change, and daily version notification allowlist to a legacy messaging-independent Web Push channel; legacy messaging delivery failure no longer prevents the public-safe fallback from being recorded and signaled.",
         "Kept Workers KV absent, Cloudflare Cron Triggers disabled, cron-job.org as the 2/5/10-minute scheduler, and the single-parentless runtime-state snapshot model unchanged.",
         "Added privacy regression coverage proving the public web path strips RSVP/waitlist names, owner settings, secrets, and private push material."
       ]
@@ -601,7 +619,7 @@
       "type": "patch",
       "source": "user-requested",
       "title": "Automatic GitHub Wiki synchronization",
-      "telegramAnnouncement": "The repository Wiki now stays synchronized automatically with the canonical docs/wiki documentation.",
+      "webAnnouncement": "The repository Wiki now stays synchronized automatically with the canonical docs/wiki documentation.",
       "changes": [
         "Made docs/wiki the single source of truth for the GitHub Wiki and removed the separate WIKI_TOKEN dependency.",
         "Changed the Publish wiki workflow to use the repository GITHUB_TOKEN with contents: write and mirror docs/wiki on every relevant main update.",
@@ -614,13 +632,13 @@
       "type": "minor",
       "source": "user-requested",
       "title": "Unified Node.js runtime",
-      "telegramAnnouncement": "BallerWatch now uses one Node.js runtime for league automation, Calendar reconciliation, tests, and notifications while preserving existing behavior.",
+      "webAnnouncement": "BallerWatch now uses one Node.js runtime for league automation, Calendar reconciliation, tests, and notifications while preserving existing behavior.",
       "changes": [
         "Migrated the six remaining league runtime Python modules and their tests to dependency-free Node.js ECMAScript modules.",
         "Removed Python files, Python setup, compilation, unittest discovery, and Python invocations from GitHub Actions.",
         "Preserved existing RATS tracking keys and Calendar fingerprints with Python-compatible canonical hashing plus Pacific DST behavior.",
-        "Added Node parity coverage for RATS normalization/retries, Calendar gate/pair/purge/sync, Telegram schedule notifications, and Apps Script in-place event updates.",
-        "Kept production architecture, runtime-state encryption, Calendar targeting, cron-job.org scheduling, and Telegram notification policy unchanged."
+        "Added Node parity coverage for RATS normalization/retries, Calendar gate/pair/purge/sync, legacy messaging schedule notifications, and Apps Script in-place event updates.",
+        "Kept production architecture, runtime-state encryption, Calendar targeting, cron-job.org scheduling, and legacy messaging notification policy unchanged."
       ]
     },
     {
@@ -629,10 +647,10 @@
       "type": "patch",
       "source": "user-requested",
       "title": "RATS transient-source resilience",
-      "telegramAnnouncement": "RATS schedule refresh is now more resilient to temporary source outages while preserving verified Calendar state.",
+      "webAnnouncement": "RATS schedule refresh is now more resilient to temporary source outages while preserving verified Calendar state.",
       "changes": [
         "Retry only transient RATS source failures with bounded exponential backoff, while permanent authentication/configuration errors fail immediately.",
-        "When a valid last-good league schedule already exists, retain it during transient RATS outages instead of failing the production watcher or applying unverified Calendar/Telegram changes.",
+        "When a valid last-good league schedule already exists, retain it during transient RATS outages instead of failing the production watcher or applying unverified Calendar/legacy messaging changes.",
         "Added a regression that executes the Apps Script update path and proves an existing tracked Calendar event is updated in place rather than duplicated.",
         "Corrected current purge documentation to reflect that BallerWatch-managed RATS Calendar events are removed while unrelated Calendar events remain untouched."
       ]
@@ -643,7 +661,7 @@
       "type": "patch",
       "source": "user-requested",
       "title": "Index-independent Calendar pairing",
-      "telegramAnnouncement": "Calendar pairing no longer depends on Google Calendar search indexing, so a fresh target marker can be detected immediately.",
+      "webAnnouncement": "Calendar pairing no longer depends on Google Calendar search indexing, so a fresh target marker can be detected immediately.",
       "changes": [
         "Changed Calendar target pairing to scan a bounded 21-day event window directly instead of relying on Google Calendar full-text search indexing.",
         "Pairing checks the default Calendar first, then other visible calendars, while preserving the unique-marker proof and private Calendar ID storage."
@@ -655,7 +673,7 @@
       "type": "patch",
       "source": "user-requested",
       "title": "Pair Calendar bridge to intended target",
-      "telegramAnnouncement": "Calendar sync is now privately paired to the intended Google Calendar instead of relying on the Apps Script owner's default calendar.",
+      "webAnnouncement": "Calendar sync is now privately paired to the intended Google Calendar instead of relying on the Apps Script owner's default calendar.",
       "changes": [
         "Added private Calendar pairing so the Apps Script bridge targets the intended Google Calendar rather than blindly using the deployment owner's default calendar.",
         "Pairing discovers a temporary non-sensitive marker across calendars visible to the Apps Script account, stores only the matched calendar ID in Script Properties, and deletes the marker after pairing.",
@@ -671,7 +689,7 @@
       "type": "patch",
       "source": "user-requested",
       "title": "Stale Calendar mapping cleanup",
-      "telegramAnnouncement": "Calendar purge now treats mappings to already-deleted events as harmless stale state instead of failing the full reset.",
+      "webAnnouncement": "Calendar purge now treats mappings to already-deleted events as harmless stale state instead of failing the full reset.",
       "changes": [
         "Changed Calendar PURGE so Script Property mappings to events that no longer exist or were already deleted are cleared as stale state rather than treated as fatal errors.",
         "Kept all other Calendar deletion, permission, API, and marker-scan errors fail-closed.",
@@ -684,7 +702,7 @@
       "type": "patch",
       "source": "user-requested",
       "title": "Calendar purge reliability fix",
-      "telegramAnnouncement": "Calendar reset is now more resilient and verifies the deployed bridge version before deleting BallerWatch-managed match events.",
+      "webAnnouncement": "Calendar reset is now more resilient and verifies the deployed bridge version before deleting BallerWatch-managed match events.",
       "changes": [
         "Hardened Calendar purge so one stale or inaccessible event cannot abort deletion of all other BallerWatch-managed events.",
         "Changed the legacy marker safety scan to bounded yearly Calendar queries and added safe bridge error reporting for operational debugging.",
@@ -698,7 +716,7 @@
       "type": "minor",
       "source": "user-requested",
       "title": "Full reset and workflow cleanup",
-      "telegramAnnouncement": "Full reset now clears BallerWatch-managed RATS Calendar events as well as runtime state, and obsolete maintenance workflows were removed.",
+      "webAnnouncement": "Full reset now clears BallerWatch-managed RATS Calendar events as well as runtime state, and obsolete maintenance workflows were removed.",
       "changes": [
         "Expanded PURGE so it deletes only BallerWatch-managed RATS Calendar events through the authenticated Apps Script bridge before clearing runtime-state.",
         "Added a safe Calendar purge action that removes tracked event IDs and marker-tagged legacy BallerWatch events without touching unrelated Calendar events.",
@@ -712,14 +730,14 @@
       "date": "2026-10-01",
       "type": "minor",
       "source": "user-requested",
-      "title": "Quiet Telegram notification policy",
-      "telegramAnnouncement": "Telegram is now quiet by default: only RSVP watcher alerts, direct answers, one combined daily version update, and real league schedule changes are sent.",
+      "title": "Quiet legacy messaging notification policy",
+      "webAnnouncement": "legacy messaging is now quiet by default: only RSVP watcher alerts, direct answers, one combined daily version update, and real league schedule changes are sent.",
       "changes": [
-        "Restricted proactive Telegram output to RSVP watcher notifications, real league schedule changes, and a single combined version announcement per Pacific day; direct replies to user questions remain unchanged.",
-        "Made watchdog failures, watchdog recovery, CI/testing/build activity, unsolicited setup reminders, invalid-setting reminders, and score-only changes silent on Telegram.",
+        "Restricted proactive legacy messaging output to RSVP watcher notifications, real league schedule changes, and a single combined version announcement per Pacific day; direct replies to user questions remain unchanged.",
+        "Made watchdog failures, watchdog recovery, CI/testing/build activity, unsolicited setup reminders, invalid-setting reminders, and score-only changes silent on legacy messaging.",
         "Combined every not-yet-announced release into one daily version message using user-facing release summaries instead of commit, pull-request, or other engineering details.",
-        "Changed league Calendar fingerprints so score-only changes do not trigger schedule reconciliation or Telegram schedule-update messages.",
-        "Removed the standalone Telegram score notifier."
+        "Changed league Calendar fingerprints so score-only changes do not trigger schedule reconciliation or legacy messaging schedule-update messages.",
+        "Removed the standalone legacy messaging score notifier."
       ]
     },
     {
@@ -778,11 +796,11 @@
       "date": "2026-10-01",
       "type": "patch",
       "source": "user-requested",
-      "title": "Webhook-only Telegram listener hardening",
+      "title": "Webhook-only legacy messaging listener hardening",
       "changes": [
-        "Removed the GitHub listener's legacy Telegram getUpdates fallback so empty workflow dispatches no-op instead of conflicting with the active Cloudflare webhook.",
-        "Processed Cloudflare fast-path history-only dispatches directly before Telegram update handling, fixing failed history persistence runs after the runtime purge.",
-        "Made primary cron-job.org scheduler synchronization explicitly disable any legacy Telegram listener polling schedule whenever the management API is available."
+        "Removed the GitHub listener's legacy legacy messaging getUpdates fallback so empty workflow dispatches no-op instead of conflicting with the active Cloudflare webhook.",
+        "Processed Cloudflare fast-path history-only dispatches directly before legacy messaging update handling, fixing failed history persistence runs after the runtime purge.",
+        "Made primary cron-job.org scheduler synchronization explicitly disable any legacy legacy messaging listener polling schedule whenever the management API is available."
       ]
     },
     {
@@ -793,7 +811,7 @@
       "title": "Optional cron-job.org management API during quota exhaustion",
       "changes": [
         "Made the post-merge cron-job.org setup workflow tolerate only temporary management API failures such as HTTP 429/502/503/504 or network timeouts, while authentication errors remain blocking.",
-        "Made Telegram Worker deployment independent of temporary cron-job.org management API availability after the Worker, secrets, webhook, health check, and zero-Cloudflare-Cron verification have succeeded.",
+        "Made legacy messaging Worker deployment independent of temporary cron-job.org management API availability after the Worker, secrets, webhook, health check, and zero-Cloudflare-Cron verification have succeeded.",
         "Kept scheduler correctness fail-closed whenever cron-job.org responds: missing, disabled, duplicated, mistargeted, or wrong-cadence jobs still fail verification."
       ]
     },
@@ -820,7 +838,7 @@
       "title": "Explicit Cloudflare Cron Trigger removal",
       "changes": [
         "Fixed the 2.4.0 cutover so Wrangler explicitly publishes triggers.crons=[]; omitting the property leaves previously deployed Cloudflare Cron Triggers in place.",
-        "Added a deployment verification step that reads the Cloudflare Worker schedules API and fails unless the ballerwatch-telegram Worker has zero Cron Triggers after deployment."
+        "Added a deployment verification step that reads the Cloudflare Worker schedules API and fails unless the ballerwatch-legacy messaging Worker has zero Cron Triggers after deployment."
       ]
     },
     {
@@ -830,11 +848,11 @@
       "source": "user-requested",
       "title": "KV-free runtime and 48-hour chat review",
       "changes": [
-        "Removed Workers KV and Cloudflare Cron Triggers from the production runtime to eliminate the daily KV request-limit risk; Cloudflare now hosts only the Telegram webhook and read-only fast path with short-lived Cache API use.",
+        "Removed Workers KV and Cloudflare Cron Triggers from the production runtime to eliminate the daily KV request-limit risk; Cloudflare now hosts only the legacy messaging webhook and read-only fast path with short-lived Cache API use.",
         "Made cron-job.org the primary 2/5/10-minute scheduler and moved durable generated state to a dedicated runtime-state Git branch, with private runtime payloads remaining AES-GCM encrypted and main staying release-oriented.",
         "Added one-time migration from the existing Cloudflare KV runtime into the runtime-state branch before the KV binding is removed, while retaining encrypted GitHub Actions cache as a recovery source.",
-        "Replaced automatic feature-request creation for unanswered questions and thumbs-down feedback with a 48-hour Groq-condensed encrypted Telegram history and privacy-minimized bug/feature/negative-feedback review signals.",
-        "Kept the Telegram fast path lightweight by persisting condensed history asynchronously to the runtime-state branch after the reply, using the GitHub listener only as a persistence fallback."
+        "Replaced automatic feature-request creation for unanswered questions and thumbs-down feedback with a 48-hour Groq-condensed encrypted legacy messaging history and privacy-minimized bug/feature/negative-feedback review signals.",
+        "Kept the legacy messaging fast path lightweight by persisting condensed history asynchronously to the runtime-state branch after the reply, using the GitHub listener only as a persistence fallback."
       ]
     },
     {
@@ -903,7 +921,7 @@
       "title": "Cloudflare-first runtime",
       "changes": [
         "Cut over recurring pickup, RATS and health checks from cron-job.org/GitHub Actions polling to Cloudflare Cron Triggers with private KV hot state.",
-        "Common Telegram read-only questions now stay on the Cloudflare fast path with structured deterministic intent handling, bounded Groq intent classification and short conversation context.",
+        "Common legacy messaging read-only questions now stay on the Cloudflare fast path with structured deterministic intent handling, bounded Groq intent classification and short conversation context.",
         "Cloudflare performs lightweight source change detection and dispatches GitHub pickup/league reconciliation only when data changes; GitHub remains responsible for CI, deployment, durable encrypted repository state, Calendar reconciliation and state-changing fallback commands.",
         "Added notification-silent live source verification and KV priming before edge activation, stable webhook authentication, serialized Worker deployments and automatic cron-job.org fallback restoration if an edge deployment fails.",
         "Moved watchdog health semantics from GitHub workflow freshness to Cloudflare KV/source heartbeats and hardened source fingerprints so failed reconciliation dispatches are retried."
@@ -931,7 +949,7 @@
       "source": "user-requested",
       "title": "Cloudflare fast path and AI intent routing",
       "changes": [
-        "Added a Cloudflare read-only fast path that answers common Telegram questions directly from encrypted GitHub state without starting a GitHub Actions runner.",
+        "Added a Cloudflare read-only fast path that answers common legacy messaging questions directly from encrypted GitHub state without starting a GitHub Actions runner.",
         "Added short-lived conversation context so follow-up questions such as 'what field?', 'what time?' and 'how many?' can refer to the previously discussed pickup date.",
         "Added Groq intent classification at the edge for natural-language read-only questions while keeping facts and actions deterministic.",
         "Split the free AI budget into 25 edge classifications and 25 GitHub fallback calls per UTC day.",
@@ -958,9 +976,9 @@
       "title": "Direct-main maintenance and silent testing",
       "changes": [
         "Allowed validated repository maintenance changes to commit directly to main again and removed the PR-only governance requirement.",
-        "Made the manual smoke test notification-silent: it verifies refreshed pickup and league data without sending Telegram messages or changing Google Calendar.",
+        "Made the manual smoke test notification-silent: it verifies refreshed pickup and league data without sending legacy messaging messages or changing Google Calendar.",
         "Removed default monitored team names from README while keeping the configured defaults in code.",
-        "Updated scheduled ChatGPT maintenance guidance to sync current repository instructions before changes and avoid Telegram notifications during testing."
+        "Updated scheduled ChatGPT maintenance guidance to sync current repository instructions before changes and avoid legacy messaging notifications during testing."
       ]
     },
     {
@@ -1006,7 +1024,7 @@
       "title": "Default league team bootstrap",
       "changes": [
         "Added Third Touch FC and PhoSaiGon as built-in league defaults in that priority order for clean/fresh state.",
-        "Encrypted Telegram-managed league team state remains authoritative after bootstrap, so teams can still be added, removed, or renamed.",
+        "Encrypted legacy messaging-managed league team state remains authoritative after bootstrap, so teams can still be added, removed, or renamed.",
         "Purged previously retrieved pickup and league match snapshots before clean-bootstrap end-to-end testing."
       ]
     },
@@ -1029,7 +1047,7 @@
       "title": "One-time release announcements",
       "changes": [
         "Replaced the single last-announcement marker with persisted announcement-ID history so each enabled release/feature announcement is delivered only once per stored bot state.",
-        "Historical announcements are marked seen during migration so older releases cannot rotate back into Telegram.",
+        "Historical announcements are marked seen during migration so older releases cannot rotate back into legacy messaging.",
         "Cleared all currently stored public/redacted and encrypted/private feature suggestions."
       ]
     },
@@ -1064,7 +1082,7 @@
       "changes": [
         "Added an agent skill for safely discovering and verifying the pickup UPSTREAM_ENDPOINT without committing its live value.",
         "Added repository agent guidance so future maintenance uses the endpoint-discovery procedure and preserves privacy.",
-        "Clarified that TRACKER_STATE_KEY is optional when the existing deployment uses the TELEGRAM_BOT_TOKEN encryption fallback.",
+        "Clarified that TRACKER_STATE_KEY is optional when the existing deployment uses the retired adapter token encryption fallback.",
         "Expanded the validation workflow triggers so version history and operational guidance changes are validated automatically."
       ]
     },
@@ -1076,7 +1094,7 @@
       "title": "Versioned release history",
       "changes": [
         "Added a SemVer release ledger with current version and chronological change history.",
-        "Telegram feature announcements now include the release version.",
+        "legacy messaging feature announcements now include the release version.",
         "Added /version and version commands to report the current release and latest changes.",
         "Scheduled ChatGPT maintenance tasks must record a release entry whenever they change the product."
       ]
@@ -1100,7 +1118,7 @@
       "source": "migration-baseline",
       "title": "BallerWatch consolidated baseline",
       "changes": [
-        "Consolidated pickup, league, Telegram, Calendar, watchdog, privacy, and feature-builder automation into BallerWatch.",
+        "Consolidated pickup, league, legacy messaging, Calendar, watchdog, privacy, and feature-builder automation into BallerWatch.",
         "Kept live soccer data and user configuration encrypted at rest.",
         "Added watchdog recovery, manual smoke testing, and privacy-redacted feature requests."
       ]
