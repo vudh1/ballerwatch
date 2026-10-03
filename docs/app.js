@@ -67,12 +67,16 @@ const els = {
   nextGameCapacityFill: document.querySelector("#next-game-capacity-fill"),
   nextGameWeather: document.querySelector("#next-game-weather"),
   nextGameActions: document.querySelector("#next-game-actions"),
+  nextGameRsvp: document.querySelector("#next-game-rsvp"),
   nextGameDirections: document.querySelector("#next-game-directions"),
   nextGameShare: document.querySelector("#next-game-share"),
   nextGameHint: document.querySelector("#next-game-hint"),
   testNotification: document.querySelector("#test-notification"),
   deleteAllNotifications: document.querySelector("#delete-all-notifications"),
   testNotificationStatus: document.querySelector("#test-notification-status"),
+  calendarCard: document.querySelector("#two-week-calendar"),
+  calendarTitle: document.querySelector("#calendar-title"),
+  calendarExpandToggle: document.querySelector("#calendar-expand-toggle"),
   calendarGrid: document.querySelector("#calendar-grid"),
   calendarGamePicker: document.querySelector("#calendar-game-picker"),
   calendarUpdated: document.querySelector("#calendar-updated"),
@@ -84,6 +88,8 @@ let currentCalendar = null;
 let currentBoardEntries = [];
 let selectedCalendarDate = "";
 let selectedCalendarGameId = "";
+let calendarWindowStart = "";
+let calendarExpanded = false;
 let serviceWorkerRegistration = null;
 let liveRefreshInFlight = false;
 let initialLoadComplete = false;
@@ -297,21 +303,36 @@ function ownerHeaders() {
 }
 
 async function api(path, options = {}) {
-  const response = await fetch(API + path, {
-    cache: "no-store",
-    ...options,
-    headers: {
-      "content-type": "application/json",
-      ...(options.headers || {}),
-    },
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok || payload.ok === false) {
-    const error = new Error(payload.error || `Request failed (HTTP ${response.status})`);
-    error.status = response.status;
-    throw error;
+  const { retryNetwork = false, ...requestOptions } = options;
+  const attempts = retryNetwork ? 2 : 1;
+  let lastError = null;
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      const response = await fetch(API + path, {
+        cache: "no-store",
+        ...requestOptions,
+        headers: {
+          "content-type": "application/json",
+          ...(requestOptions.headers || {}),
+        },
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload.ok === false) {
+        const error = new Error(payload.error || `Request failed (HTTP ${response.status})`);
+        error.status = response.status;
+        throw error;
+      }
+      return payload;
+    } catch (error) {
+      lastError = error;
+      const networkFailure = error instanceof TypeError || /load failed|failed to fetch/i.test(String(error?.message || ""));
+      if (!retryNetwork || !networkFailure || attempt === attempts - 1) throw error;
+      await new Promise((resolve) => window.setTimeout(resolve, 250));
+    }
   }
-  return payload;
+
+  throw lastError || new Error("Request failed.");
 }
 
 function showLoginSettings(message = "") {
@@ -340,6 +361,7 @@ async function loadOwnerSettings() {
   try {
     const payload = await api("/web/user/settings", {
       headers: ownerHeaders(),
+      retryNetwork: true,
     });
     showOwnerSettings(payload.settings || {});
     els.ownerSettingsStatus.textContent = "";
@@ -393,6 +415,7 @@ async function saveOwnerSettings(event) {
     const payload = await api("/web/user/settings", {
       method: "POST",
       headers: ownerHeaders(),
+      retryNetwork: true,
       body: JSON.stringify({
         ownerName: els.ownerName.value.trim(),
         teams,
@@ -773,6 +796,7 @@ function spotlightModel(game, label = "NEXT GAME") {
       capacityPercent: 0,
       spotsText: "",
       weather: "",
+      rsvp: "",
       directions: "",
       actionsHidden: true,
     };
@@ -817,6 +841,7 @@ function spotlightModel(game, label = "NEXT GAME") {
       game.weatherStale,
       game.weatherApproximate,
     ),
+    rsvp: game.kind === "pickup" ? String(game.rsvpUrl || "") : "",
     directions: googleMapsUrl(game.mapsQuery),
     actionsHidden: false,
   };
@@ -837,6 +862,14 @@ function applySpotlightModel(targets, game, label = "NEXT GAME") {
   targets.weather.hidden = !model.weather;
   targets.actions.hidden = model.actionsHidden;
   targets.hint.textContent = "";
+
+  if (model.rsvp) {
+    targets.rsvp.href = model.rsvp;
+    targets.rsvp.hidden = false;
+  } else {
+    targets.rsvp.removeAttribute("href");
+    targets.rsvp.hidden = true;
+  }
 
   if (model.directions) {
     targets.directions.href = model.directions;
@@ -860,6 +893,7 @@ function currentSpotlightTargets() {
     capacityFill: els.nextGameCapacityFill,
     weather: els.nextGameWeather,
     actions: els.nextGameActions,
+    rsvp: els.nextGameRsvp,
     directions: els.nextGameDirections,
     hint: els.nextGameHint,
   };
@@ -914,6 +948,7 @@ function buildSpotlightTrainCard(game) {
       capacityFill: role("next-game-capacity-fill"),
       weather: role("next-game-weather"),
       actions: role("next-game-actions"),
+      rsvp: role("next-game-rsvp"),
       directions: role("next-game-directions"),
       hint: role("next-game-hint"),
     },
@@ -1011,12 +1046,127 @@ function renderCalendarGamePicker(games, selectedId = "") {
   }
 }
 
+function isoDayDistance(startDate, endDate) {
+  const parse = (value) => {
+    const [year, month, day] = String(value).split("-").map(Number);
+    return Date.UTC(year, month - 1, day, 12);
+  };
+  return Math.round((parse(endDate) - parse(startDate)) / 86_400_000);
+}
+
+function latestCalendarGameDate() {
+  const dates = (currentCalendar?.games || [])
+    .map((game) => String(game?.date || ""))
+    .filter(Boolean)
+    .sort();
+  return dates.at(-1) || currentCalendar?.startDate || "";
+}
+
+function calendarVisibleDates() {
+  if (!currentCalendar?.startDate) return [];
+  const base = currentCalendar.startDate;
+
+  if (calendarExpanded) {
+    const latest = latestCalendarGameDate();
+    const span = Math.max(14, isoDayDistance(base, latest) + 1);
+    const days = Math.ceil(span / 7) * 7;
+    return Array.from({ length: days }, (_, index) => addIsoDays(base, index));
+  }
+
+  const start = calendarWindowStart || base;
+  return Array.from({ length: 14 }, (_, index) => addIsoDays(start, index));
+}
+
+function syncCalendarExpansionUi() {
+  els.calendarCard?.classList.toggle("is-expanded", calendarExpanded);
+  els.calendarCard?.setAttribute("aria-expanded", String(calendarExpanded));
+  if (els.calendarTitle) {
+    els.calendarTitle.textContent = calendarExpanded ? "Full Schedule" : "14-Day Calendar";
+  }
+  if (els.calendarExpandToggle) {
+    els.calendarExpandToggle.textContent = calendarExpanded ? "Collapse" : "Expand";
+    els.calendarExpandToggle.setAttribute("aria-expanded", String(calendarExpanded));
+  }
+}
+
+function renderCalendarGrid() {
+  if (!currentCalendar?.startDate) return;
+  els.calendarGrid.replaceChildren();
+
+  const gamesByDate = new Map();
+  for (const game of currentCalendar.games || []) {
+    const list = gamesByDate.get(game.date) || [];
+    list.push(game);
+    gamesByDate.set(game.date, list);
+  }
+
+  for (const date of calendarVisibleDates()) {
+    const games = gamesByDate.get(date) || [];
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "calendar-day";
+    button.dataset.date = date;
+    button.disabled = games.length === 0;
+    button.setAttribute("aria-selected", String(date === selectedCalendarDate));
+
+    const weekday = document.createElement("span");
+    weekday.className = "calendar-weekday";
+    weekday.textContent = dateDisplay(date, { weekday: "short" });
+
+    const day = document.createElement("strong");
+    day.className = "calendar-number";
+    day.textContent = dateDisplay(date, { day: "numeric" });
+
+    const signal = document.createElement("span");
+    signal.className = games.length ? "calendar-signal has-game" : "calendar-signal";
+    signal.textContent = games.length > 1 ? String(games.length) : games.length ? "•" : "";
+
+    button.append(weekday, day, signal);
+
+    if (games.length) {
+      const weatherGame = [...games].sort((a, b) => gameWeatherRank(b) - gameWeatherRank(a))[0];
+      const weather = document.createElement("span");
+      weather.className = "calendar-mini-weather";
+      weather.textContent = weatherGame.weather
+        ? `${weatherGlyph(weatherGame.weather.weatherCode)} ${weatherGame.weather.rainProbability ?? "—"}%`
+        : "⚽";
+      button.append(weather);
+    }
+
+    button.addEventListener("click", () => selectCalendarDate(date, { scrollToSpotlight: true }));
+    els.calendarGrid.append(button);
+  }
+}
+
+function ensureCalendarDateVisible(date) {
+  if (!currentCalendar?.startDate || calendarExpanded || !date) return false;
+
+  const base = currentCalendar.startDate;
+  let start = calendarWindowStart || base;
+  let end = addIsoDays(start, 13);
+
+  while (date > end) {
+    start = addIsoDays(start, 7);
+    end = addIsoDays(start, 13);
+  }
+  while (date < start && start > base) {
+    const candidate = addIsoDays(start, -7);
+    start = candidate < base ? base : candidate;
+  }
+
+  if (start === calendarWindowStart) return false;
+  calendarWindowStart = start;
+  renderCalendarGrid();
+  return true;
+}
+
 function selectCalendarDate(date, { scrollToSpotlight = false } = {}) {
   if (!currentCalendar) return;
   const games = (currentCalendar.games || []).filter((game) => game.date === date);
   if (!games.length) return;
 
   selectedCalendarDate = date;
+  ensureCalendarDateVisible(date);
   for (const button of els.calendarGrid.querySelectorAll(".calendar-day")) {
     button.setAttribute("aria-selected", String(button.dataset.date === date));
   }
@@ -1070,197 +1220,10 @@ function syncSpotlightEdgeControls() {
   els.spotlightNext.disabled = !adjacentCalendarSelection(1);
 }
 
-function installSpotlightSwipe() {
-  let touchStartX = null;
-  let touchStartY = null;
-  let horizontalGesture = false;
-  let train = null;
-  let settling = false;
-
-  const carousel = els.spotlightCarousel;
-  const current = els.nextGameCard;
-
-  const gap = () => {
-    const value = Number.parseFloat(
-      getComputedStyle(carousel).getPropertyValue("--spotlight-train-gap"),
-    );
-    return Number.isFinite(value) ? value : 12;
-  };
-
-  const clearInlineMotion = () => {
-    current.classList.remove("is-train-dragging", "is-train-settling");
-    current.style.removeProperty("transform");
-    document.documentElement.classList.remove("spotlight-swipe-active");
-
-    if (train?.preview) train.preview.remove();
-    train = null;
-  };
-
-  const resetGesture = () => {
-    clearInlineMotion();
-    touchStartX = null;
-    touchStartY = null;
-    horizontalGesture = false;
-    settling = false;
-  };
-
-  const prepareTrain = (direction) => {
-    if (train?.direction === direction) return train;
-
-    if (train?.preview) train.preview.remove();
-    train = null;
-
-    const target = adjacentCalendarSelection(direction);
-    if (!target) return null;
-
-    const preview = buildSpotlightTrainCard(target.game);
-    carousel.append(preview);
-
-    const distance = carousel.clientWidth + gap();
-    const baseOffset = direction * distance;
-    preview.style.transform = `translate3d(${baseOffset}px, 0, 0)`;
-
-    current.classList.add("is-train-dragging");
-    preview.classList.add("is-train-dragging");
-
-    train = {
-      direction,
-      target,
-      preview,
-      distance,
-      baseOffset,
-    };
-    return train;
-  };
-
-  const settleBack = () => {
-    settling = true;
-    current.classList.remove("is-train-dragging");
-    current.classList.add("is-train-settling");
-    current.style.transform = "translate3d(0, 0, 0)";
-
-    if (train?.preview) {
-      train.preview.classList.remove("is-train-dragging");
-      train.preview.classList.add("is-train-settling");
-      train.preview.style.transform = `translate3d(${train.baseOffset}px, 0, 0)`;
-    }
-
-    window.setTimeout(resetGesture, 270);
-  };
-
-  const completeTrain = () => {
-    if (!train?.preview) {
-      resetGesture();
-      return;
-    }
-
-    settling = true;
-    const committedTrain = train;
-    current.classList.remove("is-train-dragging");
-    committedTrain.preview.classList.remove("is-train-dragging");
-    current.classList.add("is-train-settling");
-    committedTrain.preview.classList.add("is-train-settling");
-
-    current.style.transform =
-      `translate3d(${-committedTrain.direction * committedTrain.distance}px, 0, 0)`;
-    committedTrain.preview.style.transform = "translate3d(0, 0, 0)";
-
-    window.setTimeout(() => {
-      selectCalendarDate(committedTrain.target.date);
-
-      current.classList.remove("is-train-settling");
-      current.style.transition = "none";
-      current.style.transform = "translate3d(0, 0, 0)";
-      void current.offsetWidth;
-      current.style.removeProperty("transition");
-
-      resetGesture();
-    }, 270);
-  };
-
-  const activateEdgeStep = (direction) => {
-    if (settling) return;
-    const activeTrain = prepareTrain(direction);
-    if (!activeTrain) {
-      syncSpotlightEdgeControls();
-      return;
-    }
-    window.requestAnimationFrame(completeTrain);
-  };
-
-  els.spotlightPrevious.addEventListener("click", () => activateEdgeStep(-1));
-  els.spotlightNext.addEventListener("click", () => activateEdgeStep(1));
-
-  els.nextGameCard.addEventListener("touchstart", (event) => {
-    if (settling || event.target.closest?.("a, button")) return;
-    const touch = event.changedTouches?.[0];
-    if (!touch) return;
-    touchStartX = touch.clientX;
-    touchStartY = touch.clientY;
-    horizontalGesture = false;
-  }, { passive: true });
-
-  els.nextGameCard.addEventListener("touchmove", (event) => {
-    const touch = event.changedTouches?.[0];
-    if (!touch || touchStartX == null || touchStartY == null || settling) return;
-
-    const deltaX = touch.clientX - touchStartX;
-    const deltaY = touch.clientY - touchStartY;
-
-    if (!horizontalGesture) {
-      if (Math.abs(deltaX) < 8) return;
-      if (Math.abs(deltaX) <= Math.abs(deltaY) * 1.1) {
-        resetGesture();
-        return;
-      }
-      horizontalGesture = true;
-      document.documentElement.classList.add("spotlight-swipe-active");
-    }
-
-    event.preventDefault();
-    const direction = deltaX < 0 ? 1 : -1;
-    const activeTrain = prepareTrain(direction);
-
-    if (!activeTrain) {
-      const resistedOffset = deltaX * 0.18;
-      current.classList.add("is-train-dragging");
-      current.style.transform = `translate3d(${resistedOffset}px, 0, 0)`;
-      return;
-    }
-
-    const offset = Math.max(
-      -activeTrain.distance,
-      Math.min(activeTrain.distance, deltaX),
-    );
-    current.style.transform = `translate3d(${offset}px, 0, 0)`;
-    activeTrain.preview.style.transform =
-      `translate3d(${activeTrain.baseOffset + offset}px, 0, 0)`;
-  }, { passive: false });
-
-  els.nextGameCard.addEventListener("touchend", (event) => {
-    const touch = event.changedTouches?.[0];
-    if (!touch || touchStartX == null || touchStartY == null || settling) {
-      if (!settling) resetGesture();
-      return;
-    }
-
-    const deltaX = touch.clientX - touchStartX;
-    const deltaY = touch.clientY - touchStartY;
-    const isHorizontalSwipe =
-      horizontalGesture &&
-      Math.abs(deltaX) >= 56 &&
-      Math.abs(deltaX) > Math.abs(deltaY) * 1.2;
-
-    event.preventDefault();
-    if (!isHorizontalSwipe || !train?.target) {
-      settleBack();
-      return;
-    }
-
-    completeTrain();
-  }, { passive: false });
-
-  els.nextGameCard.addEventListener("touchcancel", settleBack);
+function setCalendarExpanded(expanded) {
+  calendarExpanded = Boolean(expanded);
+  syncCalendarExpansionUi();
+  renderCalendarGrid();
 }
 
 function renderCalendar(calendar) {
@@ -1273,6 +1236,10 @@ function renderCalendar(calendar) {
     return;
   }
 
+  if (!calendarWindowStart || calendarWindowStart < calendar.startDate) {
+    calendarWindowStart = calendar.startDate;
+  }
+
   const updated = new Date(calendar.updatedAt || "");
   els.calendarUpdated.textContent = Number.isNaN(updated.getTime())
     ? "Weather pending"
@@ -1280,58 +1247,6 @@ function renderCalendar(calendar) {
         hour: "numeric",
         minute: "2-digit",
       }).format(updated)}`;
-
-  const gamesByDate = new Map();
-  for (const game of calendar.games || []) {
-    const list = gamesByDate.get(game.date) || [];
-    list.push(game);
-    gamesByDate.set(game.date, list);
-  }
-
-  const dates = Array.from({ length: 14 }, (_, index) =>
-    addIsoDays(calendar.startDate, index),
-  );
-  const firstGameDate = (calendar.games || [])[0]?.date || "";
-  if (!selectedCalendarDate || !dates.includes(selectedCalendarDate)) {
-    selectedCalendarDate = firstGameDate || calendar.startDate;
-  }
-
-  for (const date of dates) {
-    const games = gamesByDate.get(date) || [];
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "calendar-day";
-    button.dataset.date = date;
-    button.disabled = games.length === 0;
-    button.setAttribute("aria-selected", String(date === selectedCalendarDate));
-
-    const weekday = document.createElement("span");
-    weekday.className = "calendar-weekday";
-    weekday.textContent = dateDisplay(date, { weekday: "short" });
-
-    const day = document.createElement("strong");
-    day.className = "calendar-number";
-    day.textContent = dateDisplay(date, { day: "numeric" });
-
-    const signal = document.createElement("span");
-    signal.className = games.length ? "calendar-signal has-game" : "calendar-signal";
-    signal.textContent = games.length > 1 ? String(games.length) : games.length ? "•" : "";
-
-    button.append(weekday, day, signal);
-
-    if (games.length) {
-      const weatherGame = [...games].sort((a, b) => gameWeatherRank(b) - gameWeatherRank(a))[0];
-      const weather = document.createElement("span");
-      weather.className = "calendar-mini-weather";
-      weather.textContent = weatherGame.weather
-        ? `${weatherGlyph(weatherGame.weather.weatherCode)} ${weatherGame.weather.rainProbability ?? "—"}%`
-        : "⚽";
-      button.append(weather);
-    }
-
-    button.addEventListener("click", () => selectCalendarDate(date, { scrollToSpotlight: true }));
-    els.calendarGrid.append(button);
-  }
 
   const availableGames = calendar.games || [];
   const selectedGame = selectedCalendarGameId
@@ -1341,13 +1256,24 @@ function renderCalendar(calendar) {
 
   if (selectedGame) {
     selectedCalendarDate = selectedGame.date;
+  } else if (firstGame) {
+    selectedCalendarGameId = "";
+    selectedCalendarDate = firstGame.date;
+  } else {
+    selectedCalendarGameId = "";
+    selectedCalendarDate = "";
+  }
+
+  ensureCalendarDateVisible(selectedCalendarDate);
+  syncCalendarExpansionUi();
+  renderCalendarGrid();
+
+  if (selectedGame) {
     const sameDay = availableGames.filter((game) => game.date === selectedGame.date);
     renderCalendarGamePicker(sameDay, selectedGame.id || "");
     renderNextGame(selectedGame, "SELECTED GAME");
     els.nextGameCard.classList.add("spotlight-selected");
   } else if (firstGame) {
-    selectedCalendarGameId = "";
-    selectedCalendarDate = firstGame.date;
     renderCalendarGamePicker(
       availableGames.filter((game) => game.date === firstGame.date),
       firstGame.id || "",
@@ -1355,7 +1281,6 @@ function renderCalendar(calendar) {
     renderNextGame(firstGame, "NEXT GAME");
     els.nextGameCard.classList.remove("spotlight-selected");
   } else {
-    selectedCalendarGameId = "";
     els.calendarGamePicker.hidden = true;
     renderNextGame(null, "NEXT GAME");
   }
@@ -1690,6 +1615,17 @@ async function toggleWrongAnswerFeedback() {
     updateAnswerFeedbackButton();
   }
 }
+
+function toggleCalendarExpandedFromEvent(event) {
+  if (event?.target?.closest?.("button, a, input, textarea, select, label")) return;
+  setCalendarExpanded(!calendarExpanded);
+}
+
+els.calendarExpandToggle?.addEventListener("click", (event) => {
+  event.stopPropagation();
+  setCalendarExpanded(!calendarExpanded);
+});
+els.calendarCard?.addEventListener("click", toggleCalendarExpandedFromEvent);
 
 installSpotlightSwipe();
 
