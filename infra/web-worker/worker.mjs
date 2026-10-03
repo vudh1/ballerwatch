@@ -843,7 +843,7 @@ async function saveOwnerSettingsDirect(env, input) {
 async function compactHistoryWithAi(env, question, reply) {
   if (!env.GROQ_API_KEY || !(await edgeAiBudgetTake(env))) return null;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 1800);
+  const timer = setTimeout(() => controller.abort(), 3000);
   try {
     const response = await fetch(GROQ_URL, {
       method: "POST",
@@ -902,25 +902,74 @@ function recent48Hours(entries) {
     .slice(-200);
 }
 
+
+function historyIntentLabel(intent) {
+  const value = cleanText(intent, 60);
+  const labels = {
+    pickup_status: "pickup date/status",
+    date_games: "single-date schedule",
+    range_games: "schedule range",
+    next_game: "next-game",
+    today_games: "today schedule",
+    league_teams: "league-team",
+    feature_request: "feature-request",
+  };
+  return labels[value] || "web Q&A";
+}
+
+function fallbackHistoryCompact(event) {
+  const intent = cleanText(event?.intent, 60);
+  const label = historyIntentLabel(intent);
+  if (event?.hint === "negative_feedback") {
+    return {
+      kind: "negative_feedback",
+      summary: `A ${label} answer was explicitly marked wrong.`,
+      reason: `User-submitted negative feedback for the ${intent || "web"} intent.`,
+    };
+  }
+
+  if (event?.answerOk === false) {
+    const error = cleanText(event?.reply, 400);
+    if (shouldRecordUnsupportedFeature({ ok: false, error })) {
+      return {
+        kind: "feature_candidate",
+        summary: "A signed-in user requested a capability outside the current web Q&A.",
+        reason: "The unsupported request was also captured in the encrypted feature-request archive.",
+      };
+    }
+    if (/temporarily unavailable|unable to .+ right now|failed/i.test(error)) {
+      return {
+        kind: "bug_candidate",
+        summary: `A ${label} request hit a runtime availability failure.`,
+        reason: "The web answer returned an operational failure instead of a normal result.",
+      };
+    }
+  }
+
+  return {
+    kind: "normal",
+    summary: `Web ${intent || "read-only"} question answered.`,
+    reason: "Deterministic review fallback used because AI compaction was unavailable.",
+  };
+}
+
 async function persistFastChatHistory(env, event) {
   const forcedNegative = event?.hint === "negative_feedback";
-  const compact = forcedNegative
-    ? {
-        kind: "negative_feedback",
-        summary: "A web answer was explicitly marked wrong.",
-        reason: "User-submitted negative feedback.",
-      }
+  const aiCompact = forcedNegative
+    ? null
     : await compactHistoryWithAi(env, event.question, event.reply);
+  const compact = aiCompact || fallbackHistoryCompact(event);
   const externalId = cleanText(event?.externalId, 120);
   const entry = {
     createdAt: new Date().toISOString(),
     source: cleanText(event.source, 40) || "web-pwa",
+    intent: cleanText(event.intent, 60),
     ...(externalId ? { externalId } : {}),
     question: retainPrivateText(event.question, 4000),
     reply: retainPrivateText(event.reply, 12000),
-    kind: compact?.kind || "normal",
-    summary: compact?.summary || `Web ${cleanText(event.intent,60) || "read-only"} question answered.`,
-    reason: compact?.reason || "",
+    kind: compact.kind,
+    summary: compact.summary,
+    reason: compact.reason,
   };
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -961,6 +1010,8 @@ async function persistFastChatHistory(env, event) {
         {
           createdAt: entry.createdAt,
           ...(externalId ? { externalId } : {}),
+          source: entry.source,
+          intent: entry.intent,
           kind: entry.kind,
           summary: entry.summary,
           reason: entry.reason,
@@ -2625,7 +2676,7 @@ export default {
           reply,
           hint: "negative_feedback",
           source: "web-pwa-feedback",
-          intent: "feedback",
+          intent: cleanText(body?.intent, 60) || "feedback",
         });
         return webJson(request, { ok: true, status: "saved-for-review" });
       } catch (error) {
@@ -2642,23 +2693,75 @@ export default {
       let body;
       try { body = await request.json(); }
       catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
-      const answer = await webAnswer(env, body?.question, body?.context || {});
-      const feedbackToken = answer.ok
-        ? await issueFeedbackToken(env, body?.question, answer.reply)
-        : "";
+
+      const question = cleanText(body?.question, 600);
       const token = bearerToken(request);
-      if (await verifyOwnerCapability(env, token).catch(() => false)) {
+      const userAuthorized = await verifyOwnerCapability(env, token).catch(() => false);
+      const requestedFeature = featureRequestText(question);
+
+      if (requestedFeature) {
+        if (!userAuthorized) {
+          return webJson(
+            request,
+            { ok: false, error: "Sign in to submit a feature request." },
+            { status: 401 },
+          );
+        }
+        try {
+          await persistFeatureRequest(env, requestedFeature, { source: "manual" });
+          const answer = {
+            ok: true,
+            reply: "Feature request saved for review.",
+            intent: "feature_request",
+            version: "6.0.x",
+          };
+          ctx.waitUntil(
+            persistFastChatHistory(env, {
+              question,
+              reply: answer.reply,
+              source: "web-pwa-user",
+              intent: answer.intent,
+              answerOk: true,
+            }).catch((error) =>
+              console.warn(`Web history persistence failed: ${error?.message || error}`),
+            ),
+          );
+          return webJson(request, answer);
+        } catch (error) {
+          console.error("Feature request persistence failed", error);
+          return webJson(
+            request,
+            { ok: false, error: "Unable to save the feature request right now." },
+            { status: 503 },
+          );
+        }
+      }
+
+      const answer = await webAnswer(env, question, body?.context || {});
+      const feedbackToken = answer.ok
+        ? await issueFeedbackToken(env, question, answer.reply)
+        : "";
+
+      if (userAuthorized) {
         const history = {
-          question: cleanText(body?.question, 600),
+          question,
           reply: cleanText(answer?.reply || answer?.error, 1200),
           source: "web-pwa-user",
-          intent: "web",
+          intent: cleanText(answer?.intent, 60) || "web",
+          answerOk: Boolean(answer?.ok),
         };
         if (history.question && history.reply) {
           ctx.waitUntil(
-            persistFastChatHistory(env, history).catch((error) =>
-              console.warn(`Web history persistence failed: ${error?.message || error}`),
-            ),
+            Promise.all([
+              persistFastChatHistory(env, history).catch((error) =>
+                console.warn(`Web history persistence failed: ${error?.message || error}`),
+              ),
+              shouldRecordUnsupportedFeature(answer)
+                ? persistFeatureRequest(env, question).catch((error) =>
+                    console.warn(`Feature request persistence failed: ${error?.message || error}`),
+                  )
+                : Promise.resolve(),
+            ]),
           );
         }
       }
