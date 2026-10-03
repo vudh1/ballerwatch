@@ -23,11 +23,21 @@ const els = {
   settingsLoginView: document.querySelector("#settings-login-view"),
   settingsOwnerView: document.querySelector("#settings-owner-view"),
   ownerLoginForm: document.querySelector("#owner-login-form"),
+  ownerLoginUsername: document.querySelector("#owner-login-username"),
   ownerLoginPassword: document.querySelector("#owner-login-password"),
   ownerLoginStatus: document.querySelector("#owner-login-status"),
   ownerSettingsForm: document.querySelector("#owner-settings-form"),
+  currentUserSummary: document.querySelector("#current-user-summary"),
   ownerName: document.querySelector("#owner-name"),
+  ownerTeamSettings: document.querySelector("#owner-team-settings"),
   ownerTeams: document.querySelector("#owner-teams"),
+  userManagement: document.querySelector("#user-management"),
+  userList: document.querySelector("#user-list"),
+  userCreateForm: document.querySelector("#user-create-form"),
+  userCreateUsername: document.querySelector("#user-create-username"),
+  userCreateName: document.querySelector("#user-create-name"),
+  userCreatePassword: document.querySelector("#user-create-password"),
+  userCreateStatus: document.querySelector("#user-create-status"),
   ownerSettingsStatus: document.querySelector("#owner-settings-status"),
   ownerPasswordForm: document.querySelector("#owner-password-form"),
   ownerPasswordNew: document.querySelector("#owner-password-new"),
@@ -104,6 +114,7 @@ let feedbackId = "";
 let feedbackInFlight = false;
 
 const OWNER_TOKEN_KEY = "ballerwatch-owner-token";
+const OWNER_USERNAME_KEY = "ballerwatch-user-name";
 const NOTIFICATION_READ_KEY = "ballerwatch-notification-read-v1";
 const NOTIFICATION_DELETED_KEY = "ballerwatch-notification-deleted-v1";
 const QUESTION_HISTORY_KEY = "ballerwatch-question-history-v1";
@@ -469,17 +480,56 @@ async function api(path, options = {}) {
 function showLoginSettings(message = "") {
   els.settingsLoginView.hidden = false;
   els.settingsOwnerView.hidden = true;
+  if (els.ownerLoginUsername) {
+    els.ownerLoginUsername.value = localStorage.getItem(OWNER_USERNAME_KEY) || "admin";
+  }
   els.ownerLoginStatus.textContent = message;
+}
+
+function renderManagedUsers(users) {
+  els.userList.replaceChildren();
+  for (const user of Array.isArray(users) ? users : []) {
+    const row = document.createElement("div");
+    row.className = "settings-user-row";
+
+    const copy = document.createElement("div");
+    copy.className = "settings-user-meta";
+    const title = document.createElement("strong");
+    title.textContent = `@${user.username}`;
+    const detail = document.createElement("span");
+    const parts = [user.role === "admin" ? "Administrator" : "User"];
+    if (user.rsvpName) parts.push(`RSVP: ${user.rsvpName}`);
+    detail.textContent = parts.join(" · ");
+    copy.append(title, detail);
+    row.append(copy);
+
+    if (user.username !== "admin") {
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "subtle-action subtle-danger user-remove";
+      remove.dataset.username = user.username;
+      remove.textContent = "Remove";
+      row.append(remove);
+    }
+    els.userList.append(row);
+  }
 }
 
 function showOwnerSettings(settings) {
   els.settingsLoginView.hidden = true;
   els.settingsOwnerView.hidden = false;
+  const username = settings?.username || localStorage.getItem(OWNER_USERNAME_KEY) || "admin";
+  localStorage.setItem(OWNER_USERNAME_KEY, username);
+  els.currentUserSummary.textContent =
+    `Signed in as @${username} · ${settings?.role === "admin" ? "Administrator" : "User"}`;
   els.ownerName.value = settings?.ownerName || "";
   els.ownerTeams.value = Array.isArray(settings?.teams) ? settings.teams.join("\n") : "";
+  els.ownerTeamSettings.hidden = !settings?.canManageTeams;
+  els.userManagement.hidden = !settings?.canManageUsers;
+  if (settings?.canManageUsers) renderManagedUsers(settings?.users);
   els.ownerPasswordStatus.textContent = settings?.passwordConfigured
-    ? "User password is set. New devices can sign in directly."
-    : "No user password is configured. Use the GitHub password recovery workflow to bootstrap access.";
+    ? "Your password is set. Changing it revokes your other sessions."
+    : "No password is configured for this account.";
 }
 
 async function loadOwnerSettings() {
@@ -502,7 +552,6 @@ async function loadOwnerSettings() {
       showLoginSettings("Sign in again to edit user settings.");
       return;
     }
-    showOwnerSettings({});
     els.ownerSettingsStatus.textContent = error.message;
   }
 }
@@ -514,6 +563,7 @@ async function openSettings() {
 
 async function loginOwnerDevice(event) {
   event.preventDefault();
+  const username = els.ownerLoginUsername.value.trim().toLowerCase();
   const password = els.ownerLoginPassword.value;
   const button = els.ownerLoginForm.querySelector("button");
   button.disabled = true;
@@ -521,9 +571,10 @@ async function loginOwnerDevice(event) {
   try {
     const payload = await api("/web/user/login", {
       method: "POST",
-      body: JSON.stringify({ password }),
+      body: JSON.stringify({ username, password }),
     });
     localStorage.setItem(OWNER_TOKEN_KEY, payload.token);
+    localStorage.setItem(OWNER_USERNAME_KEY, payload.username || username || "admin");
     els.ownerLoginPassword.value = "";
     await loadOwnerSettings();
     await loadRsvpStatus();
@@ -540,10 +591,13 @@ async function loginOwnerDevice(event) {
 async function saveOwnerSettings(event) {
   event.preventDefault();
   const button = els.ownerSettingsForm.querySelector("button");
-  const teams = els.ownerTeams.value
-    .split(/\r?\n/)
-    .map((value) => value.trim())
-    .filter(Boolean);
+  const body = { ownerName: els.ownerName.value.trim() };
+  if (!els.ownerTeamSettings.hidden) {
+    body.teams = els.ownerTeams.value
+      .split(/\r?\n/)
+      .map((value) => value.trim())
+      .filter(Boolean);
+  }
   button.disabled = true;
   els.ownerSettingsStatus.textContent = "Saving…";
   try {
@@ -551,18 +605,16 @@ async function saveOwnerSettings(event) {
       method: "POST",
       headers: ownerHeaders(),
       retryNetwork: true,
-      body: JSON.stringify({
-        ownerName: els.ownerName.value.trim(),
-        teams,
-      }),
+      body: JSON.stringify(body),
     });
-    showOwnerSettings(payload.settings || { ownerName: els.ownerName.value.trim(), teams });
+    showOwnerSettings(payload.settings || {});
     await loadRsvpStatus();
     if (currentNextGame) {
       renderNextGame(currentNextGame, els.spotlightLabel.textContent || "NEXT GAME");
     }
-    els.ownerSettingsStatus.textContent =
-      "Saved. Monitoring updates on the next league refresh.";
+    els.ownerSettingsStatus.textContent = els.ownerTeamSettings.hidden
+      ? "Profile saved."
+      : "Saved. Monitoring updates on the next league refresh.";
   } catch (error) {
     if (error.status === 401) {
       localStorage.removeItem(OWNER_TOKEN_KEY);
@@ -572,6 +624,52 @@ async function saveOwnerSettings(event) {
     }
   } finally {
     button.disabled = false;
+  }
+}
+
+async function createManagedUser(event) {
+  event.preventDefault();
+  const button = els.userCreateForm.querySelector("button");
+  button.disabled = true;
+  els.userCreateStatus.textContent = "Adding user…";
+  try {
+    const payload = await api("/web/user/users", {
+      method: "POST",
+      headers: ownerHeaders(),
+      body: JSON.stringify({
+        username: els.userCreateUsername.value.trim().toLowerCase(),
+        ownerName: els.userCreateName.value.trim(),
+        password: els.userCreatePassword.value,
+      }),
+    });
+    els.userCreateForm.reset();
+    showOwnerSettings(payload.settings || {});
+    els.userCreateStatus.textContent = "User added.";
+  } catch (error) {
+    if (error.status === 401) {
+      localStorage.removeItem(OWNER_TOKEN_KEY);
+      showLoginSettings("Sign in again to manage users.");
+    } else {
+      els.userCreateStatus.textContent = error.message;
+    }
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function removeManagedUser(username) {
+  if (!username || !window.confirm(`Remove @${username}? Their active sessions will stop working.`)) return;
+  els.userCreateStatus.textContent = `Removing @${username}…`;
+  try {
+    const payload = await api("/web/user/users", {
+      method: "DELETE",
+      headers: ownerHeaders(),
+      body: JSON.stringify({ username }),
+    });
+    showOwnerSettings(payload.settings || {});
+    els.userCreateStatus.textContent = `Removed @${username}.`;
+  } catch (error) {
+    els.userCreateStatus.textContent = error.message;
   }
 }
 
@@ -587,7 +685,7 @@ async function saveOwnerPassword(event) {
   }
 
   button.disabled = true;
-  els.ownerPasswordStatus.textContent = "Saving user password…";
+  els.ownerPasswordStatus.textContent = "Saving password…";
   try {
     const payload = await api("/web/user/password", {
       method: "POST",
@@ -595,14 +693,15 @@ async function saveOwnerPassword(event) {
       body: JSON.stringify({ password }),
     });
     if (payload.token) localStorage.setItem(OWNER_TOKEN_KEY, payload.token);
+    if (payload.username) localStorage.setItem(OWNER_USERNAME_KEY, payload.username);
     els.ownerPasswordNew.value = "";
     els.ownerPasswordConfirm.value = "";
     els.ownerPasswordStatus.textContent = payload.message ||
-      "User password saved. Other signed-in devices were revoked.";
+      "Password saved. Your other sessions were revoked.";
   } catch (error) {
     if (error.status === 401) {
       localStorage.removeItem(OWNER_TOKEN_KEY);
-      showLoginSettings("Sign in again to change the user password.");
+      showLoginSettings("Sign in again to change your password.");
     } else {
       els.ownerPasswordStatus.textContent = error.message;
     }
@@ -623,7 +722,7 @@ function disconnectOwnerDevice() {
 
 async function revokeOwnerDevices() {
   els.ownerRevoke.disabled = true;
-  els.ownerSettingsStatus.textContent = "Signing out all devices…";
+  els.ownerSettingsStatus.textContent = "Signing out your other devices…";
   try {
     await api("/web/user/revoke", {
       method: "POST",
@@ -636,7 +735,7 @@ async function revokeOwnerDevices() {
     if (currentNextGame) {
       renderNextGame(currentNextGame, els.spotlightLabel.textContent || "NEXT GAME");
     }
-    showLoginSettings("All signed-in devices were revoked. Sign in again when needed.");
+    showLoginSettings("All sessions for this user were revoked. Sign in again when needed.");
   } catch (error) {
     if (error.status === 401) {
       localStorage.removeItem(OWNER_TOKEN_KEY);
@@ -672,7 +771,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=6.0.10", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=6.1.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -2157,6 +2256,11 @@ els.closeSettings.addEventListener("click", () => els.settingsDialog.close());
 els.ownerLoginForm.addEventListener("submit", loginOwnerDevice);
 els.ownerSettingsForm.addEventListener("submit", saveOwnerSettings);
 els.ownerPasswordForm.addEventListener("submit", saveOwnerPassword);
+els.userCreateForm.addEventListener("submit", createManagedUser);
+els.userList.addEventListener("click", (event) => {
+  const button = event.target.closest(".user-remove");
+  if (button?.dataset?.username) void removeManagedUser(button.dataset.username);
+});
 els.ownerDisconnect.addEventListener("click", disconnectOwnerDevice);
 els.ownerRevoke.addEventListener("click", revokeOwnerDevices);
 els.nextGameShare.addEventListener("click", shareNextGame);

@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "6.0.10",
+  "currentVersion": "6.1.0",
   "releases": [
+    {
+      "version": "6.1.0",
+      "date": "2026-10-03",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Multi-user accounts and README demo",
+      "changes": [
+        "Added the supplied BallerWatch screenshot to the repository README as the demo image.",
+        "Added multi-user sign-in with usernames, independent passwords, per-user pickup RSVP names, per-user session revisions, and backward-compatible migration of the existing account to admin.",
+        "Added administrator-only user creation/removal and kept monitored league teams shared and administrator-controlled.",
+        "Changed RSVP confirmation and signed-in Q&A personalization to use the active user's RSVP name rather than one global identity.",
+        "Changed password updates, session revocation, and GitHub Actions password recovery to target one username without revoking other users.",
+        "Bumped the PWA asset revision to 6.1.0 for the new Settings/login UI."
+      ]
+    },
     {
       "version": "6.0.10",
       "date": "2026-10-03",

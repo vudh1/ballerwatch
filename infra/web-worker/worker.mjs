@@ -121,10 +121,102 @@ function ownerAuthVersion(settings) {
   return Number.isSafeInteger(value) && value >= 1 ? value : 1;
 }
 
-export async function issueOwnerToken(env, authVersion = 1) {
+export function normalizeUserName(value) {
+  const username = String(value || "").trim().toLowerCase() || "admin";
+  if (!/^[a-z0-9][a-z0-9._-]{0,31}$/.test(username)) {
+    throw new Error("Username must use 1-32 letters, numbers, dots, underscores, or hyphens.");
+  }
+  return username;
+}
+
+function secondaryUsers(settings) {
+  return settings?.webUsers && typeof settings.webUsers === "object" && !Array.isArray(settings.webUsers)
+    ? settings.webUsers
+    : {};
+}
+
+function userAccountFromSettings(settings, userId, env = {}) {
+  const username = normalizeUserName(userId);
+  if (username === "admin") {
+    return {
+      userId: "admin",
+      username: "admin",
+      role: "admin",
+      rsvpName: cleanText(settings?.ownerRsvpName || env.OWNER_RSVP_NAME || "", 120),
+      passwordRecord: settings?.webOwnerPassword || null,
+      authVersion: ownerAuthVersion(settings),
+      createdAt: "",
+    };
+  }
+  const users = secondaryUsers(settings);
+  if (!Object.prototype.hasOwnProperty.call(users, username)) return null;
+  const record = users[username];
+  if (!record || typeof record !== "object") return null;
+  const authVersion = Number(record.authVersion || 1);
+  return {
+    userId: username,
+    username,
+    role: "user",
+    rsvpName: cleanText(record.rsvpName || "", 120),
+    passwordRecord: record.webPassword || null,
+    authVersion: Number.isSafeInteger(authVersion) && authVersion >= 1 ? authVersion : 1,
+    createdAt: cleanText(record.createdAt, 80),
+  };
+}
+
+function publicUserList(settings, env = {}) {
+  const users = [{
+    username: "admin",
+    role: "admin",
+    rsvpName: cleanText(settings?.ownerRsvpName || env.OWNER_RSVP_NAME || "", 120),
+    passwordConfigured: Boolean(settings?.webOwnerPassword?.digest),
+  }];
+  for (const username of Object.keys(secondaryUsers(settings)).sort()) {
+    const account = userAccountFromSettings(settings, username, env);
+    if (!account) continue;
+    users.push({
+      username,
+      role: "user",
+      rsvpName: account.rsvpName,
+      passwordConfigured: Boolean(account.passwordRecord?.digest),
+      createdAt: account.createdAt,
+    });
+  }
+  return users;
+}
+
+async function decodeOwnerToken(env, token) {
+  const [encoded, signatureText, extra] = String(token || "").split(".");
+  if (!encoded || !signatureText || extra) return null;
+  try {
+    const valid = await crypto.subtle.verify(
+      "HMAC",
+      await ownerSigningKey(env),
+      b64UrlBytes(signatureText),
+      new TextEncoder().encode(encoded),
+    );
+    if (!valid) return null;
+    const payload = JSON.parse(new TextDecoder().decode(b64UrlBytes(encoded)));
+    if (
+      ![2, 3].includes(payload?.v) ||
+      payload?.kind !== "user" ||
+      Number(payload.exp) <= Date.now()
+    ) {
+      return null;
+    }
+    const userId = payload.v === 2 ? "admin" : normalizeUserName(payload.uid);
+    return { ...payload, userId };
+  } catch {
+    return null;
+  }
+}
+
+export async function issueOwnerToken(env, authVersion = 1, userId = "admin") {
+  const username = normalizeUserName(userId);
   const payload = {
-    v: 2,
+    v: 3,
     kind: "user",
+    uid: username,
     rev: Math.max(1, Number(authVersion) || 1),
     exp: Date.now() + 90 * 24 * 60 * 60 * 1000,
     nonce: bytesB64Url(crypto.getRandomValues(new Uint8Array(18))),
@@ -139,33 +231,19 @@ export async function issueOwnerToken(env, authVersion = 1) {
   );
   return {
     token: `${encoded}.${bytesB64Url(signature)}`,
+    username,
     expiresAt: new Date(payload.exp).toISOString(),
   };
 }
 
-export async function verifyOwnerToken(env, token, authVersion = 1) {
-  const [encoded, signatureText, extra] = String(token || "").split(".");
-  if (!encoded || !signatureText || extra) return false;
-  try {
-    const valid = await crypto.subtle.verify(
-      "HMAC",
-      await ownerSigningKey(env),
-      b64UrlBytes(signatureText),
-      new TextEncoder().encode(encoded),
-    );
-    if (!valid) return false;
-    const payload = JSON.parse(new TextDecoder().decode(b64UrlBytes(encoded)));
-    return (
-      payload?.v === 2 &&
-      payload?.kind === "user" &&
-      Number(payload?.rev) === Math.max(1, Number(authVersion) || 1) &&
-      Number(payload.exp) > Date.now()
-    );
-  } catch {
-    return false;
-  }
+export async function verifyOwnerToken(env, token, authVersion = 1, userId = "admin") {
+  const payload = await decodeOwnerToken(env, token);
+  if (!payload) return false;
+  return (
+    payload.userId === normalizeUserName(userId) &&
+    Number(payload.rev) === Math.max(1, Number(authVersion) || 1)
+  );
 }
-
 
 export function normalizeOwnerPassword(value) {
   const password = String(value ?? "");
@@ -674,7 +752,6 @@ async function userStateDocument(env, value) {
     };
   }
 
-  // Compatibility with older runtime-state where only settings were sealed.
   const settings = value.settings ? await decryptState(value.settings, env) : null;
   return {
     settings: settings && typeof settings === "object" ? settings : {},
@@ -702,46 +779,76 @@ async function ownerSettingsRecord(env) {
   };
 }
 
-async function ownerSettingsView(env) {
+export async function resolveOwnerCapability(env, token, settingsOverride = null) {
+  if (!String(token || "").trim()) return null;
+  const payload = await decodeOwnerToken(env, token);
+  if (!payload) return null;
+  const settings = settingsOverride && typeof settingsOverride === "object"
+    ? settingsOverride
+    : (await ownerSettingsRecord(env)).settings;
+  const account = userAccountFromSettings(settings, payload.userId, env);
+  if (!account || Number(payload.rev) !== account.authVersion) return null;
+  return account;
+}
+
+async function ownerSettingsView(env, accountInput) {
   const { settings, teams } = await ownerSettingsRecord(env);
+  const account = userAccountFromSettings(settings, accountInput?.userId || "admin", env);
+  if (!account) throw new Error("User account no longer exists.");
+  const canManage = account.role === "admin";
   return {
-    ownerName: cleanText(settings.ownerRsvpName || env.OWNER_RSVP_NAME || "", 120),
+    username: account.username,
+    role: account.role,
+    ownerName: account.rsvpName,
     teams,
-    passwordConfigured: Boolean(settings.webOwnerPassword?.digest),
+    canManageTeams: canManage,
+    canManageUsers: canManage,
+    passwordConfigured: Boolean(account.passwordRecord?.digest),
+    users: canManage ? publicUserList(settings, env) : [],
   };
 }
 
 export async function verifyOwnerCapability(env, token, settingsOverride = null) {
-  if (!String(token || "").trim()) return false;
-  const settings = settingsOverride && typeof settingsOverride === "object"
-    ? settingsOverride
-    : (await ownerSettingsRecord(env)).settings;
-  return verifyOwnerToken(env, token, ownerAuthVersion(settings));
+  return Boolean(await resolveOwnerCapability(env, token, settingsOverride));
 }
 
-async function saveOwnerPassword(env, value, { rotateAuth = true } = {}) {
+async function saveOwnerPassword(env, value, { rotateAuth = true, userId = "admin" } = {}) {
   const passwordRecord = await createOwnerPasswordRecord(env, value);
+  const username = normalizeUserName(userId);
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       const record = await githubStateRecord(env, "state/user.json");
       const current = await userStateDocument(env, record.value);
-      const previousVersion = ownerAuthVersion(current.settings);
-      const authVersion = rotateAuth ? previousVersion + 1 : previousVersion;
-      const next = {
-        settings: {
+      const account = userAccountFromSettings(current.settings, username, env);
+      if (!account) throw new Error("User account no longer exists.");
+      const authVersion = rotateAuth ? account.authVersion + 1 : account.authVersion;
+      let settings;
+
+      if (username === "admin") {
+        settings = {
           ...current.settings,
           webOwnerPassword: passwordRecord,
           webAuthVersion: authVersion,
-        },
-      };
+        };
+      } else {
+        const users = { ...secondaryUsers(current.settings) };
+        users[username] = {
+          ...users[username],
+          webPassword: passwordRecord,
+          authVersion,
+          role: "user",
+        };
+        settings = { ...current.settings, webUsers: users };
+      }
+
       await githubStatePut(
         env,
         "state/user.json",
-        await encryptState(next, env),
+        await encryptState({ settings }, env),
         record.sha,
-        "runtime(user): update web user password and auth revision",
+        "runtime(user): update account password and auth revision",
       );
-      return { passwordRecord, authVersion };
+      return { passwordRecord, authVersion, userId: username };
     } catch (error) {
       if (attempt === 2) throw error;
     }
@@ -749,23 +856,31 @@ async function saveOwnerPassword(env, value, { rotateAuth = true } = {}) {
   throw new Error("Unable to update user password.");
 }
 
-async function rotateOwnerAuthVersion(env) {
+async function rotateOwnerAuthVersion(env, userId = "admin") {
+  const username = normalizeUserName(userId);
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       const record = await githubStateRecord(env, "state/user.json");
       const current = await userStateDocument(env, record.value);
-      const authVersion = ownerAuthVersion(current.settings) + 1;
+      const account = userAccountFromSettings(current.settings, username, env);
+      if (!account) throw new Error("User account no longer exists.");
+      const authVersion = account.authVersion + 1;
+      let settings;
+
+      if (username === "admin") {
+        settings = { ...current.settings, webAuthVersion: authVersion };
+      } else {
+        const users = { ...secondaryUsers(current.settings) };
+        users[username] = { ...users[username], authVersion, role: "user" };
+        settings = { ...current.settings, webUsers: users };
+      }
+
       await githubStatePut(
         env,
         "state/user.json",
-        await encryptState({
-          settings: {
-            ...current.settings,
-            webAuthVersion: authVersion,
-          },
-        }, env),
+        await encryptState({ settings }, env),
         record.sha,
-        "runtime(user): revoke web user sessions",
+        "runtime(user): revoke account sessions",
       );
       return authVersion;
     } catch (error) {
@@ -775,26 +890,34 @@ async function rotateOwnerAuthVersion(env) {
   throw new Error("Unable to revoke user sessions.");
 }
 
-async function loginOwnerDevice(env, password) {
+async function loginOwnerDevice(env, usernameValue, password) {
+  const username = normalizeUserName(usernameValue);
   const normalizedPassword = String(password ?? "");
   const { settings } = await ownerSettingsRecord(env);
-  if (!(await verifyOwnerPassword(env, normalizedPassword, settings.webOwnerPassword))) {
+  const account = userAccountFromSettings(settings, username, env);
+  if (!account || !(await verifyOwnerPassword(env, normalizedPassword, account.passwordRecord))) {
     return null;
   }
 
-  let authVersion = ownerAuthVersion(settings);
-  if (settings.webOwnerPassword?.v !== 2) {
-    const migrated = await saveOwnerPassword(env, normalizedPassword, { rotateAuth: false });
+  let authVersion = account.authVersion;
+  if (account.passwordRecord?.v !== 2) {
+    const migrated = await saveOwnerPassword(
+      env,
+      normalizedPassword,
+      { rotateAuth: false, userId: username },
+    );
     authVersion = migrated.authVersion;
   }
-  return issueOwnerToken(env, authVersion);
+  return {
+    ...(await issueOwnerToken(env, authVersion, username)),
+    role: account.role,
+  };
 }
 
-export function normalizeOwnerSettingsInput(body) {
-  const ownerName = cleanText(body?.ownerName, 120);
+function normalizeTeamsInput(values) {
   const teams = [];
   const seen = new Set();
-  for (const raw of Array.isArray(body?.teams) ? body.teams : []) {
+  for (const raw of Array.isArray(values) ? values : []) {
     const name = cleanText(raw, 120);
     if (!name) continue;
     const key = name.toLocaleLowerCase("en-US");
@@ -805,17 +928,57 @@ export function normalizeOwnerSettingsInput(body) {
   if (!teams.length || teams.length > 20) {
     throw new Error("Add between 1 and 20 monitored league teams.");
   }
-  return { ownerName, teams };
+  return teams;
+}
+
+export function normalizeOwnerSettingsInput(body) {
+  return {
+    ownerName: cleanText(body?.ownerName, 120),
+    teams: normalizeTeamsInput(body?.teams),
+  };
+}
+
+async function saveUserProfileDirect(env, userId, ownerName) {
+  const username = normalizeUserName(userId);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const record = await githubStateRecord(env, "state/user.json");
+      const current = await userStateDocument(env, record.value);
+      const account = userAccountFromSettings(current.settings, username, env);
+      if (!account) throw new Error("User account no longer exists.");
+      let settings;
+
+      if (username === "admin") {
+        settings = { ...current.settings, ownerRsvpName: cleanText(ownerName, 120) };
+      } else {
+        const users = { ...secondaryUsers(current.settings) };
+        users[username] = {
+          ...users[username],
+          rsvpName: cleanText(ownerName, 120),
+          role: "user",
+        };
+        settings = { ...current.settings, webUsers: users };
+      }
+
+      await githubStatePut(
+        env,
+        "state/user.json",
+        await encryptState({ settings }, env),
+        record.sha,
+        "runtime(user): update account profile",
+      );
+      return true;
+    } catch (error) {
+      if (attempt === 2) throw error;
+    }
+  }
+  return false;
 }
 
 async function saveOwnerSettingsDirect(env, input) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      const {
-        userRecord,
-        settings,
-      } = await ownerSettingsRecord(env);
-
+      const { userRecord, settings } = await ownerSettingsRecord(env);
       await githubStatePut(
         env,
         "state/user.json",
@@ -826,12 +989,9 @@ async function saveOwnerSettingsDirect(env, input) {
           },
         }, env),
         userRecord.sha,
-        "runtime(user): update web user settings",
+        "runtime(user): update administrator settings",
       );
 
-      // The user write advances runtime-state. Re-read the teams blob before
-      // the second write so concurrent watcher compaction cannot leave us with
-      // a stale contents SHA and a browser-visible network failure.
       const freshTeamsRecord = await githubStateRecord(env, "league/state/teams.json");
       await githubStatePut(
         env,
@@ -846,6 +1006,85 @@ async function saveOwnerSettingsDirect(env, input) {
     }
   }
   throw new Error("Unable to save user settings.");
+}
+
+async function createManagedUser(env, body) {
+  const username = normalizeUserName(body?.username);
+  if (["admin", "constructor", "prototype"].includes(username)) {
+    throw new Error("Choose a different username.");
+  }
+  const passwordRecord = await createOwnerPasswordRecord(env, body?.password);
+  const rsvpName = cleanText(body?.ownerName, 120);
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const record = await githubStateRecord(env, "state/user.json");
+      const current = await userStateDocument(env, record.value);
+      const users = { ...secondaryUsers(current.settings) };
+      if (Object.prototype.hasOwnProperty.call(users, username)) {
+        throw new Error("That username already exists.");
+      }
+      if (Object.keys(users).length >= 19) {
+        throw new Error("BallerWatch supports up to 20 users.");
+      }
+      users[username] = {
+        rsvpName,
+        webPassword: passwordRecord,
+        authVersion: 1,
+        role: "user",
+        createdAt: new Date().toISOString(),
+      };
+      await githubStatePut(
+        env,
+        "state/user.json",
+        await encryptState({
+          settings: { ...current.settings, webUsers: users },
+        }, env),
+        record.sha,
+        "runtime(user): create user account",
+      );
+      return username;
+    } catch (error) {
+      if (
+        /already exists|supports up to|different username|between 12 and 200/.test(
+          String(error?.message || ""),
+        )
+      ) throw error;
+      if (attempt === 2) throw error;
+    }
+  }
+  throw new Error("Unable to create user.");
+}
+
+async function deleteManagedUser(env, usernameValue) {
+  const username = normalizeUserName(usernameValue);
+  if (username === "admin") throw new Error("The administrator account cannot be removed.");
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const record = await githubStateRecord(env, "state/user.json");
+      const current = await userStateDocument(env, record.value);
+      const users = { ...secondaryUsers(current.settings) };
+      if (!Object.prototype.hasOwnProperty.call(users, username)) {
+        throw new Error("User account not found.");
+      }
+      delete users[username];
+      await githubStatePut(
+        env,
+        "state/user.json",
+        await encryptState({
+          settings: { ...current.settings, webUsers: users },
+        }, env),
+        record.sha,
+        "runtime(user): remove user account",
+      );
+      return true;
+    } catch (error) {
+      if (/cannot be removed|not found/.test(String(error?.message || ""))) throw error;
+      if (attempt === 2) throw error;
+    }
+  }
+  return false;
 }
 
 async function compactHistoryWithAi(env, question, reply) {
@@ -1515,9 +1754,9 @@ function pickupStatus(snapshot, date) {
   return lines.join("\n");
 }
 
-function pickupUserRsvpState(snapshot, date) {
+function pickupUserRsvpState(snapshot, date, userRsvpName = "") {
   const owner = cleanText(
-    snapshot?.settings?.ownerRsvpName || snapshot?.ownerName || "",
+    userRsvpName || snapshot?.settings?.ownerRsvpName || snapshot?.ownerName || "",
     200,
   ).toLowerCase();
   if (!owner) return { confirmed: false, waitlisted: false };
@@ -1534,11 +1773,11 @@ function pickupUserRsvpState(snapshot, date) {
   };
 }
 
-export function pickupUserRsvpView(snapshot) {
+export function pickupUserRsvpView(snapshot, userRsvpName = "") {
   const confirmedDates = [];
   const waitlistedDates = [];
   for (const date of availableDates(snapshot)) {
-    const state = pickupUserRsvpState(snapshot, date);
+    const state = pickupUserRsvpState(snapshot, date, userRsvpName);
     if (state.confirmed) confirmedDates.push(date);
     else if (state.waitlisted) waitlistedDates.push(date);
   }
@@ -2095,6 +2334,14 @@ async function webAnswer(env, question, context = {}) {
     return { ok: false, error: "BallerWatch data is temporarily unavailable." };
   }
 
+  const userRsvpName = cleanText(context?.userRsvpName, 120);
+  if (userRsvpName) {
+    snapshot = {
+      ...snapshot,
+      settings: { ...(snapshot.settings || {}), ownerRsvpName: userRsvpName },
+      ownerName: userRsvpName,
+    };
+  }
   const safeContext = { lastDate: cleanText(context?.lastDate, 20) };
   const lower = text.toLowerCase();
   const hasExplicitDate =
@@ -2528,14 +2775,14 @@ export default {
       catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
 
       try {
-        const signedIn = await loginOwnerDevice(env, body?.password);
+        const signedIn = await loginOwnerDevice(env, body?.username, body?.password);
         if (!signedIn) {
           await recordOwnerLoginFailure(request);
           return webJson(
             request,
             {
               ok: false,
-              error: "User password is incorrect or has not been configured yet. Use the GitHub password recovery workflow if needed.",
+              error: "Username or password is incorrect. Use the GitHub password recovery workflow if needed.",
             },
             { status: 401 },
           );
@@ -2543,6 +2790,11 @@ export default {
         await clearOwnerLoginFailures(request);
         return webJson(request, { ok: true, ...signedIn });
       } catch (error) {
+        const message = cleanText(error?.message, 200);
+        if (/Username must/.test(message)) {
+          await recordOwnerLoginFailure(request);
+          return webJson(request, { ok: false, error: message }, { status: 400 });
+        }
         console.error("User password sign-in failed", error);
         return webJson(
           request,
@@ -2553,7 +2805,8 @@ export default {
     }
 
     if (request.method === "POST" && userRoute(url.pathname, "password")) {
-      if (!(await verifyOwnerCapability(env, bearerToken(request)).catch(() => false))) {
+      const account = await resolveOwnerCapability(env, bearerToken(request)).catch(() => null);
+      if (!account) {
         return webJson(request, { ok: false, error: "User sign-in is required." }, { status: 401 });
       }
 
@@ -2562,12 +2815,16 @@ export default {
       catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
 
       try {
-        const saved = await saveOwnerPassword(env, body?.password);
+        const saved = await saveOwnerPassword(
+          env,
+          body?.password,
+          { userId: account.userId },
+        );
         return webJson(request, {
           ok: true,
           passwordConfigured: true,
-          ...(await issueOwnerToken(env, saved.authVersion)),
-          message: "User password saved. Other signed-in devices were revoked.",
+          ...(await issueOwnerToken(env, saved.authVersion, account.userId)),
+          message: "Password saved. Other sessions for this user were revoked.",
         });
       } catch (error) {
         const message = cleanText(error?.message, 200);
@@ -2584,15 +2841,16 @@ export default {
     }
 
     if (request.method === "POST" && userRoute(url.pathname, "revoke")) {
-      if (!(await verifyOwnerCapability(env, bearerToken(request)).catch(() => false))) {
+      const account = await resolveOwnerCapability(env, bearerToken(request)).catch(() => null);
+      if (!account) {
         return webJson(request, { ok: false, error: "User sign-in is required." }, { status: 401 });
       }
       try {
-        await rotateOwnerAuthVersion(env);
+        await rotateOwnerAuthVersion(env, account.userId);
         return webJson(request, {
           ok: true,
           revoked: true,
-          message: "All signed-in devices were revoked.",
+          message: "All sessions for this user were revoked.",
         });
       } catch {
         return webJson(
@@ -2603,15 +2861,54 @@ export default {
       }
     }
 
+    if (
+      (request.method === "POST" || request.method === "DELETE") &&
+      userRoute(url.pathname, "users")
+    ) {
+      const account = await resolveOwnerCapability(env, bearerToken(request)).catch(() => null);
+      if (!account) {
+        return webJson(request, { ok: false, error: "User sign-in is required." }, { status: 401 });
+      }
+      if (account.role !== "admin") {
+        return webJson(request, { ok: false, error: "Administrator access is required." }, { status: 403 });
+      }
+
+      let body;
+      try { body = await request.json(); }
+      catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
+
+      try {
+        if (request.method === "POST") {
+          await createManagedUser(env, body);
+        } else {
+          await deleteManagedUser(env, body?.username);
+        }
+        return webJson(request, {
+          ok: true,
+          settings: await ownerSettingsView(env, account),
+        });
+      } catch (error) {
+        const message = cleanText(error?.message, 200);
+        const status = /already exists|not found|cannot be removed|supports up to|different username|Username must|between 12 and 200/.test(message)
+          ? 400
+          : 503;
+        return webJson(
+          request,
+          { ok: false, error: status === 400 ? message : "Unable to update users right now." },
+          { status },
+        );
+      }
+    }
+
     if (request.method === "GET" && userRoute(url.pathname, "rsvp-status")) {
-      const token = bearerToken(request);
-      if (!(await verifyOwnerCapability(env, token).catch(() => false))) {
+      const account = await resolveOwnerCapability(env, bearerToken(request)).catch(() => null);
+      if (!account) {
         return webJson(request, { ok: false, error: "User sign-in is required." }, { status: 401 });
       }
       try {
         return webJson(request, {
           ok: true,
-          rsvp: pickupUserRsvpView(await loadSnapshot(env)),
+          rsvp: pickupUserRsvpView(await loadSnapshot(env), account.rsvpName),
         });
       } catch (error) {
         console.error("User pickup RSVP status load failed", error);
@@ -2627,14 +2924,14 @@ export default {
       (request.method === "GET" || request.method === "POST") &&
       userRoute(url.pathname, "settings")
     ) {
-      const token = bearerToken(request);
-      if (!(await verifyOwnerCapability(env, token).catch(() => false))) {
+      const account = await resolveOwnerCapability(env, bearerToken(request)).catch(() => null);
+      if (!account) {
         return webJson(request, { ok: false, error: "User sign-in is required." }, { status: 401 });
       }
 
       if (request.method === "GET") {
         try {
-          return webJson(request, { ok: true, settings: await ownerSettingsView(env) });
+          return webJson(request, { ok: true, settings: await ownerSettingsView(env, account) });
         } catch (error) {
           console.error("User settings load failed", error);
           return webJson(
@@ -2649,20 +2946,29 @@ export default {
       try { body = await request.json(); }
       catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
 
-      let settings;
-      try { settings = normalizeOwnerSettingsInput(body); }
-      catch (error) {
-        return webJson(request, { ok: false, error: cleanText(error?.message, 200) }, { status: 400 });
-      }
       try {
-        await saveOwnerSettingsDirect(env, settings);
-        return webJson(request, { ok: true, settings, persistence: "saved" });
+        if (account.role === "admin") {
+          const settings = normalizeOwnerSettingsInput(body);
+          await saveOwnerSettingsDirect(env, settings);
+        } else {
+          await saveUserProfileDirect(env, account.userId, body?.ownerName);
+        }
+        return webJson(request, {
+          ok: true,
+          settings: await ownerSettingsView(env, account),
+          persistence: "saved",
+        });
       } catch (error) {
+        const message = cleanText(error?.message, 200);
+        const status = /between 1 and 20/.test(message) ? 400 : 503;
         console.error("User settings persistence failed", error);
         return webJson(
           request,
-          { ok: false, error: "Unable to save user settings right now." },
-          { status: 503 },
+          {
+            ok: false,
+            error: status === 400 ? message : "Unable to save user settings right now.",
+          },
+          { status },
         );
       }
     }
@@ -2764,7 +3070,8 @@ export default {
 
       const question = cleanText(body?.question, 600);
       const token = bearerToken(request);
-      const userAuthorized = await verifyOwnerCapability(env, token).catch(() => false);
+      const userAccount = await resolveOwnerCapability(env, token).catch(() => null);
+      const userAuthorized = Boolean(userAccount);
       const requestedFeature = featureRequestText(question);
 
       if (requestedFeature) {
@@ -2804,7 +3111,10 @@ export default {
         }
       }
 
-      const answer = await webAnswer(env, question, body?.context || {});
+      const answer = await webAnswer(env, question, {
+        ...(body?.context || {}),
+        userRsvpName: userAccount?.rsvpName || "",
+      });
       const feedbackToken = answer.ok
         ? await issueFeedbackToken(env, question, answer.reply)
         : "";

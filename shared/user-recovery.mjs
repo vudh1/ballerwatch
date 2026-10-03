@@ -30,6 +30,14 @@ function derivedKey(master, context) {
     .digest();
 }
 
+function normalizeUsername(value) {
+  const username = String(value || "admin").trim().toLowerCase() || "admin";
+  if (!/^[a-z0-9][a-z0-9._-]{0,31}$/.test(username)) {
+    throw new Error("Recovery username must use 1-32 letters, numbers, dots, underscores, or hyphens.");
+  }
+  return username;
+}
+
 function passwordRecord(master, password) {
   const salt = crypto.randomBytes(18).toString("base64url");
   const digest = crypto
@@ -44,28 +52,54 @@ function passwordRecord(master, password) {
   };
 }
 
-export function resetUserPassword() {
+export function resetUserPassword(usernameValue = "admin") {
   const master = required("TRACKER_STATE_KEY");
   const password = normalizePassword(required("BALLERWATCH_RECOVERY_PASSWORD"));
+  const username = normalizeUsername(usernameValue);
   const current = loadUserState().settings;
-  const nextVersion = Math.max(1, Number(current.webAuthVersion || 1)) + 1;
-  const next = {
-    ...current,
-    webOwnerPassword: passwordRecord(master, password),
-    webAuthVersion: nextVersion,
+
+  if (username === "admin") {
+    const nextVersion = Math.max(1, Number(current.webAuthVersion || 1)) + 1;
+    const next = {
+      ...current,
+      webOwnerPassword: passwordRecord(master, password),
+      webAuthVersion: nextVersion,
+    };
+    delete next.webPairCodeHash;
+    delete next.webPairExpiresAt;
+    delete next.webPairConsumedAt;
+    saveUserState(next);
+    return { username, version: nextVersion };
+  }
+
+  const users = current.webUsers && typeof current.webUsers === "object"
+    ? { ...current.webUsers }
+    : {};
+  const existing = Object.prototype.hasOwnProperty.call(users, username)
+    ? users[username]
+    : null;
+  if (!existing || typeof existing !== "object") {
+    throw new Error(`BallerWatch user does not exist: ${username}`);
+  }
+
+  const nextVersion = Math.max(1, Number(existing.authVersion || 1)) + 1;
+  users[username] = {
+    ...existing,
+    webPassword: passwordRecord(master, password),
+    authVersion: nextVersion,
+    role: "user",
   };
-  delete next.webPairCodeHash;
-  delete next.webPairExpiresAt;
-  delete next.webPairConsumedAt;
-  saveUserState(next);
-  return nextVersion;
+  saveUserState({ ...current, webUsers: users });
+  return { username, version: nextVersion };
 }
 
 if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) {
   const command = process.argv[2] || "";
   if (command !== "reset") {
-    throw new Error("Usage: node shared/user-recovery.mjs reset");
+    throw new Error("Usage: node shared/user-recovery.mjs reset [username]");
   }
-  const version = resetUserPassword();
-  console.log(`Reset BallerWatch web credential and advanced auth revision to ${version}.`);
+  const result = resetUserPassword(process.argv[3] || "admin");
+  console.log(
+    `Reset BallerWatch web credential for ${result.username} and advanced auth revision to ${result.version}.`,
+  );
 }

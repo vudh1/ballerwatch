@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer operations PWA for pickup games and Seattle RATS league matches.
 
-**Current source version: 6.0.10**
+**Current source version: 6.1.0**
 
 **Production source of truth:** the commit pointed to by `production` and its published GitHub Release. `main` may be newer without changing the live app.
 
@@ -13,12 +13,17 @@ BallerWatch is a privacy-first soccer operations PWA for pickup games and Seattl
 - Supports touch swiping and desktop card-edge navigation.
 - Answers read-only questions such as `What time is Thursday?`, `What games are next week?`, or `/next`.
 - Sends the narrow allowed notification set through Web Push.
-- Lets an authenticated user update the pickup RSVP display name and monitored league teams.
+- Supports multiple username/password accounts, each with an independent pickup RSVP name, password, and revocable sessions.
+- Keeps monitored league teams shared and administrator-controlled so users cannot overwrite one another's league configuration.
 - Supports answer-specific wrong-answer feedback without granting Settings access: double-click an answer on desktop, or press and hold it on touch; repeat the gesture to undo.
 - Lets a signed-in user submit encrypted feature requests with `/feature describe what you want`; only category/count aggregates are exposed publicly.
 - Synchronizes real RATS schedule changes to Google Calendar.
 
 **Live app:** https://vudh1.github.io/ballerwatch/
+
+## Demo
+
+![BallerWatch web app demo](docs/demo.jpg)
 
 ## 6.0 web-only architecture
 
@@ -32,7 +37,7 @@ Cloudflare web Worker
   |        |        |
   |        |        +--> encrypted runtime-state
   |        +-----------> Web Push registration / public-safe Q&A
-  +--------------------> user password auth + Settings
+  +--------------------> multi-user password auth + Settings
 
 cron-job.org
   |--> pickup every 2 min --> GitHub Actions --> Web Push / state
@@ -46,7 +51,7 @@ GitHub native schedule --> watchdog + 14-day weather every 6 hr
 | `main` | Reviewed integration code; may be ahead of production. |
 | `production` | Exact promoted release commit. |
 | `runtime-state` | Generated data only; every canonical file is one hardened AES-GCM envelope. |
-| Cloudflare Worker | Web/PWA API, auth, read-only Q&A, runtime access, push registration, health. |
+| Cloudflare Worker | Web/PWA API, per-user auth, read-only Q&A, runtime access, push registration, health. |
 | GitHub Actions | Reconciliation, Web Push delivery, Calendar work, validation, recovery, release promotion. |
 | cron-job.org | Pickup 2-minute and league 5-minute dispatch only. |
 
@@ -54,17 +59,19 @@ Workers KV and Cloudflare Cron Triggers are intentionally not part of production
 
 ## User sign-in and recovery
 
-Normal access is **User password → Sign in**. Each device receives a signed capability token tied to a server-side auth revision.
+BallerWatch supports up to 20 encrypted web accounts. The existing pre-6.1 account migrates automatically as **admin**.
 
-Changing the password or choosing **Sign out all devices** advances the auth revision and invalidates older tokens.
+Each account has its own username, password, pickup RSVP name, authentication revision, and device sessions. The administrator can add/remove users and edit the shared monitored-team list; regular users can edit only their own RSVP name and password.
 
-First-time bootstrap or forgotten-password recovery is repository-admin controlled:
+Changing a password or choosing **Sign out all my devices** advances only that user's authentication revision and invalidates that user's older tokens.
 
-1. Set a temporary repository Actions secret named `BALLERWATCH_RECOVERY_PASSWORD` to the new password.
-2. Run **Actions → Reset web user password**, enter `RESET`.
-3. The workflow reads encrypted `state/user.json`, writes a server-keyed verifier, advances the auth revision, and persists the encrypted state.
-4. Delete or rotate the temporary recovery secret after the workflow succeeds.
-5. Sign in to the PWA with the new password.
+Forgotten-password recovery remains repository-admin controlled:
+
+1. Set the temporary repository Actions secret `BALLERWATCH_RECOVERY_PASSWORD` to the replacement password.
+2. Run **Actions → Reset web user password**.
+3. Enter the target BallerWatch username (use `admin` for the migrated original account) and type `RESET`.
+4. The workflow updates only that encrypted account and revokes only that user's existing sessions.
+5. Delete or rotate the temporary recovery secret after the workflow succeeds.
 
 The recovery workflow never intentionally logs or stores the plaintext password.
 

@@ -14,17 +14,17 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /manifest\.webmanifest/);
   assert.match(html, /apple-touch-icon\.png/);
   assert.match(html, /class="brand-icon"/);
-  assert.match(html, /icon\.svg\?v=6\.0\.10/);
+  assert.match(html, /icon\.svg\?v=6\.1\.0/);
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=6\.0\.10/);
-  assert.match(html, /app\.js\?v=6\.0\.10/);
+  assert.match(html, /styles\.css\?v=6\.1\.0/);
+  assert.match(html, /app\.js\?v=6\.1\.0/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v6-0-10-shell/);
+  assert.match(sw, /ballerwatch-v6-1-0-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -80,7 +80,7 @@ test("Home Screen install prompt uses the same card layout system as dashboard c
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=6\.0\.10/);
+  assert.match(app, /sw\.js\?v=6\.1\.0/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -909,4 +909,19 @@ test("Worker web API sets defense-in-depth security headers and protects push re
   assert.match(worker, /verifyPushRegistrationChallenge/);
   assert.match(worker, /webRequestOriginAllowed/);
   assert.match(worker, /rotateOwnerAuthVersion/);
+});
+
+
+test("README includes the web app demo and multi-user settings are exposed", () => {
+  const readme = fs.readFileSync("README.md", "utf8");
+  const html = fs.readFileSync("docs/index.html", "utf8");
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  assert.match(readme, /!\[BallerWatch web app demo\]\(docs\/demo\.jpg\)/);
+  assert.equal(fs.existsSync("docs/demo.jpg"), true);
+  assert.match(html, /id="owner-login-username"/);
+  assert.match(html, /id="user-management"/);
+  assert.match(html, /id="user-create-form"/);
+  assert.match(app, /\/web\/user\/users/);
+  assert.match(app, /OWNER_USERNAME_KEY/);
+  assert.match(app, /canManageUsers/);
 });

@@ -11,17 +11,17 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="BallerWatch">
   <title>BallerWatch</title>
-  <link rel="manifest" href="./manifest.webmanifest?v=6.0.10">
-  <link rel="icon" href="./icon.svg?v=6.0.10" type="image/svg+xml">
-  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=6.0.10">
-  <link rel="stylesheet" href="./styles.css?v=6.0.10">
+  <link rel="manifest" href="./manifest.webmanifest?v=6.1.0">
+  <link rel="icon" href="./icon.svg?v=6.1.0" type="image/svg+xml">
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=6.1.0">
+  <link rel="stylesheet" href="./styles.css?v=6.1.0">
 </head>
 <body>
   <div class="status-bar-glass" aria-hidden="true"></div>
   <main class="shell">
     <header class="hero">
       <div class="brand-lockup">
-        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=6.0.10" alt=""></div>
+        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=6.1.0" alt=""></div>
         <div>
           <p class="eyebrow">SOCCER AT A GLANCE</p>
           <h1>BallerWatch</h1>
@@ -216,29 +216,54 @@
       <section id="settings-login-view">
         <p class="muted">Sign in to manage your private BallerWatch settings on this device.</p>
         <form id="owner-login-form" class="settings-form">
-          <label for="owner-login-password">User password</label>
+          <label for="owner-login-username">Username</label>
+          <input id="owner-login-username" type="text" autocomplete="username"
+            maxlength="32" value="admin" placeholder="Username" required>
+          <label for="owner-login-password">Password</label>
           <input id="owner-login-password" type="password" autocomplete="current-password"
-            maxlength="200" placeholder="User password" required>
+            maxlength="200" placeholder="Password" required>
           <button type="submit">Sign in</button>
         </form>
         <p class="hint" id="owner-login-status"></p>
-        <p class="privacy-note">Forgot the password? Recovery is performed from the repository's <strong>Reset web user password</strong> GitHub Action using a temporary encrypted Actions secret. No messaging account is required.</p>
+        <p class="privacy-note">The existing BallerWatch account is <strong>admin</strong>. Password recovery is performed from <strong>Reset web user password</strong> and now targets a username.</p>
       </section>
 
       <section id="settings-owner-view" hidden>
+        <p class="settings-account-summary" id="current-user-summary"></p>
         <form id="owner-settings-form" class="settings-form">
           <label for="owner-name">Pickup RSVP name</label>
           <input id="owner-name" maxlength="120" autocomplete="name"
             placeholder="Your RSVP display name">
 
-          <label for="owner-teams">League teams to monitor</label>
-          <textarea id="owner-teams" rows="5" maxlength="1200"
-            placeholder="One team per line" required></textarea>
-          <p class="hint">One team per line. Changes take effect on the next league refresh.</p>
+          <div id="owner-team-settings">
+            <label for="owner-teams">League teams to monitor</label>
+            <textarea id="owner-teams" rows="5" maxlength="1200"
+              placeholder="One team per line"></textarea>
+            <p class="hint">Shared app setting. Administrator changes take effect on the next league refresh.</p>
+          </div>
 
           <button type="submit">Save changes</button>
         </form>
         <p class="hint" id="owner-settings-status"></p>
+
+        <section id="user-management" hidden>
+          <div class="settings-divider"></div>
+          <h3 class="settings-subheading">Users</h3>
+          <div class="settings-user-list" id="user-list"></div>
+          <form id="user-create-form" class="settings-form">
+            <label for="user-create-username">New username</label>
+            <input id="user-create-username" maxlength="32" autocomplete="off"
+              placeholder="teammate" required>
+            <label for="user-create-name">Pickup RSVP name</label>
+            <input id="user-create-name" maxlength="120" autocomplete="off"
+              placeholder="RSVP display name">
+            <label for="user-create-password">Initial password</label>
+            <input id="user-create-password" type="password" minlength="12" maxlength="200"
+              autocomplete="new-password" placeholder="At least 12 characters" required>
+            <button type="submit">Add user</button>
+          </form>
+          <p class="hint" id="user-create-status"></p>
+        </section>
 
         <div class="settings-divider"></div>
         <form id="owner-password-form" class="settings-form">
@@ -253,7 +278,7 @@
         <p class="hint" id="owner-password-status"></p>
         <p class="privacy-note">Password recovery and first-time bootstrap are handled by the repository's <strong>Reset web user password</strong> GitHub Action. The plaintext password is never written to runtime state or workflow logs.</p>
         <button class="subtle-action" id="owner-disconnect" type="button">Disconnect this device</button>
-        <button class="subtle-action" id="owner-revoke" type="button">Sign out all devices</button>
+        <button class="subtle-action" id="owner-revoke" type="button">Sign out all my devices</button>
       </section>
     </div>
   </dialog>
@@ -273,6 +298,6 @@
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=6.0.10"></script>
+  <script type="module" src="./app.js?v=6.1.0"></script>
 </body>
 </html>

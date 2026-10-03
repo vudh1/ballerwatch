@@ -24,12 +24,34 @@ function defaults() {
     lastEndpointReminderAt: "",
     webOwnerPassword: null,
     webAuthVersion: 1,
+    webUsers: {},
   };
+}
+
+function cleanWebUsers(value) {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const users = {};
+  for (const [rawName, rawRecord] of Object.entries(source)) {
+    const username = String(rawName || "").trim().toLowerCase();
+    if (!/^[a-z0-9][a-z0-9._-]{0,31}$/.test(username) || username === "admin") continue;
+    const record = rawRecord && typeof rawRecord === "object" ? rawRecord : {};
+    const authVersion = Number(record.authVersion || 1);
+    users[username] = {
+      rsvpName: String(record.rsvpName || "").trim().slice(0, 120),
+      webPassword: record.webPassword && typeof record.webPassword === "object"
+        ? record.webPassword
+        : null,
+      authVersion: Number.isSafeInteger(authVersion) && authVersion >= 1 ? authVersion : 1,
+      role: "user",
+      createdAt: String(record.createdAt || ""),
+    };
+  }
+  return users;
 }
 
 function cleanSettings(value) {
   const source = value && typeof value === "object" ? value : {};
-  const next = { ...defaults(), ...source };
+  const next = { ...defaults(), ...source, webUsers: cleanWebUsers(source.webUsers) };
   delete next.webPairCodeHash;
   delete next.webPairExpiresAt;
   delete next.webPairConsumedAt;

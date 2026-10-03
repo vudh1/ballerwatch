@@ -6,6 +6,7 @@ import {
   directIntent,
   issueOwnerToken,
   issuePushRegistrationChallenge,
+  normalizeUserName,
   pickupUserRsvpView,
   verifyOwnerCapability,
   normalizeOwnerSettingsInput,
@@ -81,6 +82,30 @@ test("authenticated pickup RSVP view exposes only confirmed and waitlisted dates
   });
   assert.doesNotMatch(JSON.stringify(view), /Alex Smith|Someone Else/);
 });
+
+test("pickup RSVP view can use the active user's RSVP identity", () => {
+  const snapshot = {
+    pickup: { dates: [{ date: "2099-10-08" }] },
+    pickupPrivate: {
+      events: {
+        "2099-10-08": {
+          players: [{ name: "Second User" }],
+          waitlist: [],
+        },
+      },
+    },
+    settings: { ownerRsvpName: "Admin User" },
+  };
+  assert.deepEqual(pickupUserRsvpView(snapshot, "Second User"), {
+    confirmedDates: ["2099-10-08"],
+    waitlistedDates: [],
+  });
+  assert.deepEqual(pickupUserRsvpView(snapshot, "Someone Else"), {
+    confirmedDates: [],
+    waitlistedDates: [],
+  });
+});
+
 
 test("web user capability verification honors the current auth revision", async () => {
   const env = { TRACKER_STATE_KEY: "test-runtime-key" };
@@ -204,15 +229,26 @@ test("league next-game details expose a two-hour time window from normalized end
 });
 
 
-test("user capability tokens are revision-bound for server-side revocation", async () => {
+test("user capability tokens are revision-bound and user-bound", async () => {
   const env = { TRACKER_STATE_KEY: "test-owner-secret" };
-  const issued = await issueOwnerToken(env, 3);
+  const issued = await issueOwnerToken(env, 3, "teammate");
   assert.match(issued.token, /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
-  assert.equal(await verifyOwnerToken(env, issued.token, 3), true);
-  assert.equal(await verifyOwnerToken(env, issued.token, 2), false);
-  assert.equal(await verifyOwnerToken(env, issued.token, 4), false);
-  assert.equal(await verifyOwnerToken(env, issued.token + "x", 3), false);
-  assert.equal(await verifyOwnerToken({TRACKER_STATE_KEY: "wrong"}, issued.token, 3), false);
+  assert.equal(issued.username, "teammate");
+  assert.equal(await verifyOwnerToken(env, issued.token, 3, "teammate"), true);
+  assert.equal(await verifyOwnerToken(env, issued.token, 2, "teammate"), false);
+  assert.equal(await verifyOwnerToken(env, issued.token, 3, "admin"), false);
+  assert.equal(await verifyOwnerToken(env, issued.token + "x", 3, "teammate"), false);
+  assert.equal(
+    await verifyOwnerToken({ TRACKER_STATE_KEY: "wrong" }, issued.token, 3, "teammate"),
+    false,
+  );
+});
+
+test("usernames normalize predictably and preserve the migrated admin identity", () => {
+  assert.equal(normalizeUserName(""), "admin");
+  assert.equal(normalizeUserName(" TeamMate "), "teammate");
+  assert.equal(normalizeUserName("player.one"), "player.one");
+  assert.throws(() => normalizeUserName("bad user name"), /Username must/);
 });
 
 test("push registration challenge is short-lived and bound to one recognized endpoint", async () => {
