@@ -845,7 +845,7 @@ test("runtime deployment migrates every web scope and audits full branch encrypt
   assert.match(watchdog, /node shared\/runtime-state\.mjs audit/);
   assert.match(worker, /async function userStateDocument/);
   assert.match(worker, /githubStateRecord\(env, "state\/user\.json"\)/);
-  assert.match(worker, /await encryptState\(next, env\)/);
+  assert.match(worker, /await encryptState\((?:next|\{ settings \}), env\)/);
 });
 
 test("retired watchdog dispatches skip before runner allocation", () => {
