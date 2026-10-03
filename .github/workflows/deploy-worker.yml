@@ -183,6 +183,7 @@ jobs:
             --data '{"endpoint":"https://127.0.0.1/latest/meta-data/"}')"
           test "$PUSH_STATUS" = "400" || { cat "$PUSH_BODY"; exit 1; }
           rm -f "$PUSH_BODY"
+          echo "Worker readiness verified."
 
 
 
