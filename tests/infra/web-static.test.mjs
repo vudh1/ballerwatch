@@ -373,14 +373,18 @@ test("cron-job.org is reserved for pickup and league while watchdog is retired",
 });
 
 
-test("weather release bootstrap stays notification-silent and release-gated", () => {
-  const workflow = fs.readFileSync(".github/workflows/weather-refresh.yml", "utf8");
-  assert.match(workflow, /release:\s*\n\s*types:\s*\[published\]/);
-  assert.doesNotMatch(workflow, /push:\s*\n\s*branches:\s*\[main\]/);
-  assert.match(workflow, /github\.event\.release\.tag_name/);
-  assert.match(workflow, /node weather\/update\.mjs/);
-  assert.match(workflow, /node shared\/runtime-state\.mjs push weather/);
-  assert.doesNotMatch(workflow, /send-pending|sendMessage/i);
+test("weather refresh is owned by schedule changes and the watchdog without a duplicate workflow", () => {
+  const pickup = fs.readFileSync(".github/workflows/pickup.yml", "utf8");
+  const league = fs.readFileSync(".github/workflows/league.yml", "utf8");
+  const watchdog = fs.readFileSync(".github/workflows/watchdog.yml", "utf8");
+
+  assert.equal(fs.existsSync(".github/workflows/weather-refresh.yml"), false);
+  assert.match(pickup, /Refresh weather after pickup schedule change/);
+  assert.match(pickup, /node weather\/update\.mjs/);
+  assert.match(league, /Refresh weather after league schedule change/);
+  assert.match(league, /node weather\/update\.mjs/);
+  assert.match(watchdog, /cron: "17 \*\/6 \* \* \*"/);
+  assert.match(watchdog, /node weather\/update\.mjs/);
 });
 
 
