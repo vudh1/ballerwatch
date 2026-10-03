@@ -38,12 +38,12 @@ test("retired messaging integration cannot be reintroduced", () => {
     retiredPrefix,
     "ballerwatch-" + retiredBrand,
     "/" + retiredBrand,
-    "/webpair",
-    "/web/user/pair",
+    "/" + "web" + "pair",
+    "/web/user/" + "pair",
   ];
 
   for (const file of sourceFiles()) {
-    if (file === path.normalize(import.meta.filename || "")) continue;
+    if (file.endsWith(path.join("tests", "infra", "no-retired-messaging.test.mjs"))) continue;
     const value = fs.readFileSync(file, "utf8");
     for (const forbidden of forbiddenText) {
       assert.equal(
