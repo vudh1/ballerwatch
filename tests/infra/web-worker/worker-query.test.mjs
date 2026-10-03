@@ -2,12 +2,16 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   createOwnerPasswordRecord,
+  directIntent,
+  gamesInRange,
   gamesOnDate,
   issueFeedbackToken,
   issueOwnerToken,
   nextGame,
   normalizeOwnerPassword,
+  resolveDate,
   resolveScheduleDate,
+  resolveScheduleRange,
   verifyFeedbackToken,
   verifyOwnerPassword,
   verifyOwnerToken,
@@ -78,6 +82,33 @@ test("next game considers both league and pickup schedules", () => {
   assert.match(result.reply, /Team Alpha vs Team Beta/);
 });
 
+
+
+test("explicit pickup weekday does not fall back to prior conversation date", () => {
+  const result = resolveDate(
+    "Saturday availability",
+    snapshot(),
+    { lastDate: "2099-10-08" },
+    new Date("2099-10-06T12:00:00Z"),
+  );
+  assert.equal(result, "2099-10-10");
+  assert.notEqual(result, "2099-10-08");
+});
+
+test("weekly schedule questions resolve and return all published games in range", () => {
+  const now = new Date("2099-10-04T12:00:00Z");
+  const range = resolveScheduleRange("what games are next week?", now);
+  assert.deepEqual(range, {
+    startDate: "2099-10-05",
+    endDate: "2099-10-11",
+  });
+  assert.equal(directIntent("what games are next week?"), "range_games");
+
+  const reply = gamesInRange(snapshot(), range.startDate, range.endDate);
+  assert.match(reply, /Team Alpha vs Team Beta/);
+  assert.match(reply, /14\/16 reserved/);
+  assert.match(reply, /Test Field/);
+});
 
 test("feedback authorization is scoped to the exact answer and never grants owner access", async () => {
   const env = { TRACKER_STATE_KEY: "test-feedback-signing-key" };
