@@ -1,15 +1,14 @@
 # BallerWatch Wiki
 
-BallerWatch is a privacy-first soccer automation system that watches pickup RSVP data and Seattle RATS schedules, sends Web Push and optional Telegram updates, synchronizes Google Calendar, and uses Cloudflare as its fast public-safe runtime with a user-authenticated Settings boundary.
+BallerWatch is a privacy-first soccer automation PWA for pickup RSVP monitoring and Seattle RATS league matches.
 
-Start here:
+The GitHub Pages PWA is the sole user surface. Cloudflare provides the web API/authentication layer, GitHub Actions handles reconciliation and Web Push delivery, cron-job.org dispatches the high-frequency pickup/league watchers, and Google Apps Script provides Calendar reconciliation.
 
+Start with:
 - [Architecture](Architecture)
-- [Runtime and failover](Runtime-and-Failover)
-- [Development](Development)
+- [Web App](Web-App)
+- [Data and Privacy](Data-and-Privacy)
+- [Runtime and Failover](Runtime-and-Failover)
 - [Operations](Operations)
-- [Web app and push fallback](Web-App)
-- [Release process](Release-Process)
-- [Data and privacy](Data-and-Privacy)
-
-The source repository keeps code, static configuration, documentation, and release history. Live runtime data belongs outside Git history.
+- [Release Process](Release-Process)
+- [Development](Development)
