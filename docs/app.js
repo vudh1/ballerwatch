@@ -1,4 +1,6 @@
 /**
+ * Copyright © 2026 BallerWatch. All rights reserved.
+ *
  * BallerWatch PWA client: renders the dashboard, read-only Q&A, notifications,
  * user Settings, connected-card navigation, and installed-app update behavior.
  *
