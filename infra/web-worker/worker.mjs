@@ -1374,31 +1374,31 @@ function scheduleDates(snapshot) {
   ])].sort();
 }
 
-function explicitScheduleDate(text) {
+function explicitScheduleDate(text, now = new Date()) {
   const lower = String(text || "").toLowerCase();
   const iso = lower.match(/\b(20\d{2})-(\d{1,2})-(\d{1,2})\b/);
   if (iso) return `${iso[1]}-${String(Number(iso[2])).padStart(2, "0")}-${String(Number(iso[3])).padStart(2, "0")}`;
 
   const md = lower.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(20\d{2}))?\b/);
   if (md) {
-    const year = md[3] || localDate().slice(0, 4);
+    const year = md[3] || localDate(now).slice(0, 4);
     return `${year}-${String(Number(md[1])).padStart(2, "0")}-${String(Number(md[2])).padStart(2, "0")}`;
   }
 
-  if (/\btoday\b/.test(lower)) return localDate();
-  if (/\btomorrow\b/.test(lower)) return addDays(localDate(), 1);
+  if (/\btoday\b/.test(lower)) return localDate(now);
+  if (/\btomorrow\b/.test(lower)) return addDays(localDate(now), 1);
   return "";
 }
 
-export function resolveScheduleDate(text, snapshot, context = {}) {
-  const explicit = explicitScheduleDate(text);
+export function resolveScheduleDate(text, snapshot, context = {}, now = new Date()) {
+  const explicit = explicitScheduleDate(text, now);
   if (explicit) return explicit;
 
   const dates = scheduleDates(snapshot);
   const lower = String(text || "").toLowerCase();
   for (const name of ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"]) {
     if (lower.includes(name)) {
-      const date = dates.find(value => value >= localDate() && weekday(value) === name);
+      const date = dates.find(value => value >= localDate(now) && weekday(value) === name);
       if (date) return date;
     }
   }
@@ -1441,16 +1441,33 @@ export function resolveScheduleRange(text, now = new Date()) {
   return null;
 }
 
-export function resolveDate(text, snapshot, context = {}) {
+export function resolveDate(text, snapshot, context = {}, now = new Date()) {
   const dates = availableDates(snapshot);
   const lower = String(text || "").toLowerCase();
-  const explicit = explicitScheduleDate(text);
-  if (explicit) return dates.includes(explicit) ? explicit : null;
+  const today = localDate(now);
+  const explicit = explicitScheduleDate(text, now);
+  if (explicit) return explicit;
 
-  for (const name of ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"]) {
-    if (lower.includes(name)) {
-      return dates.find((value) => value >= localDate() && weekday(value) === name) || null;
-    }
+  const weekdayNames = [
+    "sunday",
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+  ];
+  for (const name of weekdayNames) {
+    if (!lower.includes(name)) continue;
+    const published = dates.find(
+      (value) => value >= today && weekday(value) === name,
+    );
+    if (published) return published;
+
+    const todayIndex = weekdayNames.indexOf(weekday(today));
+    const targetIndex = weekdayNames.indexOf(name);
+    const delta = (targetIndex - todayIndex + 7) % 7;
+    return addDays(today, delta);
   }
 
   if (context.lastDate && dates.includes(context.lastDate)) return context.lastDate;
@@ -1460,7 +1477,7 @@ export function resolveDate(text, snapshot, context = {}) {
   ) {
     return snapshot.settings.lastReferencedDate;
   }
-  const future = dates.filter((value) => value >= localDate());
+  const future = dates.filter((value) => value >= today);
   return future.length === 1 ? future[0] : null;
 }
 
@@ -1633,14 +1650,17 @@ export function directIntent(text) {
   // static index so common phrasing avoids a network round-trip to Groq.
   if (/^\/?version\b/.test(lower)) return "version";
   if (/^\/?help\b/.test(lower)) return "help";
-  if (resolveScheduleRange(clean)) return "range_games";
+  if (
+    resolveScheduleRange(clean) &&
+    /\b(?:game|games|match|matches|schedule|playing|soccer)\b/.test(lower)
+  ) return "range_games";
   if (/^\/today(?:\s|$)/.test(lower)) return "today_games";
   if (/^\/next(?:\s|$)/.test(lower)) return "next_game";
   if (/^\/teams(?:\s|$)/.test(lower)) return "league_teams";
   if (/^\/(?:count|field|time)(?:\s|$)/.test(lower)) return "pickup_status";
   if (
     /\b(?:today|tomorrow|sunday|monday|tuesday|wednesday|thursday|friday|saturday|\d{1,2}\/\d{1,2})\b/.test(lower) &&
-    /\b(?:time|when|where|field|location|address)\b/.test(lower)
+    /\b(?:time|when|where|field|location|address|availability|spots|count|rsvp)\b/.test(lower)
   ) {
     return "pickup_status";
   }
@@ -2713,8 +2733,7 @@ export default {
             ok: true,
             reply: "Feature request saved for review.",
             intent: "feature_request",
-            version: "6.0.x",
-          };
+           };
           ctx.waitUntil(
             persistFastChatHistory(env, {
               question,
