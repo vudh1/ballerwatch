@@ -1897,6 +1897,7 @@ async function toggleWrongAnswerFeedback() {
         feedbackToken: lastAnswerExchange.feedbackToken || "",
         question: lastAnswerExchange.question,
         reply: lastAnswerExchange.reply,
+        intent: lastAnswerExchange.intent || "",
       }),
     });
 
@@ -1992,6 +1993,7 @@ els.form.addEventListener("submit", async (event) => {
     lastAnswerExchange = {
       question,
       reply: payload.reply,
+      intent: payload.intent || "",
       feedbackToken: payload.feedbackToken || "",
     };
     feedbackSubmitted = false;
