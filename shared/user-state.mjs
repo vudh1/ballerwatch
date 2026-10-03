@@ -34,7 +34,7 @@ function cleanSettings(value) {
   delete next.webPairCodeHash;
   delete next.webPairExpiresAt;
   delete next.webPairConsumedAt;
-  delete next.recentLegacyReplies;
+  delete next.recentBotReplies;
   return next;
 }
 
