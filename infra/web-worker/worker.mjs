@@ -2079,6 +2079,7 @@ async function webAnswer(env, question, context = {}) {
       "• what field?",
       "• what time?",
       "• what league teams are you monitoring?",
+      "• /feature describe what you want",
       "• /version",
     ].join("\n");
   } else if (intent === "league_teams") {
@@ -2733,7 +2734,7 @@ export default {
             ok: true,
             reply: "Feature request saved for review.",
             intent: "feature_request",
-           };
+          };
           ctx.waitUntil(
             persistFastChatHistory(env, {
               question,
