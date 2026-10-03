@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer operations PWA for pickup games and Seattle RATS league matches.
 
-**Current source version: 6.0.6**
+**Current source version: 6.0.7**
 
 **Production source of truth:** the commit pointed to by `production` and its published GitHub Release. `main` may be newer without changing the live app.
 
@@ -11,10 +11,11 @@ BallerWatch is a privacy-first soccer operations PWA for pickup games and Seattl
 - Shows the next pickup or league match, RSVP capacity, field, and match-window weather.
 - Provides a 14-day game calendar.
 - Supports touch swiping and desktop card-edge navigation.
-- Answers read-only questions such as `What time is Thursday?` or `/next`.
+- Answers read-only questions such as `What time is Thursday?`, `What games are next week?`, or `/next`.
 - Sends the narrow allowed notification set through Web Push.
 - Lets an authenticated user update the pickup RSVP display name and monitored league teams.
 - Supports answer-specific **Wrong answer** feedback without granting Settings access.
+- Lets a signed-in user submit encrypted feature requests with `/feature describe what you want`; only category/count aggregates are exposed publicly.
 - Synchronizes real RATS schedule changes to Google Calendar.
 
 **Live app:** https://vudh1.github.io/ballerwatch/
