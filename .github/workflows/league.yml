@@ -84,7 +84,6 @@ jobs:
 
       - name: Record web schedule notification
         if: steps.gate.outputs.should_run == 'true' && steps.calendar_gate.outputs.needsCalendar == 'true'
-        env:
         run: node web-notify.mjs
 
       - name: Seal league runtime state
