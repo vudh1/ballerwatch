@@ -1220,6 +1220,199 @@ function syncSpotlightEdgeControls() {
   els.spotlightNext.disabled = !adjacentCalendarSelection(1);
 }
 
+function installSpotlightSwipe() {
+  let touchStartX = null;
+  let touchStartY = null;
+  let horizontalGesture = false;
+  let train = null;
+  let settling = false;
+
+  const carousel = els.spotlightCarousel;
+  const current = els.nextGameCard;
+
+  const gap = () => {
+    const value = Number.parseFloat(
+      getComputedStyle(carousel).getPropertyValue("--spotlight-train-gap"),
+    );
+    return Number.isFinite(value) ? value : 12;
+  };
+
+  const clearInlineMotion = () => {
+    current.classList.remove("is-train-dragging", "is-train-settling");
+    current.style.removeProperty("transform");
+    document.documentElement.classList.remove("spotlight-swipe-active");
+
+    if (train?.preview) train.preview.remove();
+    train = null;
+  };
+
+  const resetGesture = () => {
+    clearInlineMotion();
+    touchStartX = null;
+    touchStartY = null;
+    horizontalGesture = false;
+    settling = false;
+  };
+
+  const prepareTrain = (direction) => {
+    if (train?.direction === direction) return train;
+
+    if (train?.preview) train.preview.remove();
+    train = null;
+
+    const target = adjacentCalendarSelection(direction);
+    if (!target) return null;
+
+    const preview = buildSpotlightTrainCard(target.game);
+    carousel.append(preview);
+
+    const distance = carousel.clientWidth + gap();
+    const baseOffset = direction * distance;
+    preview.style.transform = `translate3d(${baseOffset}px, 0, 0)`;
+
+    current.classList.add("is-train-dragging");
+    preview.classList.add("is-train-dragging");
+
+    train = {
+      direction,
+      target,
+      preview,
+      distance,
+      baseOffset,
+    };
+    return train;
+  };
+
+  const settleBack = () => {
+    settling = true;
+    current.classList.remove("is-train-dragging");
+    current.classList.add("is-train-settling");
+    current.style.transform = "translate3d(0, 0, 0)";
+
+    if (train?.preview) {
+      train.preview.classList.remove("is-train-dragging");
+      train.preview.classList.add("is-train-settling");
+      train.preview.style.transform = `translate3d(${train.baseOffset}px, 0, 0)`;
+    }
+
+    window.setTimeout(resetGesture, 270);
+  };
+
+  const completeTrain = () => {
+    if (!train?.preview) {
+      resetGesture();
+      return;
+    }
+
+    settling = true;
+    const committedTrain = train;
+    current.classList.remove("is-train-dragging");
+    committedTrain.preview.classList.remove("is-train-dragging");
+    current.classList.add("is-train-settling");
+    committedTrain.preview.classList.add("is-train-settling");
+
+    current.style.transform =
+      `translate3d(${-committedTrain.direction * committedTrain.distance}px, 0, 0)`;
+    committedTrain.preview.style.transform = "translate3d(0, 0, 0)";
+
+    window.setTimeout(() => {
+      selectCalendarDate(committedTrain.target.date);
+
+      current.classList.remove("is-train-settling");
+      current.style.transition = "none";
+      current.style.transform = "translate3d(0, 0, 0)";
+      void current.offsetWidth;
+      current.style.removeProperty("transition");
+
+      resetGesture();
+    }, 270);
+  };
+
+  const activateEdgeStep = (direction) => {
+    if (settling) return;
+    const activeTrain = prepareTrain(direction);
+    if (!activeTrain) {
+      syncSpotlightEdgeControls();
+      return;
+    }
+    window.requestAnimationFrame(completeTrain);
+  };
+
+  els.spotlightPrevious.addEventListener("click", () => activateEdgeStep(-1));
+  els.spotlightNext.addEventListener("click", () => activateEdgeStep(1));
+
+  els.nextGameCard.addEventListener("touchstart", (event) => {
+    if (settling || event.target.closest?.("a, button")) return;
+    const touch = event.changedTouches?.[0];
+    if (!touch) return;
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+    horizontalGesture = false;
+  }, { passive: true });
+
+  els.nextGameCard.addEventListener("touchmove", (event) => {
+    const touch = event.changedTouches?.[0];
+    if (!touch || touchStartX == null || touchStartY == null || settling) return;
+
+    const deltaX = touch.clientX - touchStartX;
+    const deltaY = touch.clientY - touchStartY;
+
+    if (!horizontalGesture) {
+      if (Math.abs(deltaX) < 8) return;
+      if (Math.abs(deltaX) <= Math.abs(deltaY) * 1.1) {
+        resetGesture();
+        return;
+      }
+      horizontalGesture = true;
+      document.documentElement.classList.add("spotlight-swipe-active");
+    }
+
+    event.preventDefault();
+    const direction = deltaX < 0 ? 1 : -1;
+    const activeTrain = prepareTrain(direction);
+
+    if (!activeTrain) {
+      const resistedOffset = deltaX * 0.18;
+      current.classList.add("is-train-dragging");
+      current.style.transform = `translate3d(${resistedOffset}px, 0, 0)`;
+      return;
+    }
+
+    const offset = Math.max(
+      -activeTrain.distance,
+      Math.min(activeTrain.distance, deltaX),
+    );
+    current.style.transform = `translate3d(${offset}px, 0, 0)`;
+    activeTrain.preview.style.transform =
+      `translate3d(${activeTrain.baseOffset + offset}px, 0, 0)`;
+  }, { passive: false });
+
+  els.nextGameCard.addEventListener("touchend", (event) => {
+    const touch = event.changedTouches?.[0];
+    if (!touch || touchStartX == null || touchStartY == null || settling) {
+      if (!settling) resetGesture();
+      return;
+    }
+
+    const deltaX = touch.clientX - touchStartX;
+    const deltaY = touch.clientY - touchStartY;
+    const isHorizontalSwipe =
+      horizontalGesture &&
+      Math.abs(deltaX) >= 56 &&
+      Math.abs(deltaX) > Math.abs(deltaY) * 1.2;
+
+    event.preventDefault();
+    if (!isHorizontalSwipe || !train?.target) {
+      settleBack();
+      return;
+    }
+
+    completeTrain();
+  }, { passive: false });
+
+  els.nextGameCard.addEventListener("touchcancel", settleBack);
+}
+
 function setCalendarExpanded(expanded) {
   calendarExpanded = Boolean(expanded);
   syncCalendarExpansionUi();
