@@ -378,11 +378,26 @@ export function normalize(
         const byeDateSide = allDateSide.filter(
           (row) => String(row["Event Type"]).toLocaleLowerCase("en-US") === "bye",
         ).length;
+        const sameOpponent = exportGames.filter(
+          (row) =>
+            normalizeTeamName(row["Opponent/Event Title"]) === normalizeTeamName(opponent),
+        ).length;
+        const sameOpponentSide = exportGames.filter(
+          (row) =>
+            normalizeTeamName(row["Opponent/Event Title"]) === normalizeTeamName(opponent) &&
+            String(row["Home or Away"]).toLocaleLowerCase("en-US") === expectedSide,
+        ).length;
+        const relativeDate = date < dateInZone(new Date(), TZ)
+          ? "past"
+          : date === dateInZone(new Date(), TZ)
+            ? "today"
+            : "future";
         throw new Error(
           "Aggregate/export match identity mismatch " +
           `(exact=${rows.length}, normalized=${normalizedRows.length}, dateSide=${dateSideRows.length}, ` +
           `date=${sameDate}, side=${sameSide}, time=${sameTime}, export=${exportGames.length}, ` +
-          `allDateSide=${allDateSide.length}, byeDateSide=${byeDateSide})`,
+          `allDateSide=${allDateSide.length}, byeDateSide=${byeDateSide}, opponent=${sameOpponent}, ` +
+          `opponentSide=${sameOpponentSide}, when=${relativeDate})`,
         );
       }
       const row = rows[0];
