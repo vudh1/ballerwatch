@@ -606,6 +606,14 @@ async function ownerSettingsView(env) {
   };
 }
 
+export async function verifyOwnerCapability(env, token, settingsOverride = null) {
+  if (!String(token || "").trim()) return false;
+  const settings = settingsOverride && typeof settingsOverride === "object"
+    ? settingsOverride
+    : (await ownerSettingsRecord(env)).settings;
+  return verifyOwnerToken(env, token, ownerAuthVersion(settings));
+}
+
 async function saveOwnerPassword(env, value, { rotateAuth = true } = {}) {
   const passwordRecord = await createOwnerPasswordRecord(env, value);
   for (let attempt = 0; attempt < 3; attempt += 1) {
