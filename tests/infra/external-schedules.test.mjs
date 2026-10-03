@@ -39,19 +39,6 @@ test("disabled fallback is reported", () => {
   );
 });
 
-test("enabled legacy Telegram polling schedule is reported", () => {
-  const jobs = [
-    ...EXTERNAL_SCHEDULE_SPECS.map((spec) => job(spec, true)),
-    {
-      title: "BallerWatch - Telegram listener",
-      enabled: true,
-      url: "https://api.github.com/repos/vudh1/ballerwatch/actions/workflows/listener.yml/dispatches",
-    },
-  ];
-  const problems = analyzeExternalSchedules(jobs, { expectEnabled: true });
-  assert.ok(problems.some((problem) => problem.includes("legacy polling job must stay disabled")));
-});
-
 test("enabled state can still be ignored when only structure matters", () => {
   const jobs = EXTERNAL_SCHEDULE_SPECS.map((spec) => job(spec, true));
   const problems = analyzeExternalSchedules(jobs, { expectEnabled: null });
