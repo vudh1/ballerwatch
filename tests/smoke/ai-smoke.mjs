@@ -1,6 +1,6 @@
 /**
  * v2.5.0 notification-silent live provider wiring check with synthetic public facts.
- * Does not load chats/state or import Telegram/Calendar clients; prints only provider status.
+ * Does not load chats/state or import notification/Calendar clients; prints only provider status.
  */
 import assert from "node:assert/strict";
 import { requestAiJson } from "../../shared/ai-provider.mjs";
