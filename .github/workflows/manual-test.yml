@@ -39,7 +39,6 @@ jobs:
         run: node tests/smoke/ai-smoke.mjs
 
       - name: Pull runtime fixtures from GitHub state branch
-        env:
         run: |
           node shared/runtime-state.mjs pull pickup
           node shared/runtime-state.mjs pull league
