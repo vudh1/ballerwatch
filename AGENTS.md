@@ -42,7 +42,7 @@ Product release flow:
 9. Release-driven Worker deployment must pass runtime migration/audit plus live `/health`, `/web/config`, `/web/next-game`, and `/web/calendar` checks before it dispatches Pages deployment.
 10. Pages always checks out `production`. A path-scoped `main` trigger exists only to recover the Pages workflow itself.
 
-`RELEASE_GITHUB_TOKEN` is repository-scoped and needs Contents read/write, Workflows read/write, Pages read/write, and Administration read/write. Promotion/deployment fails closed if required release, runtime, or Pages actions cannot complete. The default automatic path waits 24 hours before publishing the GitHub Release/tag.
+`RELEASE_GITHUB_TOKEN` is repository-scoped and needs Contents read/write, Workflows read/write, Pages read/write, and Administration read/write. Promotion/deployment fails closed if required release, runtime, or Pages actions cannot complete. The default automatic path waits 24 hours; only then may a published GitHub Release/tag promote the validated commit.
 
 ## Notification policy
 
