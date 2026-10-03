@@ -241,3 +241,7 @@ Tests must never send Web Push or mutate Google Calendar.
 - Pin workflow dependencies to immutable reviewed SHAs.
 
 More operational detail is maintained under `docs/wiki/`.
+
+## Copyright
+
+Copyright © 2026 BallerWatch. All rights reserved. See `COPYRIGHT.md` for the repository copyright notice and third-party attribution boundary.
