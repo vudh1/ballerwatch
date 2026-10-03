@@ -16,8 +16,8 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=6\.0\.8/);
-  assert.match(html, /app\.js\?v=6\.0\.8/);
+  assert.match(html, /styles\.css\?v=6\.0\.9/);
+  assert.match(html, /app\.js\?v=6\.0\.9/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
@@ -78,7 +78,7 @@ test("Home Screen install prompt uses the same card layout system as dashboard c
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=6\.0\.8/);
+  assert.match(app, /sw\.js\?v=6\.0\.9/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -171,7 +171,7 @@ test("question box supports slash commands and autosuggestions", () => {
   assert.match(html, /aria-autocomplete="list"/);
   assert.match(html, /\/ commands|type <strong>\/<\/strong> for commands/);
   assert.match(app, /COMMAND_SUGGESTIONS/);
-  assert.match(app, /QUESTION_COMPLETIONS/);
+  assert.match(app, /BASE_QUESTION_COMPLETIONS/);
   assert.match(app, /ArrowDown/);
   assert.match(app, /ArrowUp/);
   assert.match(app, /activeSuggestionIndex/);
@@ -291,9 +291,13 @@ test("chat history fallback keeps answer intent when AI compaction is unavailabl
 
 test("question autocomplete predicts full sentences from typed prefixes", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
-  assert.match(app, /QUESTION_COMPLETIONS/);
+  assert.match(app, /BASE_QUESTION_COMPLETIONS/);
   assert.match(app, /sentenceCompletionScore/);
+  assert.match(app, /calendarQuestionCompletions/);
+  assert.match(app, /QUESTION_HISTORY_KEY/);
+  assert.match(app, /rememberQuestion\(question\)/);
   assert.match(app, /cleanCandidate\.startsWith\(cleanQuery\)/);
+  assert.match(app, /editDistanceAtMostOne/);
   assert.match(app, /event\.key === "Tab"/);
   assert.match(app, /event\.key === "ArrowRight"/);
   assert.match(app, /selectQuestionSuggestion\(0\)/);

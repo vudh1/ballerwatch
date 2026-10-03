@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   createOwnerPasswordRecord,
+  dateGameAnswer,
   directIntent,
   gamesInRange,
   gamesOnDate,
@@ -70,6 +71,21 @@ test("dated jersey questions do not require the word game", () => {
   assert.equal(directIntent("what jersey color do i wear for 10/5?"), "date_games");
   assert.equal(directIntent("what jersey colour should I wear Tuesday?"), "date_games");
   assert.match(gamesOnDate(snapshot(), "2099-10-05"), /Black jersey/);
+});
+
+test("dated league detail questions route locally and return targeted facts", () => {
+  assert.equal(directIntent("who do we play on 10/5?"), "date_games");
+  assert.equal(directIntent("where is the game on 10/5?"), "date_games");
+  assert.equal(directIntent("what time is the game on 10/5?"), "date_games");
+  assert.match(dateGameAnswer(snapshot(), "2099-10-05", "who do we play?"), /Team Beta/);
+  assert.match(dateGameAnswer(snapshot(), "2099-10-05", "what jersey color?"), /Black jersey/);
+  assert.match(dateGameAnswer(snapshot(), "2099-10-05", "where is it?"), /League Field/);
+  assert.match(dateGameAnswer(snapshot(), "2099-10-05", "what time?"), /7:00 PM/);
+});
+
+test("natural pickup-specific date questions stay pickup-scoped", () => {
+  assert.equal(directIntent("am i in for Thursday pickup?"), "pickup_status");
+  assert.equal(directIntent("how many spots are left Thursday?"), "pickup_status");
 });
 
 test("date schedule reply combines available published data", () => {

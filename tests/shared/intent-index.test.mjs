@@ -5,14 +5,20 @@ import { classifyIndexedIntent } from "../../shared/intent-index.mjs";
 test("routes common pickup phrasing without AI", () => {
   assert.equal(classifyIndexedIntent("do we still have spots left?"), "pickup_status");
   assert.equal(classifyIndexedIntent("what field are we at?"), "pickup_status");
-  assert.equal(classifyIndexedIntent("show me the pickup game details"), "pickup_status");
+  assert.equal(classifyIndexedIntent("am i signed up for pickup?"), "pickup_status");
 });
 
-test("routes schedule phrasing learned from chat review", () => {
+test("routes flexible schedule and game-detail phrasing without AI", () => {
   assert.equal(classifyIndexedIntent("what's today's schedule?"), "today_games");
   assert.equal(classifyIndexedIntent("what games are on 10/5?"), "date_games");
-  assert.equal(classifyIndexedIntent("schedule for 10/1"), "date_games");
+  assert.equal(classifyIndexedIntent("who do we play on 10/5?"), "date_games");
+  assert.equal(classifyIndexedIntent("what jersey color should i wear?"), "date_games");
   assert.equal(classifyIndexedIntent("recommend a game"), "next_game");
+});
+
+test("tolerates small meaningful typos", () => {
+  assert.equal(classifyIndexedIntent("what jersy color should i wear"), "date_games");
+  assert.equal(classifyIndexedIntent("show pickup availabilty"), "pickup_status");
 });
 
 test("routes league and release questions", () => {

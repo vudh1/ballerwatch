@@ -1584,6 +1584,53 @@ export function gamesOnDate(snapshot, date) {
 }
 
 
+export function dateGameAnswer(snapshot, date, question = "") {
+  const lower = cleanText(question, 600).toLowerCase();
+  const wantsJersey = /\b(?:jersey|kit|uniform|color|colour|wear)\b/.test(lower);
+  const wantsOpponent = /\b(?:who|opponent|versus|vs\.?|playing against|play against)\b/.test(lower);
+  const wantsTime = /\b(?:time|when|start|kickoff|kick off)\b/.test(lower);
+  const wantsLocation = /\b(?:where|field|location|address|venue)\b/.test(lower);
+  const wantsPickup = /\b(?:pickup|rsvp|reserved|spots?|capacity|availability|full|waitlist|registered|signed\s*up|am i in)\b/.test(lower);
+  const targeted = wantsJersey || wantsOpponent || wantsTime || wantsLocation || wantsPickup;
+  if (!targeted) return gamesOnDate(snapshot, date);
+
+  const blocks = [];
+  const pickup = pickupFacts(snapshot, date);
+  if (pickup && !wantsJersey && !wantsOpponent) {
+    if (wantsPickup) {
+      blocks.push(`⚽ Pickup\n${pickupStatus(snapshot, date)}`);
+    } else {
+      const lines = ["⚽ Pickup"];
+      if (wantsTime && (pickup.start || pickup.end)) {
+        lines.push(`🕒 ${pickup.start || "?"}${pickup.end ? `–${pickup.end}` : ""}`);
+      }
+      if (wantsLocation && (pickup.field || pickup.address)) {
+        if (pickup.field) lines.push(`📍 ${pickup.field}`);
+        if (pickup.address) lines.push(pickup.address);
+      }
+      if (lines.length > 1) blocks.push(lines.join("\n"));
+    }
+  }
+
+  for (const game of leagueMatches(snapshot).filter((item) => String(item?.date || "") === date)) {
+    const lines = [`🏆 ${game.team || "RATS team"} vs ${game.opponent || "opponent"}`];
+    if (wantsTime) {
+      const time = clock(game.start || game.startTime);
+      if (time) lines.push(`🕒 ${time}`);
+    }
+    if (wantsLocation && game.location) lines.push(`📍 ${game.location}`);
+    if (wantsJersey && game.jerseyColor) lines.push(`👕 ${game.jerseyColor} jersey`);
+    if (wantsOpponent || wantsTime || wantsLocation || wantsJersey) blocks.push(lines.join("\n"));
+  }
+
+  if (blocks.length) return `${formatDate(date)}\n${blocks.join("\n\n")}`;
+  if (wantsJersey) return `No jersey color is currently published for ${formatDate(date)}.`;
+  if (wantsOpponent) return `No league opponent is currently published for ${formatDate(date)}.`;
+  if (wantsLocation) return `No field or venue is currently published for ${formatDate(date)}.`;
+  if (wantsTime) return `No game time is currently published for ${formatDate(date)}.`;
+  return gamesOnDate(snapshot, date);
+}
+
 export function gamesInRange(snapshot, startDate, endDate) {
   const dates = scheduleDates(snapshot)
     .filter((date) => date >= startDate && date <= endDate);
@@ -1653,30 +1700,31 @@ export function directIntent(text) {
   const clean = cleanText(text, 600);
   const lower = clean.toLowerCase();
 
-  // Slash commands stay exact. Natural-language routing then uses the shared
-  // static index so common phrasing avoids a network round-trip to Groq.
   if (/^\/?version\b/.test(lower)) return "version";
   if (/^\/?help\b/.test(lower)) return "help";
   if (
     resolveScheduleRange(clean) &&
-    /\b(?:game|games|match|matches|schedule|playing|soccer)\b/.test(lower)
+    /\b(?:game|games|match|matches|schedule|playing|soccer|have)\b/.test(lower)
   ) return "range_games";
-  if (/^\/today(?:\s|$)/.test(lower)) return "today_games";
-  if (/^\/next(?:\s|$)/.test(lower)) return "next_game";
-  if (/^\/teams(?:\s|$)/.test(lower)) return "league_teams";
-  if (/^\/(?:count|field|time)(?:\s|$)/.test(lower)) return "pickup_status";
+  if (/^\/?today(?:\s|$)/.test(lower)) return "today_games";
+  if (/^\/?next(?:\s|$)/.test(lower)) return "next_game";
+  if (/^\/?teams(?:\s|$)/.test(lower)) return "league_teams";
+  if (/^\/?(?:count|field|time)(?:\s|$)/.test(lower)) return "pickup_status";
 
-  const hasExplicitGameDate =
+  const hasExplicitDate =
     /\b(?:today|tomorrow|sunday|monday|tuesday|wednesday|thursday|friday|saturday|\d{1,2}\/\d{1,2}|20\d{2}-\d{1,2}-\d{1,2})\b/.test(lower);
-  if (hasExplicitGameDate && /\b(?:jersey|kit|uniform|color|colour|wear)\b/.test(lower)) {
-    return "date_games";
-  }
+  const pickupSpecific =
+    /\b(?:pickup|rsvp|reserved|spots?|capacity|availability|full|waitlist|registered|signed\s*up)\b/.test(lower);
+  const gameSpecific =
+    /\b(?:game|games|match|matches|play|playing|soccer|jersey|kit|uniform|color|colour|wear|opponent|who)\b/.test(lower);
+
+  if (hasExplicitDate && pickupSpecific) return "pickup_status";
+  if (hasExplicitDate && gameSpecific) return "date_games";
   if (
-    /\b(?:today|tomorrow|sunday|monday|tuesday|wednesday|thursday|friday|saturday|\d{1,2}\/\d{1,2})\b/.test(lower) &&
-    /\b(?:time|when|where|field|location|address|availability|spots|count|rsvp)\b/.test(lower)
-  ) {
-    return "pickup_status";
-  }
+    hasExplicitDate &&
+    /\b(?:time|when|where|field|location|address)\b/.test(lower)
+  ) return "pickup_status";
+  if (pickupSpecific) return "pickup_status";
   return classifyIndexedIntent(clean);
 }
 
@@ -2063,19 +2111,21 @@ async function webAnswer(env, question, context = {}) {
     return { ok: false, error: "BallerWatch data is temporarily unavailable." };
   }
 
-  const safeContext = {
-    lastDate: cleanText(context?.lastDate, 20),
-  };
-  let intent = directIntent(text);
-  let ai = null;
-  if (!intent) {
-    ai = await classifyWithAi(env, text, snapshot, safeContext);
-    intent = ai?.intent || null;
-  }
+  const safeContext = { lastDate: cleanText(context?.lastDate, 20) };
+  const lower = text.toLowerCase();
+  const hasExplicitDate =
+    /\b(?:today|tomorrow|sunday|monday|tuesday|wednesday|thursday|friday|saturday|\d{1,2}\/\d{1,2}|20\d{2}-\d{1,2}-\d{1,2})\b/.test(lower);
+  const contextualGameDetail =
+    Boolean(safeContext.lastDate) &&
+    !hasExplicitDate &&
+    /\b(?:jersey|kit|uniform|color|colour|wear|who|opponent|time|when|where|field|location|address|venue)\b/.test(lower) &&
+    !/\b(?:pickup|rsvp|reserved|spots?|capacity|availability|full|waitlist|registered|signed\s*up)\b/.test(lower);
+
+  let intent = contextualGameDetail ? "date_games" : directIntent(text);
   if (!intent || intent === "github") {
     return {
       ok: false,
-      error: "I can answer read-only pickup, game, schedule, team, and version questions here.",
+      error: "Try asking about a game date, opponent, jersey, time, field, pickup RSVP, weekly schedule, monitored teams, or version.",
     };
   }
 
@@ -2085,14 +2135,15 @@ async function webAnswer(env, question, context = {}) {
   else if (intent === "help") {
     reply = [
       "You can ask:",
-      "• what game is today?",
+      "• what game is on 10/6?",
+      "• who do we play Tuesday?",
+      "• what jersey color do I wear?",
+      "• where is it? / what time?",
+      "• am I in for Thursday pickup?",
+      "• how many spots are left Thursday?",
+      "• what games are this week / next week?",
       "• what's my next game?",
-      "• what's the count for Thursday?",
-      "• what games are next week?",
-      "• what field?",
-      "• what time?",
       "• what league teams are you monitoring?",
-      "• /feature describe what you want",
       "• /version",
     ].join("\n");
   } else if (intent === "league_teams") {
@@ -2103,9 +2154,11 @@ async function webAnswer(env, question, context = {}) {
     reply = todayGames(snapshot);
     lastDate = localDate();
   } else if (intent === "date_games") {
-    const requested = ai?.date || resolveScheduleDate(text, snapshot, safeContext);
+    const requested = contextualGameDetail
+      ? safeContext.lastDate
+      : resolveScheduleDate(text, snapshot, safeContext);
     if (!requested) return { ok: false, error: "I couldn't resolve that game date." };
-    reply = gamesOnDate(snapshot, requested);
+    reply = dateGameAnswer(snapshot, requested, text);
     lastDate = requested;
   } else if (intent === "range_games") {
     const range = resolveScheduleRange(text);
@@ -2117,10 +2170,7 @@ async function webAnswer(env, question, context = {}) {
     reply = next.reply;
     if (next.date) lastDate = next.date;
   } else if (intent === "pickup_status") {
-    const requested =
-      ai?.date && availableDates(snapshot).includes(ai.date)
-        ? ai.date
-        : resolveDate(text, snapshot, safeContext);
+    const requested = resolveDate(text, snapshot, safeContext);
     if (!requested) return { ok: false, error: "I couldn't resolve that pickup date." };
     reply = pickupStatus(snapshot, requested);
     lastDate = requested;

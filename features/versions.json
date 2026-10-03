@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "6.0.8",
+  "currentVersion": "6.0.9",
   "releases": [
+    {
+      "version": "6.0.9",
+      "date": "2026-10-03",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Zero-AI smart Q&A and contextual autocomplete",
+      "changes": [
+        "Changed normal Q&A routing to a deterministic local parser so supported pickup, schedule, opponent, jersey, time, venue, team, and version questions do not call an external AI classifier.",
+        "Added context-aware follow-up handling so short questions such as “what color?”, “who do we play?”, “where is it?”, and “what time?” reuse the previously referenced game date.",
+        "Added targeted date-game answers for opponent, jersey, time, venue, and pickup RSVP/capacity questions instead of requiring exact canned wording.",
+        "Expanded deterministic intent matching with more natural phrasing and one-edit typo tolerance for meaningful words.",
+        "Rebuilt autocomplete from upcoming calendar data, broader question templates, and private on-device recent successful questions; matching now accepts word reordering and small typos."
+      ]
+    },
     {
       "version": "6.0.8",
       "date": "2026-10-03",

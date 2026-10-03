@@ -106,6 +106,7 @@ let feedbackInFlight = false;
 const OWNER_TOKEN_KEY = "ballerwatch-owner-token";
 const NOTIFICATION_READ_KEY = "ballerwatch-notification-read-v1";
 const NOTIFICATION_DELETED_KEY = "ballerwatch-notification-deleted-v1";
+const QUESTION_HISTORY_KEY = "ballerwatch-question-history-v1";
 const LIVE_DATA_REFRESH_MS = 60_000;
 const APP_UPDATE_CHECK_MS = 5 * 60_000;
 
@@ -124,18 +125,25 @@ const WEEKDAYS = [
   "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
 ];
 
-const QUESTION_COMPLETIONS = [
-  "What game is today?",
-  "What game is tomorrow?",
+const BASE_QUESTION_COMPLETIONS = [
   "What's my next game?",
+  "Who do we play next?",
+  "Where is my next game?",
+  "What time is my next game?",
   "What games are this week?",
+  "What games are next week?",
   "What league teams are you monitoring?",
+  "What version is BallerWatch?",
   ...WEEKDAYS.flatMap((day) => [
+    `What game is on ${day}?`,
+    `Who do we play ${day}?`,
+    `What jersey color do I wear ${day}?`,
     `What's the pickup count for ${day}?`,
     `How many spots are left for ${day}?`,
+    `Am I in for ${day} pickup?`,
     `What field is ${day}?`,
-    `Where is ${day}'s game?`,
-    `What time is ${day}?`,
+    `Where is the game ${day}?`,
+    `What time is the game ${day}?`,
   ]),
 ];
 
@@ -148,6 +156,36 @@ function normalizedWords(value) {
     .filter(Boolean);
 }
 
+function editDistanceAtMostOne(a, b) {
+  if (a === b) return true;
+  if (Math.abs(a.length - b.length) > 1) return false;
+  let i = 0;
+  let j = 0;
+  let edits = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) {
+      i += 1;
+      j += 1;
+      continue;
+    }
+    edits += 1;
+    if (edits > 1) return false;
+    if (a.length > b.length) i += 1;
+    else if (b.length > a.length) j += 1;
+    else {
+      i += 1;
+      j += 1;
+    }
+  }
+  if (i < a.length || j < b.length) edits += 1;
+  return edits <= 1;
+}
+
+function completionWordMatches(candidate, query) {
+  if (candidate === query || candidate.startsWith(query) || query.startsWith(candidate)) return true;
+  return candidate.length >= 4 && query.length >= 4 && editDistanceAtMostOne(candidate, query);
+}
+
 function sentenceCompletionScore(candidate, query) {
   const cleanCandidate = String(candidate || "").toLowerCase();
   const cleanQuery = String(query || "").trim().toLowerCase();
@@ -156,20 +194,78 @@ function sentenceCompletionScore(candidate, query) {
 
   const queryWords = normalizedWords(cleanQuery);
   const candidateWords = normalizedWords(cleanCandidate);
-  let cursor = 0;
+  let fuzzy = 0;
   for (const queryWord of queryWords) {
-    let matched = false;
-    while (cursor < candidateWords.length) {
-      if (candidateWords[cursor].startsWith(queryWord)) {
-        matched = true;
-        cursor += 1;
-        break;
-      }
-      cursor += 1;
-    }
-    if (!matched) return 99;
+    const exact = candidateWords.some((word) =>
+      word === queryWord || word.startsWith(queryWord) || queryWord.startsWith(word));
+    if (exact) continue;
+    const near = candidateWords.some((word) => completionWordMatches(word, queryWord));
+    if (!near) return 99;
+    fuzzy += 1;
   }
-  return 1;
+  return fuzzy ? 2 : 1;
+}
+
+function questionHistory() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(QUESTION_HISTORY_KEY) || "[]");
+    return Array.isArray(stored) ? stored.filter((value) => typeof value === "string").slice(0, 12) : [];
+  } catch {
+    return [];
+  }
+}
+
+function rememberQuestion(value) {
+  const question = String(value || "").trim();
+  if (!question || question.startsWith("/")) return;
+  const next = [question, ...questionHistory().filter((item) => item.toLowerCase() !== question.toLowerCase())]
+    .slice(0, 12);
+  localStorage.setItem(QUESTION_HISTORY_KEY, JSON.stringify(next));
+}
+
+function shortQuestionDate(date) {
+  const match = String(date || "").match(/^\d{4}-(\d{2})-(\d{2})$/);
+  return match ? `${Number(match[1])}/${Number(match[2])}` : "";
+}
+
+function calendarQuestionCompletions() {
+  const games = Array.isArray(currentCalendar?.games) ? currentCalendar.games : [];
+  const byDate = new Map();
+  for (const game of games) {
+    if (!game?.date || byDate.has(game.date)) continue;
+    byDate.set(game.date, game);
+  }
+
+  const values = [];
+  for (const [date, game] of [...byDate.entries()].slice(0, 10)) {
+    const label = shortQuestionDate(date);
+    if (!label) continue;
+    values.push(
+      `What game is on ${label}?`,
+      `What time is the game on ${label}?`,
+      `Where is the game on ${label}?`,
+    );
+    if (game.kind === "league") {
+      values.push(
+        `Who do we play on ${label}?`,
+        `What jersey color do I wear for ${label}?`,
+      );
+    } else if (game.kind === "pickup") {
+      values.push(
+        `How many spots are left for ${label}?`,
+        `Am I in for pickup on ${label}?`,
+      );
+    }
+  }
+  return values;
+}
+
+function allQuestionCompletions() {
+  return [...new Set([
+    ...questionHistory(),
+    ...calendarQuestionCompletions(),
+    ...BASE_QUESTION_COMPLETIONS,
+  ])];
 }
 
 function suggestionMatches(value) {
@@ -184,16 +280,21 @@ function suggestionMatches(value) {
   }
 
   if (lower.length < 1) return [];
-  return QUESTION_COMPLETIONS
+  const recent = new Set(questionHistory().map((item) => item.toLowerCase()));
+  return allQuestionCompletions()
     .map((value) => ({
       value,
       label: value,
-      description: "",
+      description: recent.has(value.toLowerCase()) ? "Recent" : "",
       score: sentenceCompletionScore(value, lower),
+      recent: recent.has(value.toLowerCase()),
     }))
     .filter((item) => item.score < 99)
-    .sort((a, b) => a.score - b.score || a.value.length - b.value.length)
-    .slice(0, 6);
+    .sort((a, b) =>
+      a.score - b.score ||
+      Number(b.recent) - Number(a.recent) ||
+      a.value.length - b.value.length)
+    .slice(0, 8);
 }
 
 function hideQuestionSuggestions() {
@@ -1976,6 +2077,7 @@ els.form.addEventListener("submit", async (event) => {
       }),
     });
     els.answer.textContent = payload.reply;
+    rememberQuestion(question);
     lastAnswerExchange = {
       question,
       reply: payload.reply,
