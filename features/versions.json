@@ -14,7 +14,8 @@
         "Added administrator-only user creation/removal and kept monitored league teams shared and administrator-controlled.",
         "Changed RSVP confirmation and signed-in Q&A personalization to use the active user's RSVP name rather than one global identity.",
         "Changed password updates, session revocation, and GitHub Actions password recovery to target one username without revoking other users.",
-        "Bumped the PWA asset revision to 6.1.0 for the new Settings/login UI."
+        "Bumped the PWA asset revision to 6.1.0 for the new Settings/login UI.",
+        "Finalized the 6.1.0 release candidate at the exact validated head after aligning the encrypted-state regression assertion with the multi-user settings write path."
       ]
     },
     {
