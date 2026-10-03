@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "6.0.5",
+  "currentVersion": "6.0.6",
   "releases": [
+    {
+      "version": "6.0.6",
+      "date": "2026-10-02",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Wider web layout, match freshness, and copyright",
+      "changes": [
+        "Widened the desktop website to a 920px landscape-friendly content area while keeping mobile responsive.",
+        "Changed Notifications, Settings, and notification detail to open centered within the same main website footprint instead of using a narrow portrait-only surface.",
+        "Added a subtle source refresh line to match cards using the pickup source-health check time or the RATS schedule refresh time, separate from the weather refresh timestamp.",
+        "Added visible application copyright text, source-file copyright headers, a repository COPYRIGHT.md notice, and a README copyright section without introducing a new software license.",
+        "Bumped web and PWA asset revisions so deployed clients revalidate the 6.0.6 layout immediately."
+      ]
+    },
     {
       "version": "6.0.5",
       "date": "2026-10-02",
