@@ -32,6 +32,17 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Verify dedicated runtime encryption key
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$TRACKER_STATE_KEY" || {
+            echo "::error::TRACKER_STATE_KEY repository secret is required for BallerWatch 6.0.";
+            exit 1;
+          }
+
       - name: Verify read-only AI with synthetic data and no notifications
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
