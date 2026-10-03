@@ -116,6 +116,17 @@ test("next-game card exposes pickup RSVP, directions, and native share", () => {
   assert.match(app, /navigator\.clipboard\.writeText/);
 });
 
+
+test("pickup RSVP button is neutral until authenticated confirmation is known", () => {
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  const css = fs.readFileSync("docs/styles.css", "utf8");
+  assert.match(app, /confirmedRsvpDates = new Set/);
+  assert.match(app, /model\.rsvpConfirmed \? "RSVP'd" : "RSVP"/);
+  assert.match(css, /\.pickup-rsvp-link \{[\s\S]*rgba\(71, 85, 105, 0\.36\)/);
+  assert.match(css, /\.pickup-rsvp-link\.is-confirmed \{[\s\S]*rgba\(74, 222, 128/);
+  assert.match(css, /\.pickup-rsvp-link\.is-confirmed::before \{[\s\S]*content:\s*"✓"/);
+});
+
 test("notification test is local and service-worker driven", () => {
   const html = fs.readFileSync("docs/index.html", "utf8");
   const app = fs.readFileSync("docs/app.js", "utf8");
@@ -296,7 +307,7 @@ test("calendar rolls by week with spotlight navigation and expands through the l
   const app = fs.readFileSync("docs/app.js", "utf8");
   const css = fs.readFileSync("docs/styles.css", "utf8");
 
-  assert.match(html, /id="calendar-expand-toggle"/);
+  assert.doesNotMatch(html, /id="calendar-expand-toggle"/);
   assert.match(html, /id="two-week-calendar" aria-expanded="false"/);
   assert.match(app, /let calendarWindowStart = ""/);
   assert.match(app, /let calendarExpanded = false/);
@@ -550,6 +561,15 @@ test("footer contains no secondary messaging shortcut", () => {
   const html = fs.readFileSync("docs/index.html", "utf8");
   assert.doesNotMatch(html, /https:\/\/t\.me\//i);
   assert.match(html, /id="install-card"/);
+});
+
+
+test("secondary app surfaces share the same centered portrait viewport", () => {
+  const css = fs.readFileSync("docs/styles.css", "utf8");
+  assert.match(css, /--app-portrait-width:\s*430px/);
+  assert.match(css, /\.notification-dialog \{[\s\S]*left:\s*50%;[\s\S]*transform:\s*translateX\(-50%\)/);
+  assert.match(css, /\.notification-reader \{[\s\S]*width:\s*min\(var\(--app-portrait-width\), 100vw\)/);
+  assert.match(css, /\.settings-dialog,[\s\S]*#install-dialog \{[\s\S]*width:\s*min\(var\(--app-portrait-width\)/);
 });
 
 test("notification popup stays bounded and offers local Delete all beside Send test", () => {
