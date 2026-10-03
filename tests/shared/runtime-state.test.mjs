@@ -50,7 +50,7 @@ test("purged branch boots clean without restoring encrypted stale backup or call
   fs.writeFileSync("README.md", "synthetic source fixture\n");
   run(["add", "."]); run(["commit", "-m", "encrypted fixture"]); run(["push", "origin", "runtime-state"]);
   saveFailoverState("watchdog");
-  t.mock.method(globalThis, "fetch", () => { assert.fail("No Cloudflare or Telegram calls allowed"); });
+  t.mock.method(globalThis, "fetch", () => { assert.fail("No external service calls allowed"); });
   assert.equal(await pullRuntimeState("watchdog"), 1);
   assert.equal(purgeRuntimeState(), 1);
   run(["fetch", "--quiet", "origin", "runtime-state"]);
@@ -108,19 +108,19 @@ test("legacy runtime files migrate to complete encrypted envelopes before push",
   run(["commit", "-m", "legacy partial runtime state"]);
   run(["push", "origin", "runtime-state"]);
 
-  assert.equal(await pullRuntimeState("listener"), 1);
-  const migrated = JSON.parse(fs.readFileSync("state/listener.json", "utf8"));
+  assert.equal(await pullRuntimeState("user"), 1);
+  const migrated = JSON.parse(fs.readFileSync("state/user.json", "utf8"));
   assert.equal(isEncryptedStateEnvelope(migrated), true);
   assert.deepEqual(decryptState(migrated), {
     lastUpdateId: 42,
     settings: { ownerRsvpName: "Synthetic User" },
   });
 
-  assert.equal(await pushRuntimeState("listener"), 1);
+  assert.equal(await pushRuntimeState("user"), 1);
   assert.equal(auditRuntimeStateBranch(), 1);
   run(["fetch", "--quiet", "origin", "runtime-state"]);
   const stored = JSON.parse(
-    run(["show", "FETCH_HEAD:state/listener.json"]).toString(),
+    run(["show", "FETCH_HEAD:state/user.json"]).toString(),
   );
   assert.equal(isEncryptedStateEnvelope(stored), true);
 });
