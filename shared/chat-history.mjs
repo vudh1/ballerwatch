@@ -134,7 +134,7 @@ export async function recordChatExchange({
   reply,
   messageId = 0,
   hint = "",
-  source = "telegram",
+  source = "web",
   externalId = "",
 } = {}) {
   const q = retainPrivateText(question, 4000);
@@ -146,7 +146,7 @@ export async function recordChatExchange({
   const safeExternalId = cleanExternalId(externalId);
   const entry = {
     createdAt: new Date().toISOString(),
-    source: cleanText(source, 40) || "telegram",
+    source: cleanText(source, 40) || "web",
     ...(Number(messageId) > 0 ? { messageId: Number(messageId) } : {}),
     ...(safeExternalId ? { externalId: safeExternalId } : {}),
     question: q,
