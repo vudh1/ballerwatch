@@ -1,7 +1,7 @@
 /**
  * Builds deployment-time Cloudflare Worker configuration without runtime KV.
  *
- * Documentation baseline: v2.4.0. Cloudflare hosts only the Telegram webhook/fast path;
+ * v6.0.0: Cloudflare hosts the BallerWatch web API and edge runtime;
  * durable state and recurring schedules live on GitHub/cron-job.org.
  */
 import fs from "node:fs";
