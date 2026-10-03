@@ -110,6 +110,7 @@ test("web next-game details remain public-safe and prefer the earliest future ga
   assert.equal(details.title, "Pickup");
   assert.equal(details.location, "Washington Park Soccer");
   assert.equal(details.mapsQuery, "101 Public Field Rd");
+  assert.equal(details.rsvpUrl, "https://nhcuong95.github.io/rsvp/?date=2099-10-08");
   assert.doesNotMatch(JSON.stringify(details), /Private Person|Private Waitlist/);
 });
 
@@ -228,6 +229,7 @@ test("web calendar merges public games with cached match-window weather", () => 
   const calendar = webCalendarDetails(snapshot, weather, 14, "2099-10-01");
   assert.equal(calendar.games.length, 1);
   assert.equal(calendar.games[0].id, "pickup:2099-10-08");
+  assert.equal(calendar.games[0].rsvpUrl, "https://nhcuong95.github.io/rsvp/?date=2099-10-08");
   assert.equal(calendar.games[0].weather.rainProbability, 65);
   assert.equal(calendar.games[0].weather.temperatureF, 58);
   assert.doesNotMatch(JSON.stringify(calendar), /Private Person/);
