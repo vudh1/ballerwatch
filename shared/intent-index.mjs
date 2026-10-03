@@ -39,6 +39,24 @@ const INTENT_INDEX = Object.freeze([
     tags: ["next", "upcoming", "game", "match", "when", "recommend", "suggest"],
   },
   {
+    intent: "range_games",
+    phrases: [
+      "games next week",
+      "next week's games",
+      "next week games",
+      "schedule next week",
+      "next week schedule",
+      "games this week",
+      "this week's games",
+      "this week games",
+      "schedule this week",
+      "this week schedule",
+      "next 2 weeks",
+      "next two weeks",
+    ],
+    tags: ["week", "weeks", "schedule", "game", "games", "match", "matches"],
+  },
+  {
     intent: "pickup_status",
     phrases: [
       "how many",

@@ -16,13 +16,13 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=6\.0\.6/);
-  assert.match(html, /app\.js\?v=6\.0\.6/);
+  assert.match(html, /styles\.css\?v=6\.0\.7/);
+  assert.match(html, /app\.js\?v=6\.0\.7/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v6-0-6-shell/);
+  assert.match(sw, /ballerwatch-v6-0-7-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -78,7 +78,7 @@ test("Home Screen install prompt uses the same card layout system as dashboard c
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=6\.0\.6/);
+  assert.match(app, /sw\.js\?v=6\.0\.7/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -250,6 +250,7 @@ test("answer feedback is one-tap, answer-scoped, and persists directly through t
   assert.match(app, /addEventListener\("dblclick"/);
   assert.match(app, /feedbackToken: payload\.feedbackToken \|\| ""/);
   assert.match(app, /action: wasSubmitted \? "cancel" : "mark"/);
+  assert.match(app, /intent: lastAnswerExchange\.intent \|\| ""/);
   assert.doesNotMatch(
     app.match(/async function toggleWrongAnswerFeedback\(\)[\s\S]*?\n}\n/)?.[0] || "",
     /openSettings\(/,
@@ -261,6 +262,37 @@ test("answer feedback is one-tap, answer-scoped, and persists directly through t
   assert.match(worker, /await removeWebFeedback\(env, feedbackId\)/);
   assert.match(worker, /await persistFastChatHistory\(env,/);
   assert.match(worker, /hint: "negative_feedback"/);
+  assert.match(worker, /intent: cleanText\(body\?\.intent, 60\) \|\| "feedback"/);
+  assert.match(worker, /function fallbackHistoryCompact/);
+});
+
+
+test("signed-in web feature requests persist privately and expose only aggregate categories", () => {
+  const worker = fs.readFileSync("infra/web-worker/worker.mjs", "utf8");
+  const paths = fs.readFileSync("shared/runtime-paths.mjs", "utf8");
+  const summary = fs.readFileSync("shared/feature-request-summary.mjs", "utf8");
+
+  assert.match(worker, /async function persistFeatureRequest/);
+  assert.match(worker, /requests\/private\.json/);
+  assert.match(worker, /requests\/unknown\.json/);
+  assert.match(worker, /function featureRequestText/);
+  assert.match(worker, /source: "manual"/);
+  assert.match(worker, /Sign in to submit a feature request/);
+  assert.match(worker, /Feature request saved for review/);
+  assert.match(paths, /"requests\/private\.json"/);
+  assert.match(summary, /publicRequestSummary/);
+  assert.doesNotMatch(summary, /node:fs|node:path/);
+});
+
+test("chat history fallback keeps answer intent when AI compaction is unavailable", () => {
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  const worker = fs.readFileSync("infra/web-worker/worker.mjs", "utf8");
+
+  assert.match(app, /intent: payload\.intent \|\| ""/);
+  assert.match(worker, /intent: cleanText\(event\.intent, 60\)/);
+  assert.match(worker, /Deterministic review fallback used because AI compaction was unavailable/);
+  assert.match(worker, /source: entry\.source/);
+  assert.match(worker, /intent: entry\.intent/);
 });
 
 test("question autocomplete predicts full sentences from typed prefixes", () => {

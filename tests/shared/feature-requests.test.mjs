@@ -5,7 +5,13 @@ import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
 import { decryptState } from "../../shared/state-crypto.mjs";
-import { recordUnknownQuestion, refreshPublicRequests, isPublicRequestSummary, publicRequestSummary } from "../../shared/feature-requests.mjs";
+import {
+  recordUnknownQuestion,
+  refreshPublicRequests,
+  isPublicRequestSummary,
+  publicRequestSummary,
+  requestCategory,
+} from "../../shared/feature-requests.mjs";
 
 test("private request text never enters the public projection", () => {
   const summary = publicRequestSummary([
@@ -17,6 +23,15 @@ test("private request text never enters the public projection", () => {
     { category: "other", count: 2, manual: 0, thumbsDown: 0 },
   ] });
   assert.equal(isPublicRequestSummary(summary), true);
+});
+
+
+test("shared feature request classifier covers current web request categories", () => {
+  assert.equal(requestCategory("show games next week"), "schedule");
+  assert.equal(requestCategory("Saturday availability"), "rsvp");
+  assert.equal(requestCategory("notification alert settings"), "notifications");
+  assert.equal(requestCategory("monitor another league team"), "league");
+  assert.equal(requestCategory("change user password settings"), "setup");
 });
 
 test("audit rejects free text, metadata, arbitrary categories and malformed counts", () => {

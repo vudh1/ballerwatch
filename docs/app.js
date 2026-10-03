@@ -572,7 +572,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=6.0.6", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=6.0.7", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -1897,6 +1897,7 @@ async function toggleWrongAnswerFeedback() {
         feedbackToken: lastAnswerExchange.feedbackToken || "",
         question: lastAnswerExchange.question,
         reply: lastAnswerExchange.reply,
+        intent: lastAnswerExchange.intent || "",
       }),
     });
 
@@ -1992,6 +1993,7 @@ els.form.addEventListener("submit", async (event) => {
     lastAnswerExchange = {
       question,
       reply: payload.reply,
+      intent: payload.intent || "",
       feedbackToken: payload.feedbackToken || "",
     };
     feedbackSubmitted = false;
