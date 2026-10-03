@@ -1562,7 +1562,9 @@ export function webCalendarDetails(
 
   for (const game of leagueMatches(safe)) {
     const date = String(game?.date || "");
-    if (!date || date < startDate || date > endDate) continue;
+    // Keep the near-term pickup/weather strip bounded, but expose every
+    // future published league match so spotlight navigation is not truncated.
+    if (!date || date < startDate) continue;
     const team = cleanText(game?.team, 120) || "RATS team";
     const opponent = cleanText(game?.opponent, 120) || "opponent";
     const startTime = clock(game?.start || game?.startTime);
