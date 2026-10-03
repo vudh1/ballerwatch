@@ -561,6 +561,100 @@ async function decryptRuntimeDocument(env, value) {
   return (await decryptState(value, env)) || value;
 }
 
+
+async function persistFeatureRequest(env, question, { source = "web_unsupported" } = {}) {
+  const original = cleanText(question, 500);
+  if (!original) return false;
+
+  let requests = null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const record = await githubStateRecord(env, "requests/private.json");
+      const current = record.value ? await decryptState(record.value, env) : null;
+      if (record.value && (!current || !Array.isArray(current.requests))) {
+        throw new Error("Unable to decrypt private feature requests.");
+      }
+
+      const data = current && Array.isArray(current.requests)
+        ? current
+        : { version: 1, requests: [] };
+      const now = new Date().toISOString();
+      const existing = data.requests.find(
+        (item) => cleanText(item?.question, 500).toLowerCase() === original.toLowerCase(),
+      );
+
+      if (existing) {
+        existing.count =
+          (Number.isSafeInteger(existing.count) && existing.count > 0 ? existing.count : 1) + 1;
+        existing.lastSeenAt = now;
+        existing.source = cleanText(source, 50);
+        if (existing.status === "implemented") existing.status = "reopened";
+      } else {
+        data.requests.push({
+          id: crypto.randomUUID(),
+          question: original,
+          count: 1,
+          status: "open",
+          firstSeenAt: now,
+          lastSeenAt: now,
+          source: cleanText(source, 50),
+        });
+      }
+
+      data.requests = data.requests.slice(-100);
+      await githubStatePut(
+        env,
+        "requests/private.json",
+        await encryptState(data, env),
+        record.sha,
+        "runtime(web): record encrypted feature request",
+      );
+      requests = data.requests;
+      break;
+    } catch (error) {
+      if (attempt === 1) throw error;
+    }
+  }
+
+  if (!requests) return false;
+  const summary = publicRequestSummary(requests);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const record = await githubStateRecord(env, "requests/unknown.json");
+      await githubStatePut(
+        env,
+        "requests/unknown.json",
+        await encryptState(summary, env),
+        record.sha,
+        "runtime(web): refresh encrypted feature summary",
+      );
+      break;
+    } catch (error) {
+      if (attempt === 1) {
+        console.warn("Feature summary refresh failed after private request was saved.");
+      }
+    }
+  }
+
+  return true;
+}
+
+function featureRequestText(question) {
+  const text = cleanText(question, 500);
+  const match = text.match(/^\/?feature(?:\s*:\s*|\s+)(.+)$/i);
+  return match ? cleanText(match[1], 500) : "";
+}
+
+function shouldRecordUnsupportedFeature(answer) {
+  if (answer?.ok !== false) return false;
+  const error = cleanText(answer?.error, 300);
+  return [
+    "This web app is read-only. State-changing commands are not available here yet.",
+    "I can answer read-only pickup, game, schedule, team, and version questions here.",
+    "No read-only answer is available for that question.",
+  ].includes(error);
+}
+
 async function userStateDocument(env, value) {
   if (!value || typeof value !== "object") return { settings: {} };
   const current = await decryptState(value, env);
