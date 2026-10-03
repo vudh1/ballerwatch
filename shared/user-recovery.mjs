@@ -67,5 +67,5 @@ if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).
     throw new Error("Usage: node shared/user-recovery.mjs reset");
   }
   const version = resetUserPassword();
-  console.log(`Reset BallerWatch web user password and advanced auth revision to ${version}.`);
+  console.log(`Reset BallerWatch web credential and advanced auth revision to ${version}.`);
 }
