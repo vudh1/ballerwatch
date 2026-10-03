@@ -13,4 +13,4 @@ The directory mirrors the source layout:
 
 CI discovers dependency-free Node.js `*.test.mjs` files under `tests/`.
 
-Tests and smoke helpers must not send Telegram notifications or mutate Google Calendar.
+Tests and smoke helpers must not send Web Push notifications or mutate Google Calendar.

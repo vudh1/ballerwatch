@@ -1,140 +1,103 @@
 # BallerWatch agent guidance
 
-Always read the current `README.md`, this file, and `features/versions.json` from `main` before making changes. Do not rely on an older scheduler prompt when the repository says something newer.
+Always read the current `README.md`, this file, and `features/versions.json` from `main` before making changes.
 
-## Privacy and architecture
+## Architecture and privacy
 
-- `main` is the integration branch for reviewed source code, static configuration, documentation, and release history. It may be ahead of production. The `production` branch points to the exact commit promoted by the latest published GitHub Release. Do not commit generated runtime state to either branch.
-- Durable runtime state lives on the dedicated `runtime-state` branch so frequent state updates do not pollute release history.
-- **Every canonical file on `runtime-state` must be a complete AES-GCM envelope**, including sanitized projections and operational metadata. Never write readable JSON payloads, rosters, settings, chat/review text, timestamps, IDs, notification data, or secrets directly to that branch. `shared/runtime-state.mjs` must reject unencrypted writes and its branch audit must stay green.
-- `state/chat-history.json` is encrypted and retains the original question and bot answer for up to 48 hours when the exchange is user-authenticated or the web visitor explicitly marks that answer wrong. Groq classification/summary fields are metadata only and must never replace the source question/answer. Anonymous public-web questions are not retained unless the visitor deliberately submits wrong-answer feedback for that exchange.
-- `state/chat-review.json` contains only privacy-minimized engineering signals—timestamp, `bug_candidate|feature_candidate|negative_feedback`, short sanitized summary, and short sanitized reason—but it is still encrypted at rest like every other runtime-state file. Never include names, IDs, tokens, URLs, addresses, raw questions, raw replies, or quotes in that projection.
-- Explicit `/feature <request>` remains a deliberate feature-request path. Ordinary unanswered questions and thumbs-down feedback belong in the 48-hour chat review flow instead of automatically becoming feature requests.
-- Cloudflare Workers hosts the public-safe PWA API plus an optional Telegram webhook adapter. Core PWA Q&A, user password authentication, encrypted runtime access, and Web Push must remain usable when Telegram credentials are absent and `TRACKER_STATE_KEY` is configured. **Workers KV is not part of the production runtime and Cloudflare Cron Triggers must stay disabled.**
-- The fast path reads encrypted state from the `runtime-state` branch and uses the Workers Cache API only as a short-lived best-effort cache. Keep GitHub responsibilities split: `RELEASE_GITHUB_TOKEN`/Worker `GITHUB_CONTENTS_TOKEN` owns encrypted content reads/writes; `CRON_GITHUB_PAT`/Worker `GITHUB_DISPATCH_TOKEN` is dispatch-only. Do not couple PWA state availability to the scheduler token.
-- The GitHub Pages PWA keeps anonymous/public access read-only. User settings use app-native password sign-in after bootstrap; a temporary 12-character `/webpair` code remains only as a first-time/recovery path, is single-use, attempt-limited, and expires after 10 minutes. User capability tokens carry a server-side auth revision so password rotation or explicit global sign-out can revoke them before their 90-day expiry. Only a user-authenticated device may read/change the limited settings surface (RSVP name and monitored league teams). Wrong-answer feedback is separately authorized by a short-lived token scoped to the exact answer and does not grant settings access. Arbitrary state-changing commands remain outside the public web API.
-- Web Push VAPID keys and subscriptions live only in encrypted `state/web-push.json` on `runtime-state`; never commit a VAPID private key or push endpoint to `main`. Treat every push endpoint as an outbound-network capability: registration must pass the recognized-provider URL policy and endpoint-bound challenge, and GitHub Actions delivery must repeat URL validation, reject any unsafe DNS answer, and disable redirects. Never weaken this to a generic HTTPS check.
-- Web notification-board entries exposed to the public Pages origin must be public-safe: never include RSVP names, waitlist names, user-specific status, tokens, IDs, or private settings.
-- The 14-day weather cache lives encrypted in `state/weather.json`. It may contain public venue names/addresses, cached coordinates, and match-window forecasts, but never roster or user-private data. New venue geocoding must be cached and rate-limited; weather refreshes run at most every 6 hours.
-- cron-job.org is the primary high-frequency scheduler for pickup (2 minutes) and league (5 minutes) only. The legacy listener schedule and retired external watchdog schedule must remain disabled. System watchdog/maintenance runs from a native GitHub Actions schedule every 6 hours and also refreshes the 14-day match-weather snapshot.
-- GitHub Actions pulls state from `runtime-state`, performs reconciliation/notifications/Calendar work, pushes only changed state back, then removes local runtime files. Every external `uses:` dependency in `.github/workflows/` must be pinned to a reviewed 40-character commit SHA; major-version tags may appear only as comments.
-- Encrypted GitHub Actions cache backups remain a secondary recovery source.
-- When enabled, Telegram is webhook-driven through Cloudflare. Do not recreate a recurring `getUpdates` poller. Treat Telegram as an optional adapter rather than a dependency of user Settings or Web Push; `/webpair` may remain a bootstrap/recovery path until a Telegram-independent recovery mechanism is implemented.
+- `main` is reviewed integration code; `production` is the exact promoted release commit; `runtime-state` is generated encrypted state only.
+- Every canonical `runtime-state` file must be a complete hardened AES-GCM envelope. Never persist readable runtime JSON, rosters, settings, chat text, notification data, identifiers, timestamps, secrets, push endpoints, or VAPID private material.
+- The installable GitHub Pages PWA is the only user surface. Cloudflare hosts the web API, authentication, read-only Q&A, Web Push registration, runtime reads/writes, health, and edge refresh helpers.
+- Core web operation requires `TRACKER_STATE_KEY`. Do not add a fallback encryption/signing secret.
+- User settings live in encrypted `state/user.json`. Authenticated users may change only RSVP display name and monitored league teams.
+- User password sign-in is the normal and only app sign-in mechanism. Recovery/bootstrap is repository-admin controlled through **Reset web user password**, using a temporary `BALLERWATCH_RECOVERY_PASSWORD` Actions secret. The recovery workflow must never print the plaintext password and must advance the server-side auth revision to revoke older sessions.
+- User capability tokens carry the server-side auth revision and expire after at most 90 days. Password rotation, recovery reset, and explicit global sign-out revoke prior tokens.
+- Wrong-answer feedback uses a short-lived token scoped to the exact answer and grants no settings capability.
+- Exact authenticated Q&A, and anonymous Q&A explicitly marked wrong, may be retained encrypted for at most 48 hours. The engineering-review projection is privacy-minimized and encrypted.
+- Web Push VAPID keys/subscriptions live only in encrypted `state/web-push.json`. Registration and delivery must keep provider allowlisting, endpoint-bound challenges, IP/userinfo/port rejection, DNS public-address validation, and redirects disabled.
+- Public notification-board entries must never include RSVP/waitlist names, private settings, tokens, or user-specific status.
+- Workers KV and Cloudflare Cron Triggers are not part of production.
+- `RELEASE_GITHUB_TOKEN` / Worker `GITHUB_CONTENTS_TOKEN` owns encrypted runtime content reads/writes. `CRON_GITHUB_PAT` / Worker `GITHUB_DISPATCH_TOKEN` is dispatch-only.
+- cron-job.org runs only pickup every 2 minutes and league every 5 minutes. The external watchdog schedule remains retired. Native GitHub watchdog/weather maintenance runs every 6 hours.
+- Every external `uses:` dependency in workflows must be pinned to a reviewed 40-character SHA.
 - To recover or verify `UPSTREAM_ENDPOINT`, follow `skills/find-upstream-endpoint/SKILL.md`. Never commit the live endpoint.
-
-## Cryptographic separation
-
-- Derive independent keys from the configured master secret for runtime AES-GCM encryption, user capability signing, feedback signing, password verification, and push-registration challenge signing. Do not reuse a raw master key across these domains.
-- Legacy encrypted runtime envelopes and legacy password verifiers may be read only for migration compatibility. Current writes must use the hardened domain-separated format, and runtime deployment/audit must reseal legacy state rather than perpetuating it.
-- Changing a key-domain label is a migration event. Keep labels stable unless the release includes an explicit compatibility path.
 
 ## Release workflow
 
-Every repository change starts on a dedicated branch created from the latest `main`. Do not commit directly to `main`.
+Every repository change starts on a dedicated branch from latest `main`. Never do normal work directly on `main`.
 
-- Product releases use `release/<version>`.
-- Internal maintenance uses `maintenance/<topic>`.
-- Targeted fixes use `fix/<topic>`.
+- Product: `release/<version>`
+- Maintenance/docs/refactor/workflows: `maintenance/<topic>`
+- Focused fix: `fix/<topic>`
 
-Keep implementation commits on the working branch, open a PR back to `main`, and merge only after the work is complete and the relevant checks/review are green.
+Product release flow:
 
-The default product-release process is:
+1. Implement on the release branch.
+2. Run **Validate code** and, for runtime-affecting changes, the notification-silent **Manual smoke test**.
+3. Fix failures; do not bypass them.
+4. Update `features/versions.json` and current documentation only after implementation is green.
+5. Re-run final validation/smoke.
+6. Open a PR to `main`.
+7. Squash merge only after checks are green.
+8. Production promotion publishes the GitHub Release and advances `production`.
+9. Release-driven Worker deployment must pass runtime migration/audit plus live `/health`, `/web/config`, `/web/next-game`, and `/web/calendar` checks before it dispatches Pages deployment.
+10. Pages always checks out `production`. A path-scoped `main` trigger exists only to recover the Pages workflow itself.
 
-1. Start `release/<next-version>` from the latest `main`.
-2. Make implementation/fix commits on that branch.
-3. Do not bump `features/versions.json` until the implementation is green.
-4. Run/verify **Validate code**. Release PRs also run the notification-silent **Manual smoke test** when runtime code is affected.
-5. Fix failures rather than hiding or bypassing them.
-6. After implementation tests pass, update `features/versions.json`, current documentation, and any warranted announcement.
-7. Run final validation/smoke again.
-8. Mark the PR ready only when final checks are green.
-9. Merge with **squash merge only**, so the product release lands on `main` as one release commit.
-10. Delete the release branch after merge when practical.
-
-Merging to `main` does **not** deploy production. Production is release-gated:
-
-- `production` points to the latest promoted release commit.
-- A published GitHub Release/tag such as `v5.7.0` is the production promotion event.
-- Release publication uses the dedicated `RELEASE_GITHUB_TOKEN`. Scope it only to this repository and grant **Contents: read/write**, **Workflows: read/write**, **Pages: read/write**, and **Administration: read/write**. Workflow write is needed when a product release targets workflow changes; Pages + Administration write are used only to recreate/enable GitHub Pages if repository-level Pages activation is missing. If the token cannot create the Release or recover Pages activation, fail closed rather than silently claiming a deployment succeeded.
-- The **Promote production release** workflow checks the candidate on `main`, requires successful validation, waits at least 24 hours, checks eligibility hourly, then advances `production` and publishes the GitHub Release on the first eligible check.
-- The same workflow may be manually run to promote a product version immediately; manual promotion skips the 24-hour soak but still requires validation.
-- Worker, Calendar-bridge bootstrap, weather bootstrap, and web-runtime deployments listen to the published Release. Pages is explicitly dispatched by the promoter on the `main` workflow context and then checks out `production`; this avoids GitHub Pages environment restrictions on release-tag workflow contexts. A path-scoped `main` push trigger exists only to bootstrap/recover changes to the Pages workflow itself, never to deploy unreleased product code.
-- Scheduled/dispatch runtime workflows execute code from `production`, so unreleased `main` code does not silently become runtime behavior.
-- If a GitHub Release for the current version already exists, the promoter is a no-op. This is how maintenance commits can merge without creating another rollout.
-
-Do not commit directly to `main` for maintenance, releases, documentation, workflow changes, or product code. Start from the latest `main` on a dedicated branch and merge through a PR only after verification. Product release commits should remain easy to identify; maintenance commits may exist between releases without inventing a new product version.
+`RELEASE_GITHUB_TOKEN` is repository-scoped and needs Contents read/write, Workflows read/write, Pages read/write, and Administration read/write. Promotion/deployment fails closed if required release, runtime, or Pages actions cannot complete. The default automatic path waits 24 hours; only then may a published GitHub Release/tag promote the validated commit.
 
 ## Notification policy
 
-Proactive Telegram and Web Push output share the same allowlist. Production may send only:
+Production may proactively deliver only through Web Push / the web notification board:
 
-- pickup RSVP/capacity notifications from the established pickup watcher logic;
-- real RATS match-schedule changes;
-- one combined version-change announcement per Pacific day.
+- pickup RSVP/capacity changes;
+- real RATS schedule changes;
+- one combined release announcement per Pacific day.
 
-Direct replies to authenticated user Telegram input are also allowed.
+Do not send Web Push for watchdog failures/recovery, tests, smoke runs, builds, deploys, commits, PRs, score-only changes, setup reminders, or engineering/health events.
 
-Do not send Telegram messages or Web Push signals for watchdog failures/recovery, tests, smoke runs, builds, deploys, commits, pull requests, score-only changes, setup reminders, invalid-setting reminders, or other engineering/health events.
+Tests, audits, smoke tests, and temporary verification runs must never send Web Push or mutate Google Calendar.
 
-Version announcements are derived from `features/versions.json`, combine every pending version into one message, use only user-facing release summaries, and are limited to one message per Pacific calendar day. `features/announcements.json` is legacy and must not drive Telegram sends.
+## Runtime-state behavior
 
-## Testing
-
-Tests, audits, smoke tests, and temporary verification runs must **not send Telegram messages or Web Push signals**.
-
-Any Worker deployment that serves the PWA must fail unless the notification-silent live readiness smoke verifies `/health`, `/web/config`, `/web/next-game`, and `/web/calendar` against the deployed Worker. A shell-only health response is insufficient.
-
-Use the notification-silent Manual smoke test for live-source verification. Do not add production notifications to PR tests.
-
-All test-only source files live under `tests/`, mirroring the production source area where practical. Do not place `*.test.mjs` or smoke-only scripts beside runtime modules.
-
-For RATS changes, preserve the fast path that tries the last known season before broader discovery and fetches independent team schedule exports concurrently.
-
-When testing runtime persistence, use encrypted fixtures or the real `runtime-state` branch through the supported runtime-state helper. Never put decrypted runtime files in an artifact or commit.
+- Canonical web user state is `state/user.json`.
+- The 6.0 migration may read the previous encrypted user-state filename solely to move it into `state/user.json`; the next snapshot write must compact the old filename away.
+- Runtime snapshot writes remain parentless one-snapshot branch updates.
+- A successful readable `runtime-state` branch is authoritative, including missing files after PURGE. Cache recovery must never resurrect intentionally purged state.
+- Encrypted Actions-cache backups are secondary recovery only.
 
 ## Watchdog
 
-The watchdog must verify:
-
-- Cloudflare Worker readiness, including encrypted runtime-state read/decrypt;
-- latest validation health;
-- public-repo privacy rules; and
-- cron-job.org primary scheduler existence, cadence, target, and enabled posture.
-
-The two required cron-job.org jobs must exist with their expected 2/5-minute cadences and remain enabled. The legacy Telegram polling cron and retired external watchdog cron must remain disabled. The native GitHub watchdog schedule runs every 6 hours.
+The watchdog verifies Worker readiness/runtime decryptability, latest validation health, public-repo privacy rules, and the two required cron-job.org schedules. Operational health failures do not trigger user notifications.
 
 ## Versioning
 
 Version numbers represent **actual product changes**, not repository activity.
 
-- PATCH: a backward-compatible user-visible bug fix, reliability/privacy/security behavior change, or production compatibility fix.
-- MINOR: a new backward-compatible product capability.
-- MAJOR: an intentional breaking product change.
-- **No SemVer bump** for documentation-only edits, behavior-preserving refactors, formatting/comments, test-only changes, CI/workflow maintenance, dependency/tooling maintenance, or other internal housekeeping that does not change the product's production behavior.
-- Maintenance changes that keep the same version must not add a duplicate release-ledger entry or publish a new GitHub Release.
-- When a maintenance change intentionally changes production behavior, classify that behavior change normally as PATCH/MINOR/MAJOR.
+- PATCH: backward-compatible user-visible reliability/privacy/security/compatibility fix.
+- MINOR: new backward-compatible capability.
+- MAJOR: intentional breaking product change.
+- No SemVer bump for documentation-only edits, behavior-preserving refactors, tests, formatting/comments, CI/workflow maintenance, or tooling-only work.
 
-Release entries may include a user-facing `telegramAnnouncement` while Telegram remains an enabled notification adapter. Release notices are version-based and must never be created merely for commits or pull requests.
+Release entries may include `webAnnouncement` for user-facing release notices. Do not create a release entry merely for commits or PRs.
 
-## Code style and module documentation
+## Code and testing
 
-Read `STYLE_GUIDE.md` before editing code.
+Read `STYLE_GUIDE.md` before editing.
 
-- Keep runtime modules small and domain-focused; extract pure routing/parsing/formatting logic when a file starts mixing multiple concerns.
-- Every non-test runtime `.mjs` file begins with a module documentation block.
-- Comments explain responsibility, privacy boundaries, failure behavior, or non-obvious invariants rather than restating syntax.
-- When a release materially changes a module's responsibility, update its header/documentation and the relevant `docs/wiki/` page.
-- Do not rewrite old release snapshots merely to add comments. Current release documentation is the source of onboarding truth.
+- Keep runtime modules domain-focused.
+- Every non-test runtime `.mjs` starts with module documentation.
+- Keep provider-specific integrations at the edges.
+- Test-only source belongs under `tests/`.
+- Use encrypted/synthetic runtime fixtures.
+- Never upload decrypted runtime artifacts.
+- Maintain the repository regression check that rejects reintroduction of the retired messaging integration, its credentials, webhook route, and removed source/workflow paths.
 
-## Purge semantics
+## PURGE
 
-`PURGE` is a full BallerWatch factory reset. It first deletes BallerWatch-managed RATS Calendar events through the authenticated Calendar bridge, then deletes generated runtime files from the `runtime-state` branch, including custom league-team state, listener settings, notification/watchdog state, Web Push subscriptions/board state, Calendar reconciliation snapshots, and the 48-hour chat history/review. The next runs rebuild defaults, current source snapshots, and future Calendar match events. It does not delete source code, secrets, or unrelated Google Calendar events.
+PURGE removes BallerWatch-managed Calendar events, generated encrypted runtime files, user settings, monitored-team overrides, Web Push subscriptions/board state, watchdog state, weather/Calendar snapshots, and retained chat/review state. It does not delete source code, repository/Worker secrets, or unrelated Calendar events. Defaults and current source snapshots rebuild on later runs.
 
-## Cloudflare and storage failure behavior
+## Failure behavior
 
-- If Cloudflare is unavailable, inbound Telegram webhook/fast-path questions and live PWA Q&A/board reads are temporarily unavailable, but cron-job.org continues the 2/5-minute pickup/league workflows and the native six-hour GitHub maintenance/weather schedule remains independent of Cloudflare.
-- Existing Web Push subscriptions are signaled directly from GitHub Actions to browser push services, so notification fallback does not depend on Telegram and does not require Cloudflare at send time.
-- GitHub production watcher workflows do not depend on Workers KV.
-- If the `runtime-state` branch cannot be read, workflows may restore the encrypted last-known Actions-cache backup.
-- The Worker may fall back to dispatching the GitHub listener if a direct runtime-state history write fails.
-- Do not reintroduce Workers KV as a hot datastore merely for convenience; the free-tier request ceiling is a known operational constraint.
+- Cloudflare unavailable: live PWA API/Q&A/board reads are unavailable; pickup/league schedules and native GitHub maintenance continue.
+- Runtime branch unavailable: supported workflows may use encrypted last-known cache backup.
+- Release/content credential invalid: promotion/Worker readiness fails closed.
+- Web Push delivery is independent from Cloudflare once a subscription is stored; GitHub Actions sends directly to validated browser push providers.

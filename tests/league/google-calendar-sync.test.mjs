@@ -66,8 +66,8 @@ test("successful changed match advances state and records one updated notificati
 
     const state = JSON.parse(fs.readFileSync("calendar-snapshot.json", "utf8"));
     assert.equal(state.appliedMatches["v2:test"].fingerprint, "new-fingerprint");
-    const telegram = JSON.parse(fs.readFileSync("telegram-update.json", "utf8"));
-    assert.deepEqual(telegram.updates.map((item) => item.action), ["updated"]);
+    const notification = JSON.parse(fs.readFileSync("notification-update.json", "utf8"));
+    assert.deepEqual(notification.updates.map((item) => item.action), ["updated"]);
   } finally {
     process.chdir(originalCwd);
     if (originalUrl === undefined) delete process.env.GOOGLE_CALENDAR_WEBHOOK_URL;

@@ -2,10 +2,11 @@ name: Manual smoke test
 
 on:
   workflow_dispatch:
-  pull_request:
-    branches: [main]
+  push:
+    branches:
+      - "release/**"
+      - "fix/**"
     paths:
-      - "listener/**"
       - "pickup/**"
       - "league/**"
       - "shared/**"
@@ -19,7 +20,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ballerwatch-manual-smoke-${{ github.event.pull_request.number || github.ref }}
+  group: ballerwatch-manual-smoke-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -33,6 +34,17 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Verify dedicated runtime encryption key
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$TRACKER_STATE_KEY" || {
+            echo "::error::TRACKER_STATE_KEY repository secret is required for BallerWatch 6.0.";
+            exit 1;
+          }
+
       - name: Verify read-only AI with synthetic data and no notifications
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -41,8 +53,7 @@ jobs:
 
       - name: Pull runtime fixtures from GitHub state branch
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
         run: |
           node shared/runtime-state.mjs pull pickup
           node shared/runtime-state.mjs pull league
@@ -51,14 +62,12 @@ jobs:
         env:
           UPSTREAM_ENDPOINT: ${{ secrets.UPSTREAM_ENDPOINT }}
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           OWNER_RSVP_NAME: ${{ secrets.OWNER_RSVP_NAME }}
         run: node pickup/update.mjs
 
       - name: Prepare league runtime
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           SMOKE_ALLOW_TRANSIENT_SOURCE_FAILURE: "true"
         shell: bash
         run: |
@@ -66,7 +75,10 @@ jobs:
           if [ "$TEAM_COUNT" -gt 0 ]; then
             node shared/league-teams.mjs prepare
             node shared/league-state.mjs prepare
-            (cd league && /usr/bin/time -f "leagueWatcherSeconds=%e" node watcher.mjs)
+            if ! (cd league && /usr/bin/time -f "leagueWatcherSeconds=%e" node watcher.mjs); then
+              node -e 'const fs=require("fs");const x=JSON.parse(fs.readFileSync("league/schedule.json","utf8"));if(x?.ok!==true||!Array.isArray(x?.teams))process.exit(1)'
+              echo "::warning::Live RATS refresh was inconsistent; smoke retained and validated the encrypted last-good schedule."
+            fi
           else
             echo "No league teams configured; league live test skipped."
           fi
@@ -74,7 +86,6 @@ jobs:
       - name: Verify refreshed data without notifications
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           OWNER_RSVP_NAME: ${{ secrets.OWNER_RSVP_NAME }}
         run: node tests/smoke/manual-smoke.mjs
 
@@ -91,4 +102,5 @@ jobs:
           rm -rf .runtime
           rm -f league/teams.json
           rm -f league/schedule.json league/today.json league/calendar-snapshot.json
-          rm -f league/score-changes.json league/calendar-changes.json league/telegram-update.json league/status.json
+          rm -f league/score-changes.json league/calendar-changes.json league/notification-update.json league/status.json
+

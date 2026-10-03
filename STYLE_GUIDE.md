@@ -28,7 +28,7 @@ This repository uses one consistent style across runtime code, workflows, tests,
 - All test-only source lives under `tests/`, mirroring the production source area where practical.
 - Production source folders should not contain `*.test.mjs` or smoke-only scripts.
 - Smoke helpers belong in `tests/smoke/`.
-- Tests must remain notification-silent: no Telegram or Web Push delivery, and no Calendar mutation.
+- Tests must remain notification-silent: no Web Push delivery and no Calendar mutation.
 
 ## Workflows and configuration
 
@@ -36,7 +36,7 @@ This repository uses one consistent style across runtime code, workflows, tests,
 - GitHub Actions should have explicit permissions, timeouts, and concurrency where appropriate.
 - Production workflows must not commit runtime data.
 - A workflow should own one operational failure domain. Prefer a manual repair workflow over a second automatic trigger when normal deployment already performs the same reconciliation.
-- Test workflows must not send Telegram notifications or mutate Calendar data.
+- Test workflows must not send Web Push notifications or mutate Calendar data.
 
 ## Releases
 

@@ -2,17 +2,16 @@
  * Performs deep health, privacy, validation, edge, and external-scheduler checks.
  *
  * v2.5.0: caches encrypted scheduler audits for 6 hours; other checks remain every run.
- * v5.7.0: health checks treat the Cloudflare service as the BallerWatch Worker, while Telegram is an optional notification adapter. Runtime/private data must never be committed to Git.
+ * v6.0.0: health checks target the web-only Cloudflare Worker. Runtime/private data must never be committed to Git.
  */
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { decryptState, encryptState } from "../shared/state-crypto.mjs";
-import { sendTelegram } from "../shared/telegram.mjs";
 import { appendWebNotification } from "../shared/web-notifications.mjs";
 import { checkScheduler } from "./scheduler-check.mjs";
-import { planVersionAnnouncement } from "./version-announcement.mjs";
+import { planVersionAnnouncement } from "./release-announcement.mjs";
 
 const STATE_PATH = "state/watchdog.json";
 
@@ -65,16 +64,13 @@ async function github(pathname) {
 }
 
 async function workerHealth() {
-  const url = String(process.env.TELEGRAM_WEBHOOK_HEALTH_URL || "").trim();
+  const url = String(process.env.BALLERWATCH_WORKER_HEALTH_URL || "").trim();
   if (!url) return { healthy: true, problem: null };
 
   try {
     const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
     const payload = await response.json().catch(() => ({}));
-    const knownService = new Set([
-      "ballerwatch-worker",
-      "ballerwatch-telegram-webhook",
-    ]);
+    const knownService = new Set(["ballerwatch-worker"]);
     if (!response.ok || payload?.ok !== true || !knownService.has(payload?.service)) {
       return {
         healthy: false,
@@ -159,7 +155,7 @@ function sensitivePlaintextProblems() {
     "league/today.json",
     "league/calendar-snapshot.json",
     "league/calendar-changes.json",
-    "league/telegram-update.json",
+    "league/notification-update.json",
     "league/score-changes.json",
     "league/status.json",
   ];
@@ -211,14 +207,7 @@ export async function runWatchdog() {
       body: announcement.message,
       tag: `ballerwatch-version-${ledger?.currentVersion || "update"}`,
     });
-    try {
-      await sendTelegram(announcement.message);
-      console.log("Recorded the combined daily version announcement for Telegram + web.");
-    } catch (error) {
-      console.warn(
-        `Telegram version delivery failed; web fallback remains available: ${error?.message || error}`,
-      );
-    }
+    console.log("Recorded the combined daily Web Push version announcement.");
   } else if (announcement.message) {
     versionAnnouncement = previous.versionAnnouncement || {};
     console.log("Deferred version announcement because the watchdog is unhealthy.");

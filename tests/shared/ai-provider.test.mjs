@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { aiProviders, requestAiJson } from "../../shared/ai-provider.mjs";
 import { answerUnknownWithAi, DAILY_AI_LIMIT } from "../../shared/ai-fallback.mjs";
-import { classifyWithAi, directIntent } from "../../infra/telegram-webhook/worker.mjs";
+import { classifyWithAi, directIntent } from "../../infra/web-worker/worker.mjs";
 
 const gemini = value => new Response(JSON.stringify({ candidates: [{ finishReason: "STOP", content: { parts: [{ text: JSON.stringify(value) }] } }] }));
 const groq = value => new Response(JSON.stringify({ choices: [{ finish_reason: "stop", message: { content: JSON.stringify(value) } }] }));
@@ -14,7 +14,7 @@ function setup(t, responses) {
   t.after(() => { process.env = oldEnv; });
   const calls = [];
   t.mock.method(globalThis, "fetch", async (url, options) => {
-    assert.ok(/generativelanguage.googleapis.com|api.groq.com/.test(url), "Tests must never contact Telegram or state APIs");
+    assert.ok(/generativelanguage.googleapis.com|api.groq.com/.test(url), "Tests must never contact notification or state APIs");
     calls.push({ url, options, body: JSON.parse(options.body) });
     const response = responses.shift();
     if (response instanceof Error) throw response;

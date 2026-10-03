@@ -1,13 +1,13 @@
 /**
- * Plans quiet, at-most-daily combined Telegram announcements for released versions.
+ * Plans quiet, at-most-daily combined Web Push release announcements.
  *
- * Documentation baseline: v2.6.0. This module is pure policy logic: it never sends Telegram
- * messages and never reads private runtime state directly.
+ * This module is pure policy logic: it never sends notifications or reads
+ * private runtime state directly.
  */
 export const ANNOUNCEMENT_BASELINE_VERSION = "2.5.6";
 
 function releaseSummary(release) {
-  return String(release?.telegramAnnouncement || release?.title || "BallerWatch update").trim();
+  return String(release?.webAnnouncement || release?.title || "BallerWatch update").trim();
 }
 
 export function pacificDate(now = new Date()) {
@@ -43,7 +43,7 @@ export function formatCombinedVersionAnnouncement(releases) {
   for (const release of items) {
     lines.push(`• v${release.version} — ${releaseSummary(release)}`);
   }
-  lines.push("Ask /version anytime for the current release details.");
+  lines.push("Open BallerWatch for the current release details.");
   return lines.join("\n");
 }
 

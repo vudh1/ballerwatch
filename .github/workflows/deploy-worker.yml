@@ -1,0 +1,206 @@
+name: Deploy BallerWatch Worker
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ballerwatch-web-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.event.release.tag_name || 'production' }}
+          fetch-depth: 1
+
+      - name: Verify required core secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CRON_GITHUB_PAT: ${{ secrets.CRON_GITHUB_PAT }}
+          RELEASE_GITHUB_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          CRON_JOB_ORG_API_KEY: ${{ secrets.CRON_JOB_ORG_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID CRON_GITHUB_PAT RELEASE_GITHUB_TOKEN TRACKER_STATE_KEY CRON_JOB_ORG_API_KEY; do
+            test -n "${!name}" || { echo "::error::Missing $name"; exit 1; }
+          done
+
+      - name: Verify dedicated runtime contents credential
+        env:
+          RELEASE_GITHUB_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $RELEASE_GITHUB_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/contents/pickup/state/feed.json?ref=runtime-state")"
+          test "$status" = "200" || {
+            echo "::error::RELEASE_GITHUB_TOKEN cannot read encrypted runtime-state (HTTP $status).";
+            exit 1;
+          }
+
+      - name: Migrate and verify GitHub runtime-state branch
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: |
+          set -euo pipefail
+          for scope in user pickup league watchdog weather web; do
+            node shared/runtime-state.mjs pull "$scope"
+            node shared/runtime-state.mjs push "$scope"
+            node shared/runtime-state.mjs clean "$scope"
+          done
+          node shared/runtime-state.mjs audit
+
+      - name: Prepare Cloudflare runtime config
+        working-directory: infra/web-worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node prepare-config.mjs
+
+      - name: Deploy Worker shell
+        working-directory: infra/web-worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.145.0 deploy --config wrangler.generated.jsonc
+
+      - name: Upload Worker secrets
+        working-directory: infra/web-worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CRON_GITHUB_PAT: ${{ secrets.CRON_GITHUB_PAT }}
+          RELEASE_GITHUB_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          OWNER_RSVP_NAME: ${{ secrets.OWNER_RSVP_NAME }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          UPSTREAM_ENDPOINT: ${{ secrets.UPSTREAM_ENDPOINT }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          WORKER_SECRET="$(STATE_KEY="$TRACKER_STATE_KEY" node -e 'const c=require("crypto");const s=process.env.STATE_KEY+"|ballerwatch-worker-v3";process.stdout.write(c.createHash("sha256").update(s).digest("hex"))')"
+          printf '%s' "$WORKER_SECRET" > /tmp/ballerwatch-worker-secret
+          node -e 'process.stdout.write(JSON.stringify({
+            GITHUB_DISPATCH_TOKEN: process.env.CRON_GITHUB_PAT,
+            GITHUB_CONTENTS_TOKEN: process.env.RELEASE_GITHUB_TOKEN,
+            TRACKER_STATE_KEY: process.env.TRACKER_STATE_KEY,
+            BALLERWATCH_WORKER_SECRET: require("fs").readFileSync("/tmp/ballerwatch-worker-secret","utf8"),
+            ...(process.env.OWNER_RSVP_NAME ? { OWNER_RSVP_NAME: process.env.OWNER_RSVP_NAME } : {}),
+            ...(process.env.GEMINI_API_KEY ? { GEMINI_API_KEY: process.env.GEMINI_API_KEY } : {}),
+            ...(process.env.GROQ_API_KEY ? { GROQ_API_KEY: process.env.GROQ_API_KEY } : {}),
+            ...(process.env.UPSTREAM_ENDPOINT ? { UPSTREAM_ENDPOINT: process.env.UPSTREAM_ENDPOINT } : {})
+          }))' | npx --yes wrangler@4.145.0 secret bulk --config wrangler.generated.jsonc
+
+      - name: Redeploy with secret bindings
+        working-directory: infra/web-worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.145.0 deploy --config wrangler.generated.jsonc
+
+      - name: Verify Cloudflare cron triggers are removed
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          COUNT="$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/ballerwatch-web/schedules" \
+            | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const x=JSON.parse(s);process.stdout.write(String((x.result?.schedules||[]).length))})')"
+          test "$COUNT" = "0" || { echo "::error::Expected zero Cloudflare Cron Triggers, found $COUNT"; exit 1; }
+
+      - name: Verify web Worker readiness and security
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          SUBDOMAIN="$(curl --fail --silent \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" \
+            | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.parse(s).result.subdomain))')"
+          BASE_URL="https://ballerwatch-web.$SUBDOMAIN.workers.dev"
+
+          HEALTH="$(curl --max-time 15 --fail-with-body --silent --show-error "$BASE_URL/health")"
+          node -e 'const x=JSON.parse(process.argv[1]); if(x.ok!==true || x.ready!==true || !x.version || x.version==="unknown") process.exit(1)' "$HEALTH"
+
+          CONFIG_HEADERS="/tmp/ballerwatch-config-headers"
+          PWA_CONFIG="$(curl --max-time 15 --fail-with-body --silent --show-error \
+            --dump-header "$CONFIG_HEADERS" \
+            -H "Origin: https://vudh1.github.io" \
+            "$BASE_URL/web/config")"
+          node -e 'const x=JSON.parse(process.argv[1]); if(x.ok!==true || x.ready!==true || !x.push || !("ready" in x.push) || !x.version || x.version==="unknown") process.exit(1)' "$PWA_CONFIG"
+          grep -qi '^access-control-allow-origin: https://vudh1.github.io' "$CONFIG_HEADERS"
+          grep -qi '^content-security-policy: .*frame-ancestors '\''none'\''' "$CONFIG_HEADERS"
+          grep -qi '^x-content-type-options: nosniff' "$CONFIG_HEADERS"
+          grep -qi '^x-frame-options: DENY' "$CONFIG_HEADERS"
+          grep -qi '^referrer-policy: no-referrer' "$CONFIG_HEADERS"
+          grep -qi '^permissions-policy:' "$CONFIG_HEADERS"
+          rm -f "$CONFIG_HEADERS"
+
+          for path in /web/next-game /web/calendar; do
+            BODY="/tmp/ballerwatch-$(echo "$path" | tr '/' '-').json"
+            STATUS="$(curl --max-time 15 --silent --show-error \
+              --output "$BODY" --write-out "%{http_code}" \
+              -H "Origin: https://vudh1.github.io" "$BASE_URL$path")"
+            test "$STATUS" = "200" || { cat "$BODY"; exit 1; }
+            node - "$path" "$BODY" <<'NODE'
+          const fs = require("fs");
+          const path = process.argv[2];
+          const value = JSON.parse(fs.readFileSync(process.argv[3], "utf8"));
+          if (value.ok !== true) process.exit(1);
+          if (path === "/web/calendar" && !value.calendar) process.exit(1);
+          if (path === "/web/next-game" && !Object.prototype.hasOwnProperty.call(value, "game")) process.exit(1);
+          NODE
+            rm -f "$BODY"
+          done
+
+          PUSH_BODY="/tmp/ballerwatch-push-security-body"
+          PUSH_STATUS="$(curl --max-time 15 --silent --show-error \
+            --output "$PUSH_BODY" --write-out "%{http_code}" \
+            -X POST "$BASE_URL/web/push/challenge" \
+            -H "Origin: https://vudh1.github.io" \
+            -H "Content-Type: application/json" \
+            --data '{"endpoint":"https://127.0.0.1/latest/meta-data/"}')"
+          test "$PUSH_STATUS" = "400" || { cat "$PUSH_BODY"; exit 1; }
+          rm -f "$PUSH_BODY"
+          echo "Worker readiness verified."
+
+
+
+      - name: Ensure primary GitHub schedules stay enabled
+        env:
+          CRON_JOB_ORG_API_KEY: ${{ secrets.CRON_JOB_ORG_API_KEY }}
+          CRON_GITHUB_PAT: ${{ secrets.CRON_GITHUB_PAT }}
+          BALLERWATCH_BRANCH: production
+        run: node infra/external-schedules.mjs ensure-enabled-optional
+
+      - name: Deploy Pages after Worker is healthy
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+        run: gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref main
+
+      - name: Clean temporary files
+        if: always()
+        run: |
+          rm -f /tmp/ballerwatch-worker-secret
+          rm -f infra/web-worker/wrangler.generated.jsonc

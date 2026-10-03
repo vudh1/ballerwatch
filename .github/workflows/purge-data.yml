@@ -38,7 +38,6 @@ jobs:
       - name: Reinitialize empty Web Push identity
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: |
           node shared/web-push.mjs ensure
           node shared/runtime-state.mjs push web
@@ -47,8 +46,9 @@ jobs:
       - name: Show purge scope
         run: |
           echo "Deleted BallerWatch-managed RATS events from the Calendar bridge."
-          echo "Deleted generated runtime files from the runtime-state branch, including pickup/league snapshots, Calendar reconciliation state, watchdog state, chat review history, listener settings, custom league-team state, Web Push subscriptions, and notification-board state."
+          echo "Deleted generated runtime files from the runtime-state branch, including pickup/league snapshots, Calendar reconciliation state, watchdog state, chat review history, user settings, custom league-team state, Web Push subscriptions, and notification-board state."
           echo "Reinitialized a fresh empty encrypted Web Push identity so the PWA can be re-enabled without another deployment."
           echo "League teams bootstrap from the built-in defaults on the next league run."
           echo "Source code, repository/Worker secrets, and unrelated Google Calendar events are not deleted."
           echo "The primary GitHub watcher schedules rebuild current soccer snapshots and Calendar events automatically."
+

@@ -6,7 +6,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { decryptState, encryptState } from "../shared/state-crypto.mjs";
-import { loadBotSettings } from "../shared/bot-state.mjs";
+import { loadUserSettings } from "../shared/user-state.mjs";
 import { discoverPublicRsvpEndpoint, shouldRediscoverEndpoint } from "./upstream-endpoint.mjs";
 import { pickupWeatherChanged } from "../weather/relevance.mjs";
 
@@ -20,7 +20,7 @@ const PRIVATE_STATE_PATH = "pickup/state/events.json";
 const FEED_STATE_PATH = "pickup/state/feed.json";
 const SOURCE_HEALTH_STATE_PATH = "pickup/state/source-health.json";
 const WEATHER_REFRESH_MARKER = ".runtime/pickup/weather-refresh-needed";
-const settings = loadBotSettings();
+const settings = loadUserSettings();
 const endpointOverride = String(settings?.pickupEndpointOverride || "").trim();
 const defaultEndpoint = String(process.env.UPSTREAM_ENDPOINT || "").trim();
 let activeEndpoint = endpointOverride || defaultEndpoint;

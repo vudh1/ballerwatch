@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { cleanName, fingerprint } from "../../../infra/telegram-webhook/edge-runtime.mjs";
+import { cleanName, fingerprint } from "../../../infra/web-worker/edge-runtime.mjs";
 
 test("cleanName normalizes whitespace without changing words", () => {
   assert.equal(cleanName("  Third   Touch FC  "), "Third Touch FC");

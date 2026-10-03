@@ -5,7 +5,7 @@
  */
 import fs from "node:fs";
 import { decryptState } from "../../shared/state-crypto.mjs";
-import { loadBotSettings } from "../../shared/bot-state.mjs";
+import { loadUserSettings } from "../../shared/user-state.mjs";
 import { selectPrimaryEvent } from "../../pickup/selection.mjs";
 
 const TZ = "America/Los_Angeles";
@@ -52,7 +52,7 @@ function verifyPickup() {
     throw new Error("Pickup encrypted state could not be verified.");
   }
 
-  const settings = loadBotSettings();
+  const settings = loadUserSettings();
   const now = localNow();
   const dates = (feed.dates || []).map((item) => String(item.date || "")).filter(Boolean);
   selectPrimaryEvent({

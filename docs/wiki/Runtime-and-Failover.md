@@ -1,28 +1,28 @@
-# Runtime and failover
+# Runtime and Failover
 
-BallerWatch keeps provider roles separate so one outage does not become a full-system outage.
+## Normal path
 
-1. **Cloudflare Worker:** public-safe PWA API, fast read-only answers, user authentication, and optional Telegram webhook.
-2. **Workers Cache:** short-lived best-effort cache only; never authoritative storage.
-3. **cron-job.org:** pickup every 2 minutes and league every 5 minutes.
-4. **GitHub Actions:** reconciliation, notifications, Calendar work, release/deploy operations, and the six-hour watchdog/weather schedule.
-5. **runtime-state:** durable generated state; every canonical file is a complete AES-GCM envelope.
-6. **Actions cache:** encrypted last-known recovery backup.
+1. Cloudflare Worker serves the PWA API, auth, push registration, and public-safe reads.
+2. cron-job.org dispatches pickup and league GitHub workflows at 2/5-minute cadence.
+3. GitHub Actions reconcile source data, write encrypted `runtime-state`, update Calendar, and deliver allowed Web Push.
+4. Native GitHub watchdog/weather runs every 6 hours.
 
-Workers KV and Cloudflare Cron Triggers are not production dependencies.
+## Runtime storage
 
-## Failure behavior
+`runtime-state` is the durable generated-state authority. Every canonical file is encrypted. A successful branch read is authoritative even when a file is absent after PURGE; encrypted cache backup is used only when the branch itself cannot be read.
 
-If Cloudflare is unavailable, live PWA API reads and inbound Telegram webhook commands are temporarily unavailable. cron-job.org and GitHub Actions continue pickup/league monitoring; the native six-hour watchdog/weather schedule remains independent.
+## Cloudflare failure
 
-If Telegram is disabled, the PWA, user-password Settings, Web Push, soccer monitoring, and Calendar reconciliation remain usable.
+Live PWA API/Q&A/board reads are temporarily unavailable. Pickup/league scheduling and native GitHub maintenance continue.
 
-If `runtime-state` cannot be read, GitHub workflows may restore the encrypted Actions-cache backup. If the Worker cannot directly persist short-lived answer history, it may dispatch the GitHub listener as a persistence fallback.
+## GitHub runtime-state failure
 
-If the RATS source fails transiently, the league watcher retains the validated last-good schedule rather than replacing it with an empty schedule.
+Supported workflows may restore the encrypted last-known Actions-cache backup. They must not publish decrypted recovery data.
 
-## Encryption fail-closed behavior
+## Source failure
 
-Worker deployment migrates legacy runtime files through the shared state helper and then audits the branch. The six-hour watchdog repeats the structural audit.
+Transient league-source failure preserves a validated last-good schedule instead of replacing it with an empty result.
 
-A canonical runtime file that is not an AES-GCM envelope is an operational failure; it is not treated as an acceptable readable projection.
+## Push delivery
+
+Once a validated subscription is stored, GitHub Actions sends directly to browser push providers. Delivery does not require the Worker to be online.

@@ -34,7 +34,7 @@ jobs:
         working-directory: .
         env:
           EXTERNAL_FALLBACK: ${{ inputs.external_fallback }}
-          TELEGRAM_WEBHOOK_HEALTH_URL: https://ballerwatch-telegram.vudhone.workers.dev/health
+          BALLERWATCH_WORKER_HEALTH_URL: https://ballerwatch-web.vudhone.workers.dev/health
         run: node infra/fallback-gate.mjs league
 
       - name: Restore encrypted failover state cache
@@ -50,8 +50,6 @@ jobs:
         if: steps.gate.outputs.should_run == 'true'
         working-directory: .
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
         run: node shared/runtime-state.mjs pull league
 
@@ -60,7 +58,6 @@ jobs:
         working-directory: .
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: |
           node shared/league-teams.mjs prepare
           node shared/league-state.mjs prepare
@@ -85,19 +82,17 @@ jobs:
           GOOGLE_CALENDAR_WEBHOOK_SECRET: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_SECRET }}
         run: node google-calendar-sync.mjs
 
-      - name: Notify Telegram about successful schedule update
+      - name: Record web schedule notification
         if: steps.gate.outputs.should_run == 'true' && steps.calendar_gate.outputs.needsCalendar == 'true'
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: node telegram-notify.mjs
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: node web-notify.mjs
 
       - name: Seal league runtime state
         if: always() && steps.gate.outputs.should_run == 'true'
         working-directory: .
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: |
           node shared/league-state.mjs seal
           rm -f league/teams.json
@@ -106,8 +101,6 @@ jobs:
         if: always() && steps.gate.outputs.should_run == 'true'
         working-directory: .
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
           BALLERWATCH_ALLOW_OFFLINE: ${{ inputs.external_fallback }}
         run: node shared/runtime-state.mjs push league
@@ -116,8 +109,6 @@ jobs:
         if: always() && steps.gate.outputs.should_run == 'true' && steps.calendar_gate.outputs.needsCalendar == 'true'
         working-directory: .
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
         run: |
           node shared/runtime-state.mjs pull weather
@@ -129,7 +120,6 @@ jobs:
         working-directory: .
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: node shared/web-push.mjs send-pending
 
       - name: Persist Web Push subscription cleanup
@@ -137,7 +127,6 @@ jobs:
         working-directory: .
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           BALLERWATCH_ALLOW_OFFLINE: ${{ inputs.external_fallback }}
         run: node shared/runtime-state.mjs push league
 
@@ -146,7 +135,6 @@ jobs:
         working-directory: .
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: node shared/failover-state.mjs save league
 
       - name: Save encrypted failover state cache
@@ -164,4 +152,5 @@ jobs:
           rm -rf .runtime
           rm -f league/teams.json league/schedule.json league/today.json
           rm -f league/calendar-snapshot.json league/calendar-changes.json
-          rm -f league/telegram-update.json league/score-changes.json league/status.json
+          rm -f league/notification-update.json league/score-changes.json league/status.json
+

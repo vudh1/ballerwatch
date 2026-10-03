@@ -105,8 +105,6 @@ jobs:
           GOOGLE_CALENDAR_WEBHOOK_URL: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_URL }}
           GOOGLE_CALENDAR_WEBHOOK_SECRET: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_SECRET }}
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           node league/google-calendar-purge.mjs
           node shared/runtime-state.mjs purge
@@ -114,3 +112,4 @@ jobs:
       - name: Remove OAuth material
         if: always()
         run: rm -rf "$HOME/.clasprc.json" .runtime/apps-script
+

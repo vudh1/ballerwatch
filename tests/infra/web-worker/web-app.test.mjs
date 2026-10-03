@@ -6,15 +6,13 @@ import {
   directIntent,
   issueOwnerToken,
   issuePushRegistrationChallenge,
-  normalizeOwnerSettingsInput,
-  normalizeWebPairCode,
-  verifyOwnerToken,
+  normalizeOwnerSettingsInput,  verifyOwnerToken,
   verifyPushRegistrationChallenge,
   validWebSubscription,
   webCalendarDetails,
   webNextGameDetails,
   webSafeSnapshot,
-} from "../../../infra/telegram-webhook/worker.mjs";
+} from "../../../infra/web-worker/worker.mjs";
 
 test("web snapshot strips private pickup roster and owner settings", () => {
   const safe = webSafeSnapshot({
@@ -171,11 +169,6 @@ test("push registration challenge is short-lived and bound to one recognized end
   assert.equal(await verifyPushRegistrationChallenge(env, token, endpoint), true);
   assert.equal(await verifyPushRegistrationChallenge(env, token, other), false);
   assert.equal(await verifyPushRegistrationChallenge(env, token + "x", endpoint), false);
-});
-
-test("pairing code normalization accepts grouped high-entropy codes", () => {
-  assert.equal(normalizeWebPairCode("ABCD-EFGH-JK23"), "ABCDEFGHJK23");
-  assert.equal(normalizeWebPairCode(" abcd efgh jk23 "), "ABCDEFGHJK23");
 });
 
 test("owner settings input normalizes and deduplicates teams", () => {
@@ -405,7 +398,7 @@ test("web board keeps only the newest copy of identical historical notifications
 
 
 test("web feedback keeps original question and answer before encrypted review dispatch", () => {
-  const source = fs.readFileSync("infra/telegram-webhook/worker.mjs", "utf8");
+  const source = fs.readFileSync("infra/web-worker/worker.mjs", "utf8");
   assert.match(source, /function retainPrivateText/);
   assert.match(source, /question:\s*retainPrivateText\(event\.question, 4000\)/);
   assert.match(source, /reply:\s*retainPrivateText\(event\.reply, 12000\)/);

@@ -13,7 +13,7 @@ const FORBIDDEN_TRACKED = new Set([
   "league/today.json",
   "league/calendar-snapshot.json",
   "league/calendar-changes.json",
-  "league/telegram-update.json",
+  "league/notification-update.json",
   "league/score-changes.json",
   "league/status.json",
   "requests/private.json",

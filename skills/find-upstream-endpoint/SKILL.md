@@ -4,7 +4,7 @@ Use this runbook when BallerWatch needs to recover, verify, or explain the picku
 
 ## Privacy rule
 
-Never commit the discovered endpoint value to BallerWatch. Keep the endpoint in the GitHub Actions secret `UPSTREAM_ENDPOINT`, or in BallerWatch's encrypted Telegram override. Do not add live RSVP data, player names, field details, or response payloads to the repository.
+Never commit the discovered endpoint value to BallerWatch. Keep the endpoint in the GitHub Actions secret `UPSTREAM_ENDPOINT`, or in BallerWatch's encrypted user setting. Do not add live RSVP data, player names, field details, or response payloads to the repository.
 
 ## Source of truth
 
@@ -43,6 +43,6 @@ Do not guess a replacement endpoint. Trace the current frontend request path aga
 
 ## Runtime self-recovery
 
-The pickup watcher normally uses the encrypted Telegram override or `UPSTREAM_ENDPOINT` secret. If that configured endpoint is absent or has been retired with HTTP 404/410, the watcher may temporarily rediscover the normal public `APPS_SCRIPT_URL` from the upstream frontend source and retry the read.
+The pickup watcher normally uses the encrypted user setting or `UPSTREAM_ENDPOINT` secret. If that configured endpoint is absent or has been retired with HTTP 404/410, the watcher may temporarily rediscover the normal public `APPS_SCRIPT_URL` from the upstream frontend source and retry the read.
 
 The discovered URL must never be logged, committed, or written to runtime state. A successful recovery keeps monitoring alive, but the repository secret should still be repaired when convenient so discovery remains a fallback rather than the normal path.

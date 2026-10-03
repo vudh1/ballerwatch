@@ -15,14 +15,14 @@ test("encrypted failover backup round-trips runtime files", () => {
     fs.mkdirSync("pickup/state", { recursive: true });
     fs.mkdirSync("state", { recursive: true });
     fs.writeFileSync("pickup/state/feed.json", "{\"ok\":true}\n");
-    fs.writeFileSync("state/listener.json", "{\"v\":1}\n");
+    fs.writeFileSync("state/user.json", "{\"v\":1}\n");
 
     assert.equal(saveFailoverState("pickup"), 2);
     const encrypted = fs.readFileSync(".runtime/failover/pickup.json", "utf8");
     assert.equal(encrypted.includes('"ok":true'), false);
 
     fs.rmSync("pickup/state/feed.json");
-    fs.rmSync("state/listener.json");
+    fs.rmSync("state/user.json");
     assert.equal(restoreFailoverState("pickup"), 2);
     assert.equal(fs.readFileSync("pickup/state/feed.json", "utf8"), "{\"ok\":true}\n");
   } finally {

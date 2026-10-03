@@ -75,10 +75,10 @@ function parseRuntimeJson(file, raw) {
 }
 
 function legacyRuntimeValue(file, parsed) {
-  if (file === "state/listener.json" && parsed?.settings) {
+  if (file === "state/user.json" && parsed?.settings) {
     const settings = decryptState(parsed.settings);
     if (!settings || typeof settings !== "object") {
-      throw new Error("Unable to decrypt legacy listener settings during migration.");
+      throw new Error("Unable to decrypt legacy web user settings during migration.");
     }
     return {
       lastUpdateId: Number(parsed.lastUpdateId || 0),
@@ -125,6 +125,17 @@ export function auditRuntimeStateBranch() {
     // Unknown files are a privacy failure too: the snapshot branch is allowed
     // to contain only the reviewed canonical runtime paths.
     if (!canonical.has(file)) {
+      if (file === "state/listener.json") {
+        const legacyRaw = readBranchFile(file);
+        try {
+          if (!legacyRaw || !isHardenedStateEnvelope(parseRuntimeJson(file, legacyRaw))) {
+            failures.push(file);
+          }
+        } catch {
+          failures.push(file);
+        }
+        continue;
+      }
       failures.push(file);
       continue;
     }
@@ -163,7 +174,15 @@ export async function pullRuntimeState(scope) {
     // A successful branch read is authoritative, including absent files after
     // PURGE. Recovery caches must never resurrect intentionally deleted state.
     for (const file of files) {
-      const raw = readBranchFile(file);
+      let raw = readBranchFile(file);
+      let migratedLegacyUserState = false;
+      if (
+        file === "state/user.json" &&
+        (typeof raw !== "string" || !raw)
+      ) {
+        raw = readBranchFile("state/listener.json");
+        migratedLegacyUserState = typeof raw === "string" && Boolean(raw);
+      }
       if (typeof raw !== "string" || !raw) {
         fs.rmSync(file, { force: true });
         continue;
@@ -171,8 +190,11 @@ export async function pullRuntimeState(scope) {
       fs.mkdirSync(path.dirname(file), { recursive: true });
       const normalized = raw.endsWith("\n") ? raw : raw + "\n";
       fs.writeFileSync(file, normalized);
-      baseline[file] = blobSha(normalized);
+      if (!migratedLegacyUserState) baseline[file] = blobSha(normalized);
       sealLocalRuntimeFile(file);
+      if (migratedLegacyUserState) {
+        console.log("Migrated encrypted legacy user state to state/user.json.");
+      }
       count += 1;
     }
   } else {

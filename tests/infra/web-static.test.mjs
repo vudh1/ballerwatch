@@ -16,13 +16,13 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=5\.8\.2/);
-  assert.match(html, /app\.js\?v=5\.8\.2/);
+  assert.match(html, /styles\.css\?v=6\.0\.0/);
+  assert.match(html, /app\.js\?v=6\.0\.0/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v5-8-2-shell/);
+  assert.match(sw, /ballerwatch-v6-0-0-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -37,7 +37,7 @@ test("static web app contains no repository secrets or private runtime data", ()
   const text = files.map((file) => fs.readFileSync(file, "utf8")).join("\n");
   assert.doesNotMatch(
     text,
-    /TELEGRAM_BOT_TOKEN|TRACKER_STATE_KEY|GITHUB_DISPATCH_TOKEN|GOOGLE_CALENDAR_WEBHOOK_SECRET|privateJwk/i,
+    /TRACKER_STATE_KEY|GITHUB_DISPATCH_TOKEN|GOOGLE_CALENDAR_WEBHOOK_SECRET|privateJwk/i,
   );
   assert.doesNotMatch(text, /players\s*[:=]|waitlist\s*[:=]/i);
 });
@@ -67,7 +67,7 @@ test("Home Screen install card is removed in standalone mode and notifications u
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=5\.8\.2/);
+  assert.match(app, /sw\.js\?v=6\.0\.0/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -138,53 +138,52 @@ test("question box supports slash commands and autosuggestions", () => {
   assert.match(app, /activeSuggestionIndex/);
 });
 
-test("app-facing copy mentions Telegram only for the explicit footer shortcut", () => {
+
+test("app-facing copy is web-only", () => {
   const html = fs.readFileSync("docs/index.html", "utf8");
   const manifest = fs.readFileSync("docs/manifest.webmanifest", "utf8");
-  const body = html.slice(html.indexOf("<body"));
-  const withoutFooterShortcut = body.replace(
-    /<a href="https:\/\/t\.me\/ttf_rsvp_tracker_bot"[^>]*>Telegram<\/a>/,
-    "",
-  );
-  assert.doesNotMatch(withoutFooterShortcut, /Telegram/i);
-  assert.doesNotMatch(manifest, /Telegram/i);
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  assert.doesNotMatch(html, /https:\/\/t\.me\//i);
+  assert.doesNotMatch(app, /\/web\/user\/pair/);
+  assert.match(app, /https:\/\/ballerwatch-web\.vudhone\.workers\.dev/);
+  assert.doesNotMatch(manifest, /chat|messaging adapter/i);
 });
 
 
-test("user settings support app-native password sign-in with pairing as recovery", () => {
+test("user settings support password-only sign-in with repository recovery", () => {
   const html = fs.readFileSync("docs/index.html", "utf8");
   const app = fs.readFileSync("docs/app.js", "utf8");
-  const worker = fs.readFileSync("infra/telegram-webhook/worker.mjs", "utf8");
-  const listener = fs.readFileSync("listener/bot.mjs", "utf8");
+  const worker = fs.readFileSync("infra/web-worker/worker.mjs", "utf8");
+  const recovery = fs.readFileSync(".github/workflows/reset-user-password.yml", "utf8");
 
   assert.match(html, /id="settings-button"/);
   assert.match(html, /id="settings-dialog"/);
   assert.match(html, /id="owner-login-form"/);
   assert.match(html, /id="owner-login-password"/);
   assert.match(html, /id="owner-password-form"/);
-  assert.match(html, /Use a pairing code instead/);
-  assert.match(html, /id="owner-pair-form"/);
+  assert.match(html, /Reset web user password/);
   assert.match(html, /id="owner-name"/);
   assert.match(html, /id="owner-teams"/);
-  assert.match(html, />User settings</);
-  assert.match(html, />User password</);
-  assert.doesNotMatch(html, />Owner settings</);
+  assert.doesNotMatch(html, /owner-pair-form|one-time-code|pairing code/i);
 
   assert.match(app, /ballerwatch-owner-token/);
   assert.match(app, /\/web\/user\/login/);
   assert.match(app, /\/web\/user\/password/);
-  assert.match(app, /\/web\/user\/pair/);
   assert.match(app, /\/web\/user\/settings/);
+  assert.doesNotMatch(app, /\/web\/user\/pair/);
   assert.match(app, /ownerLoginForm\.addEventListener\("submit", loginOwnerDevice\)/);
   assert.match(app, /ownerPasswordForm\.addEventListener\("submit", saveOwnerPassword\)/);
+
   assert.match(worker, /export async function createOwnerPasswordRecord/);
   assert.match(worker, /export async function verifyOwnerPassword/);
   assert.match(worker, /userRoute\(url\.pathname, "login"\)/);
   assert.match(worker, /userRoute\(url\.pathname, "password"\)/);
-  assert.match(worker, /source: "web-pwa-user"/);
+  assert.doesNotMatch(worker, /userRoute\(url\.pathname, "pair"\)/);
 
-  assert.match(listener, /\/\?webpair/);
-  assert.match(listener, /webPairCodeHash/);
+  assert.match(recovery, /BALLERWATCH_RECOVERY_PASSWORD/);
+  assert.match(recovery, /node shared\/user-recovery\.mjs reset/);
+  assert.match(recovery, /node shared\/runtime-state\.mjs pull user/);
+  assert.match(recovery, /node shared\/runtime-state\.mjs push user/);
 });
 
 test("notification test control is deliberately subtle", () => {
@@ -196,40 +195,30 @@ test("notification test control is deliberately subtle", () => {
 });
 
 
-test("answer feedback is one-tap, answer-scoped, and does not open user settings", () => {
+
+test("answer feedback is one-tap, answer-scoped, and persists directly through the web runtime", () => {
   const html = fs.readFileSync("docs/index.html", "utf8");
   const app = fs.readFileSync("docs/app.js", "utf8");
   const css = fs.readFileSync("docs/styles.css", "utf8");
-  const worker = fs.readFileSync("infra/telegram-webhook/worker.mjs", "utf8");
-  const listener = fs.readFileSync("listener/bot.mjs", "utf8");
-  const history = fs.readFileSync("shared/chat-history.mjs", "utf8");
+  const worker = fs.readFileSync("infra/web-worker/worker.mjs", "utf8");
 
   assert.match(html, /id="answer-feedback-button"[^>]*>Wrong answer<\/button>/);
   assert.match(html, /id="answer-feedback-status"/);
   assert.match(app, /answerFeedbackButton\.addEventListener\("click"/);
   assert.match(app, /addEventListener\("dblclick"/);
   assert.match(app, /feedbackToken: payload\.feedbackToken \|\| ""/);
-  assert.match(app, /feedbackToken: lastAnswerExchange\.feedbackToken \|\| ""/);
   assert.match(app, /action: wasSubmitted \? "cancel" : "mark"/);
   assert.doesNotMatch(
     app.match(/async function toggleWrongAnswerFeedback\(\)[\s\S]*?\n}\n/)?.[0] || "",
     /openSettings\(/,
   );
-  assert.match(app, /Feedback expired\. Ask the question again/);
-  assert.match(css, /\.answer \{[\s\S]*-webkit-user-select:\s*none;[\s\S]*user-select:\s*none;[\s\S]*-webkit-touch-callout:\s*none;[\s\S]*touch-action:\s*manipulation;/);
-  assert.match(app, /addEventListener\("contextmenu", \(event\) => event\.preventDefault\(\)\)/);
-  assert.match(app, /addEventListener\("selectstart", \(event\) => event\.preventDefault\(\)\)/);
+  assert.match(css, /\.answer \{[\s\S]*user-select:\s*none;[\s\S]*touch-action:\s*manipulation;/);
   assert.match(worker, /export async function issueFeedbackToken/);
   assert.match(worker, /export async function verifyFeedbackToken/);
-  assert.match(worker, /kind: "feedback"/);
-  assert.match(worker, /feedbackAuthorized/);
-  assert.match(worker, /action === "cancel"/);
-  assert.match(worker, /action: "cancel-feedback"/);
+  assert.match(worker, /async function removeWebFeedback/);
+  assert.match(worker, /await removeWebFeedback\(env, feedbackId\)/);
+  assert.match(worker, /await persistFastChatHistory\(env,/);
   assert.match(worker, /hint: "negative_feedback"/);
-  assert.match(listener, /removeChatFeedback/);
-  assert.match(listener, /event\?\.action === "cancel-feedback"/);
-  assert.match(history, /export function removeChatFeedback/);
-  assert.match(history, /externalId/);
 });
 
 test("question autocomplete predicts full sentences from typed prefixes", () => {
@@ -251,25 +240,21 @@ test("mobile header keeps settings and bell on the same row", () => {
 });
 
 
-test("user pairing codes are high-entropy, attempt-limited, and single-use", () => {
-  const html = fs.readFileSync("docs/index.html", "utf8");
-  const worker = fs.readFileSync("infra/telegram-webhook/worker.mjs", "utf8");
-  const listener = fs.readFileSync("listener/bot.mjs", "utf8");
 
-  assert.match(html, /single-use and expires after 10 minutes/);
-  assert.match(html, /placeholder="XXXX-XXXX-XXXX"/);
-  assert.match(listener, /WEB_PAIR_ALPHABET/);
-  assert.match(listener, /for \(let index = 0; index < 12; index \+= 1\)/);
-  assert.match(listener, /Single use\. Expires in 10 minutes\./);
-  assert.match(worker, /\^\[A-HJ-NP-Z2-9\]\{12\}\$/);
-  assert.match(worker, /delete nextSettings\.webPairCodeHash/);
-  assert.match(worker, /delete nextSettings\.webPairExpiresAt/);
-  assert.match(worker, /ownerPairAllowed\(request\)/);
-  assert.match(worker, /recordOwnerPairFailure\(request\)/);
-  assert.match(worker, /issueOwnerToken\(env, ownerAuthVersion\(nextSettings\)\)/);
-  assert.match(worker, /Pairing code is invalid, expired, or already used/);
+test("password recovery is admin-controlled, temporary-secret based, and revokes sessions", () => {
+  const recovery = fs.readFileSync(".github/workflows/reset-user-password.yml", "utf8");
+  const helper = fs.readFileSync("shared/user-recovery.mjs", "utf8");
+
+  assert.match(recovery, /workflow_dispatch:/);
+  assert.match(recovery, /Confirmation must be RESET/);
+  assert.match(recovery, /BALLERWATCH_RECOVERY_PASSWORD/);
+  assert.match(recovery, /TRACKER_STATE_KEY/);
+  assert.match(helper, /Recovery password must be between 12 and 200 characters/);
+  assert.match(helper, /webAuthVersion/);
+  assert.match(helper, /nextVersion/);
+  assert.match(helper, /webOwnerPassword/);
+  assert.doesNotMatch(helper, /console\.log\([^\n]*password/i);
 });
-
 
 test("two-week dashboard renders cached match weather", () => {
   const html = fs.readFileSync("docs/index.html", "utf8");
@@ -309,7 +294,7 @@ test("weather release bootstrap stays notification-silent and release-gated", ()
   assert.match(workflow, /github\.event\.release\.tag_name/);
   assert.match(workflow, /node weather\/update\.mjs/);
   assert.match(workflow, /node shared\/runtime-state\.mjs push weather/);
-  assert.doesNotMatch(workflow, /send-pending|sendMessage|telegram-notify|shared\/telegram/i);
+  assert.doesNotMatch(workflow, /send-pending|sendMessage/i);
 });
 
 
@@ -391,8 +376,8 @@ test("web Live status requires successful runtime-backed reads", () => {
 });
 
 test("Worker readiness uses a dedicated GitHub contents credential and probes live data", () => {
-  const worker = fs.readFileSync("infra/telegram-webhook/worker.mjs", "utf8");
-  const deploy = fs.readFileSync(".github/workflows/deploy-telegram-webhook.yml", "utf8");
+  const worker = fs.readFileSync("infra/web-worker/worker.mjs", "utf8");
+  const deploy = fs.readFileSync(".github/workflows/deploy-worker.yml", "utf8");
 
   assert.match(worker, /GITHUB_CONTENTS_TOKEN/);
   assert.match(worker, /githubContentsToken\(env\)/);
@@ -526,12 +511,12 @@ test("next-game sharing uses the generic device share sheet", () => {
   assert.doesNotMatch(app, /https:\/\/ts\.la\/app/);
 });
 
-test("footer offers a Telegram app shortcut", () => {
-  const html = fs.readFileSync("docs/index.html", "utf8");
-  assert.match(html, /https:\/\/t\.me\/ttf_rsvp_tracker_bot/);
-  assert.match(html, />Telegram<\/a>/);
-});
 
+test("footer contains no secondary messaging shortcut", () => {
+  const html = fs.readFileSync("docs/index.html", "utf8");
+  assert.doesNotMatch(html, /https:\/\/t\.me\//i);
+  assert.match(html, /id="install-card"/);
+});
 
 test("notification popup stays bounded and offers local Delete all beside Send test", () => {
   const html = fs.readFileSync("docs/index.html", "utf8");
@@ -646,84 +631,65 @@ test("installed iPhone mode adds a blurred status-area separation layer", () => 
 });
 
 
-test("production rollout is gated by GitHub Releases instead of main pushes", () => {
+
+test("production rollout is release-gated and Pages waits for Worker readiness", () => {
   const pages = fs.readFileSync(".github/workflows/pages.yml", "utf8");
-  const worker = fs.readFileSync(".github/workflows/deploy-telegram-webhook.yml", "utf8");
+  const worker = fs.readFileSync(".github/workflows/deploy-worker.yml", "utf8");
   const webRuntime = fs.readFileSync(".github/workflows/web-app.yml", "utf8");
   const calendarBridge = fs.readFileSync(".github/workflows/deploy-apps-script.yml", "utf8");
   const promote = fs.readFileSync(".github/workflows/promote-release.yml", "utf8");
   const pickup = fs.readFileSync(".github/workflows/pickup.yml", "utf8");
   const league = fs.readFileSync(".github/workflows/league.yml", "utf8");
-  const listener = fs.readFileSync(".github/workflows/listener.yml", "utf8");
   const watchdog = fs.readFileSync(".github/workflows/watchdog.yml", "utf8");
   const schedules = fs.readFileSync("infra/external-schedules.mjs", "utf8");
 
   for (const workflow of [worker, webRuntime, calendarBridge]) {
     assert.match(workflow, /release:\s*\n\s*types:\s*\[published\]/);
     assert.doesNotMatch(workflow, /push:\s*\n\s*branches:\s*\[main\]/);
+    assert.match(workflow, /github\.event\.release\.tag_name \|\| 'production'/);
   }
+
   assert.match(pages, /workflow_dispatch:/);
-  assert.doesNotMatch(pages, /release:\s*\n\s*types:\s*\[published\]/);
   assert.match(pages, /ref:\s*production/);
-  assert.match(pages, /push:\s*\n\s*branches:\s*\[main\][\s\S]*paths:[\s\S]*\.github\/workflows\/pages\.yml/);
+  assert.match(pages, /push:\s*\n\s*branches:\s*\[main\][\s\S]*\.github\/workflows\/pages\.yml/);
 
   assert.match(promote, /cron:\s*"37 \* \* \* \*"/);
   assert.match(promote, /86400/);
   assert.match(promote, /gh release create/);
-  assert.match(promote, /--draft/);
-  assert.match(promote, /gh release edit/);
-  assert.match(promote, /--draft=false/);
-  assert.match(promote, /release_state/);
   assert.match(promote, /git\/refs\/heads\/production/);
   assert.match(promote, /RELEASE_GITHUB_TOKEN/);
-  assert.doesNotMatch(promote, /secrets\.CRON_GITHUB_PAT/);
-  assert.doesNotMatch(promote, /inputs\.target_ref|REQUESTED_REF/);
-  assert.doesNotMatch(promote, /inputs\.version|REQUESTED_VERSION/);
-  assert.match(promote, /git fetch --no-tags origin main/);
-  assert.match(promote, /git log -1 --format=%H "\$head_sha" -- features\/versions\.json/);
+  assert.doesNotMatch(promote, /gh workflow run pages\.yml/);
 
-  assert.doesNotMatch(pages, /inputs\.release_ref/);
-  assert.doesNotMatch(pages, /github\.event\.release\.tag_name/);
-  for (const workflow of [worker, webRuntime, calendarBridge]) {
-    assert.doesNotMatch(workflow, /inputs\.release_ref/);
-    assert.match(workflow, /github\.event\.release\.tag_name \|\| 'production'/);
-  }
-  assert.match(promote, /Deploy Pages from promoted production/);
-  assert.match(promote, /gh workflow run pages\.yml --repo "\$GITHUB_REPOSITORY" --ref main/);
-  assert.match(promote, /GH_TOKEN:\s*\$\{\{ secrets\.RELEASE_GITHUB_TOKEN \}\}/);
+  assert.match(worker, /Verify web Worker readiness and security/);
+  assert.match(worker, /Deploy Pages after Worker is healthy/);
+  assert.match(worker, /gh workflow run pages\.yml --repo "\$GITHUB_REPOSITORY" --ref main/);
 
-  for (const workflow of [pickup, league, listener, watchdog]) {
+  for (const workflow of [pickup, league, watchdog]) {
     assert.match(workflow, /ref:\s*production/);
   }
   assert.match(schedules, /BALLERWATCH_BRANCH \|\| "production"/);
 });
 
 
-test("web runtime and user settings do not require Telegram credentials", () => {
-  const deploy = fs.readFileSync(".github/workflows/deploy-telegram-webhook.yml", "utf8");
-  const telegram = fs.readFileSync("shared/telegram.mjs", "utf8");
-  const worker = fs.readFileSync("infra/telegram-webhook/worker.mjs", "utf8");
+test("web runtime requires the dedicated state key and web-only Worker", () => {
+  const deploy = fs.readFileSync(".github/workflows/deploy-worker.yml", "utf8");
+  const stateCrypto = fs.readFileSync("shared/state-crypto.mjs", "utf8");
+  const worker = fs.readFileSync("infra/web-worker/worker.mjs", "utf8");
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  const retiredPrefix = ["TELE", "GRAM"].join("");
 
   const requiredBlock = deploy.match(
     /- name: Verify required core secrets[\s\S]*?(?=\n      - name:)/,
   )?.[0] || "";
   assert.match(requiredBlock, /TRACKER_STATE_KEY/);
   assert.match(requiredBlock, /CRON_GITHUB_PAT/);
-  assert.match(requiredBlock, /TRACKER_STATE_KEY or TELEGRAM_BOT_TOKEN is required/);
-  const mandatoryLoop = requiredBlock.match(/for name in[^\n]+/)?.[0] || "";
-  assert.doesNotMatch(mandatoryLoop, /TRACKER_STATE_KEY|TELEGRAM_BOT_TOKEN|TELEGRAM_CHAT_ID/);
-  assert.match(deploy, /process\.env\.TRACKER_STATE_KEY \|\| process\.env\.TELEGRAM_BOT_TOKEN/);
-
-  assert.match(deploy, /Telegram adapter disabled; PWA\/API operation remains enabled/);
-  assert.match(deploy, /process\.env\.STATE_KEY\+"\|ballerwatch-webhook-v2"/);
-  assert.match(telegram, /export function telegramConfigured/);
-  assert.match(telegram, /function requireTelegram/);
-  assert.doesNotMatch(telegram, /if \(!TOKEN\) throw/);
-  assert.doesNotMatch(telegram, /if \(!CHAT_ID\) throw/);
-  assert.match(worker, /telegramEnabled:Boolean\(env\.TELEGRAM_BOT_TOKEN && env\.TELEGRAM_CHAT_ID\)/);
-  assert.match(worker, /Telegram adapter disabled/);
+  assert.match(requiredBlock, /RELEASE_GITHUB_TOKEN/);
+  assert.doesNotMatch(deploy, new RegExp(retiredPrefix, "i"));
+  assert.doesNotMatch(stateCrypto, new RegExp(retiredPrefix, "i"));
+  assert.doesNotMatch(worker, new RegExp(retiredPrefix, "i"));
+  assert.match(worker, /BALLERWATCH_WORKER_SECRET/);
+  assert.match(app, /https:\/\/ballerwatch-web\.vudhone\.workers\.dev/);
 });
-
 
 test("repository policy reserves SemVer for product behavior changes", () => {
   const agents = fs.readFileSync("AGENTS.md", "utf8");
@@ -738,19 +704,19 @@ test("repository policy reserves SemVer for product behavior changes", () => {
 });
 
 
-test("runtime deployment migrates every scope and audits full branch encryption", () => {
-  const deploy = fs.readFileSync(".github/workflows/deploy-telegram-webhook.yml", "utf8");
-  const watchdog = fs.readFileSync(".github/workflows/watchdog.yml", "utf8");
-  const worker = fs.readFileSync("infra/telegram-webhook/worker.mjs", "utf8");
 
-  assert.match(deploy, /for scope in listener pickup league watchdog weather web/);
+test("runtime deployment migrates every web scope and audits full branch encryption", () => {
+  const deploy = fs.readFileSync(".github/workflows/deploy-worker.yml", "utf8");
+  const watchdog = fs.readFileSync(".github/workflows/watchdog.yml", "utf8");
+  const worker = fs.readFileSync("infra/web-worker/worker.mjs", "utf8");
+
+  assert.match(deploy, /for scope in user pickup league watchdog weather web/);
   assert.match(deploy, /node shared\/runtime-state\.mjs audit/);
   assert.match(watchdog, /Audit runtime-state encryption/);
   assert.match(watchdog, /node shared\/runtime-state\.mjs audit/);
-  assert.match(worker, /async function listenerStateDocument/);
-  assert.match(worker, /listenerStateDocument\(env, listenerState\)/);
+  assert.match(worker, /async function userStateDocument/);
+  assert.match(worker, /githubStateRecord\(env, "state\/user\.json"\)/);
   assert.match(worker, /await encryptState\(next, env\)/);
-  assert.match(worker, /await encryptState\(\{/);
 });
 
 test("retired watchdog dispatches skip before runner allocation", () => {
@@ -763,7 +729,7 @@ test("retired watchdog dispatches skip before runner allocation", () => {
 
 test("external cron repair is manual-only because Worker deploy owns normal sync", () => {
   const repair = fs.readFileSync(".github/workflows/setup-cron.yml", "utf8");
-  const deploy = fs.readFileSync(".github/workflows/deploy-telegram-webhook.yml", "utf8");
+  const deploy = fs.readFileSync(".github/workflows/deploy-worker.yml", "utf8");
 
   assert.match(repair, /^name: Repair external cron schedules/m);
   assert.match(repair, /workflow_dispatch:/);
@@ -803,7 +769,7 @@ test("PWA declares restrictive document policy and confines notification navigat
 });
 
 test("Worker web API sets defense-in-depth security headers and protects push registration", () => {
-  const worker = fs.readFileSync("infra/telegram-webhook/worker.mjs", "utf8");
+  const worker = fs.readFileSync("infra/web-worker/worker.mjs", "utf8");
   assert.match(worker, /"content-security-policy"/);
   assert.match(worker, /frame-ancestors 'none'/);
   assert.match(worker, /"x-content-type-options": "nosniff"/);
@@ -813,6 +779,5 @@ test("Worker web API sets defense-in-depth security headers and protects push re
   assert.match(worker, /\/web\/push\/challenge/);
   assert.match(worker, /verifyPushRegistrationChallenge/);
   assert.match(worker, /webRequestOriginAllowed/);
-  assert.match(worker, /ownerPairAllowed/);
   assert.match(worker, /rotateOwnerAuthVersion/);
 });

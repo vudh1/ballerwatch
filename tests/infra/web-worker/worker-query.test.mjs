@@ -11,7 +11,7 @@ import {
   verifyFeedbackToken,
   verifyOwnerPassword,
   verifyOwnerToken,
-} from "../../../infra/telegram-webhook/worker.mjs";
+} from "../../../infra/web-worker/worker.mjs";
 
 function snapshot() {
   return {

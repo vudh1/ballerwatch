@@ -60,7 +60,7 @@ export function loadLeagueTeams() {
   if (legacy.length) return legacy;
 
   // Fresh installs bootstrap these defaults in priority order. Once encrypted
-  // state exists, Telegram add/remove/rename commands remain authoritative.
+  // state exists, authenticated web settings remain authoritative.
   return [...DEFAULT_LEAGUE_TEAMS];
 }
 
