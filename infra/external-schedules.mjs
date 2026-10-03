@@ -4,6 +4,33 @@
  * v6.0.0: primary scheduler sync targets the promoted production branch, keeps the retired external watchdog disabled, and treats temporary scheduler-API outages as optional only in deployment flows.
  */
 const API = "https://api.cron-job.org";
+const GITHUB_API = "https://api.github.com";
+
+export async function verifyGithubDispatchCredential({
+  githubPat = process.env.CRON_GITHUB_PAT || "",
+  repo = process.env.GITHUB_REPOSITORY || "vudh1/ballerwatch",
+  fetchImpl = globalThis.fetch,
+} = {}) {
+  if (!githubPat) throw new Error("CRON_GITHUB_PAT is required");
+
+  const response = await fetchImpl(
+    `${GITHUB_API}/repos/${repo}/actions/workflows/pickup.yml`,
+    {
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${githubPat}`,
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+      signal: AbortSignal.timeout(15_000),
+    },
+  );
+  if (!response.ok) {
+    throw new Error(
+      `CRON_GITHUB_PAT cannot access the GitHub Actions workflow API (HTTP ${response.status})`,
+    );
+  }
+  return true;
+}
 
 const allMinutes = (step) =>
   Array.from({ length: Math.ceil(60 / step) }, (_, i) => i * step).filter((v) => v < 60);
@@ -234,6 +261,7 @@ export async function syncExternalSchedules(mode, {
   }
 
   if (!githubPat) throw new Error("CRON_GITHUB_PAT is required");
+  await verifyGithubDispatchCredential({githubPat, repo});
 
   if (mode === "enable" || mode === "ensure-enabled") {
     for (const job of retiredExternalJobs(jobs, repo).filter((item) => item.enabled)) {

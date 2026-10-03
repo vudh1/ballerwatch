@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer operations PWA for pickup games and Seattle RATS league matches.
 
-**Current source version: 6.0.0**
+**Current source version: 6.0.1**
 
 **Production source of truth:** the commit pointed to by `production` and its published GitHub Release. `main` may be newer without changing the live app.
 
@@ -181,7 +181,7 @@ tests/                   test-only source
 - `UPSTREAM_ENDPOINT`
 
 ### GitHub / scheduling
-- `CRON_GITHUB_PAT` — workflow dispatch only
+- `CRON_GITHUB_PAT` — workflow dispatch only; deployment/repair validates it before updating cron-job.org schedules
 - `CRON_JOB_ORG_API_KEY`
 - `RELEASE_GITHUB_TOKEN` — release/Pages and Worker runtime-content credential
 
@@ -223,6 +223,8 @@ Tests must never send Web Push or mutate Google Calendar.
 - Cloudflare unavailable: live PWA API/Q&A/board reads fail closed; scheduled pickup/league and GitHub maintenance continue.
 - Runtime branch temporarily unavailable: supported workflows may use the encrypted Actions-cache backup.
 - RATS temporarily unavailable: league logic preserves the validated last-good schedule.
+- RATS aggregate-only future events that are absent from the published team export are ignored; published export games remain the canonical schedule and still require strict one-to-one validation.
+- Invalid scheduler dispatch credentials fail schedule synchronization before cron-job.org jobs are updated.
 - Release/content credential invalid: promotion or Worker readiness fails closed.
 - Web Push delivery does not require Cloudflare at send time once a validated subscription is stored.
 

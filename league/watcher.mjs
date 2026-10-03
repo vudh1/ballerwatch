@@ -310,10 +310,10 @@ export function normalize(
     if (table.slice(1).some((row) => !Array.isArray(row) || row.length !== HEADERS.length)) {
       throw new Error("Malformed team export row");
     }
-    const exportGames = table
-      .slice(1)
-      .filter((row) => String(row[0]).toLocaleLowerCase("en-US") !== "bye")
-      .map(rowObject);
+    const exportRows = table.slice(1).map(rowObject);
+    const exportGames = exportRows.filter(
+      (row) => String(row["Event Type"]).toLocaleLowerCase("en-US") !== "bye",
+    );
 
     const division = `${team.day} ${team.gender} D-${team.division}`;
     const divisionTeams = new Map(
@@ -352,13 +352,34 @@ export function normalize(
         throw new Error("Unexpected match year for selected season");
       }
 
-      const rows = exportGames.filter(
+      const expectedSide = home ? "home" : "away";
+      const dateSideRows = exportGames.filter(
         (row) =>
           row["Start Date"] === date &&
-          row["Opponent/Event Title"] === opponent &&
-          String(row["Home or Away"]).toLocaleLowerCase("en-US") === (home ? "home" : "away"),
+          String(row["Home or Away"]).toLocaleLowerCase("en-US") === expectedSide,
       );
-      if (rows.length !== 1) throw new Error("Aggregate/export match identity mismatch");
+      const normalizedRows = dateSideRows.filter(
+        (row) =>
+          normalizeTeamName(row["Opponent/Event Title"]) === normalizeTeamName(opponent),
+      );
+      const rows = dateSideRows.filter((row) => row["Opponent/Event Title"] === opponent);
+      if (rows.length !== 1) {
+        const sameOpponent = exportGames.filter(
+          (row) =>
+            normalizeTeamName(row["Opponent/Event Title"]) === normalizeTeamName(opponent),
+        );
+
+        // The aggregate can briefly contain future/unpublished events that are absent from
+        // the team's published export. Ignore only those true aggregate-only extras. Any
+        // export-backed identity disagreement still fails closed below.
+        if (!rows.length && !dateSideRows.length && !sameOpponent.length) continue;
+
+        throw new Error(
+          "Aggregate/export match identity mismatch " +
+          `(exact=${rows.length}, normalized=${normalizedRows.length}, ` +
+          `dateSide=${dateSideRows.length}, opponent=${sameOpponent.length})`,
+        );
+      }
       const row = rows[0];
       if (
         clock !== row["Start Time"] ||
