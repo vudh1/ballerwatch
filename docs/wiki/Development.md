@@ -1,60 +1,35 @@
 # Development
 
-Read `AGENTS.md`, `README.md`, `STYLE_GUIDE.md`, and `features/versions.json` before changing code.
+## Layout
 
-## Repository map
+- `infra/web-worker/` — Cloudflare web/PWA API and edge runtime.
+- `pickup/` — pickup source and notification policy.
+- `league/` — RATS source, Calendar reconciliation, web notification generation.
+- `weather/` — match-window forecasts.
+- `shared/` — encryption, runtime state, user recovery, Web Push, AI/common logic.
+- `tests/` — test-only source.
+- `.github/workflows/` — validation, runtime, release, recovery, deployment.
 
-- `docs/` — installable PWA and maintained wiki source.
-- `infra/telegram-webhook/` — Cloudflare Worker / public-safe API / optional Telegram adapter.
-- `listener/` — event-driven command and state-changing fallback.
-- `pickup/` — pickup source and notification reconciliation.
-- `league/` — RATS source and Calendar reconciliation.
-- `weather/` — match-window forecast pipeline.
-- `shared/` — encryption, runtime-state, push, intent, and provider-neutral helpers.
-- `features/` — product version ledger.
-- `tests/` — test-only source mirroring runtime areas.
-- `.github/workflows/` — validation, runtime, release, deployment, and recovery workflows.
+## Before editing
 
-## Design rules
+Read `AGENTS.md`, `STYLE_GUIDE.md`, and `features/versions.json`. Work on a dedicated branch from latest `main`.
 
-Prefer small pure modules for parsing, normalization, routing, and formatting. Keep network, storage, notifications, and provider-specific side effects at the edges.
+Runtime modules are dependency-free Node.js 22 / ESM where practical. Keep provider integrations at edges and pure logic testable.
 
-When a module starts owning more than one domain:
+## Local checks
 
-1. extract provider-neutral logic to `shared/`;
-2. keep the adapter thin;
-3. export pure functions;
-4. add `node:test` coverage before changing behavior.
+```bash
+node --test
+node infra/validate-versions.mjs
+node privacy-audit.mjs
+```
 
-Do not move private state into a new backend merely to simplify code. The top-level AES-GCM runtime envelope is a storage contract and should survive future storage-provider changes.
-
-## Runtime-state changes
-
-Every canonical `runtime-state` file must be a complete encrypted envelope. New code should use the shared state helpers instead of inventing a plaintext projection.
-
-For an authenticated checkout:
+With an authenticated checkout, runtime-state changes should also run:
 
 ```bash
 node shared/runtime-state.mjs audit
 ```
 
-The audit checks structure only; it never prints decrypted state.
+Tests and smoke helpers must not send Web Push or mutate Google Calendar.
 
-## Product vs maintenance changes
-
-Product behavior uses `release/<version>` and SemVer.
-
-Documentation-only edits, behavior-preserving refactors, tests, comments/formatting, and CI/tooling maintenance do not consume a product version.
-
-## Tests
-
-BallerWatch runtime and tests use Node.js 22 with ECMAScript modules.
-
-Tests must not:
-
-- send Telegram messages;
-- send Web Push signals;
-- mutate Google Calendar;
-- upload decrypted runtime artifacts.
-
-Runtime-impacting release PRs also use the notification-silent Manual smoke workflow.
+The validation suite includes a regression guard that prevents the retired messaging integration, its credentials, webhook route, and removed paths from being reintroduced.
