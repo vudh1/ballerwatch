@@ -76,7 +76,6 @@ const els = {
   testNotificationStatus: document.querySelector("#test-notification-status"),
   calendarCard: document.querySelector("#two-week-calendar"),
   calendarTitle: document.querySelector("#calendar-title"),
-  calendarExpandToggle: document.querySelector("#calendar-expand-toggle"),
   calendarGrid: document.querySelector("#calendar-grid"),
   calendarGamePicker: document.querySelector("#calendar-game-picker"),
   calendarUpdated: document.querySelector("#calendar-updated"),
@@ -90,6 +89,8 @@ let selectedCalendarDate = "";
 let selectedCalendarGameId = "";
 let calendarWindowStart = "";
 let calendarExpanded = false;
+let confirmedRsvpDates = new Set();
+let waitlistedRsvpDates = new Set();
 let serviceWorkerRegistration = null;
 let liveRefreshInFlight = false;
 let initialLoadComplete = false;
@@ -302,6 +303,33 @@ function ownerHeaders() {
   return token ? { authorization: `Bearer ${token}` } : {};
 }
 
+async function loadRsvpStatus() {
+  if (!ownerToken()) {
+    confirmedRsvpDates = new Set();
+    waitlistedRsvpDates = new Set();
+    return false;
+  }
+
+  try {
+    const payload = await api("/web/user/rsvp-status", {
+      headers: ownerHeaders(),
+      retryNetwork: true,
+    });
+    confirmedRsvpDates = new Set(
+      Array.isArray(payload?.rsvp?.confirmedDates) ? payload.rsvp.confirmedDates : [],
+    );
+    waitlistedRsvpDates = new Set(
+      Array.isArray(payload?.rsvp?.waitlistedDates) ? payload.rsvp.waitlistedDates : [],
+    );
+    return true;
+  } catch (error) {
+    confirmedRsvpDates = new Set();
+    waitlistedRsvpDates = new Set();
+    if (error.status === 401) localStorage.removeItem(OWNER_TOKEN_KEY);
+    return false;
+  }
+}
+
 async function api(path, options = {}) {
   const { retryNetwork = false, ...requestOptions } = options;
   const attempts = retryNetwork ? 2 : 1;
@@ -395,6 +423,10 @@ async function loginOwnerDevice(event) {
     localStorage.setItem(OWNER_TOKEN_KEY, payload.token);
     els.ownerLoginPassword.value = "";
     await loadOwnerSettings();
+    await loadRsvpStatus();
+    if (currentNextGame) {
+      renderNextGame(currentNextGame, els.spotlightLabel.textContent || "NEXT GAME");
+    }
   } catch (error) {
     els.ownerLoginStatus.textContent = error.message;
   } finally {
@@ -422,6 +454,10 @@ async function saveOwnerSettings(event) {
       }),
     });
     showOwnerSettings(payload.settings || { ownerName: els.ownerName.value.trim(), teams });
+    await loadRsvpStatus();
+    if (currentNextGame) {
+      renderNextGame(currentNextGame, els.spotlightLabel.textContent || "NEXT GAME");
+    }
     els.ownerSettingsStatus.textContent =
       "Saved. Monitoring updates on the next league refresh.";
   } catch (error) {
@@ -474,6 +510,11 @@ async function saveOwnerPassword(event) {
 
 function disconnectOwnerDevice() {
   localStorage.removeItem(OWNER_TOKEN_KEY);
+  confirmedRsvpDates = new Set();
+  waitlistedRsvpDates = new Set();
+  if (currentNextGame) {
+    renderNextGame(currentNextGame, els.spotlightLabel.textContent || "NEXT GAME");
+  }
   showLoginSettings("This device is signed out of private settings.");
 }
 
@@ -487,6 +528,11 @@ async function revokeOwnerDevices() {
       body: "{}",
     });
     localStorage.removeItem(OWNER_TOKEN_KEY);
+    confirmedRsvpDates = new Set();
+    waitlistedRsvpDates = new Set();
+    if (currentNextGame) {
+      renderNextGame(currentNextGame, els.spotlightLabel.textContent || "NEXT GAME");
+    }
     showLoginSettings("All signed-in devices were revoked. Sign in again when needed.");
   } catch (error) {
     if (error.status === 401) {
@@ -797,6 +843,8 @@ function spotlightModel(game, label = "NEXT GAME") {
       spotsText: "",
       weather: "",
       rsvp: "",
+      rsvpConfirmed: false,
+      rsvpWaitlisted: false,
       directions: "",
       actionsHidden: true,
     };
@@ -842,6 +890,8 @@ function spotlightModel(game, label = "NEXT GAME") {
       game.weatherApproximate,
     ),
     rsvp: game.kind === "pickup" ? String(game.rsvpUrl || "") : "",
+    rsvpConfirmed: game.kind === "pickup" && confirmedRsvpDates.has(game.date),
+    rsvpWaitlisted: game.kind === "pickup" && waitlistedRsvpDates.has(game.date),
     directions: googleMapsUrl(game.mapsQuery),
     actionsHidden: false,
   };
@@ -866,8 +916,19 @@ function applySpotlightModel(targets, game, label = "NEXT GAME") {
   if (model.rsvp) {
     targets.rsvp.href = model.rsvp;
     targets.rsvp.hidden = false;
+    targets.rsvp.classList.toggle("is-confirmed", model.rsvpConfirmed);
+    targets.rsvp.classList.toggle("is-waitlisted", model.rsvpWaitlisted);
+    targets.rsvp.textContent = model.rsvpConfirmed ? "RSVP'd" : "RSVP";
+    targets.rsvp.setAttribute(
+      "aria-label",
+      model.rsvpConfirmed
+        ? "RSVP confirmed — open pickup RSVP site"
+        : "Open pickup RSVP site",
+    );
   } else {
     targets.rsvp.removeAttribute("href");
+    targets.rsvp.classList.remove("is-confirmed", "is-waitlisted");
+    targets.rsvp.textContent = "RSVP";
     targets.rsvp.hidden = true;
   }
 
@@ -1082,10 +1143,6 @@ function syncCalendarExpansionUi() {
   els.calendarCard?.setAttribute("aria-expanded", String(calendarExpanded));
   if (els.calendarTitle) {
     els.calendarTitle.textContent = calendarExpanded ? "Full Schedule" : "14-Day Calendar";
-  }
-  if (els.calendarExpandToggle) {
-    els.calendarExpandToggle.textContent = calendarExpanded ? "Collapse" : "Expand";
-    els.calendarExpandToggle.setAttribute("aria-expanded", String(calendarExpanded));
   }
 }
 
@@ -1484,7 +1541,10 @@ function renderCalendar(calendar) {
 
 async function loadCalendar() {
   try {
-    const payload = await api("/web/calendar");
+    const [payload] = await Promise.all([
+      api("/web/calendar"),
+      loadRsvpStatus(),
+    ]);
     renderCalendar(payload.calendar || null);
     return true;
   } catch (error) {
@@ -1814,10 +1874,6 @@ function toggleCalendarExpandedFromEvent(event) {
   setCalendarExpanded(!calendarExpanded);
 }
 
-els.calendarExpandToggle?.addEventListener("click", (event) => {
-  event.stopPropagation();
-  setCalendarExpanded(!calendarExpanded);
-});
 els.calendarCard?.addEventListener("click", toggleCalendarExpandedFromEvent);
 
 installSpotlightSwipe();
