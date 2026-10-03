@@ -42,7 +42,7 @@ Product release flow:
 9. Release-driven Worker deployment must pass runtime migration/audit plus live `/health`, `/web/config`, `/web/next-game`, and `/web/calendar` checks before it dispatches Pages deployment.
 10. Pages always checks out `production`. A path-scoped `main` trigger exists only to recover the Pages workflow itself.
 
-`RELEASE_GITHUB_TOKEN` is repository-scoped and needs Contents read/write, Workflows read/write, Pages read/write, and Administration read/write. Promotion/deployment fails closed if required release, runtime, or Pages actions cannot complete.
+`RELEASE_GITHUB_TOKEN` is repository-scoped and needs Contents read/write, Workflows read/write, Pages read/write, and Administration read/write. Promotion/deployment fails closed if required release, runtime, or Pages actions cannot complete. The default automatic path waits 24 hours before publishing the GitHub Release/tag.
 
 ## Notification policy
 
@@ -70,12 +70,12 @@ The watchdog verifies Worker readiness/runtime decryptability, latest validation
 
 ## Versioning
 
-Versions represent product behavior, not repository activity.
+Version numbers represent **actual product changes**, not repository activity.
 
 - PATCH: backward-compatible user-visible reliability/privacy/security/compatibility fix.
 - MINOR: new backward-compatible capability.
 - MAJOR: intentional breaking product change.
-- No SemVer bump for docs-only, behavior-preserving refactor, tests, formatting/comments, CI/workflow maintenance, or tooling-only work.
+- No SemVer bump for documentation-only edits, behavior-preserving refactors, tests, formatting/comments, CI/workflow maintenance, or tooling-only work.
 
 Release entries may include `webAnnouncement` for user-facing release notices. Do not create a release entry merely for commits or PRs.
 
