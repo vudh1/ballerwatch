@@ -1,12 +1,68 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#38bdf8"/>
-      <stop offset="1" stop-color="#34d399"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#06111f"/>
+      <stop offset="0.52" stop-color="#0a1d2d"/>
+      <stop offset="1" stop-color="#07131f"/>
     </linearGradient>
+    <linearGradient id="glass" x1="0.08" y1="0" x2="0.92" y2="1">
+      <stop offset="0" stop-color="#dffbff" stop-opacity="0.24"/>
+      <stop offset="0.32" stop-color="#7dd3fc" stop-opacity="0.12"/>
+      <stop offset="0.72" stop-color="#34d399" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#0f172a" stop-opacity="0.34"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.66"/>
+      <stop offset="0.3" stop-color="#8be9ff" stop-opacity="0.38"/>
+      <stop offset="0.75" stop-color="#34d399" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.12"/>
+    </linearGradient>
+    <radialGradient id="cyanGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#38bdf8" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#38bdf8" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="greenGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#34d399" stop-opacity="0.72"/>
+      <stop offset="1" stop-color="#34d399" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ballStroke" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#effcff"/>
+      <stop offset="0.48" stop-color="#c9f6ff"/>
+      <stop offset="1" stop-color="#ecfff8"/>
+    </linearGradient>
+    <filter id="blur40" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="34"/>
+    </filter>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="20" stdDeviation="28" flood-color="#000814" flood-opacity="0.48"/>
+    </filter>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#00111d" flood-opacity="0.34"/>
+    </filter>
+    <clipPath id="tileClip">
+      <rect x="24" y="24" width="464" height="464" rx="128"/>
+    </clipPath>
   </defs>
-  <rect width="512" height="512" rx="112" fill="#0f172a"/>
-  <circle cx="256" cy="256" r="164" fill="none" stroke="url(#g)" stroke-width="28"/>
-  <path d="M256 142l66 48-25 78h-82l-25-78z" fill="#f8fafc"/>
-  <path d="M190 190l-58 44 23 72 60 18M322 190l58 44-23 72-60 18M215 268l-38 94M297 268l38 94M177 362h158" fill="none" stroke="#f8fafc" stroke-width="22" stroke-linejoin="round"/>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <g clip-path="url(#tileClip)">
+    <circle cx="110" cy="88" r="170" fill="url(#cyanGlow)" filter="url(#blur40)" opacity="0.58"/>
+    <circle cx="432" cy="410" r="190" fill="url(#greenGlow)" filter="url(#blur40)" opacity="0.5"/>
+    <circle cx="410" cy="84" r="92" fill="url(#cyanGlow)" filter="url(#blur40)" opacity="0.28"/>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="30" y="30" width="452" height="452" rx="124" fill="url(#glass)" stroke="url(#edge)" stroke-width="2.5"/>
+    <rect x="43" y="43" width="426" height="426" rx="111" fill="none" stroke="#ffffff" stroke-opacity="0.08" stroke-width="1.5"/>
+  </g>
+  <path d="M78 111c54-47 123-67 206-58 43 5 87 18 125 41-72-14-143-9-213 14-50 16-94 40-132 73 2-27 7-51 14-70Z"
+        fill="#ffffff" opacity="0.10"/>
+  <g filter="url(#softShadow)">
+    <circle cx="256" cy="262" r="143" fill="#061521" fill-opacity="0.30" stroke="url(#ballStroke)" stroke-width="18"/>
+    <circle cx="256" cy="262" r="128" fill="none" stroke="#ffffff" stroke-opacity="0.08" stroke-width="2"/>
+    <path d="M256 162l58 42-22 69h-72l-22-69z"
+          fill="#f8fdff" fill-opacity="0.94" stroke="#ffffff" stroke-opacity="0.42" stroke-width="2"/>
+    <path d="M198 204l-54 41 20 66 56 17M314 204l54 41-20 66-56 17M220 273l-36 89M292 273l36 89M184 362h144"
+          fill="none" stroke="#f8fdff" stroke-opacity="0.94" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <ellipse cx="210" cy="170" rx="88" ry="34" transform="rotate(-24 210 170)" fill="#ffffff" opacity="0.10"/>
+  <circle cx="118" cy="102" r="14" fill="#ffffff" opacity="0.18"/>
 </svg>

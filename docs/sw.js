@@ -1,11 +1,11 @@
-const CACHE = "ballerwatch-v6-0-9-shell";
+const CACHE = "ballerwatch-v6-0-10-shell";
 const SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=6.0.9",
-  "./app.js?v=6.0.9",
-  "./manifest.webmanifest",
-  "./icon.svg",
+  "./styles.css?v=6.0.10",
+  "./app.js?v=6.0.10",
+  "./manifest.webmanifest?v=6.0.10",
+  "./icon.svg?v=6.0.10",
 ];
 const API = "https://ballerwatch-web.vudhone.workers.dev";
 const APP_URL = "https://vudh1.github.io/ballerwatch/";

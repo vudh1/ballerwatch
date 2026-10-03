@@ -551,18 +551,20 @@ body {
   width: 2.8rem;
   height: 2.8rem;
   flex: 0 0 auto;
-  display: grid;
-  place-items: center;
   border-radius: 14px;
-  color: #ecfeff;
-  font-size: 0.76rem;
-  font-weight: 900;
-  letter-spacing: -0.03em;
-  background:
-    linear-gradient(145deg, rgba(103, 232, 249, 0.28), rgba(59, 130, 246, 0.16)),
-    rgba(15, 23, 42, 0.9);
-  border: 1px solid rgba(103, 232, 249, 0.32);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.52);
+  border: 1px solid rgba(186, 230, 253, 0.22);
+  box-shadow:
+    0 9px 26px rgba(0, 8, 20, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.brand-icon {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .hero h1 {

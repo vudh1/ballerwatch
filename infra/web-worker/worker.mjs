@@ -1693,6 +1693,7 @@ export function directIntent(text) {
   if (/^\/?next(?:\s|$)/.test(lower)) return "next_game";
   if (/^\/?teams(?:\s|$)/.test(lower)) return "league_teams";
   if (/^\/?(?:count|field|time)(?:\s|$)/.test(lower)) return "pickup_status";
+  if (/^(?:sunday|monday|tuesday|wednesday|thursday|friday|saturday)\s+(?:count|field|time)\b/.test(lower)) return "pickup_status";
 
   const hasExplicitDate =
     /\b(?:today|tomorrow|sunday|monday|tuesday|wednesday|thursday|friday|saturday|\d{1,2}\/\d{1,2}|20\d{2}-\d{1,2}-\d{1,2})\b/.test(lower);
