@@ -117,6 +117,21 @@ test("next-game card exposes pickup RSVP, directions, and native share", () => {
 });
 
 
+
+test("match spotlight shows a subtle source freshness line", () => {
+  const html = fs.readFileSync("docs/index.html", "utf8");
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  const css = fs.readFileSync("docs/styles.css", "utf8");
+  const worker = fs.readFileSync("infra/web-worker/worker.mjs", "utf8");
+
+  assert.match(html, /id="next-game-updated"/);
+  assert.match(app, /function matchUpdatedText/);
+  assert.match(app, /game\.sourceUpdatedAt/);
+  assert.match(css, /\.match-update-credit \{[\s\S]*color:\s*#64748b;[\s\S]*font-size:\s*var\(--type-caption\)/);
+  assert.match(worker, /pickup\/state\/source-health\.json/);
+  assert.match(worker, /sourceUpdatedAt:/);
+});
+
 test("pickup RSVP button is neutral until authenticated confirmation is known", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const css = fs.readFileSync("docs/styles.css", "utf8");
@@ -557,6 +572,21 @@ test("next-game sharing uses the generic device share sheet", () => {
 });
 
 
+
+test("app and repository expose explicit BallerWatch copyright notices", () => {
+  const html = fs.readFileSync("docs/index.html", "utf8");
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  const worker = fs.readFileSync("infra/web-worker/worker.mjs", "utf8");
+  const readme = fs.readFileSync("README.md", "utf8");
+  const copyright = fs.readFileSync("COPYRIGHT.md", "utf8");
+
+  assert.match(html, /© 2026 BallerWatch\. All rights reserved\./);
+  assert.match(app, /Copyright © 2026 BallerWatch\. All rights reserved\./);
+  assert.match(worker, /Copyright © 2026 BallerWatch\. All rights reserved\./);
+  assert.match(readme, /## Copyright/);
+  assert.match(copyright, /Publication of the source code in a public repository does not by itself grant a license/);
+});
+
 test("footer contains no secondary messaging shortcut", () => {
   const html = fs.readFileSync("docs/index.html", "utf8");
   assert.doesNotMatch(html, /https:\/\/t\.me\//i);
@@ -564,12 +594,19 @@ test("footer contains no secondary messaging shortcut", () => {
 });
 
 
-test("secondary app surfaces share the same centered portrait viewport", () => {
+test("website and utility surfaces share the same wider centered page footprint", () => {
   const css = fs.readFileSync("docs/styles.css", "utf8");
-  assert.match(css, /--app-portrait-width:\s*430px/);
-  assert.match(css, /\.notification-dialog \{[\s\S]*left:\s*50%;[\s\S]*transform:\s*translateX\(-50%\)/);
-  assert.match(css, /\.notification-reader \{[\s\S]*width:\s*min\(var\(--app-portrait-width\), 100vw\)/);
-  assert.match(css, /\.settings-dialog,[\s\S]*#install-dialog \{[\s\S]*width:\s*min\(var\(--app-portrait-width\)/);
+  assert.match(css, /--app-surface-width:\s*920px/);
+  assert.match(css, /\.shell \{[\s\S]*width:\s*min\(var\(--app-surface-width\), 100%\)/);
+  assert.match(
+    css,
+    /\.notification-dialog,[\s\S]*\.settings-dialog,[\s\S]*\.notification-reader \{[\s\S]*width:\s*min\(var\(--app-surface-width\)/,
+  );
+  assert.match(
+    css,
+    /\.notification-dialog \{[\s\S]*top:\s*50%;[\s\S]*left:\s*50%;[\s\S]*transform:\s*translate\(-50%, -50%\)/,
+  );
+  assert.match(css, /\.notification-reader \{[\s\S]*height:\s*auto;[\s\S]*border-radius:\s*30px/);
 });
 
 test("notification popup stays bounded and offers local Delete all beside Send test", () => {
