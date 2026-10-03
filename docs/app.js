@@ -1277,6 +1277,47 @@ function syncSpotlightEdgeControls() {
   els.spotlightNext.disabled = !adjacentCalendarSelection(1);
 }
 
+function installSpotlightEdgeWaterfall() {
+  const controls = [
+    [els.spotlightPrevious, -1],
+    [els.spotlightNext, 1],
+  ];
+
+  for (const [control, direction] of controls) {
+    if (!control) continue;
+
+    const reset = () => {
+      control.style.setProperty("--edge-opacity", "0.10");
+      control.style.setProperty("--edge-arrow-opacity", "0");
+    };
+
+    control.addEventListener("pointermove", (event) => {
+      const rect = control.getBoundingClientRect();
+      if (!rect.width) return;
+      const local = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
+      const fromBorder = direction < 0 ? local : rect.width - local;
+      const strength = 1 - (fromBorder / rect.width);
+      const eased = Math.max(0, Math.min(1, strength * strength));
+      control.style.setProperty(
+        "--edge-opacity",
+        (0.10 + (0.88 * eased)).toFixed(3),
+      );
+      control.style.setProperty(
+        "--edge-arrow-opacity",
+        Math.max(0, (eased - 0.22) / 0.78).toFixed(3),
+      );
+    });
+
+    control.addEventListener("pointerleave", reset);
+    control.addEventListener("blur", reset);
+    control.addEventListener("focus", () => {
+      control.style.setProperty("--edge-opacity", "0.92");
+      control.style.setProperty("--edge-arrow-opacity", "1");
+    });
+    reset();
+  }
+}
+
 function installSpotlightSwipe() {
   let touchStartX = null;
   let touchStartY = null;
@@ -1877,6 +1918,7 @@ function toggleCalendarExpandedFromEvent(event) {
 els.calendarCard?.addEventListener("click", toggleCalendarExpandedFromEvent);
 
 installSpotlightSwipe();
+installSpotlightEdgeWaterfall();
 
 els.question.addEventListener("input", renderQuestionSuggestions);
 els.question.addEventListener("focus", renderQuestionSuggestions);
