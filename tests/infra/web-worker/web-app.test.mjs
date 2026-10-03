@@ -183,6 +183,7 @@ test("league next-game details expose a two-hour time window from normalized end
     pickup: { dates: [], events: {} },
     pickupPrivate: { events: {} },
     league: {
+      updatedAt: "2099-10-01T13:45:00-07:00",
       teams: [{
         name: "Team Alpha",
         matches: [{
