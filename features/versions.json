@@ -1,7 +1,19 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "6.0.0",
+  "currentVersion": "6.0.1",
   "releases": [
+    {
+      "version": "6.0.1",
+      "date": "2026-10-02",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Runtime watcher recovery and scheduler credential validation",
+      "changes": [
+        "Changed RATS schedule reconciliation so aggregate-only future events that are absent from the team’s published export no longer freeze the entire league snapshot; every published export game must still match exactly once and export-backed disagreements continue to fail closed.",
+        "Added regression coverage for aggregate-only unpublished RATS events while preserving strict validation for published matches.",
+        "Added a non-mutating GitHub Actions credential check before cron-job.org synchronization so an invalid CRON_GITHUB_PAT fails before scheduler jobs are updated."
+      ]
+    },
     {
       "version": "6.0.0",
       "date": "2026-10-02",
