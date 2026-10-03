@@ -1013,21 +1013,39 @@ async function cachedJson(key, ttlSeconds, loader) {
 }
 
 async function loadGitHubSnapshot(env) {
-  return cachedJson("github-runtime-snapshot-v2", 45, async () => {
-    const [pickupEncrypted, privateEncrypted, leagueEncrypted, todayEncrypted, teamsEncrypted, userState, versions] =
-      await Promise.all([
-        githubFile(env, "pickup/state/feed.json", "runtime-state"),
-        githubFile(env, "pickup/state/events.json", "runtime-state"),
-        githubFile(env, "league/state/schedule.json", "runtime-state"),
-        githubFile(env, "league/state/today.json", "runtime-state"),
-        githubFile(env, "league/state/teams.json", "runtime-state"),
-        githubFile(env, "state/user.json", "runtime-state").catch(() => null),
-        githubFile(env, "features/versions.json", PRODUCTION_REF),
-      ]);
+  return cachedJson("github-runtime-snapshot-v3", 45, async () => {
+    const [
+      pickupEncrypted,
+      privateEncrypted,
+      pickupHealthEncrypted,
+      leagueEncrypted,
+      todayEncrypted,
+      teamsEncrypted,
+      userState,
+      versions,
+    ] = await Promise.all([
+      githubFile(env, "pickup/state/feed.json", "runtime-state"),
+      githubFile(env, "pickup/state/events.json", "runtime-state"),
+      githubFile(env, "pickup/state/source-health.json", "runtime-state").catch(() => null),
+      githubFile(env, "league/state/schedule.json", "runtime-state"),
+      githubFile(env, "league/state/today.json", "runtime-state"),
+      githubFile(env, "league/state/teams.json", "runtime-state"),
+      githubFile(env, "state/user.json", "runtime-state").catch(() => null),
+      githubFile(env, "features/versions.json", PRODUCTION_REF),
+    ]);
 
-    const [pickup, pickupPrivate, league, today, teamsPayload, user] = await Promise.all([
+    const [
+      pickup,
+      pickupPrivate,
+      pickupSourceHealth,
+      league,
+      today,
+      teamsPayload,
+      user,
+    ] = await Promise.all([
       decryptState(pickupEncrypted, env),
       decryptState(privateEncrypted, env),
+      pickupHealthEncrypted ? decryptState(pickupHealthEncrypted, env) : null,
       decryptState(leagueEncrypted, env),
       decryptState(todayEncrypted, env),
       decryptState(teamsEncrypted, env),
@@ -1043,6 +1061,7 @@ async function loadGitHubSnapshot(env) {
     return {
       pickup,
       pickupPrivate: pickupPrivate || { events: {} },
+      pickupSourceHealth: pickupSourceHealth || {},
       league,
       today: today || league.today || { games: [] },
       teams,
@@ -1070,6 +1089,7 @@ async function loadSnapshot(env) {
         return {
           pickup,
           pickupPrivate: pickupPrivate || { events: {} },
+          pickupSourceHealth: {},
           league,
           today: today || league.today || { games: [] },
           teams,
@@ -1603,6 +1623,7 @@ export function webCalendarDetails(
       reserved: facts.reserved,
       capacity: facts.capacity,
       jerseyColor: "",
+      sourceUpdatedAt: cleanText(safe.pickupSourceHealth?.checkedAt, 60),
       weather: sourceWeather,
       weatherApproximate: Boolean(weatherById.get(id)?.weatherApproximate),
       weatherStale: Boolean(weatherById.get(id)?.weatherStale),
@@ -1640,6 +1661,7 @@ export function webCalendarDetails(
       reserved: null,
       capacity: null,
       jerseyColor: cleanText(game?.jerseyColor, 80),
+      sourceUpdatedAt: cleanText(safe.league?.updatedAt, 60),
       weather: sourceWeather,
       weatherApproximate: Boolean(weatherById.get(id)?.weatherApproximate),
       weatherStale: Boolean(weatherById.get(id)?.weatherStale),
@@ -1724,6 +1746,7 @@ export function webNextGameDetails(snapshot, now = new Date()) {
       address,
       mapsQuery: address || location,
       rsvpUrl: pickupRsvpUrl(next.date),
+      sourceUpdatedAt: cleanText(safe.pickupSourceHealth?.checkedAt, 60),
       jerseyColor: "",
       shareText: [
         `Pickup — ${formatDate(next.date)}`,
@@ -1752,6 +1775,7 @@ export function webNextGameDetails(snapshot, now = new Date()) {
     location,
     address,
     mapsQuery: address || location,
+    sourceUpdatedAt: cleanText(safe.league?.updatedAt, 60),
     jerseyColor,
     shareText: [
       `${team} vs ${opponent} — ${formatDate(next.date)}`,
@@ -1777,6 +1801,9 @@ export function webSafeSnapshot(snapshot) {
   return {
     pickup: snapshot?.pickup || { dates: [], events: {} },
     pickupPrivate: { events: privateEvents },
+    pickupSourceHealth: {
+      checkedAt: cleanText(snapshot?.pickupSourceHealth?.checkedAt, 60),
+    },
     league: snapshot?.league || { teams: [] },
     today: snapshot?.today || { games: [] },
     teams: Array.isArray(snapshot?.teams) ? snapshot.teams : [],
