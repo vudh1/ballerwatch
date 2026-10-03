@@ -364,40 +364,20 @@ export function normalize(
       );
       const rows = dateSideRows.filter((row) => row["Opponent/Event Title"] === opponent);
       if (rows.length !== 1) {
-        const sameDate = exportGames.filter((row) => row["Start Date"] === date).length;
-        const sameSide = exportGames.filter(
-          (row) =>
-            String(row["Home or Away"]).toLocaleLowerCase("en-US") === expectedSide,
-        ).length;
-        const sameTime = exportGames.filter((row) => row["Start Time"] === clock).length;
-        const allDateSide = exportRows.filter(
-          (row) =>
-            row["Start Date"] === date &&
-            String(row["Home or Away"]).toLocaleLowerCase("en-US") === expectedSide,
-        );
-        const byeDateSide = allDateSide.filter(
-          (row) => String(row["Event Type"]).toLocaleLowerCase("en-US") === "bye",
-        ).length;
         const sameOpponent = exportGames.filter(
           (row) =>
             normalizeTeamName(row["Opponent/Event Title"]) === normalizeTeamName(opponent),
-        ).length;
-        const sameOpponentSide = exportGames.filter(
-          (row) =>
-            normalizeTeamName(row["Opponent/Event Title"]) === normalizeTeamName(opponent) &&
-            String(row["Home or Away"]).toLocaleLowerCase("en-US") === expectedSide,
-        ).length;
-        const relativeDate = date < dateInZone(new Date(), TZ)
-          ? "past"
-          : date === dateInZone(new Date(), TZ)
-            ? "today"
-            : "future";
+        );
+
+        // The aggregate can briefly contain future/unpublished events that are absent from
+        // the team's published export. Ignore only those true aggregate-only extras. Any
+        // export-backed identity disagreement still fails closed below.
+        if (!rows.length && !dateSideRows.length && !sameOpponent.length) continue;
+
         throw new Error(
           "Aggregate/export match identity mismatch " +
-          `(exact=${rows.length}, normalized=${normalizedRows.length}, dateSide=${dateSideRows.length}, ` +
-          `date=${sameDate}, side=${sameSide}, time=${sameTime}, export=${exportGames.length}, ` +
-          `allDateSide=${allDateSide.length}, byeDateSide=${byeDateSide}, opponent=${sameOpponent}, ` +
-          `opponentSide=${sameOpponentSide}, when=${relativeDate})`,
+          `(exact=${rows.length}, normalized=${normalizedRows.length}, ` +
+          `dateSide=${dateSideRows.length}, opponent=${sameOpponent.length})`,
         );
       }
       const row = rows[0];
