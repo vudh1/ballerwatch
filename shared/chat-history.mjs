@@ -7,6 +7,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { decryptState, encryptState } from "./state-crypto.mjs";
+import { negativeFeedbackProjection } from "./feedback-review.mjs";
 
 const HISTORY_PATH = "state/chat-history.json";
 const REVIEW_PATH = "state/chat-review.json";
@@ -54,12 +55,20 @@ function safeReview(entries) {
     generatedAt: new Date().toISOString(),
     signals: entries
       .filter((entry) => ["bug_candidate", "feature_candidate", "negative_feedback"].includes(entry.kind))
-      .map((entry) => ({
-        createdAt: entry.createdAt,
-        kind: entry.kind,
-        summary: cleanText(entry.summary, 220),
-        reason: cleanText(entry.reason, 220),
-      })),
+      .map((entry) => {
+        const deterministic = entry.kind === "negative_feedback"
+          ? negativeFeedbackProjection(entry)
+          : null;
+        return {
+          createdAt: entry.createdAt,
+          ...(entry.source ? { source: cleanText(entry.source, 40) } : {}),
+          ...(entry.intent ? { intent: cleanText(entry.intent, 60) } : {}),
+          ...(entry.externalId ? { externalId: cleanText(entry.externalId, 120) } : {}),
+          kind: entry.kind,
+          summary: cleanText(deterministic?.summary || entry.summary, 220),
+          reason: cleanText(deterministic?.reason || entry.reason, 220),
+        };
+      }),
   };
 }
 
@@ -142,7 +151,10 @@ export async function recordChatExchange({
   if (!q && !a) return null;
 
   const compact = await compactWithGroq(q, a, hint);
-  const fallbackKind = hint === "negative_feedback" ? "negative_feedback" : "normal";
+  const deterministicNegative = hint === "negative_feedback"
+    ? negativeFeedbackProjection({ question: q })
+    : null;
+  const fallbackKind = deterministicNegative?.kind || "normal";
   const safeExternalId = cleanExternalId(externalId);
   const entry = {
     createdAt: new Date().toISOString(),
@@ -152,8 +164,11 @@ export async function recordChatExchange({
     question: q,
     reply: a,
     kind: compact?.kind || fallbackKind,
-    summary: compact?.summary || "Conversation retained for encrypted review; AI compaction was unavailable.",
-    reason: compact?.reason || "",
+    summary:
+      compact?.summary ||
+      deterministicNegative?.summary ||
+      "Conversation retained for encrypted review; AI compaction was unavailable.",
+    reason: compact?.reason || deterministicNegative?.reason || "",
   };
 
   const data = loadHistory();

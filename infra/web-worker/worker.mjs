@@ -17,6 +17,7 @@ import {
 } from "./edge-runtime.mjs";
 import { aiProviders, requestAiJson } from "../../shared/ai-provider.mjs";
 import { publicRequestSummary } from "../../shared/feature-request-summary.mjs";
+import { historyIntentLabel, negativeFeedbackProjection } from "../../shared/feedback-review.mjs";
 import { classifyIndexedIntent } from "../../shared/intent-index.mjs";
 import { ALL_RUNTIME_FILE_PATHS } from "../../shared/runtime-paths.mjs";
 import { DEFAULT_LEAGUE_TEAMS } from "../../shared/defaults.mjs";
@@ -910,29 +911,11 @@ function recent48Hours(entries) {
 }
 
 
-function historyIntentLabel(intent) {
-  const value = cleanText(intent, 60);
-  const labels = {
-    pickup_status: "pickup date/status",
-    date_games: "single-date schedule",
-    range_games: "schedule range",
-    next_game: "next-game",
-    today_games: "today schedule",
-    league_teams: "league-team",
-    feature_request: "feature-request",
-  };
-  return labels[value] || "web Q&A";
-}
-
 function fallbackHistoryCompact(event) {
   const intent = cleanText(event?.intent, 60);
   const label = historyIntentLabel(intent);
   if (event?.hint === "negative_feedback") {
-    return {
-      kind: "negative_feedback",
-      summary: `A ${label} answer was explicitly marked wrong.`,
-      reason: `User-submitted negative feedback for the ${intent || "web"} intent.`,
-    };
+    return negativeFeedbackProjection(event);
   }
 
   if (event?.answerOk === false) {
@@ -1722,8 +1705,8 @@ export function directIntent(text) {
   if (hasExplicitDate && gameSpecific) return "date_games";
   if (
     hasExplicitDate &&
-    /\b(?:time|when|where|field|location|address)\b/.test(lower)
-  ) return "pickup_status";
+    /\b(?:time|when|where|field|location|address|venue)\b/.test(lower)
+  ) return "date_games";
   if (pickupSpecific) return "pickup_status";
   return classifyIndexedIntent(clean);
 }
@@ -2919,9 +2902,18 @@ export default {
     if (request.method === "GET" && url.pathname === "/public/feature-summary") {
       let summary = null;
       try {
-        const stored = await githubFile(env, "requests/unknown.json", "runtime-state");
-        summary = await decryptRuntimeDocument(env, stored);
+        const privateStored = await githubFile(env, "requests/private.json", "runtime-state");
+        const privateRequests = await decryptRuntimeDocument(env, privateStored);
+        if (Array.isArray(privateRequests?.requests)) {
+          summary = publicRequestSummary(privateRequests.requests);
+        }
       } catch {}
+      if (!summary) {
+        try {
+          const stored = await githubFile(env, "requests/unknown.json", "runtime-state");
+          summary = await decryptRuntimeDocument(env, stored);
+        } catch {}
+      }
       return Response.json(
         summary?.version === 3 && Array.isArray(summary?.requests)
           ? summary
