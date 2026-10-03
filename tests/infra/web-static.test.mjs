@@ -16,13 +16,13 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=6\.0\.7/);
-  assert.match(html, /app\.js\?v=6\.0\.7/);
+  assert.match(html, /styles\.css\?v=6\.0\.8/);
+  assert.match(html, /app\.js\?v=6\.0\.8/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v6-0-7-shell/);
+  assert.match(sw, /ballerwatch-v6-0-8-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -78,7 +78,7 @@ test("Home Screen install prompt uses the same card layout system as dashboard c
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=6\.0\.7/);
+  assert.match(app, /sw\.js\?v=6\.0\.8/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -238,34 +238,28 @@ test("notification test control is deliberately subtle", () => {
 
 
 
-test("answer feedback is one-tap, answer-scoped, and persists directly through the web runtime", () => {
+test("answer feedback is gesture-only, answer-scoped, and persists directly through the web runtime", () => {
   const html = fs.readFileSync("docs/index.html", "utf8");
   const app = fs.readFileSync("docs/app.js", "utf8");
   const css = fs.readFileSync("docs/styles.css", "utf8");
   const worker = fs.readFileSync("infra/web-worker/worker.mjs", "utf8");
 
-  assert.match(html, /id="answer-feedback-button"[^>]*>Wrong answer<\/button>/);
+  assert.doesNotMatch(html, /id="answer-feedback-button"/);
   assert.match(html, /id="answer-feedback-status"/);
-  assert.match(app, /answerFeedbackButton\.addEventListener\("click"/);
+  assert.doesNotMatch(app, /answerFeedbackButton/);
   assert.match(app, /addEventListener\("dblclick"/);
-  assert.match(app, /feedbackToken: payload\.feedbackToken \|\| ""/);
+  assert.match(app, /ANSWER_FEEDBACK_HOLD_MS = 650/);
+  assert.match(app, /addEventListener\("pointerdown"/);
   assert.match(app, /action: wasSubmitted \? "cancel" : "mark"/);
   assert.match(app, /intent: lastAnswerExchange\.intent \|\| ""/);
-  assert.doesNotMatch(
-    app.match(/async function toggleWrongAnswerFeedback\(\)[\s\S]*?\n}\n/)?.[0] || "",
-    /openSettings\(/,
-  );
   assert.match(css, /\.answer \{[\s\S]*user-select:\s*none;[\s\S]*touch-action:\s*manipulation;/);
+  assert.match(worker, /async function authRateRequests/);
+  assert.match(worker, /\["ip", ip\]/);
+  assert.match(worker, /AUTH_FAILURE_TTL_SECONDS = 600/);
   assert.match(worker, /export async function issueFeedbackToken/);
   assert.match(worker, /export async function verifyFeedbackToken/);
-  assert.match(worker, /async function removeWebFeedback/);
-  assert.match(worker, /await removeWebFeedback\(env, feedbackId\)/);
-  assert.match(worker, /await persistFastChatHistory\(env,/);
   assert.match(worker, /hint: "negative_feedback"/);
-  assert.match(worker, /intent: cleanText\(body\?\.intent, 60\) \|\| "feedback"/);
-  assert.match(worker, /function fallbackHistoryCompact/);
 });
-
 
 test("signed-in web feature requests persist privately and expose only aggregate categories", () => {
   const worker = fs.readFileSync("infra/web-worker/worker.mjs", "utf8");

@@ -48,7 +48,6 @@ const els = {
   form: document.querySelector("#question-form"),
   question: document.querySelector("#question"),
   answer: document.querySelector("#answer"),
-  answerFeedbackButton: document.querySelector("#answer-feedback-button"),
   answerFeedbackStatus: document.querySelector("#answer-feedback-status"),
   questionSuggestions: document.querySelector("#question-suggestions"),
   installCard: document.querySelector("#install-card"),
@@ -572,7 +571,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=6.0.7", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=6.0.8", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -1863,24 +1862,12 @@ function nextFeedbackId() {
   return `web-feedback:${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
 }
 
-function updateAnswerFeedbackButton() {
-  const available = Boolean(lastAnswerExchange);
-  els.answerFeedbackButton.hidden = !available;
-  if (!available) return;
-  els.answerFeedbackButton.disabled = feedbackInFlight;
-  els.answerFeedbackButton.setAttribute("aria-pressed", String(feedbackSubmitted));
-  els.answerFeedbackButton.textContent = feedbackInFlight
-    ? (feedbackSubmitted ? "Undoing…" : "Saving…")
-    : (feedbackSubmitted ? "Undo wrong answer" : "Wrong answer");
-}
-
 async function toggleWrongAnswerFeedback() {
   if (!lastAnswerExchange || feedbackInFlight) return;
 
   const wasSubmitted = feedbackSubmitted;
   if (!feedbackId) feedbackId = nextFeedbackId();
   feedbackInFlight = true;
-  updateAnswerFeedbackButton();
   els.answer.classList.add("answer-feedback-pending");
   els.answerFeedbackStatus.hidden = false;
   els.answerFeedbackStatus.textContent = wasSubmitted
@@ -1923,12 +1910,11 @@ async function toggleWrongAnswerFeedback() {
     }
 
     els.answerFeedbackStatus.textContent = error.status === 401
-      ? "Feedback expired. Ask the question again, then tap Wrong answer on the new reply."
+      ? "Feedback expired. Ask the question again, then double-click or press and hold the new reply."
       : error.message;
   } finally {
     feedbackInFlight = false;
-    updateAnswerFeedbackButton();
-  }
+    }
 }
 
 function toggleCalendarExpandedFromEvent(event) {
@@ -2002,24 +1988,60 @@ els.form.addEventListener("submit", async (event) => {
     els.answer.classList.remove("answer-feedback-pending", "answer-feedback-sent");
     els.answerFeedbackStatus.hidden = true;
     els.answerFeedbackStatus.textContent = "";
-    updateAnswerFeedbackButton();
-    if (payload.lastDate) sessionStorage.setItem("ballerwatch-last-date", payload.lastDate);
+      if (payload.lastDate) sessionStorage.setItem("ballerwatch-last-date", payload.lastDate);
   } catch (error) {
     lastAnswerExchange = null;
     feedbackSubmitted = false;
     feedbackId = "";
     feedbackInFlight = false;
     els.answerFeedbackStatus.hidden = true;
-    els.answerFeedbackButton.hidden = true;
     els.answer.textContent = error.message;
   } finally {
     button.disabled = false;
   }
 });
 
-els.answerFeedbackButton.addEventListener("click", () => {
-  void toggleWrongAnswerFeedback();
+const ANSWER_FEEDBACK_HOLD_MS = 650;
+const ANSWER_FEEDBACK_MOVE_TOLERANCE_PX = 12;
+let answerFeedbackHoldTimer = null;
+let answerFeedbackPointerId = null;
+let answerFeedbackStartX = 0;
+let answerFeedbackStartY = 0;
+
+function clearAnswerFeedbackHold() {
+  if (answerFeedbackHoldTimer !== null) {
+    window.clearTimeout(answerFeedbackHoldTimer);
+    answerFeedbackHoldTimer = null;
+  }
+  answerFeedbackPointerId = null;
+}
+
+els.answer.addEventListener("pointerdown", (event) => {
+  if (!event.isPrimary || event.pointerType === "mouse" || !lastAnswerExchange || feedbackInFlight) return;
+  clearAnswerFeedbackHold();
+  answerFeedbackPointerId = event.pointerId;
+  answerFeedbackStartX = event.clientX;
+  answerFeedbackStartY = event.clientY;
+  answerFeedbackHoldTimer = window.setTimeout(() => {
+    answerFeedbackHoldTimer = null;
+    answerFeedbackPointerId = null;
+    void toggleWrongAnswerFeedback();
+  }, ANSWER_FEEDBACK_HOLD_MS);
 });
+
+els.answer.addEventListener("pointermove", (event) => {
+  if (event.pointerId !== answerFeedbackPointerId) return;
+  const moved = Math.hypot(
+    event.clientX - answerFeedbackStartX,
+    event.clientY - answerFeedbackStartY,
+  );
+  if (moved > ANSWER_FEEDBACK_MOVE_TOLERANCE_PX) clearAnswerFeedbackHold();
+});
+
+for (const eventName of ["pointerup", "pointercancel", "pointerleave"]) {
+  els.answer.addEventListener(eventName, clearAnswerFeedbackHold);
+}
+
 els.answer.addEventListener("dblclick", (event) => {
   event.preventDefault();
   void toggleWrongAnswerFeedback();

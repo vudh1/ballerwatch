@@ -66,6 +66,12 @@ test("date schedule queries resolve league-only dates", () => {
   assert.equal(resolveScheduleDate("what games are on 2099-10-05?", snapshot()), "2099-10-05");
 });
 
+test("dated jersey questions do not require the word game", () => {
+  assert.equal(directIntent("what jersey color do i wear for 10/5?"), "date_games");
+  assert.equal(directIntent("what jersey colour should I wear Tuesday?"), "date_games");
+  assert.match(gamesOnDate(snapshot(), "2099-10-05"), /Black jersey/);
+});
+
 test("date schedule reply combines available published data", () => {
   const league = gamesOnDate(snapshot(), "2099-10-05");
   assert.match(league, /Team Alpha vs Team Beta/);

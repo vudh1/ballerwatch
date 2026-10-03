@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "6.0.7",
+  "currentVersion": "6.0.8",
   "releases": [
+    {
+      "version": "6.0.8",
+      "date": "2026-10-03",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Gesture feedback, jersey-detail routing, and sign-in throttling",
+      "changes": [
+        "Removed the visible Wrong answer button. Double-clicking an answer on desktop or pressing and holding it on touch now marks that exact answer wrong; repeating the gesture cancels the feedback.",
+        "Fixed dated jersey questions such as “what jersey color do I wear for 10/6” so they route deterministically to the matching game details even when the word “game” is omitted.",
+        "Hardened password sign-in throttling by counting failures against both a hashed IP bucket and a hashed IP-plus-user-agent bucket, keeping the existing 10-failure / roughly 10-minute automatic lockout without persisting raw IP addresses.",
+        "Added Retry-After metadata for rate-limited sign-in responses."
+      ]
+    },
     {
       "version": "6.0.7",
       "date": "2026-10-02",
