@@ -1,7 +1,19 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "6.0.1",
+  "currentVersion": "6.0.2",
   "releases": [
+    {
+      "version": "6.0.2",
+      "date": "2026-10-02",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Full future league schedule navigation",
+      "changes": [
+        "Changed the web calendar payload so every future published RATS league match remains available to the installed web app instead of being truncated to the 14-day weather window.",
+        "Changed spotlight arrow and swipe navigation to traverse all future published league match dates while keeping the visible weather calendar strip at 14 days.",
+        "Added regression coverage proving league matches beyond the 14-day weather window remain available while far-future pickup entries stay bounded to that window."
+      ]
+    },
     {
       "version": "6.0.1",
       "date": "2026-10-02",
