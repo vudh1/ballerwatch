@@ -129,12 +129,11 @@ A merge to `main` is not a production deployment.
 
 1. Create `release/<version>` from latest `main`.
 2. Implement and run **Validate code**.
-3. For runtime changes, run the notification-silent **Manual smoke test**.
-4. Update the version ledger/docs after implementation is green.
-5. Open a PR and squash merge after checks pass.
-6. Promotion advances `production` and publishes the GitHub Release.
-7. Release-driven Worker deployment migrates/audits encrypted state and verifies live runtime-backed APIs.
-8. Only after the Worker passes does it dispatch Pages deployment from `production`.
+3. Update the version ledger/docs after implementation is green.
+4. Open a PR and squash merge after checks pass.
+5. Promotion advances `production` and publishes the GitHub Release.
+6. Release-driven Worker deployment migrates/audits encrypted state and verifies live runtime-backed APIs.
+7. Only after the Worker passes does it dispatch Pages deployment from `production`.
 
 This ordering prevents the static app from switching to an API endpoint that has not passed readiness checks.
 
@@ -143,7 +142,6 @@ This ordering prevents the static app from switching to an API endpoint that has
 | Workflow | Responsibility |
 | --- | --- |
 | **Validate code** | style, syntax, unit tests, Worker bundle, version ledger, privacy/security checks |
-| **Manual smoke test** | notification-silent live-source verification |
 | **Promote production release** | soak/manual promotion, GitHub Release publication, `production` advancement |
 | **Deploy BallerWatch Worker** | web Worker deploy, runtime migration/audit, live API/security smoke, then Pages dispatch |
 | **Deploy GitHub Pages app** | static PWA deployment from `production` |
@@ -152,12 +150,10 @@ This ordering prevents the static app from switching to an API endpoint that has
 | **Pickup watcher** | pickup refresh + allowed Web Push |
 | **RATS league watcher** | league refresh + Calendar reconciliation + allowed Web Push |
 | **System watchdog** | health, weather, scheduler checks, runtime encryption audit |
-| **Refresh match weather** | notification-silent weather refresh |
 | **Repair external cron schedules** | manual scheduler recovery |
 | **Purge current data** | generated-state factory reset |
 | **Deploy Calendar bridge** | Apps Script deployment/health |
 | **Publish wiki** | mirror `docs/wiki/` |
-| **Cleanup merged release branches** | remove stale merged release/fix/maintenance branches |
 
 ## Repository layout
 
