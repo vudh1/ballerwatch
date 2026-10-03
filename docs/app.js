@@ -1036,11 +1036,10 @@ function selectCalendarDate(date, { scrollToSpotlight = false } = {}) {
 function calendarGameDates() {
   if (!currentCalendar?.startDate) return [];
   const firstDate = currentCalendar.startDate;
-  const lastDate = addIsoDays(firstDate, 13);
   return [...new Set(
     (currentCalendar.games || [])
       .map((game) => game.date)
-      .filter((date) => date >= firstDate && date <= lastDate),
+      .filter((date) => date >= firstDate),
   )].sort();
 }
 
