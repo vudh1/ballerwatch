@@ -9,7 +9,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { decryptState, encryptState } from "./state-crypto.mjs";
 
-export const USER_STATE_PATH = "state/listener.json";
+export const USER_STATE_PATH = "state/user.json";
 
 function defaults() {
   return {
@@ -34,7 +34,7 @@ function cleanSettings(value) {
   delete next.webPairCodeHash;
   delete next.webPairExpiresAt;
   delete next.webPairConsumedAt;
-  delete next.recentBotReplies;
+  delete next.recentLegacyReplies;
   return next;
 }
 
