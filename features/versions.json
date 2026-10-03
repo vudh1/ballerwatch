@@ -12,7 +12,8 @@
         "Redesigned the BallerWatch favicon/PWA icon as a layered glass tile with cyan/green refraction, subtle highlights, and a high-contrast soccer mark that remains readable at small sizes.",
         "Applied the same glass icon to the in-app header and refreshed the iPhone apple-touch icon, manifest reference, and service-worker asset revision so installed clients pick it up instead of retaining the old flat icon.",
         "Improved generic dated detail routing so natural questions such as “what time Thursday?” can use the combined game view while preserving terse pickup shortcuts such as “Thursday time”, /time, /field, and /count.",
-        "Added deterministic privacy-safe wrong-answer fingerprints and more specific Q&A/weather feature-request aggregate categories without exposing retained private question text."
+        "Added deterministic privacy-safe wrong-answer fingerprints and more specific Q&A/weather feature-request aggregate categories without exposing retained private question text.",
+        "Repinned the 6.0.10 release candidate after glass-icon regression coverage was corrected so production promotion targets the fully validated head."
       ]
     },
     {
