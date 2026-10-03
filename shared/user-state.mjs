@@ -1,9 +1,8 @@
 /**
  * Loads and stores BallerWatch user/runtime settings behind one AES-GCM envelope.
  *
- * v6.0.0 removes the legacy messaging listener while preserving the encrypted
- * state document path for migration compatibility. New writes contain only
- * web/runtime settings; obsolete listener cursors and pairing-code fields are dropped.
+ * v6.0.0 stores only web/runtime user settings. Obsolete pre-web state fields
+ * are stripped during migration and are never written back.
  */
 import fs from "node:fs";
 import path from "node:path";
