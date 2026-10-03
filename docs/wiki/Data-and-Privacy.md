@@ -1,108 +1,27 @@
-# Data and privacy
+# Data and Privacy
 
-BallerWatch treats the public source repository, the generated runtime branch, and public API responses as three different trust boundaries.
+## Runtime-state invariant
 
-## Runtime branch
+Every canonical file on `runtime-state` is a complete hardened AES-GCM envelope. No readable runtime JSON, rosters, settings, push endpoints, identifiers, timestamps, chat text, or secrets may be committed to that branch.
 
-Generated state lives on the dedicated `runtime-state` branch.
+Canonical user settings live in encrypted `state/user.json`. The 6.0 deployment migrates the previous encrypted user-state filename into this path and compacts the old filename away.
 
-Starting with 5.8, **every canonical file on that branch is a complete AES-256-GCM envelope**. There are no intentionally readable runtime files. Starting with 5.8.2, the AES key is derived in a dedicated runtime-encryption domain rather than reusing the same master-secret transformation as authentication. Deployment can read legacy envelopes only long enough to reseal them under the current KDF.
+Other encrypted state includes pickup/league snapshots, monitored teams, Calendar reconciliation, weather/geocoding cache, watchdog state, Web Push VAPID/subscriptions, notification-board state, retained Q&A/review signals, and feature-request state.
 
-Encrypted runtime data includes:
+## Q&A retention
 
-- user/listener settings and the update cursor;
-- pickup and league snapshots;
-- monitored teams and Calendar reconciliation state;
-- watchdog state;
-- match-weather/geocode cache;
-- Web Push VAPID private material and subscriptions;
-- notification-board state;
-- exact short-lived Q&A history;
-- sanitized engineering-review signals;
-- private feature requests and their aggregate summary.
-
-`shared/runtime-state.mjs` migrates legacy partial/plain formats, refuses to push a canonical file that is not encrypted, and can audit the entire branch with:
-
-```bash
-node shared/runtime-state.mjs audit
-```
-
-Worker deployment runs the migration/audit, and the six-hour watchdog repeats the audit.
-
-## 48-hour answer review
-
-`state/chat-history.json` retains the original question and original answer for at most 48 hours only when:
-
-- the exchange came from a user-authenticated surface; or
-- an anonymous web visitor explicitly marks that answer **Wrong answer**.
-
-Groq may add classification, summary, and reason metadata for engineering triage. Generated metadata never replaces the retained source exchange.
-
-`state/chat-review.json` contains only privacy-minimized engineering signals:
-
-- timestamp;
-- `bug_candidate`, `feature_candidate`, or `negative_feedback`;
-- short sanitized summary;
-- short sanitized reason.
-
-The review projection is still encrypted at rest. It must never contain names, IDs, tokens, URLs, exact addresses, raw questions, raw replies, or quotes.
-
-Anonymous public-web Q&A is not retained by default.
-
-## Public web surface
-
-The anonymous PWA is read-only. Public responses may expose only data needed for the soccer experience, such as:
-
-- published game date/time;
-- public venue/field;
-- aggregate RSVP count/capacity;
-- monitored team schedules;
-- public-safe weather;
-- public-safe notification text.
-
-It must not expose participant/waitlist names, user-specific RSVP status, push endpoints/keys, tokens, Calendar IDs, private settings, or encrypted runtime payloads.
-
-Some public endpoints are produced from encrypted runtime projections. The Worker decrypts the branch copy in memory, validates the allowlisted schema, and returns only the permitted projection.
-
-## User settings
-
-Private user settings are never exposed to anonymous visitors. A signed device capability can access only the narrow Settings API for:
-
-- pickup RSVP display name;
-- monitored league teams.
-
-Normal access uses the user password. `/webpair` is a temporary bootstrap/recovery path while Telegram remains configured. Recovery codes are 12-character high-entropy human-readable values, stored only as a hash inside encrypted listener state, single-use, attempt-limited per client, and expire after 10 minutes.
-
-The password itself is never stored. BallerWatch stores a random salt and a server-keyed verifier inside encrypted runtime state. Password verification, user-token signing, feedback-token signing, push-registration challenge signing, and runtime encryption use separate derived key domains.
-
-User capability tokens may be valid for up to 90 days, but each token includes the current server-side authentication revision. Password changes and **Sign out all devices** advance that revision, so older tokens fail verification even if their embedded expiration time has not passed.
-
-## Match weather
-
-`state/weather.json` is encrypted on `runtime-state`. It may contain published game dates/times, public venue names or addresses, cached coordinates, and forecast summaries. It must not contain roster/user-private data.
+Exact question/answer text is retained for at most 48 hours only when the exchange is user-authenticated or when an anonymous visitor explicitly marks the answer wrong. Engineering review signals are privacy-minimized and encrypted as well.
 
 ## Web Push
 
-VAPID private material and browser `PushSubscription` objects are stored only inside encrypted `state/web-push.json`.
+Push endpoints are outbound-network capabilities. Registration requires a recognized provider, HTTPS, normal port, no userinfo, no IP literal, an endpoint-bound challenge, and rate limiting. Delivery repeats validation, rejects unsafe DNS results, and disables redirects.
 
-Push endpoints are treated as network capabilities, not trusted data. Registration accepts only recognized browser push-service hosts over normal HTTPS, rejects userinfo, IP literals, unusual ports, and malformed/unrecognized hosts, and requires a short-lived server-issued challenge bound to the exact normalized endpoint from the trusted PWA origin.
+## User authentication
 
-Before GitHub Actions sends a signal, the endpoint is validated again. DNS is resolved immediately before delivery and **every** returned address must be public; private, loopback, link-local, multicast, documentation, carrier-grade-NAT, and unsafe mapped addresses fail closed. Delivery uses `redirect: "error"`, so a push service cannot redirect the runner to another destination. Invalid or unsafe persisted subscriptions are pruned.
+Only a signed-in user may read or change the limited Settings surface. Password verifiers are server-keyed; plaintext passwords are never persisted. Capability tokens include a server-side auth revision and expire after at most 90 days.
 
-Public notification-board responses are derived from encrypted branch state and must pass the same public-safe boundary as other PWA responses.
+Recovery uses the manual **Reset web user password** workflow. The temporary recovery password is supplied through an Actions secret and must be deleted/rotated after use.
 
-## Browser response policies
+## Public projections
 
-The Cloudflare Worker API sets a restrictive CSP, `frame-ancestors 'none'`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, Referrer-Policy, and Permissions-Policy.
-
-The static GitHub Pages document declares a restrictive CSP and no-referrer policy, and the service worker clamps notification navigation to the BallerWatch Pages path. GitHub Pages does not allow this repository to set arbitrary HTTP response headers for the static site, so anti-framing, X-Content-Type-Options, and Permissions-Policy cannot be truthfully claimed as response headers on the Pages document itself.
-
-## Temporary plaintext
-
-A GitHub runner or one Cloudflare Worker invocation may temporarily hold decrypted data while performing authorized work. Runtime files are removed from runners after use. Tests use synthetic/encrypted fixtures and must not publish decrypted artifacts.
-
-## Purge
-
-**Purge current data** first removes BallerWatch-managed RATS Calendar events, then clears generated files from `runtime-state`, including Web Push identity/subscriptions, notification boards, user settings, chat history/review, and custom monitored-team state.
-
-It does not delete source code, repository/Worker secrets, or unrelated Google Calendar events.
+Public PWA/API responses and notification-board entries must never expose RSVP/waitlist names, private settings, tokens, secrets, or user-specific status.
