@@ -310,10 +310,10 @@ export function normalize(
     if (table.slice(1).some((row) => !Array.isArray(row) || row.length !== HEADERS.length)) {
       throw new Error("Malformed team export row");
     }
-    const exportGames = table
-      .slice(1)
-      .filter((row) => String(row[0]).toLocaleLowerCase("en-US") !== "bye")
-      .map(rowObject);
+    const exportRows = table.slice(1).map(rowObject);
+    const exportGames = exportRows.filter(
+      (row) => String(row["Event Type"]).toLocaleLowerCase("en-US") !== "bye",
+    );
 
     const division = `${team.day} ${team.gender} D-${team.division}`;
     const divisionTeams = new Map(
@@ -370,10 +370,19 @@ export function normalize(
             String(row["Home or Away"]).toLocaleLowerCase("en-US") === expectedSide,
         ).length;
         const sameTime = exportGames.filter((row) => row["Start Time"] === clock).length;
+        const allDateSide = exportRows.filter(
+          (row) =>
+            row["Start Date"] === date &&
+            String(row["Home or Away"]).toLocaleLowerCase("en-US") === expectedSide,
+        );
+        const byeDateSide = allDateSide.filter(
+          (row) => String(row["Event Type"]).toLocaleLowerCase("en-US") === "bye",
+        ).length;
         throw new Error(
           "Aggregate/export match identity mismatch " +
           `(exact=${rows.length}, normalized=${normalizedRows.length}, dateSide=${dateSideRows.length}, ` +
-          `date=${sameDate}, side=${sameSide}, time=${sameTime}, export=${exportGames.length})`,
+          `date=${sameDate}, side=${sameSide}, time=${sameTime}, export=${exportGames.length}, ` +
+          `allDateSide=${allDateSide.length}, byeDateSide=${byeDateSide})`,
         );
       }
       const row = rows[0];
