@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer operations PWA for pickup games and Seattle RATS league matches.
 
-**Current source version: 6.0.5**
+**Current source version: 6.0.6**
 
 **Production source of truth:** the commit pointed to by `production` and its published GitHub Release. `main` may be newer without changing the live app.
 
@@ -241,3 +241,7 @@ Tests must never send Web Push or mutate Google Calendar.
 - Pin workflow dependencies to immutable reviewed SHAs.
 
 More operational detail is maintained under `docs/wiki/`.
+
+## Copyright
+
+Copyright © 2026 BallerWatch. All rights reserved. See `COPYRIGHT.md` for the repository copyright notice and third-party attribution boundary.

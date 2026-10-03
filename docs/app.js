@@ -1,4 +1,6 @@
 /**
+ * Copyright © 2026 BallerWatch. All rights reserved.
+ *
  * BallerWatch PWA client: renders the dashboard, read-only Q&A, notifications,
  * user Settings, connected-card navigation, and installed-app update behavior.
  *
@@ -71,6 +73,7 @@ const els = {
   nextGameDirections: document.querySelector("#next-game-directions"),
   nextGameShare: document.querySelector("#next-game-share"),
   nextGameHint: document.querySelector("#next-game-hint"),
+  nextGameUpdated: document.querySelector("#next-game-updated"),
   testNotification: document.querySelector("#test-notification"),
   deleteAllNotifications: document.querySelector("#delete-all-notifications"),
   testNotificationStatus: document.querySelector("#test-notification-status"),
@@ -569,7 +572,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=6.0.5", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=6.0.6", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -830,6 +833,17 @@ function weatherSummary(weather, stale = false, approximate = false) {
   return parts.join("  ");
 }
 
+function matchUpdatedText(value) {
+  const date = new Date(value || "");
+  if (Number.isNaN(date.getTime())) return "";
+  return `Updated ${new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date)}`;
+}
+
 function spotlightModel(game, label = "NEXT GAME") {
   if (!game) {
     return {
@@ -842,6 +856,7 @@ function spotlightModel(game, label = "NEXT GAME") {
       capacityPercent: 0,
       spotsText: "",
       weather: "",
+      updated: "",
       rsvp: "",
       rsvpConfirmed: false,
       rsvpWaitlisted: false,
@@ -889,6 +904,7 @@ function spotlightModel(game, label = "NEXT GAME") {
       game.weatherStale,
       game.weatherApproximate,
     ),
+    updated: matchUpdatedText(game.sourceUpdatedAt),
     rsvp: game.kind === "pickup" ? String(game.rsvpUrl || "") : "",
     rsvpConfirmed: game.kind === "pickup" && confirmedRsvpDates.has(game.date),
     rsvpWaitlisted: game.kind === "pickup" && waitlistedRsvpDates.has(game.date),
@@ -910,6 +926,8 @@ function applySpotlightModel(targets, game, label = "NEXT GAME") {
   targets.capacityFill.style.width = `${model.capacityPercent}%`;
   targets.weather.textContent = model.weather;
   targets.weather.hidden = !model.weather;
+  targets.updated.textContent = model.updated;
+  targets.updated.hidden = !model.updated;
   targets.actions.hidden = model.actionsHidden;
   targets.hint.textContent = "";
 
@@ -953,6 +971,7 @@ function currentSpotlightTargets() {
     capacitySpots: els.nextGameCapacitySpots,
     capacityFill: els.nextGameCapacityFill,
     weather: els.nextGameWeather,
+    updated: els.nextGameUpdated,
     actions: els.nextGameActions,
     rsvp: els.nextGameRsvp,
     directions: els.nextGameDirections,
@@ -1008,6 +1027,7 @@ function buildSpotlightTrainCard(game) {
       capacitySpots: role("next-game-capacity-spots"),
       capacityFill: role("next-game-capacity-fill"),
       weather: role("next-game-weather"),
+      updated: role("next-game-updated"),
       actions: role("next-game-actions"),
       rsvp: role("next-game-rsvp"),
       directions: role("next-game-directions"),

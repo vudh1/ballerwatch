@@ -3129,3 +3129,94 @@ html.is-standalone .status-bar-glass {
     left: 50%;
   }
 }
+
+
+/* v6.0.6 wider web canvas, in-page utility surfaces, match freshness, copyright */
+:root {
+  --app-surface-width: 920px;
+}
+
+.shell {
+  width: min(var(--app-surface-width), 100%);
+}
+
+.notification-dialog,
+.settings-dialog,
+.notification-reader {
+  width: min(var(--app-surface-width), calc(100vw - 2rem));
+  max-width: min(var(--app-surface-width), calc(100vw - 2rem));
+}
+
+.notification-dialog {
+  top: 50%;
+  right: auto;
+  bottom: auto;
+  left: 50%;
+  max-height: min(86dvh, 48rem);
+  transform: translate(-50%, -50%);
+}
+
+.notification-dialog .dialog-shell {
+  max-height: min(86dvh, 48rem);
+}
+
+.settings-dialog {
+  max-height: min(86dvh, 48rem);
+}
+
+.notification-reader {
+  height: auto;
+  max-height: min(86dvh, 48rem);
+  margin: auto;
+  padding: 0;
+  overflow: hidden auto;
+  border: 1px solid var(--v55-line);
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at 80% 5%, rgba(255, 142, 93, 0.16), transparent 28rem),
+    linear-gradient(180deg, rgba(24, 38, 61, 0.96), rgba(8, 18, 31, 0.96));
+}
+
+.notification-reader-shell {
+  min-height: 0;
+  max-height: min(86dvh, 48rem);
+}
+
+.notification-dialog::backdrop,
+.settings-dialog::backdrop,
+.notification-reader::backdrop {
+  background: rgba(4, 10, 20, 0.20);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+
+.match-update-credit {
+  margin: 0.7rem 0 0;
+  color: #64748b;
+  font-size: var(--type-caption);
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+}
+
+.footer-links .copyright {
+  color: #64748b;
+  font-size: var(--type-caption);
+}
+
+@media (max-width: 640px) {
+  .notification-dialog,
+  .settings-dialog,
+  .notification-reader {
+    width: calc(100vw - 0.75rem);
+    max-width: calc(100vw - 0.75rem);
+  }
+
+  .notification-dialog {
+    max-height: calc(100dvh - 0.75rem);
+  }
+
+  .notification-dialog .dialog-shell,
+  .notification-reader-shell {
+    max-height: calc(100dvh - 0.75rem);
+  }
+}

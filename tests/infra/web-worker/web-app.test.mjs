@@ -139,7 +139,9 @@ test("web next-game details remain public-safe and prefer the earliest future ga
         },
       },
     },
+    pickupSourceHealth: { checkedAt: "2099-10-01T12:34:00Z" },
     league: {
+      updatedAt: "2099-10-01T13:45:00-07:00",
       teams: [{
         name: "Team Alpha",
         matches: [{
@@ -159,6 +161,7 @@ test("web next-game details remain public-safe and prefer the earliest future ga
   assert.equal(details.location, "Washington Park Soccer");
   assert.equal(details.mapsQuery, "101 Public Field Rd");
   assert.equal(details.rsvpUrl, "https://nhcuong95.github.io/rsvp/?date=2099-10-08");
+  assert.equal(details.sourceUpdatedAt, "2099-10-01T12:34:00Z");
   assert.doesNotMatch(JSON.stringify(details), /Private Person|Private Waitlist/);
 });
 
@@ -180,6 +183,7 @@ test("league next-game details expose a two-hour time window from normalized end
     pickup: { dates: [], events: {} },
     pickupPrivate: { events: {} },
     league: {
+      updatedAt: "2099-10-01T13:45:00-07:00",
       teams: [{
         name: "Team Alpha",
         matches: [{
@@ -196,6 +200,7 @@ test("league next-game details expose a two-hour time window from normalized end
 
   assert.equal(details.kind, "league");
   assert.equal(details.time, "7:30 PM–9:30 PM");
+  assert.equal(details.sourceUpdatedAt, "2099-10-01T13:45:00-07:00");
 });
 
 
@@ -257,6 +262,7 @@ test("web calendar merges public games with cached match-window weather", () => 
         },
       },
     },
+    pickupSourceHealth: { checkedAt: "2099-10-01T10:15:00Z" },
     league: { teams: [] },
     today: { games: [] },
   };
@@ -278,6 +284,7 @@ test("web calendar merges public games with cached match-window weather", () => 
   assert.equal(calendar.games.length, 1);
   assert.equal(calendar.games[0].id, "pickup:2099-10-08");
   assert.equal(calendar.games[0].rsvpUrl, "https://nhcuong95.github.io/rsvp/?date=2099-10-08");
+  assert.equal(calendar.games[0].sourceUpdatedAt, "2099-10-01T10:15:00Z");
   assert.equal(calendar.games[0].weather.rainProbability, 65);
   assert.equal(calendar.games[0].weather.temperatureF, 58);
   assert.doesNotMatch(JSON.stringify(calendar), /Private Person/);
