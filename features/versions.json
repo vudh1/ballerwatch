@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "6.0.4",
+  "currentVersion": "6.0.5",
   "releases": [
+    {
+      "version": "6.0.5",
+      "date": "2026-10-02",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Portrait navigation, card-only calendar expansion, swipe waterfall, and RSVP state",
+      "changes": [
+        "Removed the explicit calendar Expand/Collapse button; a single click on the calendar card now toggles between the rolling 14-day view and the full schedule through the latest published match week.",
+        "Changed Home, Notifications, notification detail, Settings, and install surfaces to share one centered iPhone-like portrait viewport on desktop and mobile instead of letting notification surfaces float in the wider landscape browser area.",
+        "Refined desktop match-card left/right affordances so their overlay fits the match-card border exactly and uses pointer-distance-driven opacity with a blurred edge-to-transparent waterfall gradient.",
+        "Changed pickup RSVP styling so the button matches Directions/Share by default and turns green with a check only when the authenticated user's saved RSVP name is actually present in the private confirmed player roster.",
+        "Added an authenticated RSVP-status endpoint that exposes only confirmed/waitlisted dates, never roster names, and added regression coverage for the privacy boundary and UI state."
+      ]
+    },
     {
       "version": "6.0.4",
       "date": "2026-10-02",

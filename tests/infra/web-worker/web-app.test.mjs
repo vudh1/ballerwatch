@@ -6,8 +6,10 @@ import {
   directIntent,
   issueOwnerToken,
   issuePushRegistrationChallenge,
+  pickupUserRsvpView,
   verifyOwnerCapability,
-  normalizeOwnerSettingsInput,  verifyOwnerToken,
+  normalizeOwnerSettingsInput,
+  verifyOwnerToken,
   verifyPushRegistrationChallenge,
   validWebSubscription,
   webCalendarDetails,
@@ -42,6 +44,42 @@ test("web snapshot strips private pickup roster and owner settings", () => {
   assert.deepEqual(safe.settings, {});
   assert.equal(safe.ownerName, "");
   assert.doesNotMatch(JSON.stringify(safe), /Private Person|Private Owner|secret/);
+});
+
+
+test("authenticated pickup RSVP view exposes only confirmed and waitlisted dates", () => {
+  const view = pickupUserRsvpView({
+    pickup: {
+      dates: [
+        { date: "2099-10-08" },
+        { date: "2099-10-15" },
+        { date: "2099-10-22" },
+      ],
+    },
+    pickupPrivate: {
+      events: {
+        "2099-10-08": {
+          players: [{ name: "Alex Smith" }, { name: "Someone Else" }],
+          waitlist: [],
+        },
+        "2099-10-15": {
+          players: [],
+          waitlist: [{ name: "Alex Smith" }],
+        },
+        "2099-10-22": {
+          players: [{ name: "Someone Else" }],
+          waitlist: [],
+        },
+      },
+    },
+    settings: { ownerRsvpName: "Alex Smith" },
+  });
+
+  assert.deepEqual(view, {
+    confirmedDates: ["2099-10-08"],
+    waitlistedDates: ["2099-10-15"],
+  });
+  assert.doesNotMatch(JSON.stringify(view), /Alex Smith|Someone Else/);
 });
 
 test("web user capability verification honors the current auth revision", async () => {

@@ -16,13 +16,13 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=6\.0\.3/);
-  assert.match(html, /app\.js\?v=6\.0\.3/);
+  assert.match(html, /styles\.css\?v=6\.0\.5/);
+  assert.match(html, /app\.js\?v=6\.0\.5/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v6-0-3-shell/);
+  assert.match(sw, /ballerwatch-v6-0-5-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -78,7 +78,7 @@ test("Home Screen install prompt uses the same card layout system as dashboard c
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=6\.0\.3/);
+  assert.match(app, /sw\.js\?v=6\.0\.5/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -114,6 +114,17 @@ test("next-game card exposes pickup RSVP, directions, and native share", () => {
   assert.match(app, /google\.com\/maps\/search\/\?api=1/);
   assert.match(app, /navigator\.share/);
   assert.match(app, /navigator\.clipboard\.writeText/);
+});
+
+
+test("pickup RSVP button is neutral until authenticated confirmation is known", () => {
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  const css = fs.readFileSync("docs/styles.css", "utf8");
+  assert.match(app, /confirmedRsvpDates = new Set/);
+  assert.match(app, /model\.rsvpConfirmed \? "RSVP'd" : "RSVP"/);
+  assert.match(css, /\.pickup-rsvp-link \{[\s\S]*rgba\(71, 85, 105, 0\.36\)/);
+  assert.match(css, /\.pickup-rsvp-link\.is-confirmed \{[\s\S]*rgba\(74, 222, 128/);
+  assert.match(css, /\.pickup-rsvp-link\.is-confirmed::before \{[\s\S]*content:\s*"✓"/);
 });
 
 test("notification test is local and service-worker driven", () => {
@@ -296,7 +307,7 @@ test("calendar rolls by week with spotlight navigation and expands through the l
   const app = fs.readFileSync("docs/app.js", "utf8");
   const css = fs.readFileSync("docs/styles.css", "utf8");
 
-  assert.match(html, /id="calendar-expand-toggle"/);
+  assert.doesNotMatch(html, /id="calendar-expand-toggle"/);
   assert.match(html, /id="two-week-calendar" aria-expanded="false"/);
   assert.match(app, /let calendarWindowStart = ""/);
   assert.match(app, /let calendarExpanded = false/);
@@ -550,6 +561,15 @@ test("footer contains no secondary messaging shortcut", () => {
   const html = fs.readFileSync("docs/index.html", "utf8");
   assert.doesNotMatch(html, /https:\/\/t\.me\//i);
   assert.match(html, /id="install-card"/);
+});
+
+
+test("secondary app surfaces share the same centered portrait viewport", () => {
+  const css = fs.readFileSync("docs/styles.css", "utf8");
+  assert.match(css, /--app-portrait-width:\s*430px/);
+  assert.match(css, /\.notification-dialog \{[\s\S]*left:\s*50%;[\s\S]*transform:\s*translateX\(-50%\)/);
+  assert.match(css, /\.notification-reader \{[\s\S]*width:\s*min\(var\(--app-portrait-width\), 100vw\)/);
+  assert.match(css, /\.settings-dialog,[\s\S]*#install-dialog \{[\s\S]*width:\s*min\(var\(--app-portrait-width\)/);
 });
 
 test("notification popup stays bounded and offers local Delete all beside Send test", () => {

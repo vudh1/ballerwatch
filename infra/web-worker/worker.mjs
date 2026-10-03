@@ -1311,6 +1311,36 @@ function pickupStatus(snapshot, date) {
   return lines.join("\n");
 }
 
+function pickupUserRsvpState(snapshot, date) {
+  const owner = cleanText(
+    snapshot?.settings?.ownerRsvpName || snapshot?.ownerName || "",
+    200,
+  ).toLowerCase();
+  if (!owner) return { confirmed: false, waitlisted: false };
+
+  const event = snapshot?.pickupPrivate?.events?.[date] || {};
+  const players = Array.isArray(event.players) ? event.players : [];
+  const waitlist = Array.isArray(event.waitlist) ? event.waitlist : [];
+  const matchesOwner = (entry) =>
+    cleanText(entry?.name, 200).toLowerCase() === owner;
+
+  return {
+    confirmed: players.some(matchesOwner),
+    waitlisted: waitlist.some(matchesOwner),
+  };
+}
+
+export function pickupUserRsvpView(snapshot) {
+  const confirmedDates = [];
+  const waitlistedDates = [];
+  for (const date of availableDates(snapshot)) {
+    const state = pickupUserRsvpState(snapshot, date);
+    if (state.confirmed) confirmedDates.push(date);
+    else if (state.waitlisted) waitlistedDates.push(date);
+  }
+  return { confirmedDates, waitlistedDates };
+}
+
 function leagueGameBlock(game) {
   const lines=[`🏆 ${game.team || "RATS team"} vs ${game.opponent || "opponent"}`];
   const time=clock(game.start || game.startTime);
@@ -2267,6 +2297,26 @@ export default {
         return webJson(
           request,
           { ok: false, error: "Unable to revoke user sessions right now." },
+          { status: 503 },
+        );
+      }
+    }
+
+    if (request.method === "GET" && userRoute(url.pathname, "rsvp-status")) {
+      const token = bearerToken(request);
+      if (!(await verifyOwnerCapability(env, token).catch(() => false))) {
+        return webJson(request, { ok: false, error: "User sign-in is required." }, { status: 401 });
+      }
+      try {
+        return webJson(request, {
+          ok: true,
+          rsvp: pickupUserRsvpView(await loadSnapshot(env)),
+        });
+      } catch (error) {
+        console.error("User pickup RSVP status load failed", error);
+        return webJson(
+          request,
+          { ok: false, error: "Unable to load pickup RSVP status right now." },
           { status: 503 },
         );
       }
