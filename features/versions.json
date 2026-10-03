@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "6.0.2",
+  "currentVersion": "6.0.3",
   "releases": [
+    {
+      "version": "6.0.3",
+      "date": "2026-10-02",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Expandable calendar, reliable Settings, pickup RSVP, and web layout polish",
+      "changes": [
+        "Changed the 14-day match calendar into a rolling two-week window that advances by week when spotlight navigation reaches a later match, with one-tap expansion through the final week containing a published future match.",
+        "Hardened web Settings loading and saving with structured CORS-safe load failures, a refreshed runtime-state file revision between user and team writes, and one retry for transient browser network failures such as Safari's Load failed error.",
+        "Added a pickup RSVP action on pickup match cards that opens the public RSVP site with the selected pickup date preselected.",
+        "Changed the website Home Screen app prompt to use the same card spacing, radius, glass treatment, and responsive layout as the rest of the dashboard.",
+        "Bumped static PWA asset revisions so website and installed-app clients revalidate the 6.0.3 UI immediately."
+      ]
+    },
     {
       "version": "6.0.2",
       "date": "2026-10-02",

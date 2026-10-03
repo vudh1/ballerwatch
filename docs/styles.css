@@ -2889,3 +2889,107 @@ html.is-standalone .status-bar-glass {
   }
 }
 
+
+
+/* v6.0.3 calendar navigation, pickup RSVP, and install-card consistency */
+.next-game-actions {
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+}
+
+#next-game-rsvp::before {
+  content: "✓";
+  margin-right: 0.5rem;
+}
+
+.pickup-rsvp-link {
+  border-color: rgba(74, 222, 128, 0.34) !important;
+  background:
+    linear-gradient(145deg, rgba(74, 222, 128, 0.24), rgba(34, 197, 94, 0.08)),
+    rgba(22, 101, 52, 0.28) !important;
+}
+
+.calendar-card {
+  cursor: pointer;
+}
+
+.calendar-card .calendar-day,
+.calendar-card .calendar-game-choice,
+.calendar-card .calendar-expand-toggle {
+  cursor: pointer;
+}
+
+.calendar-heading-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.45rem;
+}
+
+.calendar-expand-toggle {
+  min-height: 2rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(226, 232, 240, 0.9);
+  background: rgba(51, 65, 85, 0.36);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.calendar-card.is-expanded .calendar-grid {
+  margin-top: 0.15rem;
+}
+
+.footer-install.card {
+  margin: 0.9rem 0 1rem;
+  padding: clamp(1.15rem, 4vw, 1.5rem);
+  border: 1px solid var(--v55-line);
+  border-radius: 30px;
+  color: #cbd5e1;
+}
+
+.footer-install-copy {
+  min-width: 0;
+}
+
+.footer-install .eyebrow {
+  margin: 0 0 0.35rem;
+  color: rgba(191, 219, 254, 0.72);
+}
+
+.footer-install strong {
+  display: block;
+  color: #f8fafc;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+}
+
+.footer-install p:not(.eyebrow) {
+  margin: 0.35rem 0 0;
+  color: rgba(203, 213, 225, 0.72);
+  line-height: 1.55;
+}
+
+@media (max-width: 560px) {
+  .calendar-heading {
+    gap: 0.7rem;
+  }
+
+  .calendar-heading-actions {
+    align-items: flex-end;
+  }
+
+  .calendar-updated {
+    max-width: 8rem;
+    text-align: right;
+  }
+
+  .footer-install.card {
+    align-items: stretch;
+  }
+
+  .footer-install .compact-button {
+    width: 100%;
+  }
+}

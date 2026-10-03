@@ -14,7 +14,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
-  <link rel="stylesheet" href="./styles.css?v=6.0.0">
+  <link rel="stylesheet" href="./styles.css?v=6.0.3">
 </head>
 <body>
   <div class="status-bar-glass" aria-hidden="true"></div>
@@ -82,6 +82,8 @@
           </div>
           <div class="next-game-weather" id="next-game-weather" hidden></div>
           <div class="button-row next-game-actions" id="next-game-actions" hidden>
+            <a class="button-link pickup-rsvp-link" id="next-game-rsvp"
+              target="_blank" rel="noopener" hidden>RSVP</a>
             <a class="button-link" id="next-game-directions" target="_blank" rel="noopener">Directions</a>
             <button class="secondary" id="next-game-share" type="button">Share</button>
           </div>
@@ -90,13 +92,17 @@
       </section>
     </div>
 
-    <section class="card calendar-card" id="two-week-calendar">
+    <section class="card calendar-card" id="two-week-calendar" aria-expanded="false">
       <div class="section-heading calendar-heading">
         <div>
           <p class="eyebrow">MATCH DAYS</p>
-          <h2>14-Day Calendar</h2>
+          <h2 id="calendar-title">14-Day Calendar</h2>
         </div>
-        <span class="calendar-updated" id="calendar-updated">Weather every 6h</span>
+        <div class="calendar-heading-actions">
+          <span class="calendar-updated" id="calendar-updated">Weather every 6h</span>
+          <button class="calendar-expand-toggle" id="calendar-expand-toggle"
+            type="button" aria-expanded="false">Expand</button>
+        </div>
       </div>
       <div class="calendar-grid" id="calendar-grid" aria-label="Two-week game calendar"></div>
       <div class="calendar-game-picker" id="calendar-game-picker" hidden></div>
@@ -132,8 +138,9 @@
     </section>
 
     <footer>
-      <section class="footer-install" id="install-card">
-        <div>
+      <section class="card footer-install" id="install-card">
+        <div class="footer-install-copy">
+          <p class="eyebrow">INSTALL</p>
           <strong>Home Screen app</strong>
           <p id="install-copy">Add BallerWatch to your iPhone Home Screen for quick access and notifications.</p>
         </div>
@@ -266,6 +273,6 @@
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=6.0.0"></script>
+  <script type="module" src="./app.js?v=6.0.3"></script>
 </body>
 </html>

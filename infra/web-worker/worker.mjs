@@ -21,6 +21,7 @@ import { KEY_CONTEXT } from "../../shared/security-contexts.mjs";
 import { validWebPushEndpoint } from "../../shared/web-push-endpoint.mjs";
 
 const REPO = "vudh1/ballerwatch";
+const PICKUP_RSVP_SITE = "https://nhcuong95.github.io/rsvp/";
 const PRODUCTION_REF = "production";
 const CONTEXT_CACHE_SECONDS = 600;
 const EDGE_AI_DAILY_LIMIT = 25;
@@ -699,7 +700,6 @@ async function saveOwnerSettingsDirect(env, input) {
     try {
       const {
         userRecord,
-        teamsRecord,
         settings,
       } = await ownerSettingsRecord(env);
 
@@ -716,11 +716,15 @@ async function saveOwnerSettingsDirect(env, input) {
         "runtime(user): update web user settings",
       );
 
+      // The user write advances runtime-state. Re-read the teams blob before
+      // the second write so concurrent watcher compaction cannot leave us with
+      // a stale contents SHA and a browser-visible network failure.
+      const freshTeamsRecord = await githubStateRecord(env, "league/state/teams.json");
       await githubStatePut(
         env,
         "league/state/teams.json",
         await encryptState({ teams: input.teams }, env),
-        teamsRecord.sha,
+        freshTeamsRecord.sha,
         "runtime(user): update monitored league teams",
       );
       return input;
@@ -1508,6 +1512,12 @@ function webJson(request, value, init = {}) {
   return new Response(JSON.stringify(value), { ...init, headers });
 }
 
+function pickupRsvpUrl(date) {
+  const value = cleanText(date, 20);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return PICKUP_RSVP_SITE;
+  return `${PICKUP_RSVP_SITE}?date=${encodeURIComponent(value)}`;
+}
+
 function webCalendarGameId(kind, value) {
   return `${kind}:${cleanText(value, 300)}`;
 }
@@ -1551,6 +1561,7 @@ export function webCalendarDetails(
       location: cleanText(facts.field, 150),
       address: cleanText(facts.address, 200),
       mapsQuery: cleanText(facts.address || facts.field, 220),
+      rsvpUrl: pickupRsvpUrl(date),
       reserved: facts.reserved,
       capacity: facts.capacity,
       jerseyColor: "",
@@ -1674,6 +1685,7 @@ export function webNextGameDetails(snapshot, now = new Date()) {
       location,
       address,
       mapsQuery: address || location,
+      rsvpUrl: pickupRsvpUrl(next.date),
       jerseyColor: "",
       shareText: [
         `Pickup — ${formatDate(next.date)}`,
@@ -2262,7 +2274,16 @@ export default {
       }
 
       if (request.method === "GET") {
-        return webJson(request, { ok: true, settings: await ownerSettingsView(env) });
+        try {
+          return webJson(request, { ok: true, settings: await ownerSettingsView(env) });
+        } catch (error) {
+          console.error("User settings load failed", error);
+          return webJson(
+            request,
+            { ok: false, error: "Unable to load user settings right now." },
+            { status: 503 },
+          );
+        }
       }
 
       let body;
