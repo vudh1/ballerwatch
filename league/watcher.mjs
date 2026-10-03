@@ -352,13 +352,23 @@ export function normalize(
         throw new Error("Unexpected match year for selected season");
       }
 
-      const rows = exportGames.filter(
+      const expectedSide = home ? "home" : "away";
+      const dateSideRows = exportGames.filter(
         (row) =>
           row["Start Date"] === date &&
-          row["Opponent/Event Title"] === opponent &&
-          String(row["Home or Away"]).toLocaleLowerCase("en-US") === (home ? "home" : "away"),
+          String(row["Home or Away"]).toLocaleLowerCase("en-US") === expectedSide,
       );
-      if (rows.length !== 1) throw new Error("Aggregate/export match identity mismatch");
+      const normalizedRows = dateSideRows.filter(
+        (row) =>
+          normalizeTeamName(row["Opponent/Event Title"]) === normalizeTeamName(opponent),
+      );
+      const rows = dateSideRows.filter((row) => row["Opponent/Event Title"] === opponent);
+      if (rows.length !== 1) {
+        throw new Error(
+          "Aggregate/export match identity mismatch " +
+          `(exact=${rows.length}, normalized=${normalizedRows.length}, dateSide=${dateSideRows.length})`,
+        );
+      }
       const row = rows[0];
       if (
         clock !== row["Start Time"] ||
