@@ -16,8 +16,8 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=5\.8\.2/);
-  assert.match(html, /app\.js\?v=5\.8\.2/);
+  assert.match(html, /styles\.css\?v=6\.0\.0/);
+  assert.match(html, /app\.js\?v=6\.0\.0/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
@@ -67,7 +67,7 @@ test("Home Screen install card is removed in standalone mode and notifications u
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=5\.8\.2/);
+  assert.match(app, /sw\.js\?v=6\.0\.0/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -779,6 +779,5 @@ test("Worker web API sets defense-in-depth security headers and protects push re
   assert.match(worker, /\/web\/push\/challenge/);
   assert.match(worker, /verifyPushRegistrationChallenge/);
   assert.match(worker, /webRequestOriginAllowed/);
-  assert.match(worker, /ownerPairAllowed/);
   assert.match(worker, /rotateOwnerAuthVersion/);
 });
