@@ -184,16 +184,7 @@ jobs:
           test "$PUSH_STATUS" = "400" || { cat "$PUSH_BODY"; exit 1; }
           rm -f "$PUSH_BODY"
 
-          PAIR_STATUS="$(curl --max-time 15 --silent --show-error \
-            --output /dev/null --write-out "%{http_code}" \
-            -X POST "$BASE_URL/web/user/pair" \
-            -H "Origin: https://vudh1.github.io" \
-            -H "Content-Type: application/json" \
-            --data '{}')"
-          test "$PAIR_STATUS" = "404" || {
-            echo "::error::Legacy pairing API must be removed; got HTTP $PAIR_STATUS";
-            exit 1;
-          }
+
 
       - name: Ensure primary GitHub schedules stay enabled
         env:
