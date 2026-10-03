@@ -1,5 +1,5 @@
 /**
- * Bounded JSON generation shared by the Worker classifier and listener answers.
+ * Bounded JSON generation shared by the Worker classifier and web answers.
  * v2.5.0: Gemini Flash first, then Groq; no tools, persistence, retries or action execution.
  * Keys travel only in headers. Provider errors and private prompts are never logged.
  */
