@@ -1,7 +1,23 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "6.3.0",
+  "currentVersion": "6.3.1",
   "releases": [
+    {
+      "version": "6.3.1",
+      "date": "2026-10-03",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Reliable double-tap match override gesture",
+      "webAnnouncement": "Match overrides now open with the same double-tap/double-click gesture on the app version or selected match card.",
+      "changes": [
+        "Replaced the unreliable iPhone/PWA long-press match-editor gesture with a 500 ms double-tap detector based on normal click activation.",
+        "Double-tap the app version or selected match card on touch/PWA; double-click either surface on desktop/web to open the administrator match override editor.",
+        "Kept links and action buttons inside the match card excluded from the hidden gesture so RSVP, Directions, and Share continue to work normally.",
+        "Disabled text selection and the iOS touch callout on the two hidden gesture surfaces to avoid copy/select behavior during rapid taps.",
+        "Added an open guard so a desktop double-click or repeated taps cannot open the editor twice.",
+        "Bumped the PWA shell to 6.3.1 so installed Home Screen apps receive the gesture fix instead of remaining on the published 6.3.0 assets."
+      ]
+    },
     {
       "version": "6.3.0",
       "date": "2026-10-03",

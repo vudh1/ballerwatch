@@ -3266,6 +3266,10 @@ html.is-standalone .status-bar-glass {
 
 .next-game-card {
   cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
 }
 
 .match-override-shell {
