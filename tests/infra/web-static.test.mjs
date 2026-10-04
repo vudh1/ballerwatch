@@ -930,7 +930,7 @@ test("README includes the web app demo and multi-user settings are exposed", () 
 test("hidden match override editor is gesture-driven and resettable", () => {
   const html = fs.readFileSync("docs/index.html", "utf8");
   const app = fs.readFileSync("docs/app.js", "utf8");
-  assert.match(html, /id="match-override-dialog"/);
+  assert.match(html, /id="match-override-dialog" class="match-override-dialog"/);
   assert.match(html, /id="match-override-reset"/);
   assert.match(html, /Reset to source/);
   assert.match(app, /MATCH_OVERRIDE_DOUBLE_TAP_MS = 500/);
@@ -953,6 +953,12 @@ test("hidden match override editor is gesture-driven and resettable", () => {
   assert.match(fs.readFileSync("docs\/styles\.css", "utf8"), /-webkit-touch-callout:\s*none/);
   assert.match(app, /\/web\/user\/match-override/);
   assert.match(app, /method: "DELETE"/);
+  assert.match(app, /pendingMatchOverrideAfterLogin/);
+  assert.match(app, /openSettings\(\{ pendingAction: "match-override" \}\)/);
+  assert.match(app, /resumeMatchOverride/);
+  assert.match(app, /settingsDialog\.close\(\)/);
+  assert.match(app, /await openMatchOverrideEditor\(\)/);
+  assert.match(app, /Administrator access is required to edit match details/);
   assert.match(app, /canManageMatches/);
   assert.match(app, /Manual override/);
 });
@@ -964,4 +970,18 @@ test("Saturday free pickup is visually distinct and never exposes RSVP controls"
   assert.match(app, /\? "Free Pickup"/);
   assert.match(app, /rsvp: game\.kind === "pickup"/);
   assert.match(app, /hasCapacity = game\.kind === "pickup"/);
+});
+
+
+test("match override modal is independently centered and constrained", () => {
+  const css = fs.readFileSync("docs/styles.css", "utf8");
+  assert.match(
+    css,
+    /\.match-override-dialog \{[\s\S]*width:\s*min\(34rem, calc\(100vw - 1\.25rem\)\);[\s\S]*margin:\s*auto;[\s\S]*padding:\s*0;/,
+  );
+  assert.match(
+    css,
+    /\.match-override-shell \{[\s\S]*width:\s*100%;[\s\S]*max-width:\s*none;[\s\S]*box-sizing:\s*border-box;/,
+  );
+  assert.match(css, /\.match-override-form input \{[\s\S]*width:\s*100%;[\s\S]*box-sizing:\s*border-box;/);
 });

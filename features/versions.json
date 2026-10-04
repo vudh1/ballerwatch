@@ -15,7 +15,9 @@
         "Kept movement cancellation so scrolling or swiping across the match card does not accidentally open the editor.",
         "Kept action links/buttons inside the match card excluded from the hidden double-tap gesture.",
         "Desktop/web now uses the browser's native dblclick event for both the app version and selected match card.",
-        "Bumped the installed PWA shell to 6.3.2 so already-installed 6.3.1 Home Screen apps receive the corrected touch handler."
+        "Bumped the installed PWA shell to 6.3.2 so already-installed 6.3.1 Home Screen apps receive the corrected touch handler.",
+        "Fixed the protected-editor flow so an administrator prompted for credentials resumes directly into the requested match editor after sign-in instead of landing on the RSVP name/team settings card.",
+        "Gave the match editor its own independently centered 34rem modal geometry with full-width, box-sized form controls so it no longer inherits the wide Settings surface or appears shifted to the right."
       ]
     },
     {

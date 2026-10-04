@@ -125,6 +125,7 @@ let feedbackSubmitted = false;
 let feedbackId = "";
 let feedbackInFlight = false;
 let currentUserSettings = null;
+let pendingMatchOverrideAfterLogin = false;
 
 const OWNER_TOKEN_KEY = "ballerwatch-owner-token";
 const OWNER_USERNAME_KEY = "ballerwatch-user-name";
@@ -571,8 +572,13 @@ async function loadOwnerSettings() {
   }
 }
 
-async function openSettings() {
-  els.settingsDialog.showModal();
+async function openSettings(options = {}) {
+  const pendingAction =
+    options && typeof options === "object" && "pendingAction" in options
+      ? String(options.pendingAction || "")
+      : "";
+  pendingMatchOverrideAfterLogin = pendingAction === "match-override";
+  if (!els.settingsDialog.open) els.settingsDialog.showModal();
   await loadOwnerSettings();
 }
 
@@ -591,10 +597,22 @@ async function loginOwnerDevice(event) {
     localStorage.setItem(OWNER_TOKEN_KEY, payload.token);
     localStorage.setItem(OWNER_USERNAME_KEY, payload.username || username || "admin");
     els.ownerLoginPassword.value = "";
+    const resumeMatchOverride = pendingMatchOverrideAfterLogin;
     await loadOwnerSettings();
     await loadRsvpStatus();
     if (currentNextGame) {
       renderNextGame(currentNextGame, els.spotlightLabel.textContent || "NEXT GAME");
+    }
+
+    if (resumeMatchOverride) {
+      pendingMatchOverrideAfterLogin = false;
+      if (currentUserSettings?.canManageMatches) {
+        if (els.settingsDialog.open) els.settingsDialog.close();
+        await openMatchOverrideEditor();
+      } else {
+        els.ownerSettingsStatus.textContent =
+          "Administrator access is required to edit match details.";
+      }
     }
   } catch (error) {
     els.ownerLoginStatus.textContent = error.message;
@@ -1895,8 +1913,9 @@ function inputClockValue(value) {
 
 async function matchOverrideAdminSettings() {
   if (!ownerToken()) {
-    await openSettings();
-    els.ownerLoginStatus.textContent = "Administrator sign-in is required to edit match overrides.";
+    await openSettings({ pendingAction: "match-override" });
+    els.ownerLoginStatus.textContent =
+      "Administrator sign-in is required. After sign-in, BallerWatch will return to the match editor.";
     return null;
   }
   if (currentUserSettings?.canManageMatches) return currentUserSettings;
@@ -1915,8 +1934,9 @@ async function matchOverrideAdminSettings() {
   } catch (error) {
     if (error.status === 401) {
       localStorage.removeItem(OWNER_TOKEN_KEY);
-      await openSettings();
-      els.ownerLoginStatus.textContent = "Administrator sign-in is required to edit match overrides.";
+      await openSettings({ pendingAction: "match-override" });
+      els.ownerLoginStatus.textContent =
+        "Administrator sign-in is required. After sign-in, BallerWatch will return to the match editor.";
     } else {
       els.nextGameHint.textContent = error.message;
     }
