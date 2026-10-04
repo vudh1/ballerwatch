@@ -144,3 +144,79 @@ test("Open-Meteo forecast requests Pacific-local hourly timestamps", () => {
     /"precipitation_probability,temperature_2m,weather_code"/,
   );
 });
+
+
+test("manual match overrides drive weather date, time, location, and stable IDs", () => {
+  const result = collectUpcomingGames({
+    pickupFeed: {
+      events: {
+        "2026-10-06": {
+          ok: true,
+          startTime: "20:00",
+          endTime: "22:00",
+          reserved: 10,
+          capacity: 16,
+        },
+      },
+    },
+    pickupPrivate: {
+      events: {
+        "2026-10-06": {
+          fieldName: "Source Pickup Field",
+          address: "Source Pickup Address",
+        },
+      },
+    },
+    leagueSchedule: {
+      teams: [{
+        name: "Team Alpha",
+        matches: [{
+          key: "v2:weather-override",
+          team: "Team Alpha",
+          opponent: "Team Beta",
+          date: "2026-10-07",
+          startTime: "19:00",
+          endTime: "21:00",
+          start: "2026-10-07T19:00:00-07:00",
+          end: "2026-10-07T21:00:00-07:00",
+          location: "Source League Field",
+        }],
+      }],
+    },
+    settings: {
+      matchOverrides: {
+        "pickup:2026-10-06": {
+          id: "pickup:2026-10-06",
+          kind: "pickup",
+          date: "2026-10-08",
+          startTime: "21:00",
+          endTime: "23:00",
+          location: "Manual Pickup Field",
+          updatedAt: "2026-10-03T20:00:00Z",
+        },
+        "league:v2:weather-override": {
+          id: "league:v2:weather-override",
+          kind: "league",
+          date: "2026-10-09",
+          startTime: "20:30",
+          endTime: "22:00",
+          location: "Manual League Field",
+          updatedAt: "2026-10-03T20:00:00Z",
+        },
+      },
+    },
+    now: new Date("2026-10-03T12:00:00-07:00"),
+    days: 14,
+  });
+
+  const pickup = result.games.find((game) => game.kind === "pickup");
+  const league = result.games.find((game) => game.kind === "league");
+  assert.equal(pickup.id, "pickup:2026-10-06");
+  assert.equal(pickup.date, "2026-10-08");
+  assert.equal(pickup.startTime, "21:00");
+  assert.equal(pickup.location, "Manual Pickup Field");
+  assert.equal(league.id, "league:v2:weather-override");
+  assert.equal(league.date, "2026-10-09");
+  assert.equal(league.startTime, "20:30");
+  assert.equal(league.location, "Manual League Field");
+});

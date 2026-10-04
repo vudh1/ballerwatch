@@ -8,6 +8,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import { decryptState, encryptState } from "../shared/state-crypto.mjs";
+import { loadUserSettings } from "../shared/user-state.mjs";
+import {
+  applyLeagueMatchOverride,
+  applyPickupMatchOverride,
+  pickupOverrideId,
+} from "../shared/match-overrides.mjs";
 
 const TIME_ZONE = "America/Los_Angeles";
 const STATE_PATH = "state/weather.json";
@@ -164,6 +170,7 @@ export function collectUpcomingGames({
   pickupFeed = {},
   pickupPrivate = {},
   leagueSchedule = {},
+  settings = {},
   now = new Date(),
   days = 14,
 } = {}) {
@@ -171,17 +178,27 @@ export function collectUpcomingGames({
   const endDate = addDaysIso(startDate, Math.max(1, Number(days) || 14) - 1);
   const games = [];
 
-  for (const date of Object.keys(pickupFeed?.events || {}).sort()) {
+  for (const sourceDate of Object.keys(pickupFeed?.events || {}).sort()) {
+    const pub = pickupFeed.events[sourceDate] || {};
+    const priv = pickupPrivate?.events?.[sourceDate] || {};
+    const effective = applyPickupMatchOverride({
+      id: pickupOverrideId(sourceDate),
+      sourceDate,
+      date: sourceDate,
+      startTime: pub.startTime,
+      endTime: pub.endTime,
+      fieldName: priv.fieldName,
+      address: priv.address,
+    }, settings);
+    const date = effective.date;
     if (date < startDate || date > endDate) continue;
-    const pub = pickupFeed.events[date] || {};
-    const priv = pickupPrivate?.events?.[date] || {};
-    const location = clean(priv.fieldName, 180);
-    const address = clean(priv.address, 220);
+    const location = clean(effective.fieldName, 180);
+    const address = clean(effective.address, 220);
     if (!location && !address) continue;
-    const window = gameWindow(pub.startTime, pub.endTime, "", "", 180);
+    const window = gameWindow(effective.startTime, effective.endTime, "", "", 180);
     if (!window) continue;
     games.push({
-      id: gameId("pickup", date),
+      id: gameId("pickup", sourceDate),
       kind: "pickup",
       date,
       title: "Pickup",
@@ -193,11 +210,16 @@ export function collectUpcomingGames({
       reserved: Number.isFinite(Number(pub.reserved)) ? Number(pub.reserved) : null,
       capacity: Number.isFinite(Number(pub.capacity)) ? Number(pub.capacity) : null,
       locationQuery: locationQuery({ location, address }),
+      manualOverride: Boolean(effective.manualOverride),
     });
   }
 
   for (const team of leagueSchedule?.teams || []) {
-    for (const match of team?.matches || []) {
+    for (const sourceMatch of team?.matches || []) {
+      const match = applyLeagueMatchOverride(
+        { ...sourceMatch, team: sourceMatch?.team || team?.name || "Team" },
+        settings,
+      );
       const date = clean(match?.date, 20);
       if (!date || date < startDate || date > endDate) continue;
       const window = gameWindow(
@@ -355,10 +377,12 @@ async function main() {
   const pickupFeed = readEncrypted(PICKUP_FEED_PATH, {});
   const pickupPrivate = readEncrypted(PICKUP_PRIVATE_PATH, {});
   const leagueSchedule = readEncrypted(LEAGUE_PATH, {});
+  const settings = loadUserSettings();
   const { startDate, endDate, games } = collectUpcomingGames({
     pickupFeed,
     pickupPrivate,
     leagueSchedule,
+    settings,
   });
 
   const locations = { ...(previous.locations || {}) };

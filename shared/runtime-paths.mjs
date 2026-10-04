@@ -44,6 +44,7 @@ export const RUNTIME_SCOPES = Object.freeze({
     "state/web-board-version.json",
   ]),
   weather: Object.freeze([
+    "state/user.json",
     "pickup/state/feed.json",
     "pickup/state/events.json",
     "league/state/schedule.json",

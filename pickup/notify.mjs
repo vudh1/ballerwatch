@@ -329,14 +329,22 @@ function remainingSpots(snapshot) {
     : null;
 }
 
-function publicDetailsChanged(previous, current) {
-  if (!previous || previous.date !== current.date) return false;
+function weatherDetailsChanged(previous, current) {
+  if (!previous) return false;
   return (
+    previous.date !== current.date ||
     previous.fieldName !== current.fieldName ||
     previous.address !== current.address ||
-    previous.locked !== current.locked ||
     previous.startTime !== current.startTime ||
     previous.endTime !== current.endTime
+  );
+}
+
+function publicDetailsChanged(previous, current) {
+  if (!previous) return false;
+  return (
+    weatherDetailsChanged(previous, current) ||
+    previous.locked !== current.locked
   );
 }
 
@@ -514,7 +522,12 @@ async function main() {
   const urgentCapacity = Number.isFinite(remaining) && remaining > 0 && remaining < 4;
   const isFull = Number.isFinite(remaining) && remaining <= 0;
   const thresholdReached = capacityThresholdReached(previousSnapshot, snapshot);
+  const weatherChanged = weatherDetailsChanged(previousSnapshot, snapshot);
   const detailsChanged = publicDetailsChanged(previousSnapshot, snapshot);
+  if (weatherChanged) {
+    fs.mkdirSync(".runtime/pickup", { recursive: true });
+    fs.writeFileSync(".runtime/pickup/weather-refresh-needed", "1\n");
+  }
 
   if (!thresholdReached && !detailsChanged && !selectionChanged) {
     if (changed || !state.snapshot) writeState(nextState);
