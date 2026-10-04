@@ -16,7 +16,8 @@
         "Kept Free Pickup out of pickup/league notification watcher logic so synthetic games do not create source-change or capacity notifications.",
         "Included only near-term synthetic Saturdays in the existing 14-day weather refresh while still showing farther Saturday cards through the schedule horizon.",
         "Allowed the administrator's hidden match override editor to edit/reset a Free Pickup card using its stable generated Saturday identity; an edit can request the existing maintenance weather refresh without creating a recurring watcher.",
-        "Bumped the installed PWA shell to 6.3.0 and labeled the spotlight type explicitly as Free Pickup."
+        "Bumped the installed PWA shell to 6.3.0 and labeled the spotlight type explicitly as Free Pickup.",
+        "Preserved RSVP-specific Q&A routing such as “am I in?” and spots/capacity questions while natural Saturday pickup questions use the combined schedule view that can include Free Pickup."
       ]
     },
     {
