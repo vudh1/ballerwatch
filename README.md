@@ -18,7 +18,7 @@ BallerWatch is a privacy-first soccer operations PWA for pickup games and Seattl
 - Supports answer-specific wrong-answer feedback without granting Settings access: double-click an answer on desktop, or press and hold it on touch; repeat the gesture to undo.
 - Lets a signed-in user submit encrypted feature requests with `/feature describe what you want`; only category/count aggregates are exposed publicly.
 - Synchronizes real RATS schedule changes to Google Calendar.
-- Lets the administrator apply encrypted manual date/time/location overrides to the selected match: press and hold the app version, or double-click the match card on desktop; Reset to source removes the override.
+- Lets the administrator apply encrypted manual date/time/location overrides to the selected match: press and hold the app version, or double-click the match card on desktop; Reset to source removes the override. RATS overrides also drive reminder timing and Google Calendar reconciliation.
 
 **Live app:** https://vudh1.github.io/ballerwatch/
 

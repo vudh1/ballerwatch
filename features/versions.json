@@ -14,7 +14,8 @@
         "Added Reset to source so removing an override immediately returns the web calendar, selected match card, and Q&A to discovered source values.",
         "Applied overrides to pickup and league reminder calculations and league notification text so reminders do not continue using a superseded manual time/location.",
         "Restricted shared match overrides to the administrator account; regular multi-user accounts cannot change global match data.",
-        "Added a subtle Manual override indicator to the selected match card and bumped the PWA shell to 6.2.0."
+        "Added a subtle Manual override indicator to the selected match card and bumped the PWA shell to 6.2.0.",
+        "Applied manual RATS overrides before Google Calendar reconciliation, so Calendar follows the override and Reset reconciles it back to the discovered source schedule."
       ]
     },
     {

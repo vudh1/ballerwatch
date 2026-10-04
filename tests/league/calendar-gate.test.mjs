@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  applyCalendarOverrides,
   compare,
   pairHash,
   sameCalendarMatch,
@@ -104,4 +105,36 @@ test("pair hash matches legacy Python implementation", () => {
     pairHash(match("x")),
     "ddb22c2f63c8a09655d48a0a960186c38d16639575e2007a77ed868790ad404f",
   );
+});
+
+
+test("calendar gate applies manual league overrides before reconciliation", () => {
+  const source = match("v2:override", "2026-10-05", "source-fingerprint");
+  source.startTime = "19:15";
+  source.endTime = "20:15";
+  source.location = "Source Field";
+
+  const feed = { teams: [{ name: "Team Alpha", matches: [source] }] };
+  const settings = {
+    matchOverrides: {
+      "league:v2:override": {
+        id: "league:v2:override",
+        kind: "league",
+        date: "2026-10-06",
+        startTime: "20:30",
+        endTime: "21:30",
+        location: "Manual Field",
+        updatedAt: "2026-10-03T20:00:00Z",
+      },
+    },
+  };
+
+  const applied = applyCalendarOverrides(feed, settings);
+  const current = applied.teams[0].matches[0];
+  assert.equal(current.key, "v2:override");
+  assert.equal(current.date, "2026-10-06");
+  assert.equal(current.start, "2026-10-06T20:30:00-07:00");
+  assert.equal(current.location, "Manual Field");
+  assert.notEqual(current.calendarFingerprint, "source-fingerprint");
+  assert.equal("manualOverride" in current, false);
 });

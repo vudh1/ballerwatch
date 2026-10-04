@@ -7,6 +7,9 @@
 import fs from "node:fs";
 import { pathToFileURL } from "node:url";
 import { dateInZone, digest, normalizeText, TZ } from "./rats-utils.mjs";
+import { calendarFingerprint } from "./watcher.mjs";
+import { applyLeagueMatchOverride } from "../shared/match-overrides.mjs";
+import { loadUserSettings } from "../shared/user-state.mjs";
 
 const SCHEDULE = "schedule.json";
 const STATE = "calendar-snapshot.json";
@@ -58,6 +61,24 @@ export function pairHash(match) {
     normalizeText(match?.opponent),
     normalizeText(match?.homeAway),
   ].join("|"));
+}
+
+export function applyCalendarOverrides(feed, settings = {}) {
+  return {
+    ...(feed || {}),
+    teams: (feed?.teams || []).map((team) => ({
+      ...team,
+      matches: (team?.matches || []).map((sourceMatch) => {
+        const match = applyLeagueMatchOverride(sourceMatch, settings);
+        const clean = { ...match };
+        delete clean.overrideId;
+        delete clean.manualOverride;
+        delete clean.overrideUpdatedAt;
+        clean.calendarFingerprint = calendarFingerprint(clean);
+        return clean;
+      }),
+    })),
+  };
 }
 
 export function futureMatches(feed, now = new Date()) {
@@ -170,7 +191,7 @@ export function runCalendarGate({
   bootstrapFile = BOOTSTRAP,
   changesFile = CHANGES,
 } = {}) {
-  const feed = readJson(scheduleFile);
+  const feed = applyCalendarOverrides(readJson(scheduleFile), loadUserSettings());
   const current = futureMatches(feed, now);
   const state = hydrateStateFromBootstrap(current, {stateFile, bootstrapFile});
   const {pending, missing} = compare(feed, state, now);
