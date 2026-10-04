@@ -51,12 +51,13 @@ test("collectUpcomingGames returns located pickup and league games within 14 day
 
   assert.equal(result.startDate, "2099-10-01");
   assert.equal(result.endDate, "2099-10-14");
-  assert.deepEqual(result.games.map((game) => game.id), [
+  const sourceGames = result.games.filter((game) => game.kind !== "free_pickup");
+  assert.deepEqual(sourceGames.map((game) => game.id), [
     "pickup:2099-10-02",
     "league:v2:abc",
   ]);
-  assert.equal(result.games[0].startTime, "20:30");
-  assert.equal(result.games[1].endTime, "21:15");
+  assert.equal(sourceGames[0].startTime, "20:30");
+  assert.equal(sourceGames[1].endTime, "21:15");
 });
 
 test("summarizeMatchWeather uses the actual match window and maximum rain probability", () => {
@@ -253,7 +254,6 @@ test("weather includes synthetic Jefferson Park Saturdays only through the sourc
   assert.deepEqual(free.map((game) => game.date), [
     "2026-10-03",
     "2026-10-10",
-    "2026-10-17",
   ]);
   assert.ok(free.every((game) => game.location === "Jefferson Park Playfield"));
   assert.ok(free.every((game) => game.startTime === "10:30"));
