@@ -786,7 +786,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=6.2.0", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=6.3.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -1105,7 +1105,11 @@ function spotlightModel(game, label = "NEXT GAME") {
   return {
     label,
     title: game.dateLabel || game.title || "Upcoming game",
-    type: game.kind === "pickup" ? "Pickup" : "League",
+    type: game.kind === "pickup"
+      ? "Pickup"
+      : game.kind === "free_pickup"
+        ? "Free Pickup"
+        : "League",
     meta: [game.time, game.title && game.title !== game.dateLabel ? game.title : ""]
       .filter(Boolean)
       .join(" • "),

@@ -1,7 +1,24 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "6.2.0",
+  "currentVersion": "6.3.0",
   "releases": [
+    {
+      "version": "6.3.0",
+      "date": "2026-10-03",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Automatic Saturday free pickup",
+      "webAnnouncement": "BallerWatch now fills the published schedule horizon with Saturday Free Pickup at Jefferson Park Playfield, without RSVP or a new watcher.",
+      "changes": [
+        "Added deterministic Free Pickup cards every Saturday from 10:30 AM to 12:30 PM at Jefferson Park Playfield.",
+        "The recurring Saturday schedule extends only through the furthest effective future date already known from RSVP pickup or RATS league, so it grows automatically with the real source schedules.",
+        "Free Pickup is a distinct match type with Directions, Share, weather, Q&A, calendar navigation, and next-game support, but no RSVP button, roster status, capacity count, or dedicated source watcher.",
+        "Kept Free Pickup out of pickup/league notification watcher logic so synthetic games do not create source-change or capacity notifications.",
+        "Included only near-term synthetic Saturdays in the existing 14-day weather refresh while still showing farther Saturday cards through the schedule horizon.",
+        "Allowed the administrator's hidden match override editor to edit/reset a Free Pickup card using its stable generated Saturday identity; an edit can request the existing maintenance weather refresh without creating a recurring watcher.",
+        "Bumped the installed PWA shell to 6.3.0 and labeled the spotlight type explicitly as Free Pickup."
+      ]
+    },
     {
       "version": "6.2.0",
       "date": "2026-10-03",

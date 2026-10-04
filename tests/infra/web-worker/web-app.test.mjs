@@ -178,7 +178,7 @@ test("web next-game details remain public-safe and prefer the earliest future ga
         }],
       }],
     },
-  });
+  }, new Date("2099-10-07T12:00:00-07:00"));
 
   assert.equal(details.kind, "pickup");
   assert.equal(details.date, "2099-10-08");
@@ -221,7 +221,7 @@ test("league next-game details expose a two-hour time window from normalized end
         }],
       }],
     },
-  });
+  }, new Date("2099-10-10T13:00:00-07:00"));
 
   assert.equal(details.kind, "league");
   assert.equal(details.time, "7:30 PM–9:30 PM");
@@ -317,12 +317,12 @@ test("web calendar merges public games with cached match-window weather", () => 
   };
 
   const calendar = webCalendarDetails(snapshot, weather, 14, "2099-10-01");
-  assert.equal(calendar.games.length, 1);
-  assert.equal(calendar.games[0].id, "pickup:2099-10-08");
-  assert.equal(calendar.games[0].rsvpUrl, "https://nhcuong95.github.io/rsvp/?date=2099-10-08");
-  assert.equal(calendar.games[0].sourceUpdatedAt, "2099-10-01T10:15:00Z");
-  assert.equal(calendar.games[0].weather.rainProbability, 65);
-  assert.equal(calendar.games[0].weather.temperatureF, 58);
+  const pickup = calendar.games.find((game) => game.id === "pickup:2099-10-08");
+  assert.ok(pickup);
+  assert.equal(pickup.rsvpUrl, "https://nhcuong95.github.io/rsvp/?date=2099-10-08");
+  assert.equal(pickup.sourceUpdatedAt, "2099-10-01T10:15:00Z");
+  assert.equal(pickup.weather.rainProbability, 65);
+  assert.equal(pickup.weather.temperatureF, 58);
   assert.doesNotMatch(JSON.stringify(calendar), /Private Person/);
   assert.equal(calendar.refreshHours, 6);
 });
@@ -393,7 +393,9 @@ test("web calendar keeps future league matches beyond the 14-day weather window"
 
   const calendar = webCalendarDetails(snapshot, {}, 14, "2099-10-01");
   assert.deepEqual(
-    calendar.games.map((game) => [game.kind, game.date]),
+    calendar.games
+      .filter((game) => game.kind !== "free_pickup")
+      .map((game) => [game.kind, game.date]),
     [
       ["league", "2099-10-06"],
       ["pickup", "2099-10-08"],
@@ -434,8 +436,10 @@ test("calendar exposes approximate weather markers", () => {
     }],
   };
   const calendar = webCalendarDetails(snapshot, weatherState, 14, "2099-10-01");
-  assert.equal(calendar.games[0].weatherApproximate, true);
-  assert.equal(calendar.games[0].weather.rainProbability, 30);
+  const league = calendar.games.find((game) => game.id === "league:v2:weather-fallback");
+  assert.ok(league);
+  assert.equal(league.weatherApproximate, true);
+  assert.equal(league.weather.rainProbability, 30);
 });
 
 
@@ -621,12 +625,13 @@ test("web calendar and next-game views honor encrypted match overrides while kee
     "2099-10-01",
     new Date("2099-10-01T12:00:00Z"),
   );
-  assert.equal(calendar.games[0].id, "pickup:2099-10-08");
-  assert.equal(calendar.games[0].date, "2099-10-09");
-  assert.equal(calendar.games[0].location, "Manual Field");
-  assert.equal(calendar.games[0].overrideActive, true);
+  const overriddenPickup = calendar.games.find((game) => game.id === "pickup:2099-10-08");
+  assert.ok(overriddenPickup);
+  assert.equal(overriddenPickup.date, "2099-10-09");
+  assert.equal(overriddenPickup.location, "Manual Field");
+  assert.equal(overriddenPickup.overrideActive, true);
 
-  const next = webNextGameDetails(snapshot, new Date("2099-10-01T12:00:00Z"));
+  const next = webNextGameDetails(snapshot, new Date("2099-10-08T12:00:00-07:00"));
   assert.equal(next.id, "pickup:2099-10-08");
   assert.equal(next.date, "2099-10-09");
   assert.equal(next.startTime, "9:00 PM");
