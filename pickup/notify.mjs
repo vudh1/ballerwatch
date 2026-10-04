@@ -8,6 +8,11 @@ import crypto from "node:crypto";
 import { loadUserSettings } from "../shared/user-state.mjs";
 import { decryptState, encryptState } from "../shared/state-crypto.mjs";
 import { appendWebNotification } from "../shared/web-notifications.mjs";
+import {
+  localMinutesUntilStart,
+  matchStartReminderDue,
+  rsvpReminderDue,
+} from "../shared/match-reminders.mjs";
 import { parseTime, selectPrimaryEvent, weekStart } from "./selection.mjs";
 
 const TIME_ZONE = "America/Los_Angeles";
@@ -23,12 +28,13 @@ if (!STATE_SECRET) {
 
 async function deliverPickupNotification({
   body,
+  webText = "",
   title = "Pickup update",
   tag = "ballerwatch-pickup",
 }) {
   appendWebNotification("pickup", {
     title,
-    body,
+    body: webText || body,
     tag,
   });
   return true;
@@ -269,177 +275,50 @@ function formatDate(date) {
   return `${weekday} ${month}/${day}`;
 }
 
-function normalizeName(name) {
-  return String(name || "").trim().replace(/\s+/g, " ").toLocaleLowerCase("en-US");
-}
-
-function normalizePerson(person) {
-  return {
-    name: String(person?.name || "").trim(),
-    participantCount: Math.max(1, Number(person?.participantCount || 1)),
-    withdrawRequested: Boolean(person?.withdrawRequested),
-  };
-}
-
 function snapshotFromEvent(event) {
   return {
     date: event.date,
     fieldName: String(event.private.fieldName || ""),
     address: String(event.private.address || ""),
     locked: Boolean(event.private.locked),
-    players: (Array.isArray(event.private.players) ? event.private.players : []).map(normalizePerson),
-    waitlist: (Array.isArray(event.private.waitlist) ? event.private.waitlist : []).map(normalizePerson),
+    reserved: Number.isFinite(Number(event.reserved)) ? Number(event.reserved) : null,
+    capacity: Number.isFinite(Number(event.capacity)) ? Number(event.capacity) : null,
+    startTime: String(event.startTime || ""),
+    endTime: String(event.endTime || ""),
   };
 }
 
 function secureFingerprint(event, snapshot) {
-  const canonical = {
-    date: event.date,
-    reserved: Number(event.reserved),
-    capacity: event.capacity == null ? null : Number(event.capacity),
-    startTime: String(event.startTime || ""),
-    endTime: String(event.endTime || ""),
-    snapshot,
-  };
-
   return crypto
     .createHmac("sha256", stateKey())
-    .update(JSON.stringify(canonical))
+    .update(JSON.stringify(snapshot))
     .digest("hex");
 }
 
-function toMap(items) {
-  return new Map(
-    (Array.isArray(items) ? items : []).map((item) => [
-      normalizeName(item.name),
-      item,
-    ]),
+function remainingSpots(snapshot) {
+  return Number.isFinite(snapshot?.reserved) && Number.isFinite(snapshot?.capacity)
+    ? snapshot.capacity - snapshot.reserved
+    : null;
+}
+
+function publicDetailsChanged(previous, current) {
+  if (!previous || previous.date !== current.date) return false;
+  return (
+    previous.fieldName !== current.fieldName ||
+    previous.address !== current.address ||
+    previous.locked !== current.locked ||
+    previous.startTime !== current.startTime ||
+    previous.endTime !== current.endTime
   );
 }
 
-function personSpots(person) {
-  const count = Math.max(1, Number(person?.participantCount || 1));
-  return count === 1 ? "1 spot" : `${count} spots`;
-}
-
-function diffRoster(previous, current) {
-  if (!previous || previous.date !== current.date) return [];
-
-  const changes = [];
-  const prevPlayers = toMap(previous.players);
-  const currPlayers = toMap(current.players);
-  const prevWait = toMap(previous.waitlist);
-  const currWait = toMap(current.waitlist);
-
-  for (const [key, person] of currPlayers) {
-    const before = prevPlayers.get(key);
-
-    if (!before) {
-      if (prevWait.has(key)) {
-        changes.push(`• ${person.name} was promoted from the waitlist`);
-      } else {
-        changes.push(`• ${person.name} RSVP\'d for ${personSpots(person)}`);
-      }
-      continue;
-    }
-
-    if (Number(before.participantCount) !== Number(person.participantCount)) {
-      changes.push(
-        `• ${person.name} changed RSVP from ${personSpots(before)} to ${personSpots(person)}`,
-      );
-    }
-
-    if (!before.withdrawRequested && person.withdrawRequested) {
-      changes.push(`• ${person.name} requested to withdraw`);
-    } else if (before.withdrawRequested && !person.withdrawRequested) {
-      changes.push(`• ${person.name} canceled the withdraw request`);
-    }
-  }
-
-  for (const [key, person] of prevPlayers) {
-    if (currPlayers.has(key)) continue;
-    if (currWait.has(key)) {
-      changes.push(`• ${person.name} moved to the waitlist`);
-    } else if (person.withdrawRequested) {
-      changes.push(`• ${person.name} withdrew`);
-    } else {
-      changes.push(`• ${person.name} removed the RSVP`);
-    }
-  }
-
-  for (const [key, person] of currWait) {
-    if (prevWait.has(key) || prevPlayers.has(key)) continue;
-    changes.push(`• ${person.name} joined the waitlist for ${personSpots(person)}`);
-  }
-
-  for (const [key, person] of prevWait) {
-    if (currWait.has(key) || currPlayers.has(key)) continue;
-    changes.push(`• ${person.name} left the waitlist`);
-  }
-
-  if (previous.fieldName !== current.fieldName || previous.address !== current.address) {
-    changes.push("• Match location was updated");
-  }
-
-  return changes;
-}
-
-function ownerStatus(snapshot, settings) {
-  const myName = normalizeName(settings?.ownerRsvpName || process.env.OWNER_RSVP_NAME);
-  if (!myName || !snapshot) {
-    return { confirmed: false, waitlisted: false, waitlistPosition: null };
-  }
-
-  const playerIndex = (snapshot.players || []).findIndex(
-    (person) => normalizeName(person.name) === myName,
-  );
-  const waitlistIndex = (snapshot.waitlist || []).findIndex(
-    (person) => normalizeName(person.name) === myName,
-  );
-
-  return {
-    confirmed: playerIndex >= 0,
-    waitlisted: waitlistIndex >= 0,
-    waitlistPosition: waitlistIndex >= 0 ? waitlistIndex + 1 : null,
-  };
-}
-
-function ownerChangeLines(previous, current) {
-  if (!previous) return [];
-
-  if (previous.waitlisted && current.confirmed) {
-    return ["✅ YOU ARE NOW CONFIRMED — promoted from waitlist"];
-  }
-
-  if (!previous.waitlisted && current.waitlisted) {
-    return [`🎟️ YOU ARE ON THE WAITLIST — position #${current.waitlistPosition}`];
-  }
-
-  if (
-    previous.waitlisted &&
-    current.waitlisted &&
-    previous.waitlistPosition !== current.waitlistPosition
-  ) {
-    return [
-      `🎟️ WAITLIST POSITION: #${previous.waitlistPosition} → #${current.waitlistPosition}`,
-    ];
-  }
-
-  if ((previous.confirmed || previous.waitlisted) && !current.confirmed && !current.waitlisted) {
-    return ["⚠️ YOU ARE NO LONGER CONFIRMED OR ON THE WAITLIST"];
-  }
-
-  return [];
-}
-
-function ownerCurrentLine(status) {
-  if (status.waitlisted) {
-    return `🎟️ YOU ARE ON THE WAITLIST — position #${status.waitlistPosition}`;
-  }
-  if (status.confirmed) {
-    return "✅ YOU ARE CONFIRMED";
-  }
-  return "";
+function capacityThresholdReached(previous, current) {
+  if (!previous || previous.date !== current.date) return false;
+  const before = remainingSpots(previous);
+  const after = remainingSpots(current);
+  if (!Number.isFinite(before) || !Number.isFinite(after) || before === after) return false;
+  // Low-capacity notifications fire whenever the remaining count reaches 3, 2, 1, or full.
+  return after <= 3;
 }
 
 function googleMapsUrl(fieldName, address) {
@@ -473,6 +352,77 @@ function timeLine(event) {
   return "";
 }
 
+async function processScheduledReminders(state, now, settings) {
+  const rsvpSent = new Set(
+    Array.isArray(state.rsvpReminderDates) ? state.rsvpReminderDates : [],
+  );
+  const hourSent = new Set(
+    Array.isArray(state.matchHourReminderDates) ? state.matchHourReminderDates : [],
+  );
+  const dates = currentFutureDates(now.date);
+
+  for (const date of dates) {
+    if (isDateSnoozed(settings, date)) continue;
+    const event = eventForDate(date);
+    if (!event) continue;
+    const startMinute = parseTime(event.startTime);
+    const minutesUntilStart = localMinutesUntilStart({
+      matchDate: date,
+      startMinute,
+      nowDate: now.date,
+      nowMinute: now.minuteOfDay,
+    });
+    if (!Number.isFinite(minutesUntilStart)) continue;
+
+    const reserved = Number(event.reserved);
+    const capacity = Number(event.capacity);
+    const remaining =
+      Number.isFinite(reserved) && Number.isFinite(capacity)
+        ? capacity - reserved
+        : null;
+    const capacityLine = Number.isFinite(reserved) && Number.isFinite(capacity)
+      ? (remaining > 0
+          ? `${reserved}/${capacity} reserved — ${remaining} ${remaining === 1 ? "spot" : "spots"} left`
+          : `${reserved}/${capacity} reserved — full`)
+      : "";
+    const publicLines = [
+      formatDate(date),
+      capacityLine,
+      ...locationLines(snapshotFromEvent(event)),
+      timeLine(event),
+    ].filter(Boolean);
+
+    if (
+      !rsvpSent.has(date) &&
+      !event.private?.locked &&
+      (!Number.isFinite(remaining) || remaining > 0) &&
+      rsvpReminderDue(minutesUntilStart)
+    ) {
+      await deliverPickupNotification({
+        body: [...publicLines, "RSVP if you plan to play."].join("\n"),
+        title: "Pickup RSVP reminder",
+        tag: `pickup-rsvp-reminder-${date}`,
+      });
+      rsvpSent.add(date);
+    }
+
+    if (!hourSent.has(date) && matchStartReminderDue(minutesUntilStart)) {
+      await deliverPickupNotification({
+        body: ["Starts in about 1 hour.", ...publicLines].join("\n"),
+        title: "Pickup starts in 1 hour",
+        tag: `pickup-start-reminder-${date}`,
+      });
+      hourSent.add(date);
+    }
+  }
+
+  return {
+    ...state,
+    rsvpReminderDates: [...rsvpSent].filter((date) => date >= now.date).sort(),
+    matchHourReminderDates: [...hourSent].filter((date) => date >= now.date).sort(),
+  };
+}
+
 async function main() {
   const now = pacificParts();
   const nowIso = new Date().toISOString();
@@ -480,6 +430,7 @@ async function main() {
   const settings = loadUserSettings();
 
   state = await processNewDates(state, now, settings);
+  state = await processScheduledReminders(state, now, settings);
   writeState(state);
 
   const selected = selectEvent(now, settings);
@@ -505,26 +456,9 @@ async function main() {
     console.log("Selected closest-week event is muted/snoozed; state recorded without notification.");
     return;
   }
-  const currentOwner = ownerStatus(snapshot, settings);
-  const previousOwner =
-    previousSnapshot?.date === snapshot.date ? ownerStatus(previousSnapshot, settings) : null;
-  const ownerChanges = ownerChangeLines(previousOwner, currentOwner);
-  const ownerStatusChanged = ownerChanges.length > 0;
-
-  const ownerSuppressionActive =
-    currentOwner.confirmed &&
-    !(!snapshot.locked && Number(event.reserved) <= 16) &&
-    !ownerStatusChanged;
-
-  if (ownerSuppressionActive) {
-    console.log("Owner is already confirmed; notification suppressed.");
-    return;
-  }
-
   const changed = state.lastObservedFingerprint !== currentFingerprint;
   const sameEventAsPrevious = previousSnapshot?.date === snapshot.date;
   const selectionChanged = Boolean(state.eventDate && state.eventDate !== event.date);
-  const rosterChanges = diffRoster(previousSnapshot, snapshot);
 
   const nextState = {
     ...state,
@@ -551,77 +485,52 @@ async function main() {
   const remaining = Number.isFinite(capacity) ? capacity - reserved : null;
   const urgentCapacity = Number.isFinite(remaining) && remaining > 0 && remaining < 4;
   const isFull = Number.isFinite(remaining) && remaining <= 0;
+  const thresholdReached = capacityThresholdReached(previousSnapshot, snapshot);
+  const detailsChanged = publicDetailsChanged(previousSnapshot, snapshot);
 
-  if (!changed && !ownerStatusChanged) {
-    console.log("No meaningful pickup change; duplicate notification suppressed.");
+  if (!thresholdReached && !detailsChanged && !selectionChanged) {
+    if (changed || !state.snapshot) writeState(nextState);
+    console.log("No public notification threshold or match-detail change.");
     return;
   }
 
   const capacityText = Number.isFinite(capacity) ? capacity : "?";
-  const lines = [];
+  const webLines = [];
 
-  if (urgentCapacity) {
-    lines.push(
-      `🚨 ONLY ${remaining} ${remaining === 1 ? "SPOT" : "SPOTS"} LEFT`,
-    );
-  } else if (isFull) {
-    lines.push("⛔ RSVP FULL");
-  }
-
-  if (ownerChanges.length) {
-    lines.push(...ownerChanges);
-  } else {
-    const personalStatus = ownerCurrentLine(currentOwner);
-    if (personalStatus) lines.push(personalStatus);
-  }
-
-  if (selectionChanged) {
-    lines.push(`🔄 Primary watch switched to ${formatDate(event.date)}`);
-  }
-
-  lines.push(
-    `${reserved}/${capacityText} reserved - ${formatDate(event.date)}`,
-    ...locationLines(snapshot),
-    timeLine(event),
-  );
-
-  if (changed && previousSnapshot && sameEventAsPrevious) {
-    lines.push("", "Changes:");
-    if (rosterChanges.length) {
-      lines.push(...rosterChanges);
-    } else {
-      lines.push("• RSVP status changed, but the person/action could not be identified from the site data.");
+  if (thresholdReached) {
+    if (urgentCapacity) {
+      webLines.push(
+        `🚨 ONLY ${remaining} ${remaining === 1 ? "SPOT" : "SPOTS"} LEFT`,
+      );
+    } else if (isFull) {
+      webLines.push("⛔ RSVP FULL");
     }
   }
 
-  const webLines = [];
-  if (urgentCapacity) {
-    webLines.push(
-      `🚨 ONLY ${remaining} ${remaining === 1 ? "SPOT" : "SPOTS"} LEFT`,
-    );
-  } else if (isFull) {
-    webLines.push("⛔ RSVP FULL");
-  }
   if (selectionChanged) {
     webLines.push(`🔄 Primary watch switched to ${formatDate(event.date)}`);
   }
+
+  if (detailsChanged) {
+    if (previousSnapshot?.locked !== snapshot.locked) {
+      webLines.push(snapshot.locked ? "🔒 RSVP is now locked" : "🔓 RSVP reopened");
+    }
+    webLines.push("Match time or location details changed.");
+  }
+
   webLines.push(
     `${reserved}/${capacityText} reserved - ${formatDate(event.date)}`,
     ...locationLines(snapshot),
     timeLine(event),
   );
-  if (changed && sameEventAsPrevious) {
-    webLines.push("RSVP list or match details changed.");
-  }
 
   const webRecorded = await deliverPickupNotification({
-    body: lines.filter(Boolean).join("\n"),
-    webText: webLines.filter(Boolean).join("\n"),
-    title: urgentCapacity
+    body: webLines.filter(Boolean).join("\n"),
+    title: thresholdReached && urgentCapacity
       ? `Pickup: ${remaining} ${remaining === 1 ? "spot" : "spots"} left`
-      : isFull
+      : thresholdReached && isFull
         ? "Pickup RSVP full"
-        : "Pickup update",
+        : "Pickup details updated",
     tag: `pickup-${event.date}`,
   });
 
@@ -629,21 +538,20 @@ async function main() {
     ...nextState,
     lastSentAt: nowIso,
     lastSentFingerprint: currentFingerprint,
-    lastSendReason: ownerStatusChanged
-      ? "owner-status-change"
-      : urgentCapacity
-        ? "change-urgent-capacity"
-        : "change",
+    lastSendReason: thresholdReached
+      ? (isFull ? "capacity-full" : "capacity-threshold")
+      : selectionChanged
+        ? "selection-change"
+        : "details-change",
   });
 
-  // Never log notification message content: workflow logs are public.
   console.log(
     `${webRecorded ? "Web" : "No"} notification recorded (${
-      ownerStatusChanged
-        ? "owner status change"
-        : urgentCapacity
-          ? "site change + urgent capacity"
-          : "site change"
+      thresholdReached
+        ? (isFull ? "capacity full" : "capacity threshold")
+        : selectionChanged
+          ? "selection change"
+          : "match details change"
     }).`,
   );
 }

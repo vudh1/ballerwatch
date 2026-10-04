@@ -33,6 +33,7 @@ export const RUNTIME_SCOPES = Object.freeze({
     "league/state/today.json",
     "league/state/calendar-snapshot.json",
     "league/state/edge-signal.json",
+    "league/state/notify.json",
     "state/web-push.json",
     "state/web-board-league.json",
   ]),

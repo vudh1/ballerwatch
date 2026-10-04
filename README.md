@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer operations PWA for pickup games and Seattle RATS league matches.
 
-**Current source version: 6.1.0**
+**Current source version: 6.1.1**
 
 **Production source of truth:** the commit pointed to by `production` and its published GitHub Release. `main` may be newer without changing the live app.
 
@@ -112,9 +112,14 @@ GitHub Pages itself does not provide arbitrary repository-controlled response he
 
 Allowed proactive user notifications:
 
-- pickup RSVP/capacity changes;
+- new pickup dates and public pickup time/location updates;
+- pickup low-capacity thresholds at 3, 2, 1, and full;
+- one generic pickup RSVP reminder during the 24-hour window before kickoff;
+- one generic pickup or RATS match reminder during the final 60 minutes before kickoff;
 - real RATS schedule changes;
 - one combined release announcement per Pacific day.
+
+Web Push is a shared broadcast channel. User-specific RSVP names, roster names, confirmation state, and waitlist position stay inside authenticated app views and are never placed on the public notification board.
 
 Tests, smoke runs, builds, deploys, watchdog health events, commits, PRs, score-only changes, and setup reminders must not send Web Push.
 

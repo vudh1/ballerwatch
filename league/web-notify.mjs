@@ -5,11 +5,19 @@
  * external messaging adapter and performs no network sends itself.
  */
 import fs from "node:fs";
+import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { decryptState, encryptState } from "../shared/state-crypto.mjs";
+import {
+  absoluteMinutesUntilStart,
+  matchStartReminderDue,
+} from "../shared/match-reminders.mjs";
 import { appendWebNotification } from "../shared/web-notifications.mjs";
 
 const TZ = "America/Los_Angeles";
 const UPDATE = "notification-update.json";
+const SCHEDULE = "schedule.json";
+const REMINDER_STATE = "state/notify.json";
 
 export function formatTime(value) {
   if (!value) return "time not published";
@@ -57,25 +65,105 @@ export function buildWebText(updates) {
   return lines.join("\n");
 }
 
-export function notifyWeb() {
-  if (!fs.existsSync(UPDATE)) {
-    console.log("No successful Calendar changes to notify.");
-    return false;
+function loadReminderState() {
+  try {
+    const encrypted = JSON.parse(fs.readFileSync(REMINDER_STATE, "utf8"));
+    const value = decryptState(encrypted);
+    return value && typeof value === "object" ? value : {};
+  } catch {
+    return {};
   }
-  const data = JSON.parse(fs.readFileSync(UPDATE, "utf8"));
-  const updates = Array.isArray(data.updates) ? data.updates : [];
-  if (!updates.length) {
-    console.log("No successful Calendar changes to notify.");
+}
+
+function saveReminderState(value) {
+  const current = loadReminderState();
+  if (JSON.stringify(current) === JSON.stringify(value)) return false;
+  fs.mkdirSync(path.dirname(REMINDER_STATE), { recursive: true });
+  fs.writeFileSync(
+    REMINDER_STATE,
+    JSON.stringify(encryptState(value), null, 2) + "\n",
+  );
+  return true;
+}
+
+function scheduleMatches() {
+  try {
+    const schedule = JSON.parse(fs.readFileSync(SCHEDULE, "utf8"));
+    return (Array.isArray(schedule?.teams) ? schedule.teams : [])
+      .flatMap((team) => Array.isArray(team?.matches) ? team.matches : [])
+      .filter((match) => match?.key && match?.start);
+  } catch {
+    return [];
+  }
+}
+
+export function recordLeagueStartReminders({ now = new Date() } = {}) {
+  const state = loadReminderState();
+  const sent = new Set(Array.isArray(state.matchHourKeys) ? state.matchHourKeys : []);
+  const matches = scheduleMatches();
+  const due = matches.filter((match) =>
+    !sent.has(String(match.key)) &&
+    matchStartReminderDue(absoluteMinutesUntilStart(match.start, now))
+  );
+
+  if (!due.length) {
+    const futureKeys = new Set(
+      matches
+        .filter((match) => Number(absoluteMinutesUntilStart(match.start, now)) > 0)
+        .map((match) => String(match.key)),
+    );
+    const nextKeys = [...sent].filter((key) => futureKeys.has(key));
+    if (nextKeys.length !== sent.size) saveReminderState({ matchHourKeys: nextKeys });
     return false;
   }
 
-  appendWebNotification("league", {
-    title: "RATS schedule updated",
-    body: buildWebText(updates),
-    tag: `rats-${updates[0]?.match?.date || "schedule"}`,
+  const lines = due.map((match) => {
+    const jersey = match.jerseyColor || "not published";
+    const location = match.location || "location not published";
+    return (
+      `${jerseyIcon(jersey)} ${match.team} vs ${match.opponent} — ` +
+      `${formatTime(match.start)} — ${location} — ${jersey} jersey`
+    );
   });
-  console.log(`Web notification recorded for ${updates.length} schedule update(s).`);
+
+  appendWebNotification("league", {
+    title: due.length === 1 ? "Match starts in 1 hour" : "Matches start in 1 hour",
+    body: lines.join("\n"),
+    tag: `rats-start-${String(due[0].key).slice(0, 80)}`,
+  });
+
+  for (const match of due) sent.add(String(match.key));
+  const futureKeys = new Set(
+    matches
+      .filter((match) => Number(absoluteMinutesUntilStart(match.start, now)) > 0)
+      .map((match) => String(match.key)),
+  );
+  saveReminderState({
+    matchHourKeys: [...sent].filter((key) => futureKeys.has(key)).sort(),
+  });
+  console.log(`Recorded ${due.length} one-hour league match reminder(s).`);
   return true;
+}
+
+export function notifyWeb({ now = new Date() } = {}) {
+  let recorded = false;
+  if (fs.existsSync(UPDATE)) {
+    const data = JSON.parse(fs.readFileSync(UPDATE, "utf8"));
+    const updates = Array.isArray(data.updates) ? data.updates : [];
+    if (updates.length) {
+      appendWebNotification("league", {
+        title: "RATS schedule updated",
+        body: buildWebText(updates),
+        tag: `rats-${updates[0]?.match?.date || "schedule"}`,
+      });
+      console.log(`Web notification recorded for ${updates.length} schedule update(s).`);
+      recorded = true;
+    }
+  }
+
+  if (recordLeagueStartReminders({ now })) recorded = true;
+  if (!recorded) console.log("No league web notification is due.");
+  return recorded;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

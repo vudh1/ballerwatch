@@ -9,6 +9,7 @@ import {
   formatTime,
   jerseyIcon,
   notifyWeb,
+  recordLeagueStartReminders,
 } from "../../league/web-notify.mjs";
 import { loadWebNotificationChannel } from "../../shared/web-notifications.mjs";
 
@@ -66,4 +67,44 @@ test("web notification builder remains one schedule-change payload", () => {
   }]);
   assert.match(text, /^Added:/);
   assert.equal(text.match(/Added:/g)?.length, 1);
+});
+
+
+test("one-hour league reminder is emitted once per match", (t) => {
+  const originalCwd = process.cwd();
+  const previousKey = process.env.TRACKER_STATE_KEY;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ballerwatch-league-reminder-"));
+  process.chdir(dir);
+  process.env.TRACKER_STATE_KEY = "synthetic-league-reminder-key";
+  t.after(() => {
+    process.chdir(originalCwd);
+    if (previousKey === undefined) delete process.env.TRACKER_STATE_KEY;
+    else process.env.TRACKER_STATE_KEY = previousKey;
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  fs.writeFileSync("schedule.json", JSON.stringify({
+    teams: [{
+      name: "Team Alpha",
+      matches: [{
+        key: "v2:hour-reminder",
+        team: "Team Alpha",
+        opponent: "Team Beta",
+        start: "2026-10-05T20:00:00-07:00",
+        location: "League Field",
+        jerseyColor: "Black",
+      }],
+    }],
+  }));
+
+  const now = new Date("2026-10-05T19:05:00-07:00");
+  assert.equal(recordLeagueStartReminders({ now }), true);
+  assert.equal(recordLeagueStartReminders({ now }), false);
+
+  const board = loadWebNotificationChannel("league");
+  assert.equal(board.entries.length, 1);
+  assert.equal(board.entries[0].title, "Match starts in 1 hour");
+  assert.match(board.entries[0].body, /Team Alpha vs Team Beta/);
+  assert.equal(fs.existsSync(".runtime/web-push-pending"), true);
+  assert.doesNotMatch(fs.readFileSync("state/notify.json", "utf8"), /hour-reminder/);
 });

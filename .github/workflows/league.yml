@@ -82,8 +82,8 @@ jobs:
           GOOGLE_CALENDAR_WEBHOOK_SECRET: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_SECRET }}
         run: node google-calendar-sync.mjs
 
-      - name: Record web schedule notification
-        if: steps.gate.outputs.should_run == 'true' && steps.calendar_gate.outputs.needsCalendar == 'true'
+      - name: Record league web notifications
+        if: steps.gate.outputs.should_run == 'true'
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
         run: node web-notify.mjs

@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "6.1.0",
+  "currentVersion": "6.1.1",
   "releases": [
+    {
+      "version": "6.1.1",
+      "date": "2026-10-03",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Notification reminders and multi-user-safe Web Push",
+      "changes": [
+        "Restored proactive pickup RSVP reminders as one public-safe reminder in the final 24 hours before a pickup match when RSVP is still open and space remains.",
+        "Added one public-safe match reminder in the final 60 minutes before every pickup and monitored RATS league match.",
+        "Changed pickup capacity alerts to fire when remaining capacity reaches 3, 2, 1, or full, while continuing to notify public time/location/lock changes.",
+        "Removed single-user RSVP status and roster-name details from shared pickup notification-board messages so multi-user Web Push remains privacy-safe.",
+        "Changed the league notifier to run on every 5-minute league watcher cycle so one-hour reminders do not depend on a schedule change.",
+        "Kept version announcements bundled to at most one notification per Pacific day through the existing watchdog policy."
+      ]
+    },
     {
       "version": "6.1.0",
       "date": "2026-10-03",
