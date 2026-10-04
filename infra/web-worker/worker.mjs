@@ -2428,9 +2428,10 @@ export function webSafeSnapshot(snapshot) {
     league: snapshot?.league || { teams: [] },
     today: snapshot?.today || { games: [] },
     teams: Array.isArray(snapshot?.teams) ? snapshot.teams : [],
-    settings: {
-      matchOverrides: cleanMatchOverrides(snapshot?.settings?.matchOverrides),
-    },
+    settings: (() => {
+      const matchOverrides = cleanMatchOverrides(snapshot?.settings?.matchOverrides);
+      return Object.keys(matchOverrides).length ? { matchOverrides } : {};
+    })(),
     ownerName: "",
     version: snapshot?.version || "unknown",
   };

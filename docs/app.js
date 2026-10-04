@@ -91,6 +91,18 @@ const els = {
   calendarGrid: document.querySelector("#calendar-grid"),
   calendarGamePicker: document.querySelector("#calendar-game-picker"),
   calendarUpdated: document.querySelector("#calendar-updated"),
+  matchOverrideDialog: document.querySelector("#match-override-dialog"),
+  closeMatchOverride: document.querySelector("#close-match-override"),
+  matchOverrideTitle: document.querySelector("#match-override-title"),
+  matchOverrideCopy: document.querySelector("#match-override-copy"),
+  matchOverrideForm: document.querySelector("#match-override-form"),
+  matchOverrideDate: document.querySelector("#match-override-date"),
+  matchOverrideStart: document.querySelector("#match-override-start"),
+  matchOverrideEnd: document.querySelector("#match-override-end"),
+  matchOverrideLocation: document.querySelector("#match-override-location"),
+  matchOverrideReset: document.querySelector("#match-override-reset"),
+  matchOverrideCancel: document.querySelector("#match-override-cancel"),
+  matchOverrideStatus: document.querySelector("#match-override-status"),
 };
 
 let config = null;
@@ -112,6 +124,7 @@ let lastAnswerExchange = null;
 let feedbackSubmitted = false;
 let feedbackId = "";
 let feedbackInFlight = false;
+let currentUserSettings = null;
 
 const OWNER_TOKEN_KEY = "ballerwatch-owner-token";
 const OWNER_USERNAME_KEY = "ballerwatch-user-name";
@@ -478,6 +491,7 @@ async function api(path, options = {}) {
 }
 
 function showLoginSettings(message = "") {
+  currentUserSettings = null;
   els.settingsLoginView.hidden = false;
   els.settingsOwnerView.hidden = true;
   if (els.ownerLoginUsername) {
@@ -516,6 +530,7 @@ function renderManagedUsers(users) {
 }
 
 function showOwnerSettings(settings) {
+  currentUserSettings = settings || null;
   els.settingsLoginView.hidden = true;
   els.settingsOwnerView.hidden = false;
   const username = settings?.username || localStorage.getItem(OWNER_USERNAME_KEY) || "admin";
@@ -771,7 +786,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=6.1.0", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=6.2.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -1103,7 +1118,10 @@ function spotlightModel(game, label = "NEXT GAME") {
       game.weatherStale,
       game.weatherApproximate,
     ),
-    updated: matchUpdatedText(game.sourceUpdatedAt),
+    updated: game.overrideActive
+      ? ["Manual override", matchUpdatedText(game.overrideUpdatedAt || game.sourceUpdatedAt)]
+          .filter(Boolean).join(" · ")
+      : matchUpdatedText(game.sourceUpdatedAt),
     rsvp: game.kind === "pickup" ? String(game.rsvpUrl || "") : "",
     rsvpConfirmed: game.kind === "pickup" && confirmedRsvpDates.has(game.date),
     rsvpWaitlisted: game.kind === "pickup" && waitlistedRsvpDates.has(game.date),
@@ -1856,6 +1874,139 @@ async function loadNextGame() {
   }
 }
 
+function inputClockValue(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  const match = text.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/i);
+  if (!match) return "";
+  let hour = Number(match[1]);
+  const minute = Number(match[2]);
+  const suffix = String(match[3] || "").toUpperCase();
+  if (suffix) {
+    hour = (hour % 12) + (suffix === "PM" ? 12 : 0);
+  }
+  if (hour > 23 || minute > 59) return "";
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+async function matchOverrideAdminSettings() {
+  if (!ownerToken()) {
+    await openSettings();
+    els.ownerLoginStatus.textContent = "Administrator sign-in is required to edit match overrides.";
+    return null;
+  }
+  if (currentUserSettings?.canManageMatches) return currentUserSettings;
+
+  try {
+    const payload = await api("/web/user/settings", {
+      headers: ownerHeaders(),
+      retryNetwork: true,
+    });
+    showOwnerSettings(payload.settings || {});
+    if (!payload.settings?.canManageMatches) {
+      els.nextGameHint.textContent = "Only the administrator can override match details.";
+      return null;
+    }
+    return payload.settings;
+  } catch (error) {
+    if (error.status === 401) {
+      localStorage.removeItem(OWNER_TOKEN_KEY);
+      await openSettings();
+      els.ownerLoginStatus.textContent = "Administrator sign-in is required to edit match overrides.";
+    } else {
+      els.nextGameHint.textContent = error.message;
+    }
+    return null;
+  }
+}
+
+async function openMatchOverrideEditor() {
+  if (!currentNextGame?.id) {
+    els.nextGameHint.textContent = "Select a match before editing.";
+    return;
+  }
+  const settings = await matchOverrideAdminSettings();
+  if (!settings?.canManageMatches) return;
+
+  els.matchOverrideTitle.textContent = currentNextGame.title || "Edit selected match";
+  els.matchOverrideCopy.textContent = currentNextGame.overrideActive
+    ? "Manual override is active. Edit it below or reset to the discovered source values."
+    : "Saving these values will override the discovered date, time, and location.";
+  els.matchOverrideDate.value = currentNextGame.date || "";
+  els.matchOverrideStart.value = inputClockValue(currentNextGame.startTime || "");
+  els.matchOverrideEnd.value = inputClockValue(currentNextGame.endTime || "");
+  els.matchOverrideLocation.value =
+    currentNextGame.location || currentNextGame.address || "";
+  els.matchOverrideReset.disabled = !currentNextGame.overrideActive;
+  els.matchOverrideStatus.textContent = currentNextGame.overrideActive
+    ? "Manual override active."
+    : "";
+  els.matchOverrideDialog.showModal();
+}
+
+async function saveMatchOverride(event) {
+  event.preventDefault();
+  if (!currentNextGame?.id) return;
+  const button = els.matchOverrideForm.querySelector('button[type="submit"]');
+  button.disabled = true;
+  els.matchOverrideReset.disabled = true;
+  els.matchOverrideStatus.textContent = "Saving override…";
+  try {
+    await api("/web/user/match-override", {
+      method: "POST",
+      headers: ownerHeaders(),
+      retryNetwork: true,
+      body: JSON.stringify({
+        id: currentNextGame.id,
+        date: els.matchOverrideDate.value,
+        startTime: els.matchOverrideStart.value,
+        endTime: els.matchOverrideEnd.value,
+        location: els.matchOverrideLocation.value.trim(),
+      }),
+    });
+    els.matchOverrideStatus.textContent = "Override saved.";
+    await loadCalendar();
+    window.setTimeout(() => {
+      if (els.matchOverrideDialog.open) els.matchOverrideDialog.close();
+    }, 180);
+  } catch (error) {
+    if (error.status === 401) {
+      localStorage.removeItem(OWNER_TOKEN_KEY);
+      els.matchOverrideDialog.close();
+      await openSettings();
+      els.ownerLoginStatus.textContent = "Sign in again to edit match overrides.";
+    } else {
+      els.matchOverrideStatus.textContent = error.message;
+    }
+  } finally {
+    button.disabled = false;
+    els.matchOverrideReset.disabled = !currentNextGame?.overrideActive;
+  }
+}
+
+async function resetMatchOverride() {
+  if (!currentNextGame?.id || !currentNextGame.overrideActive) return;
+  els.matchOverrideReset.disabled = true;
+  els.matchOverrideStatus.textContent = "Resetting to source…";
+  try {
+    await api("/web/user/match-override", {
+      method: "DELETE",
+      headers: ownerHeaders(),
+      retryNetwork: true,
+      body: JSON.stringify({ id: currentNextGame.id }),
+    });
+    els.matchOverrideStatus.textContent = "Source values restored.";
+    await loadCalendar();
+    window.setTimeout(() => {
+      if (els.matchOverrideDialog.open) els.matchOverrideDialog.close();
+    }, 180);
+  } catch (error) {
+    els.matchOverrideStatus.textContent = error.message;
+  } finally {
+    els.matchOverrideReset.disabled = !currentNextGame?.overrideActive;
+  }
+}
+
 async function shareNextGame() {
   if (!currentNextGame) return;
   const maps = googleMapsUrl(currentNextGame.mapsQuery);
@@ -2249,6 +2400,60 @@ els.answer.addEventListener("dblclick", (event) => {
 });
 els.answer.addEventListener("contextmenu", (event) => event.preventDefault());
 els.answer.addEventListener("selectstart", (event) => event.preventDefault());
+
+const MATCH_OVERRIDE_HOLD_MS = 700;
+const MATCH_OVERRIDE_MOVE_TOLERANCE_PX = 12;
+let matchOverrideHoldTimer = null;
+let matchOverridePointerId = null;
+let matchOverrideStartX = 0;
+let matchOverrideStartY = 0;
+
+function clearMatchOverrideHold() {
+  if (matchOverrideHoldTimer !== null) {
+    window.clearTimeout(matchOverrideHoldTimer);
+    matchOverrideHoldTimer = null;
+  }
+  matchOverridePointerId = null;
+}
+
+els.version.addEventListener("pointerdown", (event) => {
+  if (!event.isPrimary) return;
+  clearMatchOverrideHold();
+  matchOverridePointerId = event.pointerId;
+  matchOverrideStartX = event.clientX;
+  matchOverrideStartY = event.clientY;
+  matchOverrideHoldTimer = window.setTimeout(() => {
+    matchOverrideHoldTimer = null;
+    matchOverridePointerId = null;
+    void openMatchOverrideEditor();
+  }, MATCH_OVERRIDE_HOLD_MS);
+});
+
+els.version.addEventListener("pointermove", (event) => {
+  if (event.pointerId !== matchOverridePointerId) return;
+  const moved = Math.hypot(
+    event.clientX - matchOverrideStartX,
+    event.clientY - matchOverrideStartY,
+  );
+  if (moved > MATCH_OVERRIDE_MOVE_TOLERANCE_PX) clearMatchOverrideHold();
+});
+
+for (const eventName of ["pointerup", "pointercancel", "pointerleave"]) {
+  els.version.addEventListener(eventName, clearMatchOverrideHold);
+}
+els.version.addEventListener("contextmenu", (event) => event.preventDefault());
+els.version.addEventListener("selectstart", (event) => event.preventDefault());
+
+els.nextGameCard.addEventListener("dblclick", (event) => {
+  if (event.target.closest("a, button, input, textarea, select, label")) return;
+  event.preventDefault();
+  void openMatchOverrideEditor();
+});
+
+els.matchOverrideForm.addEventListener("submit", saveMatchOverride);
+els.matchOverrideReset.addEventListener("click", resetMatchOverride);
+els.matchOverrideCancel.addEventListener("click", () => els.matchOverrideDialog.close());
+els.closeMatchOverride.addEventListener("click", () => els.matchOverrideDialog.close());
 
 els.notificationBell.addEventListener("click", openNotifications);
 els.settingsButton.addEventListener("click", openSettings);

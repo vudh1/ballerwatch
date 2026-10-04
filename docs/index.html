@@ -11,17 +11,17 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="BallerWatch">
   <title>BallerWatch</title>
-  <link rel="manifest" href="./manifest.webmanifest?v=6.1.0">
-  <link rel="icon" href="./icon.svg?v=6.1.0" type="image/svg+xml">
-  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=6.1.0">
-  <link rel="stylesheet" href="./styles.css?v=6.1.0">
+  <link rel="manifest" href="./manifest.webmanifest?v=6.2.0">
+  <link rel="icon" href="./icon.svg?v=6.2.0" type="image/svg+xml">
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=6.2.0">
+  <link rel="stylesheet" href="./styles.css?v=6.2.0">
 </head>
 <body>
   <div class="status-bar-glass" aria-hidden="true"></div>
   <main class="shell">
     <header class="hero">
       <div class="brand-lockup">
-        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=6.1.0" alt=""></div>
+        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=6.2.0" alt=""></div>
         <div>
           <p class="eyebrow">SOCCER AT A GLANCE</p>
           <h1>BallerWatch</h1>
@@ -283,6 +283,50 @@
     </div>
   </dialog>
 
+  <dialog id="match-override-dialog" class="settings-dialog">
+    <div class="dialog-shell match-override-shell">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">MANUAL OVERRIDE</p>
+          <h2 id="match-override-title">Edit selected match</h2>
+        </div>
+        <button class="icon-button" id="close-match-override" type="button"
+          aria-label="Close match editor">×</button>
+      </div>
+      <p class="muted" id="match-override-copy">
+        Manual values take priority over the discovered match until you reset them.
+      </p>
+      <form id="match-override-form" class="settings-form">
+        <label for="match-override-date">Date</label>
+        <input id="match-override-date" type="date" required>
+
+        <div class="match-override-time-grid">
+          <div>
+            <label for="match-override-start">Start time</label>
+            <input id="match-override-start" type="time">
+          </div>
+          <div>
+            <label for="match-override-end">End time</label>
+            <input id="match-override-end" type="time">
+          </div>
+        </div>
+
+        <label for="match-override-location">Location</label>
+        <input id="match-override-location" maxlength="240"
+          placeholder="Field or venue">
+
+        <div class="match-override-actions">
+          <button class="subtle-action subtle-danger" id="match-override-reset"
+            type="button">Reset to source</button>
+          <button class="secondary" id="match-override-cancel" type="button">Cancel</button>
+          <button type="submit">Save override</button>
+        </div>
+      </form>
+      <p class="hint" id="match-override-status"></p>
+      <p class="privacy-note">Administrator only. Overrides are stored encrypted and keep the original source match identity, so Reset can return to discovered data.</p>
+    </div>
+  </dialog>
+
   <dialog id="install-dialog">
     <form method="dialog">
       <h2>Install on iPhone</h2>
@@ -298,6 +342,6 @@
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=6.1.0"></script>
+  <script type="module" src="./app.js?v=6.2.0"></script>
 </body>
 </html>

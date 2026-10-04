@@ -111,8 +111,15 @@ export function pickupOverrideId(sourceDate) {
 }
 
 export function leagueOverrideId(game) {
-  const key = clean(game?.key, 300);
-  if (!key) throw new Error("League match key is unavailable.");
+  const explicit = clean(game?.key, 300);
+  const fallback = [
+    clean(game?.team, 80),
+    clean(game?.opponent, 80),
+    clean(game?.date, 20),
+    clean(game?.startTime || game?.start, 80),
+  ].join("|");
+  const key = explicit || fallback;
+  if (!key.replace(/\|/g, "")) throw new Error("League match key is unavailable.");
   return normalizeMatchOverrideId(`league:${key}`);
 }
 

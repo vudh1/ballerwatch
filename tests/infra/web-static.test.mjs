@@ -14,17 +14,17 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /manifest\.webmanifest/);
   assert.match(html, /apple-touch-icon\.png/);
   assert.match(html, /class="brand-icon"/);
-  assert.match(html, /icon\.svg\?v=6\.1\.0/);
+  assert.match(html, /icon\.svg\?v=6\.2\.0/);
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=6\.1\.0/);
-  assert.match(html, /app\.js\?v=6\.1\.0/);
+  assert.match(html, /styles\.css\?v=6\.2\.0/);
+  assert.match(html, /app\.js\?v=6\.2\.0/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v6-1-0-shell/);
+  assert.match(sw, /ballerwatch-v6-2-0-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -80,7 +80,7 @@ test("Home Screen install prompt uses the same card layout system as dashboard c
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=6\.1\.0/);
+  assert.match(app, /sw\.js\?v=6\.2\.0/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -924,4 +924,20 @@ test("README includes the web app demo and multi-user settings are exposed", () 
   assert.match(app, /\/web\/user\/users/);
   assert.match(app, /OWNER_USERNAME_KEY/);
   assert.match(app, /canManageUsers/);
+});
+
+
+test("hidden match override editor is gesture-driven and resettable", () => {
+  const html = fs.readFileSync("docs/index.html", "utf8");
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  assert.match(html, /id="match-override-dialog"/);
+  assert.match(html, /id="match-override-reset"/);
+  assert.match(html, /Reset to source/);
+  assert.match(app, /nextGameCard\.addEventListener\("dblclick"/);
+  assert.match(app, /MATCH_OVERRIDE_HOLD_MS = 700/);
+  assert.match(app, /version\.addEventListener\("pointerdown"/);
+  assert.match(app, /\/web\/user\/match-override/);
+  assert.match(app, /method: "DELETE"/);
+  assert.match(app, /canManageMatches/);
+  assert.match(app, /Manual override/);
 });

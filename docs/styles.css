@@ -3244,3 +3244,51 @@ html.is-standalone .status-bar-glass {
   color: #64748b;
   font-size: 0.7rem;
 }
+
+
+/* v6.2 hidden administrator match override editor */
+#version {
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+.next-game-card {
+  cursor: default;
+}
+
+.match-override-shell {
+  max-width: 34rem;
+}
+
+.match-override-time-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.match-override-time-grid > div {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.match-override-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) auto minmax(0, 1fr);
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.match-override-actions button {
+  min-width: 0;
+}
+
+@media (max-width: 560px) {
+  .match-override-time-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .match-override-actions {
+    grid-template-columns: 1fr;
+  }
+}

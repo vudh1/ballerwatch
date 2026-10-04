@@ -572,3 +572,64 @@ test("web feedback keeps original question and answer before encrypted review di
   assert.match(source, /const question = retainPrivateText\(body\?\.question, 4000\)/);
   assert.match(source, /const reply = retainPrivateText\(body\?\.reply, 12000\)/);
 });
+
+
+test("web calendar and next-game views honor encrypted match overrides while keeping source IDs", () => {
+  const snapshot = {
+    pickup: {
+      dates: [{ date: "2099-10-08" }],
+      events: {
+        "2099-10-08": {
+          ok: true,
+          reserved: 10,
+          capacity: 16,
+          startTime: "20:00",
+          endTime: "22:00",
+        },
+      },
+    },
+    pickupPrivate: {
+      events: {
+        "2099-10-08": {
+          fieldName: "Source Field",
+          address: "Source Address",
+          players: [],
+          waitlist: [],
+        },
+      },
+    },
+    league: { teams: [] },
+    settings: {
+      matchOverrides: {
+        "pickup:2099-10-08": {
+          id: "pickup:2099-10-08",
+          kind: "pickup",
+          date: "2099-10-09",
+          startTime: "21:00",
+          endTime: "23:00",
+          location: "Manual Field",
+          updatedAt: "2099-10-01T12:00:00Z",
+        },
+      },
+    },
+  };
+
+  const calendar = webCalendarDetails(
+    snapshot,
+    {},
+    14,
+    "2099-10-01",
+    new Date("2099-10-01T12:00:00Z"),
+  );
+  assert.equal(calendar.games[0].id, "pickup:2099-10-08");
+  assert.equal(calendar.games[0].date, "2099-10-09");
+  assert.equal(calendar.games[0].location, "Manual Field");
+  assert.equal(calendar.games[0].overrideActive, true);
+
+  const next = webNextGameDetails(snapshot, new Date("2099-10-01T12:00:00Z"));
+  assert.equal(next.id, "pickup:2099-10-08");
+  assert.equal(next.date, "2099-10-09");
+  assert.equal(next.startTime, "9:00 PM");
+  assert.equal(next.overrideActive, true);
+  assert.equal(next.rsvpUrl, "https://nhcuong95.github.io/rsvp/?date=2099-10-08");
+});

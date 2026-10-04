@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer operations PWA for pickup games and Seattle RATS league matches.
 
-**Current source version: 6.1.1**
+**Current source version: 6.2.0**
 
 **Production source of truth:** the commit pointed to by `production` and its published GitHub Release. `main` may be newer without changing the live app.
 
@@ -18,6 +18,7 @@ BallerWatch is a privacy-first soccer operations PWA for pickup games and Seattl
 - Supports answer-specific wrong-answer feedback without granting Settings access: double-click an answer on desktop, or press and hold it on touch; repeat the gesture to undo.
 - Lets a signed-in user submit encrypted feature requests with `/feature describe what you want`; only category/count aggregates are exposed publicly.
 - Synchronizes real RATS schedule changes to Google Calendar.
+- Lets the administrator apply encrypted manual date/time/location overrides to the selected match: press and hold the app version, or double-click the match card on desktop; Reset to source removes the override.
 
 **Live app:** https://vudh1.github.io/ballerwatch/
 
@@ -61,7 +62,7 @@ Workers KV and Cloudflare Cron Triggers are intentionally not part of production
 
 BallerWatch supports up to 20 encrypted web accounts. The existing pre-6.1 account migrates automatically as **admin**.
 
-Each account has its own username, password, pickup RSVP name, authentication revision, and device sessions. The administrator can add/remove users and edit the shared monitored-team list; regular users can edit only their own RSVP name and password.
+Each account has its own username, password, pickup RSVP name, authentication revision, and device sessions. The administrator can add/remove users, edit the shared monitored-team list, and override discovered match date/time/location; regular users can edit only their own RSVP name and password.
 
 Changing a password or choosing **Sign out all my devices** advances only that user's authentication revision and invalidates that user's older tokens.
 

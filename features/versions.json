@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "6.1.1",
+  "currentVersion": "6.2.0",
   "releases": [
+    {
+      "version": "6.2.0",
+      "date": "2026-10-03",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Hidden administrator match overrides",
+      "changes": [
+        "Added a hidden administrator match editor: press and hold the app version for about 0.7 seconds, or double-click the selected match card on desktop/web.",
+        "Added encrypted manual overrides for match date, start/end time, and location while retaining the immutable source match identity.",
+        "Added Reset to source so removing an override immediately returns the web calendar, selected match card, and Q&A to discovered source values.",
+        "Applied overrides to pickup and league reminder calculations and league notification text so reminders do not continue using a superseded manual time/location.",
+        "Restricted shared match overrides to the administrator account; regular multi-user accounts cannot change global match data.",
+        "Added a subtle Manual override indicator to the selected match card and bumped the PWA shell to 6.2.0."
+      ]
+    },
     {
       "version": "6.1.1",
       "date": "2026-10-03",
