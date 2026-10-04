@@ -97,3 +97,35 @@ test("invalid override records are dropped during state cleanup", () => {
     bad: { date: "not-a-date" },
   }), {});
 });
+
+
+test("free pickup overrides retain the generated Saturday source identity", async () => {
+  const { applyFreePickupMatchOverride } = await import("../../shared/match-overrides.mjs");
+  const source = {
+    id: "free:2026-10-10",
+    sourceDate: "2026-10-10",
+    date: "2026-10-10",
+    startTime: "10:30",
+    endTime: "12:30",
+    location: "Jefferson Park Playfield",
+    mapsQuery: "Jefferson Park Playfield, Seattle, WA",
+  };
+  const result = applyFreePickupMatchOverride(source, {
+    matchOverrides: {
+      "free:2026-10-10": {
+        id: "free:2026-10-10",
+        kind: "free",
+        date: "2026-10-11",
+        startTime: "11:00",
+        endTime: "13:00",
+        location: "Manual Park",
+        updatedAt: "2026-10-03T20:00:00Z",
+      },
+    },
+  });
+  assert.equal(result.id, "free:2026-10-10");
+  assert.equal(result.sourceDate, "2026-10-10");
+  assert.equal(result.date, "2026-10-11");
+  assert.equal(result.location, "Manual Park");
+  assert.equal(result.manualOverride, true);
+});

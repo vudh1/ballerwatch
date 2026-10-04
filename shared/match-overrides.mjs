@@ -2,7 +2,7 @@
  * Normalizes and applies administrator match overrides without destroying source identity.
  *
  * Overrides are stored in encrypted user runtime state and keyed by the immutable
- * source-facing game ID (pickup:<source-date> or league:<schedule-key>).
+ * source-facing game ID (pickup:<source-date>, league:<schedule-key>, or free:<source-saturday>).
  */
 
 function clean(value, max = 300) {
@@ -11,7 +11,7 @@ function clean(value, max = 300) {
 
 export function normalizeMatchOverrideId(value) {
   const id = clean(value, 320);
-  const match = id.match(/^(pickup|league):(.{1,300})$/);
+  const match = id.match(/^(pickup|league|free):(.{1,300})$/);
   if (!match || /[\u0000-\u001f\u007f]/.test(id)) {
     throw new Error("Invalid match override ID.");
   }
@@ -110,6 +110,10 @@ export function pickupOverrideId(sourceDate) {
   return normalizeMatchOverrideId(`pickup:${String(sourceDate || "").trim()}`);
 }
 
+export function freePickupOverrideId(sourceDate) {
+  return normalizeMatchOverrideId(`free:${String(sourceDate || "").trim()}`);
+}
+
 export function leagueOverrideId(game) {
   const explicit = clean(game?.key, 300);
   const fallback = [
@@ -196,6 +200,36 @@ export function applyLeagueMatchOverride(game, settings = {}) {
       ? "https://maps.google.com/?q=" + encodeURIComponent(location)
       : null,
     overrideId: id,
+    manualOverride: true,
+    overrideUpdatedAt: override.updatedAt,
+  };
+}
+
+
+export function applyFreePickupMatchOverride(source, settings = {}) {
+  const sourceDate = String(source?.sourceDate || source?.date || "").trim();
+  const id = source?.id || freePickupOverrideId(sourceDate);
+  const override = matchOverride(settings, id);
+  if (!override) {
+    return {
+      ...source,
+      id,
+      sourceDate,
+      manualOverride: false,
+      overrideUpdatedAt: "",
+    };
+  }
+
+  const location = override.location || String(source?.location || "");
+  return {
+    ...source,
+    id,
+    sourceDate,
+    date: override.date || source.date,
+    startTime: override.startTime || source.startTime || "",
+    endTime: override.endTime || source.endTime || "",
+    location,
+    mapsQuery: override.location ? location : (source.mapsQuery || location),
     manualOverride: true,
     overrideUpdatedAt: override.updatedAt,
   };

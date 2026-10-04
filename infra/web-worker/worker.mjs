@@ -20,6 +20,7 @@ import { publicRequestSummary } from "../../shared/feature-request-summary.mjs";
 import { historyIntentLabel, negativeFeedbackProjection } from "../../shared/feedback-review.mjs";
 import { classifyIndexedIntent } from "../../shared/intent-index.mjs";
 import {
+  applyFreePickupMatchOverride,
   applyLeagueMatchOverride,
   applyPickupMatchOverride,
   cleanMatchOverrides,
@@ -28,6 +29,11 @@ import {
   normalizeMatchOverrideInput,
   pickupOverrideId,
 } from "../../shared/match-overrides.mjs";
+import {
+  freePickupBase,
+  furthestIsoDate,
+  saturdayFreePickupDates,
+} from "../../shared/free-pickup.mjs";
 import { ALL_RUNTIME_FILE_PATHS } from "../../shared/runtime-paths.mjs";
 import { DEFAULT_LEAGUE_TEAMS } from "../../shared/defaults.mjs";
 import { KEY_CONTEXT } from "../../shared/security-contexts.mjs";
@@ -852,7 +858,11 @@ async function saveMatchOverrideDirect(env, input, { reset = false } = {}) {
       await invalidateUserSnapshotCache(env, settings);
       return {
         id,
-        kind: id.startsWith("pickup:") ? "pickup" : "league",
+        kind: id.startsWith("pickup:")
+          ? "pickup"
+          : id.startsWith("league:")
+            ? "league"
+            : "free",
         override: reset ? null : matchOverrides[id],
       };
     } catch (error) {
@@ -1692,10 +1702,28 @@ function leagueMatches(snapshot) {
   );
 }
 
+function sourceScheduleHorizon(snapshot) {
+  return furthestIsoDate([
+    ...availableDates(snapshot),
+    ...leagueMatches(snapshot).map((game) => String(game?.date || "")),
+  ]);
+}
+
+function freePickupMatches(snapshot, startDate = localDate()) {
+  const horizonDate = sourceScheduleHorizon(snapshot);
+  return saturdayFreePickupDates(startDate, horizonDate).map((sourceDate) =>
+    applyFreePickupMatchOverride(
+      freePickupBase(sourceDate),
+      snapshot.settings || {},
+    )
+  );
+}
+
 function scheduleDates(snapshot) {
   return [...new Set([
     ...availableDates(snapshot),
     ...leagueMatches(snapshot).map(game => String(game?.date || "")).filter(Boolean),
+    ...freePickupMatches(snapshot).map(game => String(game?.date || "")).filter(Boolean),
   ])].sort();
 }
 
@@ -1887,6 +1915,15 @@ export function pickupUserRsvpView(snapshot, userRsvpName = "") {
   return { confirmedDates, waitlistedDates };
 }
 
+function freePickupGameBlock(game) {
+  const lines=["⚽ Free Pickup"];
+  const start=clock(game.startTime);
+  const end=clock(game.endTime);
+  if(start || end) lines.push(`🕒 ${start || "?"}${end ? `–${end}` : ""}`);
+  if(game.location) lines.push(`📍 ${game.location}`);
+  return lines.join("\n");
+}
+
 function leagueGameBlock(game) {
   const lines=[`🏆 ${game.team || "RATS team"} vs ${game.opponent || "opponent"}`];
   const time=clock(game.start || game.startTime);
@@ -1900,6 +1937,9 @@ export function gamesOnDate(snapshot, date) {
   const blocks=[];
   const pickup=pickupFacts(snapshot,date);
   if(pickup) blocks.push(`⚽ Pickup\n${pickupStatus(snapshot,date)}`);
+  for(const game of freePickupMatches(snapshot).filter(game => String(game.date || "") === date)) {
+    blocks.push(freePickupGameBlock(game));
+  }
   for(const game of leagueMatches(snapshot).filter(game => String(game.date || "") === date)) {
     blocks.push(leagueGameBlock(game));
   }
@@ -1916,6 +1956,7 @@ export function dateGameAnswer(snapshot, date, question = "") {
   const wantsTime = /\b(?:time|when|start|kickoff|kick off)\b/.test(lower);
   const wantsLocation = /\b(?:where|field|location|address|venue)\b/.test(lower);
   const wantsPickup = /\b(?:pickup|rsvp|reserved|spots?|capacity|availability|full|waitlist|registered|signed\s*up|am i in)\b/.test(lower);
+  const wantsRsvp = /\b(?:rsvp|reserved|spots?|capacity|availability|full|waitlist|registered|signed\s*up|am i in)\b/.test(lower);
   const targeted = wantsJersey || wantsOpponent || wantsTime || wantsLocation || wantsPickup;
   if (!targeted) return gamesOnDate(snapshot, date);
 
@@ -1933,6 +1974,19 @@ export function dateGameAnswer(snapshot, date, question = "") {
         if (pickup.field) lines.push(`📍 ${pickup.field}`);
         if (pickup.address) lines.push(pickup.address);
       }
+      if (lines.length > 1) blocks.push(lines.join("\n"));
+    }
+  }
+
+  if (!wantsJersey && !wantsOpponent && !wantsRsvp) {
+    for (const game of freePickupMatches(snapshot).filter((item) => String(item?.date || "") === date)) {
+      const lines = ["⚽ Free Pickup"];
+      if (wantsTime || wantsPickup) {
+        const start = clock(game.startTime);
+        const end = clock(game.endTime);
+        if (start || end) lines.push(`🕒 ${start || "?"}${end ? `–${end}` : ""}`);
+      }
+      if ((wantsLocation || wantsPickup) && game.location) lines.push(`📍 ${game.location}`);
       if (lines.length > 1) blocks.push(lines.join("\n"));
     }
   }
@@ -1962,12 +2016,15 @@ export function gamesInRange(snapshot, startDate, endDate) {
   const blocks = [];
   for (const date of dates) {
     const pickup = pickupFacts(snapshot, date);
+    const freePickup = freePickupMatches(snapshot)
+      .filter((game) => String(game?.date || "") === date);
     const league = leagueMatches(snapshot)
       .filter((game) => String(game?.date || "") === date);
-    if (!pickup && !league.length) continue;
+    if (!pickup && !freePickup.length && !league.length) continue;
 
     const day = [];
     if (pickup) day.push(`⚽ Pickup\n${pickupStatus(snapshot, date)}`);
+    for (const game of freePickup) day.push(freePickupGameBlock(game));
     for (const game of league) day.push(leagueGameBlock(game));
     blocks.push(`${formatDate(date)}\n${day.join("\n\n")}`);
   }
@@ -1987,7 +2044,12 @@ function todayGames(snapshot) {
     if (p.field) x.push(`📍 ${p.field}`);
     blocks.push(x.join("\n"));
   }
-  for (const game of snapshot.today?.games || []) {
+  for (const game of freePickupMatches(snapshot).filter((item) => item.date === date)) {
+    if (gameIsUpcoming(date, clock(game.startTime), clock(game.endTime), 120)) {
+      blocks.push(freePickupGameBlock(game));
+    }
+  }
+  for (const game of leagueMatches(snapshot).filter((item) => String(item?.date || "") === date)) {
     const x=[`🏆 ${game.team} vs ${game.opponent}`];
     const t=clock(game.start || game.startTime);
     if(t) x.push(`🕒 ${t}`);
@@ -2006,6 +2068,14 @@ export function nextGame(snapshot, now = new Date()) {
       candidates.push({kind:"pickup",date:d,start:p.start||"",facts:p});
     }
   }
+  for (const game of freePickupMatches(snapshot, today)) {
+    const date = String(game.date || "");
+    const start = clock(game.startTime);
+    const end = clock(game.endTime);
+    if (date >= today && gameIsUpcoming(date, start, end, 120, now)) {
+      candidates.push({kind:"free_pickup",date,start:String(game.startTime||""),game});
+    }
+  }
   for (const game of leagueMatches(snapshot)) {
     const date = String(game.date || "");
     const start = clock(game.start || game.startTime);
@@ -2018,6 +2088,7 @@ export function nextGame(snapshot, now = new Date()) {
   const n=candidates[0];
   if(!n) return {reply:"No upcoming game is currently published.",date:null};
   if(n.kind==="pickup") return {reply:pickupStatus(snapshot,n.date),date:n.date};
+  if(n.kind==="free_pickup") return {reply:`${formatDate(n.date)}\n${freePickupGameBlock(n.game)}`,date:n.date};
   return {reply:`${formatDate(n.date)}\n${leagueGameBlock(n.game)}`,date:n.date};
 }
 
@@ -2041,11 +2112,13 @@ export function directIntent(text) {
     /\b(?:today|tomorrow|sunday|monday|tuesday|wednesday|thursday|friday|saturday|\d{1,2}\/\d{1,2}|20\d{2}-\d{1,2}-\d{1,2})\b/.test(lower);
   const pickupSpecific =
     /\b(?:pickup|rsvp|reserved|spots?|capacity|availability|full|waitlist|registered|signed\s*up)\b/.test(lower);
+  const rsvpSpecific =
+    /\b(?:rsvp|reserved|spots?|capacity|availability|full|waitlist|registered|signed\s*up)\b/.test(lower);
   const gameSpecific =
     /\b(?:game|games|match|matches|play|playing|soccer|jersey|kit|uniform|color|colour|wear|opponent|who)\b/.test(lower);
 
-  if (hasExplicitDate && pickupSpecific) return "pickup_status";
-  if (hasExplicitDate && gameSpecific) return "date_games";
+  if (hasExplicitDate && rsvpSpecific) return "pickup_status";
+  if (hasExplicitDate && (gameSpecific || pickupSpecific)) return "date_games";
   if (
     hasExplicitDate &&
     /\b(?:time|when|where|field|location|address|venue)\b/.test(lower)
@@ -2239,6 +2312,38 @@ export function webCalendarDetails(
     });
   }
 
+  for (const game of freePickupMatches(safe, startDate)) {
+    const date = String(game?.date || "");
+    const startTime = clock(game?.startTime);
+    const endTime = clock(game?.endTime);
+    if (!date || date < startDate || !gameIsUpcoming(date, startTime, endTime, 120, now)) continue;
+    const id = game.id;
+    const sourceWeather = weatherById.get(id)?.weather || null;
+    games.push({
+      id,
+      kind: "free_pickup",
+      date,
+      dateLabel: formatDate(date),
+      title: "Free Pickup",
+      startTime,
+      endTime,
+      time: startTime && endTime ? `${startTime}–${endTime}` : startTime,
+      location: cleanText(game?.location, 200),
+      address: "",
+      mapsQuery: cleanText(game?.mapsQuery || game?.location, 220),
+      rsvpUrl: "",
+      reserved: null,
+      capacity: null,
+      jerseyColor: "",
+      overrideActive: Boolean(game?.manualOverride),
+      overrideUpdatedAt: cleanText(game?.overrideUpdatedAt, 80),
+      sourceUpdatedAt: "",
+      weather: sourceWeather,
+      weatherApproximate: Boolean(weatherById.get(id)?.weatherApproximate),
+      weatherStale: Boolean(weatherById.get(id)?.weatherStale),
+    });
+  }
+
   for (const game of leagueMatches(safe)) {
     const date = String(game?.date || "");
     // Keep the near-term pickup/weather strip bounded, but expose every
@@ -2319,6 +2424,20 @@ export function webNextGameDetails(snapshot, now = new Date()) {
     }
   }
 
+  for (const game of freePickupMatches(safe, today)) {
+    const date = String(game?.date || "");
+    const startTime = clock(game?.startTime);
+    const endTime = clock(game?.endTime);
+    if (date >= today && gameIsUpcoming(date, startTime, endTime, 120, now)) {
+      candidates.push({
+        kind: "free_pickup",
+        date,
+        start: String(game?.startTime || ""),
+        game,
+      });
+    }
+  }
+
   for (const game of leagueMatches(safe)) {
     const date = String(game?.date || "");
     const startTime = clock(game?.start || game?.startTime);
@@ -2369,6 +2488,37 @@ export function webNextGameDetails(snapshot, now = new Date()) {
         time,
         location,
         address && address !== location ? address : "",
+      ].filter(Boolean).join("\n"),
+    };
+  }
+
+  if (next.kind === "free_pickup") {
+    const game = next.game || {};
+    const startTime = clock(game.startTime);
+    const endTime = clock(game.endTime);
+    const time = startTime && endTime ? `${startTime}–${endTime}` : startTime;
+    const location = cleanText(game.location, 200);
+    return {
+      id: game.id,
+      kind: "free_pickup",
+      date: next.date,
+      dateLabel: formatDate(next.date),
+      title: "Free Pickup",
+      startTime,
+      endTime,
+      time,
+      location,
+      address: "",
+      mapsQuery: cleanText(game.mapsQuery || location, 220),
+      rsvpUrl: "",
+      overrideActive: Boolean(game.manualOverride),
+      overrideUpdatedAt: cleanText(game.overrideUpdatedAt, 80),
+      sourceUpdatedAt: "",
+      jerseyColor: "",
+      shareText: [
+        `Free Pickup — ${formatDate(next.date)}`,
+        time,
+        location,
       ].filter(Boolean).join("\n"),
     };
   }
@@ -3043,8 +3193,13 @@ export default {
           { reset: request.method === "DELETE" },
         );
         ctx.waitUntil(
-          dispatchWorkflow(env, saved.kind === "pickup" ? "pickup.yml" : "league.yml")
-            .catch((error) => console.warn("Match override reconciliation dispatch failed", error)),
+          (
+            saved.kind === "pickup"
+              ? dispatchWorkflow(env, "pickup.yml")
+              : saved.kind === "league"
+                ? dispatchWorkflow(env, "league.yml")
+                : dispatchWorkflow(env, "watchdog.yml", { external_fallback: true })
+          ).catch((error) => console.warn("Match override reconciliation dispatch failed", error)),
         );
         return webJson(request, {
           ok: true,

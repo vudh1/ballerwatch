@@ -633,3 +633,89 @@ test("web calendar and next-game views honor encrypted match overrides while kee
   assert.equal(next.overrideActive, true);
   assert.equal(next.rsvpUrl, "https://nhcuong95.github.io/rsvp/?date=2099-10-08");
 });
+
+
+test("web calendar synthesizes Saturday free pickup through the furthest RSVP or league date", () => {
+  const snapshot = {
+    pickup: {
+      dates: [{ date: "2099-10-08" }],
+      events: {
+        "2099-10-08": {
+          ok: true,
+          reserved: 4,
+          capacity: 16,
+          startTime: "20:00",
+          endTime: "22:00",
+        },
+      },
+    },
+    pickupPrivate: {
+      events: {
+        "2099-10-08": {
+          fieldName: "RSVP Field",
+          address: "Seattle, WA",
+          players: [],
+          waitlist: [],
+        },
+      },
+    },
+    league: {
+      teams: [{
+        name: "Team Alpha",
+        matches: [{
+          key: "v2:far",
+          date: "2099-10-24",
+          startTime: "19:00",
+          endTime: "21:00",
+          opponent: "Team Beta",
+          location: "League Field",
+        }],
+      }],
+    },
+    settings: {},
+  };
+
+  const calendar = webCalendarDetails(
+    snapshot,
+    {},
+    14,
+    "2099-10-01",
+    new Date("2099-10-01T12:00:00Z"),
+  );
+  const free = calendar.games.filter((game) => game.kind === "free_pickup");
+  assert.deepEqual(free.map((game) => game.date), [
+    "2099-10-03",
+    "2099-10-10",
+    "2099-10-17",
+    "2099-10-24",
+  ]);
+  assert.ok(free.every((game) => game.time === "10:30 AM–12:30 PM"));
+  assert.ok(free.every((game) => game.location === "Jefferson Park Playfield"));
+  assert.ok(free.every((game) => game.rsvpUrl === ""));
+  assert.equal(free.at(-1).id, "free:2099-10-24");
+});
+
+test("Saturday free pickup can become the next game without exposing RSVP state", () => {
+  const details = webNextGameDetails({
+    pickup: {
+      dates: [{ date: "2099-10-20" }],
+      events: {
+        "2099-10-20": { ok: true, startTime: "20:00", endTime: "22:00" },
+      },
+    },
+    pickupPrivate: {
+      events: {
+        "2099-10-20": { fieldName: "RSVP Field", address: "Seattle, WA" },
+      },
+    },
+    league: { teams: [] },
+    settings: {},
+  }, new Date("2099-10-02T12:00:00-07:00"));
+
+  assert.equal(details.kind, "free_pickup");
+  assert.equal(details.date, "2099-10-03");
+  assert.equal(details.title, "Free Pickup");
+  assert.equal(details.time, "10:30 AM–12:30 PM");
+  assert.equal(details.location, "Jefferson Park Playfield");
+  assert.equal(details.rsvpUrl, "");
+});

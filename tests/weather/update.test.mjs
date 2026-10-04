@@ -220,3 +220,41 @@ test("manual match overrides drive weather date, time, location, and stable IDs"
   assert.equal(league.startTime, "20:30");
   assert.equal(league.location, "Manual League Field");
 });
+
+
+test("weather includes synthetic Jefferson Park Saturdays only through the source horizon", () => {
+  const result = collectUpcomingGames({
+    pickupFeed: {
+      events: {
+        "2026-10-20": {
+          ok: true,
+          startTime: "20:00",
+          endTime: "22:00",
+          reserved: 8,
+          capacity: 16,
+        },
+      },
+    },
+    pickupPrivate: {
+      events: {
+        "2026-10-20": {
+          fieldName: "RSVP Field",
+          address: "Seattle, WA",
+        },
+      },
+    },
+    leagueSchedule: { teams: [] },
+    settings: {},
+    now: new Date("2026-10-03T08:00:00-07:00"),
+    days: 14,
+  });
+
+  const free = result.games.filter((game) => game.kind === "free_pickup");
+  assert.deepEqual(free.map((game) => game.date), [
+    "2026-10-03",
+    "2026-10-10",
+    "2026-10-17",
+  ]);
+  assert.ok(free.every((game) => game.location === "Jefferson Park Playfield"));
+  assert.ok(free.every((game) => game.startTime === "10:30"));
+});

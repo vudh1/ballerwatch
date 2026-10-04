@@ -10,10 +10,16 @@ import path from "node:path";
 import { decryptState, encryptState } from "../shared/state-crypto.mjs";
 import { loadUserSettings } from "../shared/user-state.mjs";
 import {
+  applyFreePickupMatchOverride,
   applyLeagueMatchOverride,
   applyPickupMatchOverride,
   pickupOverrideId,
 } from "../shared/match-overrides.mjs";
+import {
+  freePickupBase,
+  furthestIsoDate,
+  saturdayFreePickupDates,
+} from "../shared/free-pickup.mjs";
 
 const TIME_ZONE = "America/Los_Angeles";
 const STATE_PATH = "state/weather.json";
@@ -178,18 +184,39 @@ export function collectUpcomingGames({
   const endDate = addDaysIso(startDate, Math.max(1, Number(days) || 14) - 1);
   const games = [];
 
-  for (const sourceDate of Object.keys(pickupFeed?.events || {}).sort()) {
+  const effectivePickup = Object.keys(pickupFeed?.events || {}).sort().map((sourceDate) => {
     const pub = pickupFeed.events[sourceDate] || {};
     const priv = pickupPrivate?.events?.[sourceDate] || {};
-    const effective = applyPickupMatchOverride({
-      id: pickupOverrideId(sourceDate),
+    return {
       sourceDate,
-      date: sourceDate,
-      startTime: pub.startTime,
-      endTime: pub.endTime,
-      fieldName: priv.fieldName,
-      address: priv.address,
-    }, settings);
+      pub,
+      priv,
+      effective: applyPickupMatchOverride({
+        id: pickupOverrideId(sourceDate),
+        sourceDate,
+        date: sourceDate,
+        startTime: pub.startTime,
+        endTime: pub.endTime,
+        fieldName: priv.fieldName,
+        address: priv.address,
+      }, settings),
+    };
+  });
+  const effectiveLeague = (leagueSchedule?.teams || []).flatMap((team) =>
+    (team?.matches || []).map((sourceMatch) => ({
+      team,
+      match: applyLeagueMatchOverride(
+        { ...sourceMatch, team: sourceMatch?.team || team?.name || "Team" },
+        settings,
+      ),
+    }))
+  );
+  const horizonDate = furthestIsoDate([
+    ...effectivePickup.map((item) => item.effective.date),
+    ...effectiveLeague.map((item) => item.match.date),
+  ]);
+
+  for (const { sourceDate, pub, effective } of effectivePickup) {
     const date = effective.date;
     if (date < startDate || date > endDate) continue;
     const location = clean(effective.fieldName, 180);
@@ -214,41 +241,59 @@ export function collectUpcomingGames({
     });
   }
 
-  for (const team of leagueSchedule?.teams || []) {
-    for (const sourceMatch of team?.matches || []) {
-      const match = applyLeagueMatchOverride(
-        { ...sourceMatch, team: sourceMatch?.team || team?.name || "Team" },
-        settings,
-      );
-      const date = clean(match?.date, 20);
-      if (!date || date < startDate || date > endDate) continue;
-      const window = gameWindow(
-        match?.startTime,
-        match?.endTime,
-        match?.start,
-        match?.end,
-        120,
-      );
-      if (!window) continue;
-      const location = clean(match?.location, 180);
-      const key = clean(match?.key, 240) ||
-        [team?.name, match?.opponent, date, window.startTime].map((value) => clean(value, 100)).join("|");
-      games.push({
-        id: gameId("league", key),
-        kind: "league",
-        date,
-        title: `${clean(match?.team || team?.name, 100) || "Team"} vs ${clean(match?.opponent, 100) || "opponent"}`,
-        team: clean(match?.team || team?.name, 100),
-        opponent: clean(match?.opponent, 100),
-        startTime: window.startTime,
-        endTime: window.endTime,
-        location,
-        address: "",
-        mapsQuery: location,
-        jerseyColor: clean(match?.jerseyColor, 60),
-        locationQuery: locationQuery({ location }),
-      });
-    }
+  for (const { team, match } of effectiveLeague) {
+    const date = clean(match?.date, 20);
+    if (!date || date < startDate || date > endDate) continue;
+    const window = gameWindow(
+      match?.startTime,
+      match?.endTime,
+      match?.start,
+      match?.end,
+      120,
+    );
+    if (!window) continue;
+    const location = clean(match?.location, 180);
+    const key = clean(match?.key, 240) ||
+      [team?.name, match?.opponent, date, window.startTime].map((value) => clean(value, 100)).join("|");
+    games.push({
+      id: gameId("league", key),
+      kind: "league",
+      date,
+      title: `${clean(match?.team || team?.name, 100) || "Team"} vs ${clean(match?.opponent, 100) || "opponent"}`,
+      team: clean(match?.team || team?.name, 100),
+      opponent: clean(match?.opponent, 100),
+      startTime: window.startTime,
+      endTime: window.endTime,
+      location,
+      address: "",
+      mapsQuery: location,
+      jerseyColor: clean(match?.jerseyColor, 60),
+      locationQuery: locationQuery({ location }),
+    });
+  }
+
+  for (const sourceDate of saturdayFreePickupDates(startDate, horizonDate)) {
+    const game = applyFreePickupMatchOverride(freePickupBase(sourceDate), settings);
+    const date = clean(game.date, 20);
+    if (!date || date < startDate || date > endDate) continue;
+    const window = gameWindow(game.startTime, game.endTime, "", "", 120);
+    if (!window) continue;
+    const location = clean(game.location, 180);
+    games.push({
+      id: game.id,
+      kind: "free_pickup",
+      date,
+      title: "Free Pickup",
+      startTime: window.startTime,
+      endTime: window.endTime,
+      location,
+      address: "",
+      mapsQuery: clean(game.mapsQuery || location, 220),
+      reserved: null,
+      capacity: null,
+      locationQuery: locationQuery({ location }),
+      manualOverride: Boolean(game.manualOverride),
+    });
   }
 
   games.sort((left, right) =>
