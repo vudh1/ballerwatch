@@ -1,7 +1,23 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "6.3.1",
+  "currentVersion": "6.3.2",
   "releases": [
+    {
+      "version": "6.3.2",
+      "date": "2026-10-03",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Fix first double-tap match editor activation",
+      "webAnnouncement": "The hidden match editor now opens on the first two physical taps on iPhone/PWA.",
+      "changes": [
+        "Changed touch match-editor activation to count the two physical touchend events directly instead of relying on Safari-generated click events.",
+        "The first double-tap now opens the editor on taps 1–2 rather than requiring a second double-tap on taps 3–4.",
+        "Kept movement cancellation so scrolling or swiping across the match card does not accidentally open the editor.",
+        "Kept action links/buttons inside the match card excluded from the hidden double-tap gesture.",
+        "Desktop/web now uses the browser's native dblclick event for both the app version and selected match card.",
+        "Bumped the installed PWA shell to 6.3.2 so already-installed 6.3.1 Home Screen apps receive the corrected touch handler."
+      ]
+    },
     {
       "version": "6.3.1",
       "date": "2026-10-03",

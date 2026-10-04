@@ -786,7 +786,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=6.3.1", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=6.3.2", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -2406,13 +2406,8 @@ els.answer.addEventListener("contextmenu", (event) => event.preventDefault());
 els.answer.addEventListener("selectstart", (event) => event.preventDefault());
 
 const MATCH_OVERRIDE_DOUBLE_TAP_MS = 500;
-let lastVersionTapAt = 0;
-let lastMatchCardTapAt = 0;
+const MATCH_OVERRIDE_TAP_MOVE_TOLERANCE_PX = 14;
 let matchOverrideOpening = false;
-
-function doubleActivationDue(previousAt, now = Date.now()) {
-  return previousAt > 0 && now - previousAt <= MATCH_OVERRIDE_DOUBLE_TAP_MS;
-}
 
 async function openMatchOverrideEditorOnce() {
   if (matchOverrideOpening || els.matchOverrideDialog.open) return;
@@ -2424,35 +2419,89 @@ async function openMatchOverrideEditorOnce() {
   }
 }
 
-function handleVersionDoubleActivation(event) {
-  const now = Date.now();
+function installTouchDoubleTap(target, { ignoreInteractive = false } = {}) {
+  let lastTapAt = 0;
+  let touchId = null;
+  let startX = 0;
+  let startY = 0;
+  let moved = false;
+
+  const blockedTarget = (eventTarget) =>
+    ignoreInteractive &&
+    eventTarget instanceof Element &&
+    Boolean(eventTarget.closest("a, button, input, textarea, select, label"));
+
+  target.addEventListener("touchstart", (event) => {
+    if (blockedTarget(event.target) || event.touches.length !== 1) {
+      touchId = null;
+      moved = false;
+      return;
+    }
+    const touch = event.touches[0];
+    touchId = touch.identifier;
+    startX = touch.clientX;
+    startY = touch.clientY;
+    moved = false;
+  }, { passive: true });
+
+  target.addEventListener("touchmove", (event) => {
+    if (touchId === null) return;
+    const touch = [...event.touches].find((item) => item.identifier === touchId);
+    if (!touch) return;
+    if (
+      Math.hypot(touch.clientX - startX, touch.clientY - startY) >
+      MATCH_OVERRIDE_TAP_MOVE_TOLERANCE_PX
+    ) {
+      moved = true;
+      lastTapAt = 0;
+    }
+  }, { passive: true });
+
+  target.addEventListener("touchend", (event) => {
+    if (touchId === null || moved || blockedTarget(event.target)) {
+      touchId = null;
+      moved = false;
+      return;
+    }
+
+    const ended = [...event.changedTouches].find((item) => item.identifier === touchId);
+    touchId = null;
+    if (!ended) return;
+
+    const now = Date.now();
+    const isDoubleTap = lastTapAt > 0 && now - lastTapAt <= MATCH_OVERRIDE_DOUBLE_TAP_MS;
+    if (isDoubleTap) {
+      lastTapAt = 0;
+      event.preventDefault();
+      void openMatchOverrideEditorOnce();
+      return;
+    }
+    lastTapAt = now;
+  }, { passive: false });
+
+  target.addEventListener("touchcancel", () => {
+    touchId = null;
+    moved = false;
+    lastTapAt = 0;
+  }, { passive: true });
+}
+
+installTouchDoubleTap(els.version);
+installTouchDoubleTap(els.nextGameCard, { ignoreInteractive: true });
+
+els.version.addEventListener("dblclick", (event) => {
   event.preventDefault();
-  if (doubleActivationDue(lastVersionTapAt, now)) {
-    lastVersionTapAt = 0;
-    void openMatchOverrideEditorOnce();
-    return;
-  }
-  lastVersionTapAt = now;
-}
-
-function handleMatchCardDoubleActivation(event) {
-  if (event.target.closest("a, button, input, textarea, select, label")) return;
-  const now = Date.now();
-  if (doubleActivationDue(lastMatchCardTapAt, now)) {
-    lastMatchCardTapAt = 0;
-    event.preventDefault();
-    void openMatchOverrideEditorOnce();
-    return;
-  }
-  lastMatchCardTapAt = now;
-}
-
-els.version.addEventListener("click", handleVersionDoubleActivation);
+  void openMatchOverrideEditorOnce();
+});
 els.version.addEventListener("contextmenu", (event) => event.preventDefault());
 els.version.addEventListener("selectstart", (event) => event.preventDefault());
 els.version.addEventListener("dragstart", (event) => event.preventDefault());
 
-els.nextGameCard.addEventListener("click", handleMatchCardDoubleActivation);
+els.nextGameCard.addEventListener("dblclick", (event) => {
+  if (event.target.closest("a, button, input, textarea, select, label")) return;
+  event.preventDefault();
+  void openMatchOverrideEditorOnce();
+});
 els.nextGameCard.addEventListener("contextmenu", (event) => {
   if (!event.target.closest("a, button, input, textarea, select, label")) {
     event.preventDefault();

@@ -14,17 +14,17 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /manifest\.webmanifest/);
   assert.match(html, /apple-touch-icon\.png/);
   assert.match(html, /class="brand-icon"/);
-  assert.match(html, /icon\.svg\?v=6\.3\.1/);
+  assert.match(html, /icon\.svg\?v=6\.3\.2/);
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=6\.3\.1/);
-  assert.match(html, /app\.js\?v=6\.3\.1/);
+  assert.match(html, /styles\.css\?v=6\.3\.2/);
+  assert.match(html, /app\.js\?v=6\.3\.2/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v6-3-1-shell/);
+  assert.match(sw, /ballerwatch-v6-3-2-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -80,7 +80,7 @@ test("Home Screen install prompt uses the same card layout system as dashboard c
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=6\.3\.1/);
+  assert.match(app, /sw\.js\?v=6\.3\.2/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -934,14 +934,22 @@ test("hidden match override editor is gesture-driven and resettable", () => {
   assert.match(html, /id="match-override-reset"/);
   assert.match(html, /Reset to source/);
   assert.match(app, /MATCH_OVERRIDE_DOUBLE_TAP_MS = 500/);
+  assert.match(app, /MATCH_OVERRIDE_TAP_MOVE_TOLERANCE_PX = 14/);
   assert.match(html, /<button id="version" class="version-trigger"/);
-  assert.match(html, /Double-tap or double-click/);
-  assert.match(app, /version\.addEventListener\("click", handleVersionDoubleActivation\)/);
-  assert.match(app, /nextGameCard\.addEventListener\("click", handleMatchCardDoubleActivation\)/);
-  assert.match(app, /doubleActivationDue/);
+  assert.match(html, /Double-tap on touch or double-click on desktop/);
+  assert.match(app, /function installTouchDoubleTap/);
+  assert.match(app, /addEventListener\("touchend"/);
+  assert.match(app, /event\.changedTouches/);
+  assert.match(app, /event\.preventDefault\(\)/);
+  assert.match(app, /\{ passive: false \}/);
+  assert.match(app, /installTouchDoubleTap\(els\.version\)/);
+  assert.match(app, /installTouchDoubleTap\(els\.nextGameCard/);
+  assert.match(app, /version\.addEventListener\("dblclick"/);
+  assert.match(app, /nextGameCard\.addEventListener\("dblclick"/);
   assert.match(app, /openMatchOverrideEditorOnce/);
+  assert.doesNotMatch(app, /handleVersionDoubleActivation/);
+  assert.doesNotMatch(app, /handleMatchCardDoubleActivation/);
   assert.doesNotMatch(app, /MATCH_OVERRIDE_HOLD_MS/);
-  assert.doesNotMatch(app, /version\.addEventListener\("touchstart"/);
   assert.match(fs.readFileSync("docs\/styles\.css", "utf8"), /-webkit-touch-callout:\s*none/);
   assert.match(app, /\/web\/user\/match-override/);
   assert.match(app, /method: "DELETE"/);
