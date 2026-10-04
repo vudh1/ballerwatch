@@ -8,6 +8,7 @@ import crypto from "node:crypto";
 import { loadUserSettings } from "../shared/user-state.mjs";
 import { decryptState, encryptState } from "../shared/state-crypto.mjs";
 import { appendWebNotification } from "../shared/web-notifications.mjs";
+import { applyPickupMatchOverride, pickupOverrideId } from "../shared/match-overrides.mjs";
 import {
   localMinutesUntilStart,
   matchStartReminderDue,
@@ -131,20 +132,41 @@ function currentFutureDates(nowDate) {
     .sort();
 }
 
-function eventForDate(date) {
-  const event = readJson(`${RUNTIME_DATES_DIR}/${date}.json`);
+function eventForDate(sourceDate, settings = {}) {
+  const event = readJson(`${RUNTIME_DATES_DIR}/${sourceDate}.json`);
   if (!event?.ok) return null;
   const privateEvents = readJson(RUNTIME_PATH)?.events || {};
+  const privateEvent = privateEvents[sourceDate] || {
+    date: sourceDate,
+    fieldName: "",
+    address: "",
+    locked: false,
+    waitlistCount: 0,
+    players: [],
+    waitlist: [],
+  };
+  const effective = applyPickupMatchOverride({
+    id: pickupOverrideId(sourceDate),
+    sourceDate,
+    date: sourceDate,
+    startTime: event.startTime,
+    endTime: event.endTime,
+    fieldName: privateEvent.fieldName,
+    address: privateEvent.address,
+  }, settings);
   return {
     ...event,
-    private: privateEvents[date] || {
-      date,
-      fieldName: "",
-      address: "",
-      locked: false,
-      waitlistCount: 0,
-      players: [],
-      waitlist: [],
+    date: effective.date,
+    sourceDate,
+    startTime: effective.startTime,
+    endTime: effective.endTime,
+    manualOverride: effective.manualOverride,
+    overrideUpdatedAt: effective.overrideUpdatedAt,
+    private: {
+      ...privateEvent,
+      date: effective.date,
+      fieldName: effective.fieldName,
+      address: effective.address,
     },
   };
 }
@@ -180,7 +202,7 @@ async function processNewDates(state, now, settings) {
     // "Watch only the closest week": still remember later dates, but do not alert
     // on them until their week becomes the closest week.
     if (weekStart(date) !== closestWeek) continue;
-    const event = eventForDate(date);
+    const event = eventForDate(date, settings);
     if (!event) continue;
 
     if (isDateSnoozed(settings, date)) {
@@ -232,13 +254,19 @@ function selectEvent(now, settings) {
     throw new Error("pickup/data/index.json is unavailable.");
   }
 
-  const dates = index.dates
+  const sourceDates = index.dates
     .map((item) => String(item?.date || ""))
     .filter(Boolean);
+  const effectiveByDate = new Map();
+  for (const sourceDate of sourceDates) {
+    const event = eventForDate(sourceDate, settings);
+    if (event?.date) effectiveByDate.set(event.date, event);
+  }
+  const dates = [...effectiveByDate.keys()].sort();
 
   const selected = selectPrimaryEvent({
     dates,
-    loadEvent: eventForDate,
+    loadEvent: (date) => effectiveByDate.get(date) || null,
     nowDate: now.date,
     minuteOfDay: now.minuteOfDay,
     settings,

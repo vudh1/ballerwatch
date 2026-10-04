@@ -19,6 +19,15 @@ import { aiProviders, requestAiJson } from "../../shared/ai-provider.mjs";
 import { publicRequestSummary } from "../../shared/feature-request-summary.mjs";
 import { historyIntentLabel, negativeFeedbackProjection } from "../../shared/feedback-review.mjs";
 import { classifyIndexedIntent } from "../../shared/intent-index.mjs";
+import {
+  applyLeagueMatchOverride,
+  applyPickupMatchOverride,
+  cleanMatchOverrides,
+  leagueOverrideId,
+  normalizeMatchOverrideId,
+  normalizeMatchOverrideInput,
+  pickupOverrideId,
+} from "../../shared/match-overrides.mjs";
 import { ALL_RUNTIME_FILE_PATHS } from "../../shared/runtime-paths.mjs";
 import { DEFAULT_LEAGUE_TEAMS } from "../../shared/defaults.mjs";
 import { KEY_CONTEXT } from "../../shared/security-contexts.mjs";
@@ -803,9 +812,59 @@ async function ownerSettingsView(env, accountInput) {
     teams,
     canManageTeams: canManage,
     canManageUsers: canManage,
+    canManageMatches: canManage,
     passwordConfigured: Boolean(account.passwordRecord?.digest),
     users: canManage ? publicUserList(settings, env) : [],
   };
+}
+
+async function invalidateUserSnapshotCache(env, settings) {
+  if (env.BALLERWATCH_STATE) {
+    await kvJsonPut(env, "runtime:user-settings", settings).catch(() => null);
+  }
+  await caches.default.delete(
+    new Request("https://ballerwatch.internal/cache/github-runtime-snapshot-v3"),
+  ).catch(() => false);
+}
+
+async function saveMatchOverrideDirect(env, input, { reset = false } = {}) {
+  const id = normalizeMatchOverrideId(input?.id);
+  const override = reset ? null : normalizeMatchOverrideInput(input);
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const record = await githubStateRecord(env, "state/user.json");
+      const current = await userStateDocument(env, record.value);
+      const matchOverrides = cleanMatchOverrides(current.settings?.matchOverrides);
+      if (reset) delete matchOverrides[id];
+      else matchOverrides[id] = override;
+      const settings = { ...current.settings, matchOverrides };
+
+      await githubStatePut(
+        env,
+        "state/user.json",
+        await encryptState({ settings }, env),
+        record.sha,
+        reset
+          ? "runtime(user): reset match override"
+          : "runtime(user): save match override",
+      );
+      await invalidateUserSnapshotCache(env, settings);
+      return {
+        id,
+        kind: id.startsWith("pickup:") ? "pickup" : "league",
+        override: reset ? null : matchOverrides[id],
+      };
+    } catch (error) {
+      if (
+        /Invalid match override|Match date|Match time/.test(
+          String(error?.message || ""),
+        )
+      ) throw error;
+      if (attempt === 2) throw error;
+    }
+  }
+  throw new Error("Unable to save match override.");
 }
 
 export async function verifyOwnerCapability(env, token, settingsOverride = null) {
@@ -1586,13 +1645,50 @@ function clock(value) {
   return `${hour % 12 || 12}:${m[2]} ${hour >= 12 ? "PM" : "AM"}`;
 }
 
+function sourcePickupDates(snapshot) {
+  return (snapshot.pickup?.dates || [])
+    .map((item) => String(item?.date || ""))
+    .filter(Boolean)
+    .sort();
+}
+
+function effectivePickupRecord(snapshot, sourceDate) {
+  const pub = snapshot.pickup?.events?.[sourceDate] || {};
+  const priv = snapshot.pickupPrivate?.events?.[sourceDate] || {};
+  return applyPickupMatchOverride({
+    id: pickupOverrideId(sourceDate),
+    sourceDate,
+    date: sourceDate,
+    startTime: pub.startTime,
+    endTime: pub.endTime,
+    fieldName: priv.fieldName,
+    address: priv.address,
+  }, snapshot.settings || {});
+}
+
 function availableDates(snapshot) {
-  return (snapshot.pickup?.dates || []).map(x => String(x?.date || "")).filter(Boolean).sort();
+  return [...new Set(
+    sourcePickupDates(snapshot)
+      .map((sourceDate) => effectivePickupRecord(snapshot, sourceDate).date)
+      .filter(Boolean),
+  )].sort();
+}
+
+function pickupSourceDateForDisplay(snapshot, displayDate) {
+  for (const sourceDate of sourcePickupDates(snapshot)) {
+    if (effectivePickupRecord(snapshot, sourceDate).date === displayDate) return sourceDate;
+  }
+  return "";
 }
 
 function leagueMatches(snapshot) {
   return (snapshot.league?.teams || []).flatMap(team =>
-    (team?.matches || []).map(game => ({ ...game, team: game?.team || team?.name || "RATS team" })),
+    (team?.matches || []).map(game =>
+      applyLeagueMatchOverride(
+        { ...game, team: game?.team || team?.name || "RATS team" },
+        snapshot.settings || {},
+      )
+    ),
   );
 }
 
@@ -1711,23 +1807,30 @@ export function resolveDate(text, snapshot, context = {}, now = new Date()) {
 }
 
 function pickupFacts(snapshot, date) {
-  const pub = snapshot.pickup?.events?.[date];
-  const priv = snapshot.pickupPrivate?.events?.[date] || {};
+  const sourceDate = pickupSourceDateForDisplay(snapshot, date);
+  if (!sourceDate) return null;
+  const pub = snapshot.pickup?.events?.[sourceDate];
+  const priv = snapshot.pickupPrivate?.events?.[sourceDate] || {};
   if (!pub?.ok) return null;
+  const effective = effectivePickupRecord(snapshot, sourceDate);
   const reserved = Number(pub.reserved);
   const capacity = Number(pub.capacity);
   return {
-    date,
+    id: effective.id,
+    sourceDate,
+    date: effective.date,
     reserved: Number.isFinite(reserved) ? reserved : null,
     capacity: Number.isFinite(capacity) ? capacity : null,
     remaining: Number.isFinite(reserved) && Number.isFinite(capacity) ? capacity - reserved : null,
-    start: clock(pub.startTime),
-    end: clock(pub.endTime),
-    field: cleanText(priv.fieldName, 150),
-    address: cleanText(priv.address, 200),
+    start: clock(effective.startTime),
+    end: clock(effective.endTime),
+    field: cleanText(effective.fieldName, 150),
+    address: cleanText(effective.address, 200),
     locked: Boolean(priv.locked),
     players: Array.isArray(priv.players) ? priv.players : [],
     waitlist: Array.isArray(priv.waitlist) ? priv.waitlist : [],
+    manualOverride: effective.manualOverride,
+    overrideUpdatedAt: effective.overrideUpdatedAt,
   };
 }
 
@@ -2043,7 +2146,7 @@ function webCorsHeaders(request) {
   const origin = request.headers.get("origin") || "";
   return {
     ...(webRequestOriginAllowed(request) ? { "access-control-allow-origin": origin } : {}),
-    "access-control-allow-methods": "GET,POST,OPTIONS",
+    "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
     "access-control-allow-headers": "content-type, authorization",
     "access-control-max-age": "86400",
     vary: "Origin",
@@ -2107,7 +2210,7 @@ export function webCalendarDetails(
       (!facts.field && !facts.address) ||
       !gameIsUpcoming(date, facts.start, facts.end, 180, now)
     ) continue;
-    const id = webCalendarGameId("pickup", date);
+    const id = facts.id || webCalendarGameId("pickup", facts.sourceDate || date);
     const sourceWeather = weatherById.get(id)?.weather || null;
     games.push({
       id,
@@ -2123,10 +2226,12 @@ export function webCalendarDetails(
       location: cleanText(facts.field, 150),
       address: cleanText(facts.address, 200),
       mapsQuery: cleanText(facts.address || facts.field, 220),
-      rsvpUrl: pickupRsvpUrl(date),
+      rsvpUrl: pickupRsvpUrl(facts.sourceDate || date),
       reserved: facts.reserved,
       capacity: facts.capacity,
       jerseyColor: "",
+      overrideActive: Boolean(facts.manualOverride),
+      overrideUpdatedAt: cleanText(facts.overrideUpdatedAt, 80),
       sourceUpdatedAt: cleanText(safe.pickupSourceHealth?.checkedAt, 60),
       weather: sourceWeather,
       weatherApproximate: Boolean(weatherById.get(id)?.weatherApproximate),
@@ -2146,7 +2251,7 @@ export function webCalendarDetails(
     if (!gameIsUpcoming(date, startTime, endTime, 120, now)) continue;
     const key = cleanText(game?.key, 240) ||
       [team, opponent, date, startTime].join("|");
-    const id = webCalendarGameId("league", key);
+    const id = game.overrideId || webCalendarGameId("league", key);
     const sourceWeather = weatherById.get(id)?.weather || null;
     games.push({
       id,
@@ -2165,6 +2270,8 @@ export function webCalendarDetails(
       reserved: null,
       capacity: null,
       jerseyColor: cleanText(game?.jerseyColor, 80),
+      overrideActive: Boolean(game?.manualOverride),
+      overrideUpdatedAt: cleanText(game?.overrideUpdatedAt, 80),
       sourceUpdatedAt: cleanText(safe.league?.updatedAt, 60),
       weather: sourceWeather,
       weatherApproximate: Boolean(weatherById.get(id)?.weatherApproximate),
@@ -2241,15 +2348,20 @@ export function webNextGameDetails(snapshot, now = new Date()) {
     const location = cleanText(facts.field, 150);
     const address = cleanText(facts.address, 200);
     return {
+      id: facts.id || webCalendarGameId("pickup", facts.sourceDate || next.date),
       kind: "pickup",
       date: next.date,
       dateLabel: formatDate(next.date),
       title: "Pickup",
+      startTime: facts.start,
+      endTime: facts.end,
       time,
       location,
       address,
       mapsQuery: address || location,
-      rsvpUrl: pickupRsvpUrl(next.date),
+      rsvpUrl: pickupRsvpUrl(facts.sourceDate || next.date),
+      overrideActive: Boolean(facts.manualOverride),
+      overrideUpdatedAt: cleanText(facts.overrideUpdatedAt, 80),
       sourceUpdatedAt: cleanText(safe.pickupSourceHealth?.checkedAt, 60),
       jerseyColor: "",
       shareText: [
@@ -2271,14 +2383,19 @@ export function webNextGameDetails(snapshot, now = new Date()) {
   const time = startTime && endTime ? `${startTime}–${endTime}` : startTime;
   const jerseyColor = cleanText(game.jerseyColor, 80);
   return {
+    id: game.overrideId || leagueOverrideId(game),
     kind: "league",
     date: next.date,
     dateLabel: formatDate(next.date),
     title: `${team} vs ${opponent}`,
+    startTime,
+    endTime,
     time,
     location,
     address,
     mapsQuery: address || location,
+    overrideActive: Boolean(game?.manualOverride),
+    overrideUpdatedAt: cleanText(game?.overrideUpdatedAt, 80),
     sourceUpdatedAt: cleanText(safe.league?.updatedAt, 60),
     jerseyColor,
     shareText: [
@@ -2311,7 +2428,9 @@ export function webSafeSnapshot(snapshot) {
     league: snapshot?.league || { teams: [] },
     today: snapshot?.today || { games: [] },
     teams: Array.isArray(snapshot?.teams) ? snapshot.teams : [],
-    settings: {},
+    settings: {
+      matchOverrides: cleanMatchOverrides(snapshot?.settings?.matchOverrides),
+    },
     ownerName: "",
     version: snapshot?.version || "unknown",
   };
@@ -2895,6 +3014,49 @@ export default {
         return webJson(
           request,
           { ok: false, error: status === 400 ? message : "Unable to update users right now." },
+          { status },
+        );
+      }
+    }
+
+    if (
+      (request.method === "POST" || request.method === "DELETE") &&
+      userRoute(url.pathname, "match-override")
+    ) {
+      const account = await resolveOwnerCapability(env, bearerToken(request)).catch(() => null);
+      if (!account) {
+        return webJson(request, { ok: false, error: "User sign-in is required." }, { status: 401 });
+      }
+      if (account.role !== "admin") {
+        return webJson(request, { ok: false, error: "Administrator access is required." }, { status: 403 });
+      }
+
+      let body;
+      try { body = await request.json(); }
+      catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
+
+      try {
+        const saved = await saveMatchOverrideDirect(
+          env,
+          body,
+          { reset: request.method === "DELETE" },
+        );
+        ctx.waitUntil(
+          dispatchWorkflow(env, saved.kind === "pickup" ? "pickup.yml" : "league.yml")
+            .catch((error) => console.warn("Match override reconciliation dispatch failed", error)),
+        );
+        return webJson(request, {
+          ok: true,
+          id: saved.id,
+          override: saved.override,
+          reset: request.method === "DELETE",
+        });
+      } catch (error) {
+        const message = cleanText(error?.message, 220);
+        const status = /Invalid match override|Match date|Match time/.test(message) ? 400 : 503;
+        return webJson(
+          request,
+          { ok: false, error: status === 400 ? message : "Unable to save match override right now." },
           { status },
         );
       }

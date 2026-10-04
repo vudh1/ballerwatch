@@ -13,6 +13,8 @@ import {
   matchStartReminderDue,
 } from "../shared/match-reminders.mjs";
 import { appendWebNotification } from "../shared/web-notifications.mjs";
+import { applyLeagueMatchOverride } from "../shared/match-overrides.mjs";
+import { loadUserSettings } from "../shared/user-state.mjs";
 
 const TZ = "America/Los_Angeles";
 const UPDATE = "notification-update.json";
@@ -49,10 +51,10 @@ export function jerseyIcon(color) {
   return "⚽";
 }
 
-export function buildWebText(updates) {
+export function buildWebText(updates, settings = {}) {
   const lines = [];
   for (const item of updates) {
-    const match = item.match;
+    const match = applyLeagueMatchOverride(item.match || {}, settings);
     const verb = item.action === "created" ? "Added" : "Updated";
     const location = match.location || "location not published";
     const jersey = match.jerseyColor || "not published";
@@ -86,12 +88,13 @@ function saveReminderState(value) {
   return true;
 }
 
-function scheduleMatches() {
+function scheduleMatches(settings = {}) {
   try {
     const schedule = JSON.parse(fs.readFileSync(SCHEDULE, "utf8"));
     return (Array.isArray(schedule?.teams) ? schedule.teams : [])
       .flatMap((team) => Array.isArray(team?.matches) ? team.matches : [])
-      .filter((match) => match?.key && match?.start);
+      .filter((match) => match?.key && match?.start)
+      .map((match) => applyLeagueMatchOverride(match, settings));
   } catch {
     return [];
   }
@@ -100,7 +103,8 @@ function scheduleMatches() {
 export function recordLeagueStartReminders({ now = new Date() } = {}) {
   const state = loadReminderState();
   const sent = new Set(Array.isArray(state.matchHourKeys) ? state.matchHourKeys : []);
-  const matches = scheduleMatches();
+  const settings = loadUserSettings();
+  const matches = scheduleMatches(settings);
   const due = matches.filter((match) =>
     !sent.has(String(match.key)) &&
     matchStartReminderDue(absoluteMinutesUntilStart(match.start, now))
@@ -147,13 +151,14 @@ export function recordLeagueStartReminders({ now = new Date() } = {}) {
 
 export function notifyWeb({ now = new Date() } = {}) {
   let recorded = false;
+  const settings = loadUserSettings();
   if (fs.existsSync(UPDATE)) {
     const data = JSON.parse(fs.readFileSync(UPDATE, "utf8"));
     const updates = Array.isArray(data.updates) ? data.updates : [];
     if (updates.length) {
       appendWebNotification("league", {
         title: "RATS schedule updated",
-        body: buildWebText(updates),
+        body: buildWebText(updates, settings),
         tag: `rats-${updates[0]?.match?.date || "schedule"}`,
       });
       console.log(`Web notification recorded for ${updates.length} schedule update(s).`);
