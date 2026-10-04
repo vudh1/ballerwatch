@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "6.3.2",
+  "currentVersion": "6.3.3",
   "releases": [
     {
-      "version": "6.3.2",
+      "version": "6.3.3",
       "date": "2026-10-03",
       "type": "patch",
-      "source": "user-reported",
+      "source": "user-requested",
       "title": "Explicit match Edit control and immediate source reset",
       "webAnnouncement": "Match editing now uses a subtle Edit control on the selected card, with immediate Reset to source and cleaner buttons.",
       "changes": [
@@ -18,6 +18,26 @@
         "Renamed Save override to Save.",
         "Made Reset to source the same normal button height/width as Cancel and Save, with three equal action columns on wider layouts.",
         "Kept the match editor independently centered and preserved the credential-resume fix."
+      ]
+    },
+    {
+      "version": "6.3.2",
+      "date": "2026-10-03",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Fix first double-tap match editor activation",
+      "webAnnouncement": "The hidden match editor now opens on the first two physical taps on iPhone/PWA.",
+      "changes": [
+        "Changed touch match-editor activation to count the two physical touchend events directly instead of relying on Safari-generated click events.",
+        "The first double-tap now opens the editor on taps 1–2 rather than requiring a second double-tap on taps 3–4.",
+        "Kept movement cancellation so scrolling or swiping across the match card does not accidentally open the editor.",
+        "Kept action links/buttons inside the match card excluded from the hidden double-tap gesture.",
+        "Desktop/web now uses the browser's native dblclick event for both the app version and selected match card.",
+        "Bumped the installed PWA shell to 6.3.2 so already-installed 6.3.1 Home Screen apps receive the corrected touch handler.",
+        "Fixed the protected-editor flow so an administrator prompted for credentials resumes directly into the requested match editor after sign-in instead of landing on the RSVP name/team settings card.",
+        "Gave the match editor its own independently centered 34rem modal geometry with full-width, box-sized form controls so it no longer inherits the wide Settings surface or appears shifted to the right.",
+        "Added an administrator-only App update section in Settings that compares main with production and can dispatch the existing Promote production release workflow without exposing GitHub credentials to the browser.",
+        "The in-app update button preserves the existing release safety gate: it starts the workflow from main, while validation, exact candidate pinning, GitHub Release publication, production branch promotion, and downstream deployment remain owned by the existing workflow."
       ]
     },
     {
