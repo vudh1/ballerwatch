@@ -266,6 +266,21 @@
           <p class="hint" id="user-create-status"></p>
         </section>
 
+        <section id="release-management" hidden>
+          <div class="settings-divider"></div>
+          <h3 class="settings-subheading">App update</h3>
+          <div class="release-status-row">
+            <div>
+              <strong id="release-version-summary">Checking versions…</strong>
+              <span id="release-title-summary"></span>
+            </div>
+            <button id="promote-release" type="button" disabled>Checking…</button>
+          </div>
+          <p class="hint" id="promote-release-status">
+            Uses the existing validated production-promotion workflow. No GitHub token is exposed to the app.
+          </p>
+        </section>
+
         <div class="settings-divider"></div>
         <form id="owner-password-form" class="settings-form">
           <label for="owner-password-new">User sign-in password</label>

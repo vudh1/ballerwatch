@@ -1550,7 +1550,7 @@ async function loadSnapshot(env) {
   return loadGitHubSnapshot(env);
 }
 
-async function dispatchWorkflow(env, workflow, inputs = {}) {
+async function dispatchWorkflow(env, workflow, inputs = {}, ref = PRODUCTION_REF) {
   const response = await fetch(
     `https://api.github.com/repos/${REPO}/actions/workflows/${workflow}/dispatches`,
     {
@@ -1563,12 +1563,33 @@ async function dispatchWorkflow(env, workflow, inputs = {}) {
         "x-github-api-version": "2022-11-28",
       },
       body: JSON.stringify({
-        ref: PRODUCTION_REF,
+        ref,
         ...(Object.keys(inputs).length ? { inputs } : {}),
       }),
     },
   );
   if (!response.ok) throw new Error(`GitHub dispatch failed for ${workflow}: HTTP ${response.status}`);
+}
+
+async function appReleaseStatus(env) {
+  const [source, production] = await Promise.all([
+    githubFile(env, "features/versions.json", "main"),
+    githubFile(env, "features/versions.json", PRODUCTION_REF),
+  ]);
+  const sourceVersion = cleanText(source?.currentVersion || "unknown", 40);
+  const productionVersion = cleanText(production?.currentVersion || "unknown", 40);
+  const release = Array.isArray(source?.releases)
+    ? source.releases.find((item) => String(item?.version || "") === sourceVersion)
+    : null;
+  return {
+    sourceVersion,
+    productionVersion,
+    updateAvailable:
+      sourceVersion !== "unknown" &&
+      productionVersion !== "unknown" &&
+      sourceVersion !== productionVersion,
+    title: cleanText(release?.title, 160),
+  };
 }
 
 function localNowParts(now = new Date()) {
@@ -3166,6 +3187,77 @@ export default {
           request,
           { ok: false, error: status === 400 ? message : "Unable to update users right now." },
           { status },
+        );
+      }
+    }
+
+    if (
+      request.method === "GET" &&
+      userRoute(url.pathname, "release-status")
+    ) {
+      const account = await resolveOwnerCapability(env, bearerToken(request)).catch(() => null);
+      if (!account) {
+        return webJson(request, { ok: false, error: "User sign-in is required." }, { status: 401 });
+      }
+      if (account.role !== "admin") {
+        return webJson(request, { ok: false, error: "Administrator access is required." }, { status: 403 });
+      }
+      try {
+        return webJson(request, {
+          ok: true,
+          release: await appReleaseStatus(env),
+        });
+      } catch (error) {
+        console.error("Release status load failed", error);
+        return webJson(
+          request,
+          { ok: false, error: "Unable to check the production release right now." },
+          { status: 503 },
+        );
+      }
+    }
+
+    if (
+      request.method === "POST" &&
+      userRoute(url.pathname, "promote-release")
+    ) {
+      const account = await resolveOwnerCapability(env, bearerToken(request)).catch(() => null);
+      if (!account) {
+        return webJson(request, { ok: false, error: "User sign-in is required." }, { status: 401 });
+      }
+      if (account.role !== "admin") {
+        return webJson(request, { ok: false, error: "Administrator access is required." }, { status: 403 });
+      }
+
+      try {
+        const release = await appReleaseStatus(env);
+        if (!release.updateAvailable) {
+          return webJson(request, {
+            ok: true,
+            dispatched: false,
+            release,
+            message: "Production is already on the current source version.",
+          });
+        }
+
+        await dispatchWorkflow(env, "promote-release.yml", {}, "main");
+        return webJson(
+          request,
+          {
+            ok: true,
+            dispatched: true,
+            release,
+            message:
+              `Promotion requested for BallerWatch ${release.sourceVersion}. The existing release gate will validate and deploy it.`,
+          },
+          { status: 202 },
+        );
+      } catch (error) {
+        console.error("Production promotion dispatch failed", error);
+        return webJson(
+          request,
+          { ok: false, error: "Unable to start the production promotion right now." },
+          { status: 503 },
         );
       }
     }

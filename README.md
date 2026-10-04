@@ -63,7 +63,7 @@ Workers KV and Cloudflare Cron Triggers are intentionally not part of production
 
 BallerWatch supports up to 20 encrypted web accounts. The existing pre-6.1 account migrates automatically as **admin**.
 
-Each account has its own username, password, pickup RSVP name, authentication revision, and device sessions. The administrator can add/remove users, edit the shared monitored-team list, and override discovered match date/time/location; regular users can edit only their own RSVP name and password.
+Each account has its own username, password, pickup RSVP name, authentication revision, and device sessions. The administrator can add/remove users, edit the shared monitored-team list, override discovered match date/time/location, and start the validated production-promotion workflow from Settings; regular users can edit only their own RSVP name and password.
 
 Changing a password or choosing **Sign out all my devices** advances only that user's authentication revision and invalidates that user's older tokens.
 

@@ -38,6 +38,11 @@ const els = {
   userCreateName: document.querySelector("#user-create-name"),
   userCreatePassword: document.querySelector("#user-create-password"),
   userCreateStatus: document.querySelector("#user-create-status"),
+  releaseManagement: document.querySelector("#release-management"),
+  releaseVersionSummary: document.querySelector("#release-version-summary"),
+  releaseTitleSummary: document.querySelector("#release-title-summary"),
+  promoteRelease: document.querySelector("#promote-release"),
+  promoteReleaseStatus: document.querySelector("#promote-release-status"),
   ownerSettingsStatus: document.querySelector("#owner-settings-status"),
   ownerPasswordForm: document.querySelector("#owner-password-form"),
   ownerPasswordNew: document.querySelector("#owner-password-new"),
@@ -125,6 +130,7 @@ let feedbackSubmitted = false;
 let feedbackId = "";
 let feedbackInFlight = false;
 let currentUserSettings = null;
+let currentReleaseStatus = null;
 let pendingMatchOverrideAfterLogin = false;
 
 const OWNER_TOKEN_KEY = "ballerwatch-owner-token";
@@ -542,7 +548,12 @@ function showOwnerSettings(settings) {
   els.ownerTeams.value = Array.isArray(settings?.teams) ? settings.teams.join("\n") : "";
   els.ownerTeamSettings.hidden = !settings?.canManageTeams;
   els.userManagement.hidden = !settings?.canManageUsers;
+  els.releaseManagement.hidden = !settings?.canManageMatches;
   if (settings?.canManageUsers) renderManagedUsers(settings?.users);
+  if (!settings?.canManageMatches) {
+    currentReleaseStatus = null;
+    els.promoteRelease.disabled = true;
+  }
   els.ownerPasswordStatus.textContent = settings?.passwordConfigured
     ? "Your password is set. Changing it revokes your other sessions."
     : "No password is configured for this account.";
@@ -562,6 +573,9 @@ async function loadOwnerSettings() {
     });
     showOwnerSettings(payload.settings || {});
     els.ownerSettingsStatus.textContent = "";
+    if (payload.settings?.canManageMatches) {
+      await loadReleaseStatus();
+    }
   } catch (error) {
     if (error.status === 401) {
       localStorage.removeItem(OWNER_TOKEN_KEY);
@@ -569,6 +583,95 @@ async function loadOwnerSettings() {
       return;
     }
     els.ownerSettingsStatus.textContent = error.message;
+  }
+}
+
+function renderReleaseStatus(release) {
+  currentReleaseStatus = release || null;
+  if (!release) {
+    els.releaseVersionSummary.textContent = "Version status unavailable";
+    els.releaseTitleSummary.textContent = "";
+    els.promoteRelease.textContent = "Check again";
+    els.promoteRelease.disabled = false;
+    return;
+  }
+
+  const source = release.sourceVersion || "unknown";
+  const production = release.productionVersion || "unknown";
+  if (release.updateAvailable) {
+    els.releaseVersionSummary.textContent = `Production ${production} → Available ${source}`;
+    els.releaseTitleSummary.textContent = release.title || "";
+    els.promoteRelease.textContent = `Update app to ${source}`;
+    els.promoteRelease.disabled = false;
+  } else {
+    els.releaseVersionSummary.textContent = `Production ${production} · Up to date`;
+    els.releaseTitleSummary.textContent = release.title || "";
+    els.promoteRelease.textContent = "App is up to date";
+    els.promoteRelease.disabled = true;
+  }
+}
+
+async function loadReleaseStatus() {
+  if (!ownerToken() || els.releaseManagement.hidden) return;
+  els.promoteRelease.disabled = true;
+  els.promoteRelease.textContent = "Checking…";
+  els.promoteReleaseStatus.textContent = "Checking main against production…";
+  try {
+    const payload = await api("/web/user/release-status", {
+      headers: ownerHeaders(),
+      retryNetwork: true,
+    });
+    renderReleaseStatus(payload.release || null);
+    els.promoteReleaseStatus.textContent = payload.release?.updateAvailable
+      ? "Ready to run the existing validated production-promotion workflow."
+      : "Production already matches the current source version.";
+  } catch (error) {
+    if (error.status === 401) {
+      localStorage.removeItem(OWNER_TOKEN_KEY);
+      showLoginSettings("Sign in again to manage app updates.");
+      return;
+    }
+    renderReleaseStatus(null);
+    els.promoteReleaseStatus.textContent = error.message;
+  }
+}
+
+async function promoteProductionRelease() {
+  if (!currentReleaseStatus?.updateAvailable) {
+    await loadReleaseStatus();
+    if (!currentReleaseStatus?.updateAvailable) return;
+  }
+
+  const version = currentReleaseStatus.sourceVersion || "the latest version";
+  if (!window.confirm(`Promote BallerWatch ${version} to production?\n\nThe normal validation and release gates will still apply.`)) {
+    return;
+  }
+
+  els.promoteRelease.disabled = true;
+  els.promoteRelease.textContent = "Starting…";
+  els.promoteReleaseStatus.textContent = "Requesting production promotion…";
+  try {
+    const payload = await api("/web/user/promote-release", {
+      method: "POST",
+      headers: ownerHeaders(),
+      body: "{}",
+    });
+    renderReleaseStatus(payload.release || currentReleaseStatus);
+    if (payload.dispatched) {
+      els.promoteRelease.disabled = true;
+      els.promoteRelease.textContent = "Promotion requested";
+    }
+    els.promoteReleaseStatus.textContent =
+      payload.message || "Promotion request accepted.";
+  } catch (error) {
+    if (error.status === 401) {
+      localStorage.removeItem(OWNER_TOKEN_KEY);
+      showLoginSettings("Sign in again to promote an app update.");
+      return;
+    }
+    els.promoteRelease.disabled = false;
+    els.promoteRelease.textContent = `Update app to ${version}`;
+    els.promoteReleaseStatus.textContent = error.message;
   }
 }
 
@@ -2545,6 +2648,7 @@ els.ownerLoginForm.addEventListener("submit", loginOwnerDevice);
 els.ownerSettingsForm.addEventListener("submit", saveOwnerSettings);
 els.ownerPasswordForm.addEventListener("submit", saveOwnerPassword);
 els.userCreateForm.addEventListener("submit", createManagedUser);
+els.promoteRelease.addEventListener("click", promoteProductionRelease);
 els.userList.addEventListener("click", (event) => {
   const button = event.target.closest(".user-remove");
   if (button?.dataset?.username) void removeManagedUser(button.dataset.username);

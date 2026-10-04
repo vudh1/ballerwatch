@@ -3344,3 +3344,43 @@ html.is-standalone .status-bar-glass {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* v6.3.2 in-app production promotion */
+.release-status-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.release-status-row > div {
+  min-width: 0;
+  display: grid;
+  gap: 0.18rem;
+}
+
+.release-status-row strong {
+  color: #e2e8f0;
+  font-size: 0.82rem;
+}
+
+.release-status-row span {
+  color: #64748b;
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}
+
+.release-status-row button {
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .release-status-row {
+    grid-template-columns: 1fr;
+  }
+
+  .release-status-row button {
+    width: 100%;
+  }
+}

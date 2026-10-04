@@ -985,3 +985,30 @@ test("match override modal is independently centered and constrained", () => {
   );
   assert.match(css, /\.match-override-form input \{[\s\S]*width:\s*100%;[\s\S]*box-sizing:\s*border-box;/);
 });
+
+
+test("admin Settings can safely dispatch the existing production promotion workflow", () => {
+  const html = fs.readFileSync("docs/index.html", "utf8");
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  const worker = fs.readFileSync("infra/web-worker/worker.mjs", "utf8");
+
+  assert.match(html, /id="release-management"/);
+  assert.match(html, /id="promote-release"/);
+  assert.match(html, />App update</);
+  assert.match(app, /function renderReleaseStatus/);
+  assert.match(app, /async function loadReleaseStatus/);
+  assert.match(app, /async function promoteProductionRelease/);
+  assert.match(app, /\/web\/user\/release-status/);
+  assert.match(app, /\/web\/user\/promote-release/);
+  assert.match(app, /Production \$\{production\} → Available \$\{source\}/);
+  assert.match(app, /Update app to \$\{source\}/);
+  assert.match(app, /normal validation and release gates will still apply/);
+
+  assert.match(worker, /userRoute\(url\.pathname, "release-status"\)/);
+  assert.match(worker, /userRoute\(url\.pathname, "promote-release"\)/);
+  assert.match(worker, /account\.role !== "admin"/);
+  assert.match(worker, /githubFile\(env, "features\/versions\.json", "main"\)/);
+  assert.match(worker, /githubFile\(env, "features\/versions\.json", PRODUCTION_REF\)/);
+  assert.match(worker, /dispatchWorkflow\(env, "promote-release\.yml", \{\}, "main"\)/);
+  assert.match(worker, /async function dispatchWorkflow\(env, workflow, inputs = \{\}, ref = PRODUCTION_REF\)/);
+});
