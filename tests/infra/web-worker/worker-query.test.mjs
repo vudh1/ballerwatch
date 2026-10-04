@@ -98,8 +98,8 @@ test("date schedule reply combines available published data", () => {
   assert.match(pickup, /Test Field/);
 });
 
-test("next game considers both league and pickup schedules", () => {
-  const result = nextGame(snapshot());
+test("next game considers league, RSVP pickup, and generated Saturday pickup schedules", () => {
+  const result = nextGame(snapshot(), new Date("2099-10-04T12:00:00-07:00"));
   assert.equal(result.date, "2099-10-05");
   assert.match(result.reply, /Team Alpha vs Team Beta/);
 });

@@ -2113,7 +2113,7 @@ export function directIntent(text) {
   const pickupSpecific =
     /\b(?:pickup|rsvp|reserved|spots?|capacity|availability|full|waitlist|registered|signed\s*up)\b/.test(lower);
   const rsvpSpecific =
-    /\b(?:rsvp|reserved|spots?|capacity|availability|full|waitlist|registered|signed\s*up)\b/.test(lower);
+    /\b(?:rsvp|reserved|spots?|capacity|availability|full|waitlist|registered|signed\s*up|am i in)\b/.test(lower);
   const gameSpecific =
     /\b(?:game|games|match|matches|play|playing|soccer|jersey|kit|uniform|color|colour|wear|opponent|who)\b/.test(lower);
 
