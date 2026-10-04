@@ -935,7 +935,14 @@ test("hidden match override editor is gesture-driven and resettable", () => {
   assert.match(html, /Reset to source/);
   assert.match(app, /nextGameCard\.addEventListener\("dblclick"/);
   assert.match(app, /MATCH_OVERRIDE_HOLD_MS = 700/);
+  assert.match(html, /<button id="version" class="version-trigger"/);
+  assert.match(app, /version\.addEventListener\("touchstart"/);
+  assert.match(app, /event\.preventDefault\(\)/);
+  assert.match(app, /\{ passive: false \}/);
   assert.match(app, /version\.addEventListener\("pointerdown"/);
+  assert.match(app, /pointerType === "touch"/);
+  assert.match(app, /version\.addEventListener\("dragstart"/);
+  assert.match(fs.readFileSync("docs\/styles\.css", "utf8"), /-webkit-touch-callout:\s*none/);
   assert.match(app, /\/web\/user\/match-override/);
   assert.match(app, /method: "DELETE"/);
   assert.match(app, /canManageMatches/);

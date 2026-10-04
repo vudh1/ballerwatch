@@ -2409,6 +2409,7 @@ const MATCH_OVERRIDE_HOLD_MS = 700;
 const MATCH_OVERRIDE_MOVE_TOLERANCE_PX = 12;
 let matchOverrideHoldTimer = null;
 let matchOverridePointerId = null;
+let matchOverrideTouchId = null;
 let matchOverrideStartX = 0;
 let matchOverrideStartY = 0;
 
@@ -2418,35 +2419,76 @@ function clearMatchOverrideHold() {
     matchOverrideHoldTimer = null;
   }
   matchOverridePointerId = null;
+  matchOverrideTouchId = null;
 }
 
-els.version.addEventListener("pointerdown", (event) => {
-  if (!event.isPrimary) return;
+function armMatchOverrideHold(clientX, clientY) {
   clearMatchOverrideHold();
-  matchOverridePointerId = event.pointerId;
-  matchOverrideStartX = event.clientX;
-  matchOverrideStartY = event.clientY;
+  matchOverrideStartX = clientX;
+  matchOverrideStartY = clientY;
   matchOverrideHoldTimer = window.setTimeout(() => {
     matchOverrideHoldTimer = null;
     matchOverridePointerId = null;
+    matchOverrideTouchId = null;
     void openMatchOverrideEditor();
   }, MATCH_OVERRIDE_HOLD_MS);
+}
+
+function matchOverrideMoved(clientX, clientY) {
+  return Math.hypot(
+    clientX - matchOverrideStartX,
+    clientY - matchOverrideStartY,
+  ) > MATCH_OVERRIDE_MOVE_TOLERANCE_PX;
+}
+
+els.version.addEventListener("touchstart", (event) => {
+  if (event.touches.length !== 1) {
+    clearMatchOverrideHold();
+    return;
+  }
+  event.preventDefault();
+  const touch = event.touches[0];
+  matchOverrideTouchId = touch.identifier;
+  armMatchOverrideHold(touch.clientX, touch.clientY);
+  matchOverrideTouchId = touch.identifier;
+}, { passive: false });
+
+els.version.addEventListener("touchmove", (event) => {
+  const touch = [...event.touches].find(
+    (item) => item.identifier === matchOverrideTouchId,
+  );
+  if (!touch) return;
+  event.preventDefault();
+  if (matchOverrideMoved(touch.clientX, touch.clientY)) clearMatchOverrideHold();
+}, { passive: false });
+
+for (const eventName of ["touchend", "touchcancel"]) {
+  els.version.addEventListener(eventName, (event) => {
+    event.preventDefault();
+    clearMatchOverrideHold();
+  }, { passive: false });
+}
+
+els.version.addEventListener("pointerdown", (event) => {
+  if (!event.isPrimary || event.pointerType === "touch") return;
+  event.preventDefault();
+  matchOverridePointerId = event.pointerId;
+  armMatchOverrideHold(event.clientX, event.clientY);
+  matchOverridePointerId = event.pointerId;
 });
 
 els.version.addEventListener("pointermove", (event) => {
   if (event.pointerId !== matchOverridePointerId) return;
-  const moved = Math.hypot(
-    event.clientX - matchOverrideStartX,
-    event.clientY - matchOverrideStartY,
-  );
-  if (moved > MATCH_OVERRIDE_MOVE_TOLERANCE_PX) clearMatchOverrideHold();
+  if (matchOverrideMoved(event.clientX, event.clientY)) clearMatchOverrideHold();
 });
 
 for (const eventName of ["pointerup", "pointercancel", "pointerleave"]) {
   els.version.addEventListener(eventName, clearMatchOverrideHold);
 }
+els.version.addEventListener("click", (event) => event.preventDefault());
 els.version.addEventListener("contextmenu", (event) => event.preventDefault());
 els.version.addEventListener("selectstart", (event) => event.preventDefault());
+els.version.addEventListener("dragstart", (event) => event.preventDefault());
 
 els.nextGameCard.addEventListener("dblclick", (event) => {
   if (event.target.closest("a, button, input, textarea, select, label")) return;

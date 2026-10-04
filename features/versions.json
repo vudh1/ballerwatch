@@ -18,7 +18,8 @@
         "Allowed the administrator's hidden match override editor to edit/reset a Free Pickup card using its stable generated Saturday identity; an edit can request the existing maintenance weather refresh without creating a recurring watcher.",
         "Bumped the installed PWA shell to 6.3.0 and labeled the spotlight type explicitly as Free Pickup.",
         "Preserved RSVP-specific Q&A routing such as “am I in?” and spots/capacity questions while natural Saturday pickup questions use the combined schedule view that can include Free Pickup.",
-        "Added regression coverage that keeps the existing 14-day weather boundary intact even when Saturday Free Pickup cards extend farther through the published schedule horizon."
+        "Added regression coverage that keeps the existing 14-day weather boundary intact even when Saturday Free Pickup cards extend farther through the published schedule horizon.",
+        "Made the hidden touch match-editor gesture reliable on iPhone/PWA by turning the version label into a non-selectable button, disabling the iOS touch callout, and using non-passive touch handlers that prevent the copy/selection menu."
       ]
     },
     {
