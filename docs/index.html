@@ -88,7 +88,10 @@
             <button class="secondary" id="next-game-share" type="button">Share</button>
           </div>
           <p class="hint" id="next-game-hint"></p>
-          <p class="match-update-credit" id="next-game-updated"></p>
+          <div class="match-card-footer">
+            <p class="match-update-credit" id="next-game-updated"></p>
+            <button class="match-edit-link" id="next-game-edit" type="button">Edit</button>
+          </div>
         </div>
       </section>
     </div>
@@ -145,8 +148,7 @@
         <button class="secondary compact-button" id="install-help" type="button">How to install</button>
       </section>
       <div class="footer-links">
-        <button id="version" class="version-trigger" type="button"
-          aria-label="BallerWatch version. Double-tap on touch or double-click on desktop to edit the selected match.">BallerWatch</button>
+        <span id="version">BallerWatch</span>
         <span>•</span>
         <a href="https://github.com/vudh1/ballerwatch">GitHub</a>
         <span>•</span>
@@ -332,10 +334,10 @@
           placeholder="Field or venue">
 
         <div class="match-override-actions">
-          <button class="subtle-action subtle-danger" id="match-override-reset"
+          <button class="secondary" id="match-override-reset"
             type="button">Reset to source</button>
           <button class="secondary" id="match-override-cancel" type="button">Cancel</button>
-          <button type="submit">Save override</button>
+          <button type="submit">Save</button>
         </div>
       </form>
       <p class="hint" id="match-override-status"></p>

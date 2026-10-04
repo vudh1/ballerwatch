@@ -57,6 +57,9 @@ test("pickup override changes visible fields without changing source identity", 
   assert.equal(result.fieldName, "Manual Field");
   assert.equal(result.address, "");
   assert.equal(result.manualOverride, true);
+  assert.equal(result.sourceDate, "2026-10-06");
+  assert.equal(result.sourceStartTime, "20:00");
+  assert.equal(result.sourceLocation, "Source Field");
 });
 
 test("league override retains schedule key and rebuilds effective start", () => {

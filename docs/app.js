@@ -88,6 +88,7 @@ const els = {
   nextGameShare: document.querySelector("#next-game-share"),
   nextGameHint: document.querySelector("#next-game-hint"),
   nextGameUpdated: document.querySelector("#next-game-updated"),
+  nextGameEdit: document.querySelector("#next-game-edit"),
   testNotification: document.querySelector("#test-notification"),
   deleteAllNotifications: document.querySelector("#delete-all-notifications"),
   testNotificationStatus: document.querySelector("#test-notification-status"),
@@ -132,6 +133,7 @@ let feedbackInFlight = false;
 let currentUserSettings = null;
 let currentReleaseStatus = null;
 let pendingMatchOverrideAfterLogin = false;
+let matchOverrideSourceState = null;
 
 const OWNER_TOKEN_KEY = "ballerwatch-owner-token";
 const OWNER_USERNAME_KEY = "ballerwatch-user-name";
@@ -1197,6 +1199,7 @@ function spotlightModel(game, label = "NEXT GAME") {
       rsvpWaitlisted: false,
       directions: "",
       actionsHidden: true,
+      editHidden: true,
     };
   }
 
@@ -1252,6 +1255,7 @@ function spotlightModel(game, label = "NEXT GAME") {
     rsvpWaitlisted: game.kind === "pickup" && waitlistedRsvpDates.has(game.date),
     directions: googleMapsUrl(game.mapsQuery),
     actionsHidden: false,
+    editHidden: false,
   };
 }
 
@@ -1271,6 +1275,7 @@ function applySpotlightModel(targets, game, label = "NEXT GAME") {
   targets.updated.textContent = model.updated;
   targets.updated.hidden = !model.updated;
   targets.actions.hidden = model.actionsHidden;
+  if (targets.edit) targets.edit.hidden = model.editHidden;
   targets.hint.textContent = "";
 
   if (model.rsvp) {
@@ -1314,6 +1319,7 @@ function currentSpotlightTargets() {
     capacityFill: els.nextGameCapacityFill,
     weather: els.nextGameWeather,
     updated: els.nextGameUpdated,
+    edit: els.nextGameEdit,
     actions: els.nextGameActions,
     rsvp: els.nextGameRsvp,
     directions: els.nextGameDirections,
@@ -1370,6 +1376,7 @@ function buildSpotlightTrainCard(game) {
       capacityFill: role("next-game-capacity-fill"),
       weather: role("next-game-weather"),
       updated: role("next-game-updated"),
+      edit: role("next-game-edit"),
       actions: role("next-game-actions"),
       rsvp: role("next-game-rsvp"),
       directions: role("next-game-directions"),
@@ -1999,6 +2006,67 @@ async function loadNextGame() {
   }
 }
 
+function matchSourceState(game) {
+  if (!game?.id) return null;
+  return {
+    id: game.id,
+    date: game.sourceDate || game.date || "",
+    startTime: game.sourceStartTime || game.startTime || "",
+    endTime: game.sourceEndTime || game.endTime || "",
+    location: game.sourceLocation || game.sourceAddress || game.location || "",
+    address: game.sourceAddress || "",
+    mapsQuery: game.sourceMapsQuery || game.sourceAddress || game.sourceLocation || "",
+  };
+}
+
+function sourceGameView(game, source = matchOverrideSourceState) {
+  if (!game || !source?.date) return game;
+  const startTime = source.startTime || "";
+  const endTime = source.endTime || "";
+  const time = startTime && endTime
+    ? `${startTime}–${endTime}`
+    : (startTime || endTime);
+  return {
+    ...game,
+    date: source.date,
+    dateLabel: dateDisplay(source.date, {
+      weekday: "short",
+      month: "numeric",
+      day: "numeric",
+    }),
+    startTime,
+    endTime,
+    time,
+    location: source.location || "",
+    address: source.address || "",
+    mapsQuery: source.mapsQuery || source.location || "",
+    overrideActive: false,
+    overrideUpdatedAt: "",
+  };
+}
+
+function fillMatchOverrideForm(source) {
+  if (!source) return;
+  els.matchOverrideDate.value = source.date || "";
+  els.matchOverrideStart.value = inputClockValue(source.startTime || "");
+  els.matchOverrideEnd.value = inputClockValue(source.endTime || "");
+  els.matchOverrideLocation.value = source.location || "";
+}
+
+function updateLocalCalendarGame(game) {
+  if (!game?.id || !Array.isArray(currentCalendar?.games)) return;
+  const index = currentCalendar.games.findIndex((item) => item.id === game.id);
+  if (index < 0) return;
+  currentCalendar.games[index] = game;
+  selectedCalendarGameId = game.id;
+  selectedCalendarDate = game.date;
+  renderCalendarGrid();
+  renderCalendarGamePicker(
+    currentCalendar.games.filter((item) => item.date === game.date),
+    game.id,
+  );
+}
+
 function inputClockValue(value) {
   const text = String(value || "").trim();
   if (!text) return "";
@@ -2055,18 +2123,19 @@ async function openMatchOverrideEditor() {
   const settings = await matchOverrideAdminSettings();
   if (!settings?.canManageMatches) return;
 
+  matchOverrideSourceState = matchSourceState(currentNextGame);
   els.matchOverrideTitle.textContent = currentNextGame.title || "Edit selected match";
   els.matchOverrideCopy.textContent = currentNextGame.overrideActive
-    ? "Manual override is active. Edit it below or reset to the discovered source values."
-    : "Saving these values will override the discovered date, time, and location.";
+    ? "Manual values are active. Edit them, or reset immediately to the discovered source values."
+    : "Edit the match below. Reset always restores the discovered source values.";
   els.matchOverrideDate.value = currentNextGame.date || "";
   els.matchOverrideStart.value = inputClockValue(currentNextGame.startTime || "");
   els.matchOverrideEnd.value = inputClockValue(currentNextGame.endTime || "");
   els.matchOverrideLocation.value =
     currentNextGame.location || currentNextGame.address || "";
-  els.matchOverrideReset.disabled = !currentNextGame.overrideActive;
+  els.matchOverrideReset.disabled = !matchOverrideSourceState;
   els.matchOverrideStatus.textContent = currentNextGame.overrideActive
-    ? "Manual override active."
+    ? "Manual values active."
     : "";
   els.matchOverrideDialog.showModal();
 }
@@ -2077,7 +2146,7 @@ async function saveMatchOverride(event) {
   const button = els.matchOverrideForm.querySelector('button[type="submit"]');
   button.disabled = true;
   els.matchOverrideReset.disabled = true;
-  els.matchOverrideStatus.textContent = "Saving override…";
+  els.matchOverrideStatus.textContent = "Saving…";
   try {
     await api("/web/user/match-override", {
       method: "POST",
@@ -2091,7 +2160,7 @@ async function saveMatchOverride(event) {
         location: els.matchOverrideLocation.value.trim(),
       }),
     });
-    els.matchOverrideStatus.textContent = "Override saved.";
+    els.matchOverrideStatus.textContent = "Saved.";
     await loadCalendar();
     window.setTimeout(() => {
       if (els.matchOverrideDialog.open) els.matchOverrideDialog.close();
@@ -2107,30 +2176,47 @@ async function saveMatchOverride(event) {
     }
   } finally {
     button.disabled = false;
-    els.matchOverrideReset.disabled = !currentNextGame?.overrideActive;
+    els.matchOverrideReset.disabled = !matchOverrideSourceState;
   }
 }
 
 async function resetMatchOverride() {
-  if (!currentNextGame?.id || !currentNextGame.overrideActive) return;
-  els.matchOverrideReset.disabled = true;
-  els.matchOverrideStatus.textContent = "Resetting to source…";
+  if (!currentNextGame?.id || !matchOverrideSourceState) return;
+
+  const persistedOverride = Boolean(currentNextGame.overrideActive);
+  const matchId = currentNextGame.id;
+  const restored = sourceGameView(currentNextGame, matchOverrideSourceState);
+
+  fillMatchOverrideForm(matchOverrideSourceState);
+  renderNextGame(restored, els.spotlightLabel.textContent || "SELECTED GAME");
+  updateLocalCalendarGame(restored);
+  els.matchOverrideReset.disabled = false;
+  els.matchOverrideCopy.textContent =
+    "Source values are shown. Change anything and Save, or close the editor.";
+  els.matchOverrideStatus.textContent = persistedOverride
+    ? "Source values restored locally. Removing saved values…"
+    : "Source values restored.";
+
+  if (!persistedOverride) return;
+
   try {
     await api("/web/user/match-override", {
       method: "DELETE",
       headers: ownerHeaders(),
       retryNetwork: true,
-      body: JSON.stringify({ id: currentNextGame.id }),
+      body: JSON.stringify({ id: matchId }),
     });
     els.matchOverrideStatus.textContent = "Source values restored.";
     await loadCalendar();
-    window.setTimeout(() => {
-      if (els.matchOverrideDialog.open) els.matchOverrideDialog.close();
-    }, 180);
+    const refreshed = (currentCalendar?.games || []).find((item) => item.id === matchId);
+    if (refreshed) {
+      matchOverrideSourceState = matchSourceState(refreshed);
+      renderNextGame(refreshed, els.spotlightLabel.textContent || "SELECTED GAME");
+      fillMatchOverrideForm(matchOverrideSourceState);
+    }
   } catch (error) {
-    els.matchOverrideStatus.textContent = error.message;
-  } finally {
-    els.matchOverrideReset.disabled = !currentNextGame?.overrideActive;
+    els.matchOverrideStatus.textContent =
+      `Source is shown locally, but the saved values could not be removed: ${error.message}`;
   }
 }
 
@@ -2528,114 +2614,7 @@ els.answer.addEventListener("dblclick", (event) => {
 els.answer.addEventListener("contextmenu", (event) => event.preventDefault());
 els.answer.addEventListener("selectstart", (event) => event.preventDefault());
 
-const MATCH_OVERRIDE_DOUBLE_TAP_MS = 500;
-const MATCH_OVERRIDE_TAP_MOVE_TOLERANCE_PX = 14;
-let matchOverrideOpening = false;
-
-async function openMatchOverrideEditorOnce() {
-  if (matchOverrideOpening || els.matchOverrideDialog.open) return;
-  matchOverrideOpening = true;
-  try {
-    await openMatchOverrideEditor();
-  } finally {
-    matchOverrideOpening = false;
-  }
-}
-
-function installTouchDoubleTap(target, { ignoreInteractive = false } = {}) {
-  let lastTapAt = 0;
-  let touchId = null;
-  let startX = 0;
-  let startY = 0;
-  let moved = false;
-
-  const blockedTarget = (eventTarget) =>
-    ignoreInteractive &&
-    eventTarget instanceof Element &&
-    Boolean(eventTarget.closest("a, button, input, textarea, select, label"));
-
-  target.addEventListener("touchstart", (event) => {
-    if (blockedTarget(event.target) || event.touches.length !== 1) {
-      touchId = null;
-      moved = false;
-      return;
-    }
-    const touch = event.touches[0];
-    touchId = touch.identifier;
-    startX = touch.clientX;
-    startY = touch.clientY;
-    moved = false;
-  }, { passive: true });
-
-  target.addEventListener("touchmove", (event) => {
-    if (touchId === null) return;
-    const touch = [...event.touches].find((item) => item.identifier === touchId);
-    if (!touch) return;
-    if (
-      Math.hypot(touch.clientX - startX, touch.clientY - startY) >
-      MATCH_OVERRIDE_TAP_MOVE_TOLERANCE_PX
-    ) {
-      moved = true;
-      lastTapAt = 0;
-    }
-  }, { passive: true });
-
-  target.addEventListener("touchend", (event) => {
-    if (touchId === null || moved || blockedTarget(event.target)) {
-      touchId = null;
-      moved = false;
-      return;
-    }
-
-    const ended = [...event.changedTouches].find((item) => item.identifier === touchId);
-    touchId = null;
-    if (!ended) return;
-
-    const now = Date.now();
-    const isDoubleTap = lastTapAt > 0 && now - lastTapAt <= MATCH_OVERRIDE_DOUBLE_TAP_MS;
-    if (isDoubleTap) {
-      lastTapAt = 0;
-      event.preventDefault();
-      void openMatchOverrideEditorOnce();
-      return;
-    }
-    lastTapAt = now;
-  }, { passive: false });
-
-  target.addEventListener("touchcancel", () => {
-    touchId = null;
-    moved = false;
-    lastTapAt = 0;
-  }, { passive: true });
-}
-
-installTouchDoubleTap(els.version);
-installTouchDoubleTap(els.nextGameCard, { ignoreInteractive: true });
-
-els.version.addEventListener("dblclick", (event) => {
-  event.preventDefault();
-  void openMatchOverrideEditorOnce();
-});
-els.version.addEventListener("contextmenu", (event) => event.preventDefault());
-els.version.addEventListener("selectstart", (event) => event.preventDefault());
-els.version.addEventListener("dragstart", (event) => event.preventDefault());
-
-els.nextGameCard.addEventListener("dblclick", (event) => {
-  if (event.target.closest("a, button, input, textarea, select, label")) return;
-  event.preventDefault();
-  void openMatchOverrideEditorOnce();
-});
-els.nextGameCard.addEventListener("contextmenu", (event) => {
-  if (!event.target.closest("a, button, input, textarea, select, label")) {
-    event.preventDefault();
-  }
-});
-els.nextGameCard.addEventListener("selectstart", (event) => {
-  if (!event.target.closest("a, button, input, textarea, select, label")) {
-    event.preventDefault();
-  }
-});
-
+els.nextGameEdit.addEventListener("click", () => void openMatchOverrideEditor());
 els.matchOverrideForm.addEventListener("submit", saveMatchOverride);
 els.matchOverrideReset.addEventListener("click", resetMatchOverride);
 els.matchOverrideCancel.addEventListener("click", () => els.matchOverrideDialog.close());

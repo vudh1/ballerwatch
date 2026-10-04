@@ -630,6 +630,9 @@ test("web calendar and next-game views honor encrypted match overrides while kee
   assert.equal(overriddenPickup.date, "2099-10-09");
   assert.equal(overriddenPickup.location, "Manual Field");
   assert.equal(overriddenPickup.overrideActive, true);
+  assert.equal(overriddenPickup.sourceDate, "2099-10-08");
+  assert.equal(overriddenPickup.sourceStartTime, "8:00 PM");
+  assert.equal(overriddenPickup.sourceLocation, "Source Field");
 
   const next = webNextGameDetails(snapshot, new Date("2099-10-08T12:00:00-07:00"));
   assert.equal(next.id, "pickup:2099-10-08");

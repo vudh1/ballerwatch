@@ -927,40 +927,36 @@ test("README includes the web app demo and multi-user settings are exposed", () 
 });
 
 
-test("hidden match override editor is gesture-driven and resettable", () => {
+test("match override editor uses an explicit footer Edit control and local Reset", () => {
   const html = fs.readFileSync("docs/index.html", "utf8");
   const app = fs.readFileSync("docs/app.js", "utf8");
+  const css = fs.readFileSync("docs/styles.css", "utf8");
+
   assert.match(html, /id="match-override-dialog" class="match-override-dialog"/);
   assert.match(html, /id="match-override-reset"/);
-  assert.match(html, /Reset to source/);
-  assert.match(app, /MATCH_OVERRIDE_DOUBLE_TAP_MS = 500/);
-  assert.match(app, /MATCH_OVERRIDE_TAP_MOVE_TOLERANCE_PX = 14/);
-  assert.match(html, /<button id="version" class="version-trigger"/);
-  assert.match(html, /Double-tap on touch or double-click on desktop/);
-  assert.match(app, /function installTouchDoubleTap/);
-  assert.match(app, /addEventListener\("touchend"/);
-  assert.match(app, /event\.changedTouches/);
-  assert.match(app, /event\.preventDefault\(\)/);
-  assert.match(app, /\{ passive: false \}/);
-  assert.match(app, /installTouchDoubleTap\(els\.version\)/);
-  assert.match(app, /installTouchDoubleTap\(els\.nextGameCard/);
-  assert.match(app, /version\.addEventListener\("dblclick"/);
-  assert.match(app, /nextGameCard\.addEventListener\("dblclick"/);
-  assert.match(app, /openMatchOverrideEditorOnce/);
-  assert.doesNotMatch(app, /handleVersionDoubleActivation/);
-  assert.doesNotMatch(app, /handleMatchCardDoubleActivation/);
-  assert.doesNotMatch(app, /MATCH_OVERRIDE_HOLD_MS/);
-  assert.match(fs.readFileSync("docs\/styles\.css", "utf8"), /-webkit-touch-callout:\s*none/);
-  assert.match(app, /\/web\/user\/match-override/);
+  assert.match(html, />Reset to source</);
+  assert.match(html, /id="next-game-edit"[^>]*>Edit<\/button>/);
+  assert.match(html, /<span id="version">BallerWatch<\/span>/);
+  assert.match(html, /<button type="submit">Save<\/button>/);
+  assert.doesNotMatch(html, /Save override/);
+
+  assert.match(app, /nextGameEdit\.addEventListener\("click"/);
+  assert.match(app, /matchSourceState/);
+  assert.match(app, /sourceGameView/);
+  assert.match(app, /fillMatchOverrideForm/);
+  assert.match(app, /Source values restored locally/);
+  assert.match(app, /persistedOverride/);
   assert.match(app, /method: "DELETE"/);
   assert.match(app, /pendingMatchOverrideAfterLogin/);
   assert.match(app, /openSettings\(\{ pendingAction: "match-override" \}\)/);
-  assert.match(app, /resumeMatchOverride/);
-  assert.match(app, /settingsDialog\.close\(\)/);
-  assert.match(app, /await openMatchOverrideEditor\(\)/);
-  assert.match(app, /Administrator access is required to edit match details/);
-  assert.match(app, /canManageMatches/);
-  assert.match(app, /Manual override/);
+  assert.doesNotMatch(app, /MATCH_OVERRIDE_DOUBLE_TAP_MS/);
+  assert.doesNotMatch(app, /installTouchDoubleTap/);
+  assert.doesNotMatch(app, /nextGameCard\.addEventListener\("dblclick"/);
+  assert.doesNotMatch(app, /version\.addEventListener\("dblclick"/);
+
+  assert.match(css, /\.match-edit-link/);
+  assert.match(css, /grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(css, /\.match-override-actions button \{[\s\S]*min-height:\s*2\.75rem/);
 });
 
 

@@ -147,12 +147,21 @@ function shiftedIso(source, date, time) {
 export function applyPickupMatchOverride(source, settings = {}) {
   const sourceDate = String(source?.sourceDate || source?.date || "").trim();
   const id = source?.id || pickupOverrideId(sourceDate);
+  const sourceStartTime = sourceClock(source?.startTime);
+  const sourceEndTime = sourceClock(source?.endTime);
+  const sourceLocation = String(source?.fieldName || "");
+  const sourceAddress = String(source?.address || "");
   const override = matchOverride(settings, id);
   if (!override) {
     return {
       ...source,
       id,
       sourceDate,
+      sourceStartTime,
+      sourceEndTime,
+      sourceLocation,
+      sourceAddress,
+      sourceMapsQuery: sourceAddress || sourceLocation,
       manualOverride: false,
       overrideUpdatedAt: "",
     };
@@ -161,6 +170,11 @@ export function applyPickupMatchOverride(source, settings = {}) {
     ...source,
     id,
     sourceDate,
+    sourceStartTime,
+    sourceEndTime,
+    sourceLocation,
+    sourceAddress,
+    sourceMapsQuery: sourceAddress || sourceLocation,
     date: override.date || source.date,
     startTime: override.startTime || source.startTime || "",
     endTime: override.endTime || source.endTime || "",
@@ -173,20 +187,30 @@ export function applyPickupMatchOverride(source, settings = {}) {
 
 export function applyLeagueMatchOverride(game, settings = {}) {
   const id = leagueOverrideId(game);
+  const sourceDate = String(game?.date || "");
+  const sourceStartTime = sourceClock(game?.startTime || game?.start);
+  const sourceEndTime = sourceClock(game?.endTime || game?.end);
+  const sourceLocation = String(game?.location || "");
   const override = matchOverride(settings, id);
   if (!override) {
     return {
       ...game,
       overrideId: id,
+      sourceDate,
+      sourceStartTime,
+      sourceEndTime,
+      sourceLocation,
+      sourceAddress: "",
+      sourceMapsQuery: sourceLocation,
       manualOverride: false,
       overrideUpdatedAt: "",
     };
   }
 
-  const date = override.date || String(game?.date || "");
-  const startTime = override.startTime || sourceClock(game?.startTime || game?.start);
-  const endTime = override.endTime || sourceClock(game?.endTime || game?.end);
-  const location = override.location || String(game?.location || "");
+  const date = override.date || sourceDate;
+  const startTime = override.startTime || sourceStartTime;
+  const endTime = override.endTime || sourceEndTime;
+  const location = override.location || sourceLocation;
 
   return {
     ...game,
@@ -200,6 +224,12 @@ export function applyLeagueMatchOverride(game, settings = {}) {
       ? "https://maps.google.com/?q=" + encodeURIComponent(location)
       : null,
     overrideId: id,
+    sourceDate,
+    sourceStartTime,
+    sourceEndTime,
+    sourceLocation,
+    sourceAddress: "",
+    sourceMapsQuery: sourceLocation,
     manualOverride: true,
     overrideUpdatedAt: override.updatedAt,
   };
@@ -209,22 +239,36 @@ export function applyLeagueMatchOverride(game, settings = {}) {
 export function applyFreePickupMatchOverride(source, settings = {}) {
   const sourceDate = String(source?.sourceDate || source?.date || "").trim();
   const id = source?.id || freePickupOverrideId(sourceDate);
+  const sourceStartTime = sourceClock(source?.startTime);
+  const sourceEndTime = sourceClock(source?.endTime);
+  const sourceLocation = String(source?.location || "");
+  const sourceMapsQuery = String(source?.mapsQuery || sourceLocation);
   const override = matchOverride(settings, id);
   if (!override) {
     return {
       ...source,
       id,
       sourceDate,
+      sourceStartTime,
+      sourceEndTime,
+      sourceLocation,
+      sourceAddress: "",
+      sourceMapsQuery,
       manualOverride: false,
       overrideUpdatedAt: "",
     };
   }
 
-  const location = override.location || String(source?.location || "");
+  const location = override.location || sourceLocation;
   return {
     ...source,
     id,
     sourceDate,
+    sourceStartTime,
+    sourceEndTime,
+    sourceLocation,
+    sourceAddress: "",
+    sourceMapsQuery,
     date: override.date || source.date,
     startTime: override.startTime || source.startTime || "",
     endTime: override.endTime || source.endTime || "",
