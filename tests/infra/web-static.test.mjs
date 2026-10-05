@@ -948,7 +948,9 @@ test("match override editor uses an explicit footer Edit control and local Reset
   assert.match(app, /persistedOverride/);
   assert.match(app, /method: "DELETE"/);
   assert.match(app, /pendingMatchAdminAction/);
-  assert.match(app, /openSettings\(\{ pendingAction: "match-override" \}\)/);
+  assert.match(app, /matchAdminSettings\("match-override"\)/);
+  assert.match(app, /await openSettings\(\{ pendingAction \}\)/);
+  assert.match(app, /resumeMatchAction/);
   assert.match(html, /id="next-game-menu-trigger"/);
   assert.match(html, /id="next-game-menu-edit"/);
   assert.match(html, /id="next-game-menu-delete"/);
