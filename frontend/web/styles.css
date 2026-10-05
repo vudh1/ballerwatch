@@ -3906,7 +3906,7 @@ body::after {
   min-height: 0;
   margin: 0;
   padding-top: 0.34rem;
-  border-top: 1px solid rgba(226, 232, 240, 0.08);
+  border-top: 0;
   pointer-events: none;
 }
 
