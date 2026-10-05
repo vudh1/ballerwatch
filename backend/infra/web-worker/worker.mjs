@@ -152,6 +152,106 @@ function secondaryUsers(settings) {
     : {};
 }
 
+const NOTIFICATION_CHANNELS = Object.freeze(["pickup", "league", "version"]);
+const MAX_NOTIFICATION_STATE_IDS = 300;
+
+function notificationChannelPreferences(value) {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const preferences = {};
+  for (const channel of NOTIFICATION_CHANNELS) {
+    preferences[channel] = source[channel] !== false;
+  }
+  return preferences;
+}
+
+function cleanNotificationIds(value) {
+  const items = Array.isArray(value) ? value : [];
+  const result = [];
+  const seen = new Set();
+  for (const raw of items) {
+    const id = cleanText(raw, 120);
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    result.push(id);
+  }
+  return result.slice(-MAX_NOTIFICATION_STATE_IDS);
+}
+
+function notificationProfiles(settings) {
+  return settings?.notificationProfiles &&
+    typeof settings.notificationProfiles === "object" &&
+    !Array.isArray(settings.notificationProfiles)
+    ? settings.notificationProfiles
+    : {};
+}
+
+function notificationProfileFromSettings(settings, userId) {
+  const username = normalizeUserName(userId);
+  const raw = notificationProfiles(settings)[username];
+  const profile = raw && typeof raw === "object" ? raw : {};
+  return {
+    readIds: cleanNotificationIds(profile.readIds),
+    deletedIds: cleanNotificationIds(profile.deletedIds),
+    channels: notificationChannelPreferences(profile.channels),
+    updatedAt: cleanText(profile.updatedAt, 80),
+  };
+}
+
+function publicNotificationProfile(settings, userId) {
+  return notificationProfileFromSettings(settings, userId);
+}
+
+async function updateNotificationProfileDirect(env, userId, input = {}) {
+  const username = normalizeUserName(userId);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const record = await githubStateRecord(env, "state/user.json");
+      const current = await userStateDocument(env, record.value);
+      if (!userAccountFromSettings(current.settings, username, env)) {
+        throw new Error("User account no longer exists.");
+      }
+
+      const previous = notificationProfileFromSettings(current.settings, username);
+      const readIds = cleanNotificationIds([
+        ...previous.readIds,
+        ...(Array.isArray(input?.readIds) ? input.readIds : []),
+      ]);
+      const deletedIds = cleanNotificationIds([
+        ...previous.deletedIds,
+        ...(Array.isArray(input?.deletedIds) ? input.deletedIds : []),
+      ]);
+      const channels = input?.channels && typeof input.channels === "object"
+        ? notificationChannelPreferences({
+            ...previous.channels,
+            ...input.channels,
+          })
+        : previous.channels;
+      const nextProfile = {
+        readIds,
+        deletedIds,
+        channels,
+        updatedAt: new Date().toISOString(),
+      };
+      const profiles = { ...notificationProfiles(current.settings), [username]: nextProfile };
+      const settings = { ...current.settings, notificationProfiles: profiles };
+
+      await githubStatePut(
+        env,
+        "state/user.json",
+        await encryptState({ settings }, env),
+        record.sha,
+        "runtime(user): sync notification profile",
+      );
+      await invalidateUserSnapshotCache(env, settings);
+      return nextProfile;
+    } catch (error) {
+      if (/User account no longer exists/.test(String(error?.message || ""))) throw error;
+      if (attempt === 2) throw error;
+    }
+  }
+  throw new Error("Unable to sync notification profile.");
+}
+
 function userAccountFromSettings(settings, userId, env = {}) {
   const username = normalizeUserName(userId);
   if (username === "admin") {
@@ -2889,10 +2989,17 @@ export function validWebSubscription(value) {
   };
 }
 
-async function dispatchWebRegistration(env, action, subscription) {
+async function dispatchWebRegistration(
+  env,
+  action,
+  subscription,
+  { userId = "", channels = null } = {},
+) {
   const encrypted = await encryptState({
     action,
     subscription,
+    userId: userId ? normalizeUserName(userId) : "",
+    channels: notificationChannelPreferences(channels),
     createdAt: new Date().toISOString(),
   }, env);
   await dispatchWorkflow(env, "web-app.yml", {
@@ -3538,6 +3645,43 @@ export default {
       }
     }
 
+    if (
+      (request.method === "GET" || request.method === "POST") &&
+      userRoute(url.pathname, "notifications")
+    ) {
+      const account = await resolveOwnerCapability(env, bearerToken(request)).catch(() => null);
+      if (!account) {
+        return webJson(request, { ok: false, error: "User sign-in is required." }, { status: 401 });
+      }
+
+      try {
+        if (request.method === "GET") {
+          const { settings } = await ownerSettingsRecord(env);
+          return webJson(request, {
+            ok: true,
+            profile: publicNotificationProfile(settings, account.userId),
+          });
+        }
+
+        let body;
+        try { body = await request.json(); }
+        catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
+
+        return webJson(request, {
+          ok: true,
+          profile: await updateNotificationProfileDirect(env, account.userId, body),
+          persistence: "saved",
+        });
+      } catch (error) {
+        console.error("User notification profile persistence failed", error);
+        return webJson(
+          request,
+          { ok: false, error: "Unable to sync notifications right now." },
+          { status: 503 },
+        );
+      }
+    }
+
     if (request.method === "POST" && url.pathname === "/web/feedback") {
       let body;
       try { body = await request.json(); }
@@ -3771,8 +3915,21 @@ export default {
         );
       }
       const action = url.pathname.endsWith("/unsubscribe") ? "unsubscribe" : "subscribe";
-      await dispatchWebRegistration(env, action, subscription);
-      return webJson(request, { ok: true, action, persistence: "queued" }, { status: 202 });
+      const account = await resolveOwnerCapability(env, bearerToken(request)).catch(() => null);
+      await dispatchWebRegistration(env, action, subscription, {
+        userId: account?.userId || "",
+        channels: body?.channels,
+      });
+      return webJson(
+        request,
+        {
+          ok: true,
+          action,
+          account: account?.userId || "",
+          persistence: "queued",
+        },
+        { status: 202 },
+      );
     }
 
     if (request.method === "GET" && url.pathname === "/public/feature-summary") {
