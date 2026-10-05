@@ -4,6 +4,7 @@
 
 ```text
 frontend/web/             static/installable PWA
+frontend/web/lib/         focused browser transport/state modules
 backend/infra/            Cloudflare Worker + scheduler helpers
 backend/pickup/           pickup source and notification logic
 backend/league/           RATS watcher + Calendar integration
@@ -23,6 +24,8 @@ Canonical encrypted runtime-state paths such as `pickup/state/`, `league/state/`
 Read `AGENTS.md`, `STYLE_GUIDE.md`, and `features/versions.json`. Work on a dedicated branch from latest `main`.
 
 Runtime modules are dependency-free Node.js / ESM where practical. Keep provider integrations at the edges and pure logic testable.
+
+For the PWA, keep API/session transport in `frontend/web/lib/client.js`, notification persistence/normalization in `frontend/web/lib/notification-state.js`, and use `app.js` primarily for rendering and interaction orchestration. Account-backed notification mutations belong behind authenticated Worker routes and must preserve encrypted runtime-state storage.
 
 ## Local checks
 
