@@ -61,7 +61,7 @@ test("Home Screen install card is removed in standalone mode and notifications u
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const css = fs.readFileSync("frontend/web/styles.css", "utf8");
   assert.match(app, /els\.installCard\?\.remove\(\)/);
-  assert.match(app, /notificationDialog\.show\(\)/);
+  assert.match(app, /notificationDialog\.showModal\(\)/);
   assert.match(css, /\[hidden\]\s*\{\s*display:\s*none\s*!important;/);
 });
 
@@ -661,21 +661,28 @@ test("footer contains no secondary messaging shortcut", () => {
 });
 
 
-test("BallerWatch 7 keeps Home, Inbox, and Settings inside one app surface", () => {
+test("BallerWatch 7.0.1 uses the top-right bell and gear without bottom app tabs", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  assert.match(html, /id="settings-button"/);
+  assert.match(html, /id="notification-bell"/);
+  assert.doesNotMatch(html, /class="app-tabs"/);
+  assert.doesNotMatch(html, /id="tab-home"|id="tab-notifications"|id="tab-settings"/);
+  assert.doesNotMatch(app, /setActiveAppTab|tabHome|tabNotifications|tabSettings/);
+  assert.match(app, /notificationBell\.addEventListener\("click", openNotifications\)/);
+  assert.match(app, /settingsButton\.addEventListener\("click", openSettings\)/);
+  assert.match(app, /notificationDialog\.showModal\(\)/);
+  assert.match(app, /settingsDialog\.showModal\(\)/);
+});
+
+test("page uses a soccer-pitch backdrop with readable translucent cards", () => {
   const css = fs.readFileSync("frontend/web/styles.css", "utf8");
-  assert.match(css, /--app-surface-width:\s*920px/);
-  assert.match(css, /\.shell \{[\s\S]*width:\s*min\(var\(--app-surface-width\), 100%\)/);
-  assert.match(html, /class="app-tabs"/);
-  assert.match(html, /id="tab-home"/);
-  assert.match(html, /id="tab-notifications"/);
-  assert.match(html, /id="tab-settings"/);
-  assert.match(app, /function setActiveAppTab/);
-  assert.match(app, /notificationDialog\.show\(\)/);
-  assert.match(app, /settingsDialog\.show\(\)/);
-  assert.match(css, /\.app-tabs \{[\s\S]*position:\s*fixed/);
-  assert.match(css, /\.notification-dialog,[\s\S]*\.settings-dialog \{[\s\S]*position:\s*fixed/);
+  assert.match(css, /repeating-linear-gradient\([\s\S]*rgba\(34, 197, 94, 0\.055\)/);
+  assert.match(css, /body::before \{[\s\S]*border:\s*1px solid rgba\(220, 252, 231, 0\.20\)/);
+  assert.match(css, /body::before \{[\s\S]*radial-gradient\([\s\S]*circle at 50% 50%/);
+  assert.match(css, /\.card,[\s\S]*\.footer-install \{[\s\S]*rgba\(6, 18, 22, 0\.57\)/);
+  assert.match(css, /\.spotlight-card \{[\s\S]*rgba\(4, 16, 22, 0\.72\)/);
+  assert.match(css, /backdrop-filter:\s*blur\(24px\) saturate\(135%\)/);
 });
 
 test("notification center supports filters, synced read state, and account preferences", () => {
@@ -1094,10 +1101,11 @@ test("match type pill opens a touch-safe Edit/Delete action sheet and freshness 
   assert.match(app, /closest\?\.\("a, button, dialog"\)/);
   assert.match(app, /type: game\.kind === "league" \? "League" : "Pickup"/);
   assert.match(css, /\.match-card-action-dialog \{/);
-  assert.match(css, /"location weather"[\s\S]*"capacity rsvp"[\s\S]*"footer footer"/);
+  assert.match(css, /"location weather"[\s\S]*"capacity rsvp"/);
   assert.match(css, /\.next-game-rsvp-pill \{[\s\S]*grid-area:\s*rsvp/);
-  assert.match(css, /\.match-card-footer \{[\s\S]*grid-area:\s*footer[\s\S]*border-top:/);
-  assert.match(css, /\.match-card-footer \.match-update-credit[\s\S]*font-size:\s*0\.60rem/);
+  assert.match(css, /\.spotlight-content \{[\s\S]*padding-bottom:\s*2\.2rem/);
+  assert.match(css, /\.match-card-footer \{[\s\S]*position:\s*absolute;[\s\S]*right:\s*0;[\s\S]*bottom:\s*0;[\s\S]*left:\s*0;/);
+  assert.match(css, /\.match-card-footer \.match-update-credit[\s\S]*font-size:\s*0\.60rem[\s\S]*text-align:\s*right/);
 });
 
 test("calendar freshness replaces the provider credit line and failed demos are removed", () => {
