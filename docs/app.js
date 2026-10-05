@@ -697,9 +697,13 @@ async function promoteProductionRelease() {
     if (payload.dispatched) {
       els.promoteRelease.disabled = true;
       els.promoteRelease.textContent = "Promotion requested";
+      els.promoteReleaseStatus.textContent =
+        payload.message || "Promotion requested. Waiting for the new app version…";
+      void watchPromotedRelease(version);
+    } else {
+      els.promoteReleaseStatus.textContent =
+        payload.message || "Promotion request accepted.";
     }
-    els.promoteReleaseStatus.textContent =
-      payload.message || "Promotion request accepted.";
   } catch (error) {
     if (error.status === 401) {
       localStorage.removeItem(OWNER_TOKEN_KEY);
@@ -2034,6 +2038,54 @@ async function checkForAppUpdate() {
   if (!registration) return;
   serviceWorkerRegistration = registration;
   await registration.update().catch(() => null);
+}
+
+function promotionPollDelay(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function deployedAppVersion(version) {
+  if (!version) return false;
+  const expected = String(version);
+  const [workerReady, pagesReady] = await Promise.all([
+    api("/web/config", {retryNetwork: true})
+      .then((payload) => String(payload?.version || "") === expected)
+      .catch(() => false),
+    fetch(
+      `./index.html?release=${encodeURIComponent(expected)}&check=${Date.now()}`,
+      {cache: "no-store"},
+    )
+      .then(async (response) => {
+        if (!response.ok) return false;
+        const html = await response.text();
+        return html.includes(`app.js?v=${expected}`);
+      })
+      .catch(() => false),
+  ]);
+  return workerReady && pagesReady;
+}
+
+async function watchPromotedRelease(version, {
+  attempts = 36,
+  intervalMs = 5_000,
+} = {}) {
+  const expected = String(version || "").trim();
+  if (!expected) return false;
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    if (await deployedAppVersion(expected)) {
+      els.promoteReleaseStatus.textContent =
+        `BallerWatch ${expected} is live. Refreshing this app…`;
+      await checkForAppUpdate();
+      window.setTimeout(() => window.location.reload(), 1_500);
+      return true;
+    }
+    await promotionPollDelay(intervalMs);
+  }
+
+  els.promoteReleaseStatus.textContent =
+    "Promotion is still deploying. BallerWatch will keep checking for app updates automatically.";
+  return false;
 }
 
 async function loadNextGame() {
