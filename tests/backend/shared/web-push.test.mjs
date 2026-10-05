@@ -134,6 +134,64 @@ test("applies encrypted subscribe and unsubscribe registration events", (t) => {
   assert.equal(loadWebPushState().subscriptions.length, 0);
 });
 
+test("subscription registration stores account and notification categories", (t) => {
+  inTempDir(t);
+  ensureWebPushState();
+  const subscription = {
+    endpoint: MOZILLA_ENDPOINT,
+    expirationTime: null,
+    keys: { p256dh: "public-key", auth: "auth-key" },
+  };
+
+  const subscribe = Buffer.from(JSON.stringify(encryptState({
+    action: "subscribe",
+    subscription,
+    userId: "teammate",
+    channels: { pickup: true, league: false, version: true },
+  }))).toString("base64");
+  applyEncryptedRegistrationEventB64(subscribe);
+
+  const saved = loadWebPushState().subscriptions[0];
+  assert.equal(saved.userId, "teammate");
+  assert.deepEqual(saved.channels, {
+    pickup: true,
+    league: false,
+    version: true,
+  });
+});
+
+test("category-disabled subscriptions are skipped before outbound Web Push", async (t) => {
+  inTempDir(t);
+  writeSubscriptionState({
+    endpoint: MOZILLA_ENDPOINT,
+    userId: "teammate",
+    channels: { pickup: true, league: false, version: true },
+  });
+  let fetched = false;
+
+  const skipped = await sendWebPushSignals({
+    channel: "league",
+    resolveHost: async () => [{ address: "34.120.0.1", family: 4 }],
+    fetchImpl: async () => {
+      fetched = true;
+      return { ok: true, status: 201 };
+    },
+  });
+  assert.equal(fetched, false);
+  assert.deepEqual(skipped, { sent: 0, stale: 0, failed: 0 });
+
+  const sent = await sendWebPushSignals({
+    channel: "pickup",
+    resolveHost: async () => [{ address: "34.120.0.1", family: 4 }],
+    fetchImpl: async () => {
+      fetched = true;
+      return { ok: true, status: 201 };
+    },
+  });
+  assert.equal(fetched, true);
+  assert.deepEqual(sent, { sent: 1, stale: 0, failed: 0 });
+});
+
 test("builds RFC 8292 VAPID authorization and disables redirects", async (t) => {
   inTempDir(t);
   const state = writeSubscriptionState({ endpoint: MOZILLA_ENDPOINT });
