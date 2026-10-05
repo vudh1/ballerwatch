@@ -19,7 +19,8 @@
         "Added a release-deployment weather refresh so newly generated Saturday pickup cards receive weather immediately instead of waiting for the next six-hour watchdog cycle.",
         "Bumped the installed PWA shell to 6.4.1.",
         "Updated regression coverage for the control-safe carousel touch contract and the simplified Pickup/League pill labels.",
-        "Normalized all user-facing Saturday synthetic game text to Pickup, while retaining free_pickup only as the internal type used to suppress RSVP/capacity watcher behavior."
+        "Normalized all user-facing Saturday synthetic game text to Pickup, while retaining free_pickup only as the internal type used to suppress RSVP/capacity watcher behavior.",
+        "Aligned worker regression coverage with the simplified Pickup display label for synthetic Saturday matches."
       ]
     },
     {

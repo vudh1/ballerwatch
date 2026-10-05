@@ -722,7 +722,7 @@ test("Saturday free pickup can become the next game without exposing RSVP state"
 
   assert.equal(details.kind, "free_pickup");
   assert.equal(details.date, "2099-10-03");
-  assert.equal(details.title, "Free Pickup");
+  assert.equal(details.title, "Pickup");
   assert.equal(details.time, "10:30 AM–12:30 PM");
   assert.equal(details.location, "Jefferson Park Playfield");
   assert.equal(details.rsvpUrl, "");
