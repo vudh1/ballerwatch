@@ -1,7 +1,24 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "6.4.2",
+  "currentVersion": "6.4.3",
   "releases": [
+    {
+      "version": "6.4.3",
+      "date": "2026-10-05",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Pickup card row alignment and cleaner freshness footer",
+      "webAnnouncement": "Pickup cards now align weather with the field and RSVP with capacity, with a cleaner bottom freshness footer.",
+      "changes": [
+        "Moved the weather pill onto the same row as the field location in the selected match card.",
+        "Moved the pickup RSVP pill onto the same row as the RSVP capacity block, while keeping Directions and Share in the action row.",
+        "Pinned the subtle match freshness footer toward the card edge and strengthened the separator line between match information and footer metadata.",
+        "Changed calendar freshness copy from Weather updated to Updated and moved it to the former provider-credit position below the calendar.",
+        "Moved required Open-Meteo and OpenStreetMap attribution out of the calendar card into the global app footer.",
+        "Removed obsolete failed demo images while preserving the current docs/demo.jpg.",
+        "Bumped installed PWA release assets and service-worker cache to 6.4.3."
+      ]
+    },
     {
       "version": "6.4.2",
       "date": "2026-10-05",
