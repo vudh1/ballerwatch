@@ -996,12 +996,11 @@ function updateNotificationBadge(count) {
   const normalized = Math.max(0, Math.floor(Number(count) || 0));
   void syncAppIconBadge(normalized);
 
-  if (!normalized) {
-    els.notificationBadge.hidden = true;
-    return;
+  for (const badge of [els.notificationBadge, els.tabNotificationBadge]) {
+    if (!badge) continue;
+    badge.hidden = normalized === 0;
+    badge.textContent = normalized > 99 ? "99+" : String(normalized);
   }
-  els.notificationBadge.textContent = normalized > 9 ? "9+" : String(normalized);
-  els.notificationBadge.hidden = false;
 }
 
 function storedNotificationIds(key) {
@@ -1031,26 +1030,188 @@ function notificationTimeText(item) {
       }).format(date);
 }
 
+function accountNotificationStateActive() {
+  return Boolean(ownerToken() && currentNotificationProfile);
+}
+
+function notificationChannels() {
+  return normalizedNotificationChannels(currentNotificationProfile?.channels);
+}
+
+function renderNotificationPreferences() {
+  const channels = notificationChannels();
+  if (els.notificationPrefPickup) els.notificationPrefPickup.checked = channels.pickup;
+  if (els.notificationPrefLeague) els.notificationPrefLeague.checked = channels.league;
+  if (els.notificationPrefVersion) els.notificationPrefVersion.checked = channels.version;
+
+  const signedIn = accountNotificationStateActive();
+  if (els.notificationPreferences) {
+    els.notificationPreferences.classList.toggle("is-local-only", !signedIn);
+  }
+  for (const input of [
+    els.notificationPrefPickup,
+    els.notificationPrefLeague,
+    els.notificationPrefVersion,
+  ]) {
+    if (input) input.disabled = !signedIn;
+  }
+  if (els.notificationSyncStatus) {
+    els.notificationSyncStatus.textContent = signedIn
+      ? `Synced across devices for @${sessionUsername()}`
+      : "Sign in to sync read state, deletes, and notification preferences.";
+  }
+}
+
+function applyNotificationProfile(profile) {
+  currentNotificationProfile = profile
+    ? normalizedNotificationProfile(profile)
+    : null;
+  renderNotificationPreferences();
+  renderBoard(currentBoardEntries);
+}
+
+function optimisticNotificationProfile({ readIds = [], deletedIds = [], channels = null } = {}) {
+  if (!accountNotificationStateActive()) return;
+  const current = normalizedNotificationProfile(currentNotificationProfile);
+  currentNotificationProfile = normalizedNotificationProfile({
+    ...current,
+    readIds: [...current.readIds, ...readIds],
+    deletedIds: [...current.deletedIds, ...deletedIds],
+    channels: channels ? { ...current.channels, ...channels } : current.channels,
+  });
+}
+
+function persistNotificationProfile(mutation, { refreshPush = false } = {}) {
+  if (!ownerToken()) return Promise.resolve(null);
+  notificationSyncPromise = notificationSyncPromise
+    .catch(() => null)
+    .then(async () => {
+      try {
+        const payload = await api("/web/user/notifications", {
+          method: "POST",
+          headers: ownerHeaders(),
+          retryNetwork: true,
+          body: JSON.stringify(mutation || {}),
+        });
+        currentNotificationProfile = normalizedNotificationProfile(payload.profile || {});
+        renderNotificationPreferences();
+        renderBoard(currentBoardEntries);
+        if (refreshPush) await syncCurrentPushRegistration();
+        return currentNotificationProfile;
+      } catch (error) {
+        if (error.status === 401) {
+          clearSession();
+          currentNotificationProfile = null;
+          renderNotificationPreferences();
+        } else if (els.notificationSyncStatus) {
+          els.notificationSyncStatus.textContent =
+            "Sync delayed. This device will retry on the next notification action.";
+        }
+        return null;
+      }
+    });
+  return notificationSyncPromise;
+}
+
+async function loadNotificationProfile({ migrateLocal = true } = {}) {
+  if (!ownerToken()) {
+    currentNotificationProfile = null;
+    renderNotificationPreferences();
+    renderBoard(currentBoardEntries);
+    return false;
+  }
+
+  try {
+    let payload = await api("/web/user/notifications", {
+      headers: ownerHeaders(),
+      retryNetwork: true,
+    });
+    currentNotificationProfile = normalizedNotificationProfile(payload.profile || {});
+
+    if (migrateLocal) {
+      const local = localNotificationProfile();
+      if (local.readIds.length || local.deletedIds.length) {
+        payload = await api("/web/user/notifications", {
+          method: "POST",
+          headers: ownerHeaders(),
+          retryNetwork: true,
+          body: JSON.stringify({
+            readIds: local.readIds,
+            deletedIds: local.deletedIds,
+          }),
+        });
+        currentNotificationProfile = normalizedNotificationProfile(payload.profile || {});
+        clearLocalNotificationProfile();
+      }
+    }
+
+    renderNotificationPreferences();
+    renderBoard(currentBoardEntries);
+    return true;
+  } catch (error) {
+    if (error.status === 401) {
+      clearSession();
+      currentNotificationProfile = null;
+    }
+    renderNotificationPreferences();
+    renderBoard(currentBoardEntries);
+    return false;
+  }
+}
+
 function notificationViewState(entries = currentBoardEntries) {
-  const read = storedNotificationIds(NOTIFICATION_READ_KEY);
-  const deleted = storedNotificationIds(NOTIFICATION_DELETED_KEY);
-  const visible = entries.filter((item) => !deleted.has(notificationId(item)));
-  const unreadCount = visible.filter((item) => !read.has(notificationId(item))).length;
-  return { read, deleted, visible, unreadCount };
+  const read = accountNotificationStateActive()
+    ? new Set(currentNotificationProfile.readIds)
+    : storedNotificationIds(NOTIFICATION_READ_KEY);
+  const deleted = accountNotificationStateActive()
+    ? new Set(currentNotificationProfile.deletedIds)
+    : storedNotificationIds(NOTIFICATION_DELETED_KEY);
+  const allVisible = entries.filter((item) => !deleted.has(notificationId(item)));
+  const visible = notificationFilter === "all"
+    ? allVisible
+    : allVisible.filter((item) => String(item?.channel || "") === notificationFilter);
+  const unreadCount = allVisible.filter((item) => !read.has(notificationId(item))).length;
+  return { read, deleted, visible, allVisible, unreadCount };
 }
 
 function markNotificationRead(item) {
   const id = notificationId(item);
-  const read = storedNotificationIds(NOTIFICATION_READ_KEY);
-  read.add(id);
-  saveNotificationIds(NOTIFICATION_READ_KEY, read);
+  if (accountNotificationStateActive()) {
+    optimisticNotificationProfile({ readIds: [id] });
+    void persistNotificationProfile({ readIds: [id] });
+  } else {
+    const read = storedNotificationIds(NOTIFICATION_READ_KEY);
+    read.add(id);
+    saveNotificationIds(NOTIFICATION_READ_KEY, read);
+  }
   updateNotificationBadge(notificationViewState().unreadCount);
 }
 
+function markAllNotificationsRead() {
+  const { allVisible } = notificationViewState();
+  const ids = allVisible.map(notificationId);
+  if (!ids.length) return;
+  if (accountNotificationStateActive()) {
+    optimisticNotificationProfile({ readIds: ids });
+    void persistNotificationProfile({ readIds: ids });
+  } else {
+    const read = storedNotificationIds(NOTIFICATION_READ_KEY);
+    ids.forEach((id) => read.add(id));
+    saveNotificationIds(NOTIFICATION_READ_KEY, read);
+  }
+  renderBoard(currentBoardEntries);
+}
+
 function persistDeletedNotifications(items) {
-  const deleted = storedNotificationIds(NOTIFICATION_DELETED_KEY);
-  for (const item of items) deleted.add(notificationId(item));
-  saveNotificationIds(NOTIFICATION_DELETED_KEY, deleted);
+  const ids = items.map(notificationId);
+  if (accountNotificationStateActive()) {
+    optimisticNotificationProfile({ deletedIds: ids });
+    void persistNotificationProfile({ deletedIds: ids });
+  } else {
+    const deleted = storedNotificationIds(NOTIFICATION_DELETED_KEY);
+    ids.forEach((id) => deleted.add(id));
+    saveNotificationIds(NOTIFICATION_DELETED_KEY, deleted);
+  }
 }
 
 function deleteNotification(item) {
@@ -1068,8 +1229,8 @@ function animateNotificationDelete(article, item) {
 }
 
 function deleteAllNotifications() {
-  const { visible } = notificationViewState();
-  if (!visible.length) return;
+  const { allVisible } = notificationViewState();
+  if (!allVisible.length) return;
 
   els.deleteAllNotifications.disabled = true;
   const notices = [...els.board.querySelectorAll(".notice")];
@@ -1079,10 +1240,12 @@ function deleteAllNotifications() {
 
   const delay = 210 + Math.min(notices.length, 8) * 22;
   window.setTimeout(() => {
-    persistDeletedNotifications(visible);
+    persistDeletedNotifications(allVisible);
     renderBoard(currentBoardEntries);
     els.deleteAllNotifications.disabled = false;
-    els.testNotificationStatus.textContent = "Notifications cleared on this device.";
+    els.testNotificationStatus.textContent = accountNotificationStateActive()
+      ? "Notifications cleared across your signed-in devices."
+      : "Notifications cleared on this device.";
   }, delay);
 }
 
@@ -1101,6 +1264,16 @@ function closeNotificationReader() {
   els.notificationDialog.showModal();
 }
 
+function setNotificationFilter(filter) {
+  notificationFilter = ["pickup", "league", "version"].includes(filter) ? filter : "all";
+  for (const button of els.notificationFilters) {
+    const active = button.dataset.notificationFilter === notificationFilter;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  }
+  renderBoard(currentBoardEntries);
+}
+
 function renderBoard(entries) {
   currentBoardEntries = Array.isArray(entries) ? entries : [];
   const { read, visible, unreadCount } = notificationViewState(currentBoardEntries);
@@ -1111,7 +1284,9 @@ function renderBoard(entries) {
     const empty = document.createElement("p");
     empty.className = "muted";
     empty.textContent = currentBoardEntries.length
-      ? "No notifications left on this device."
+      ? (notificationFilter === "all"
+          ? "No notifications left."
+          : "No notifications in this category.")
       : "No web notifications yet.";
     els.board.append(empty);
     return;
@@ -1122,12 +1297,21 @@ function renderBoard(entries) {
     const article = document.createElement("article");
     article.className = "notice";
     article.classList.toggle("is-unread", !read.has(id));
+    article.dataset.channel = String(item?.channel || "");
     article.tabIndex = 0;
     article.setAttribute("role", "button");
     article.setAttribute("aria-label", `Read ${item.title || "BallerWatch notification"}`);
 
+    const heading = document.createElement("div");
+    heading.className = "notice-heading";
     const title = document.createElement("h3");
     title.textContent = item.title || "BallerWatch update";
+    const channel = document.createElement("span");
+    channel.className = "notice-channel";
+    channel.textContent = item.channel === "version"
+      ? "App"
+      : (item.channel || "Update");
+    heading.append(title, channel);
 
     const body = document.createElement("p");
     body.className = "notice-preview";
@@ -1191,7 +1375,7 @@ function renderBoard(entries) {
       openNotification(item);
     });
 
-    article.append(title, body, time);
+    article.append(heading, body, time);
     els.board.append(article);
   }
 }
