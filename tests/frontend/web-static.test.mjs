@@ -24,7 +24,7 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v6-4-3-shell/);
+  assert.match(sw, /ballerwatch-v6-4-4-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {

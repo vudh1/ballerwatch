@@ -83,6 +83,14 @@ Release entries may include `webAnnouncement` for user-facing release notices. D
 
 Read `STYLE_GUIDE.md` before editing.
 
+Repository source boundaries are deliberate:
+
+- browser/PWA source lives under `frontend/web/`;
+- server, watcher, state, scheduling, and integration source lives under `backend/`;
+- test-only source stays under `tests/`, split into `tests/frontend/` and `tests/backend/`;
+- maintained documentation lives under `docs/wiki/`; the current demo image remains `docs/demo.jpg`;
+- canonical runtime-state paths such as `pickup/state/` and `league/state/` are storage contracts, not source directories, and must not be renamed as part of source refactors.
+
 - Keep runtime modules domain-focused.
 - Every non-test runtime `.mjs` starts with module documentation.
 - Keep provider-specific integrations at the edges.
