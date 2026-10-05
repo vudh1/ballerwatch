@@ -26,6 +26,7 @@ function defaults() {
     webOwnerPassword: null,
     webAuthVersion: 1,
     webUsers: {},
+    notificationProfiles: {},
     matchOverrides: {},
     hiddenMatches: {},
   };
@@ -52,12 +53,39 @@ function cleanWebUsers(value) {
   return users;
 }
 
+function cleanNotificationProfiles(value) {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const profiles = {};
+  for (const [rawName, rawProfile] of Object.entries(source)) {
+    const username = String(rawName || "").trim().toLowerCase();
+    if (!/^[a-z0-9][a-z0-9._-]{0,31}$/.test(username)) continue;
+    const profile = rawProfile && typeof rawProfile === "object" ? rawProfile : {};
+    const ids = (items) => [...new Set(
+      (Array.isArray(items) ? items : [])
+        .map((item) => String(item || "").trim().slice(0, 120))
+        .filter(Boolean),
+    )].slice(-300);
+    profiles[username] = {
+      readIds: ids(profile.readIds),
+      deletedIds: ids(profile.deletedIds),
+      channels: {
+        pickup: profile.channels?.pickup !== false,
+        league: profile.channels?.league !== false,
+        version: profile.channels?.version !== false,
+      },
+      updatedAt: String(profile.updatedAt || "").slice(0, 80),
+    };
+  }
+  return profiles;
+}
+
 function cleanSettings(value) {
   const source = value && typeof value === "object" ? value : {};
   const next = {
     ...defaults(),
     ...source,
     webUsers: cleanWebUsers(source.webUsers),
+    notificationProfiles: cleanNotificationProfiles(source.notificationProfiles),
     matchOverrides: cleanMatchOverrides(source.matchOverrides),
     hiddenMatches: cleanHiddenMatches(source.hiddenMatches),
   };
