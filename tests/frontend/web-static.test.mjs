@@ -533,10 +533,10 @@ test("autocomplete floats above the Ask card without resizing the input row", ()
 });
 
 test("weather refresh is immediate only for schedule-relevant changes", () => {
-  const pickup = fs.readFileSync("pickup/update.mjs", "utf8");
+  const pickup = fs.readFileSync("backend/pickup/update.mjs", "utf8");
   const pickupWorkflow = fs.readFileSync(".github/workflows/pickup.yml", "utf8");
   const leagueWorkflow = fs.readFileSync(".github/workflows/league.yml", "utf8");
-  const relevance = fs.readFileSync("weather/relevance.mjs", "utf8");
+  const relevance = fs.readFileSync("backend/weather/relevance.mjs", "utf8");
 
   assert.match(pickup, /pickupWeatherChanged/);
   assert.match(pickup, /weather-refresh-needed/);
