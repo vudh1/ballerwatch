@@ -86,10 +86,6 @@ const els = {
   notificationPrefLeague: document.querySelector("#notification-pref-league"),
   notificationPrefVersion: document.querySelector("#notification-pref-version"),
   notificationSyncStatus: document.querySelector("#notification-sync-status"),
-  tabHome: document.querySelector("#tab-home"),
-  tabNotifications: document.querySelector("#tab-notifications"),
-  tabSettings: document.querySelector("#tab-settings"),
-  tabNotificationBadge: document.querySelector("#tab-notification-badge"),
   form: document.querySelector("#question-form"),
   question: document.querySelector("#question"),
   answer: document.querySelector("#answer"),
@@ -716,13 +712,12 @@ async function promoteProductionRelease() {
 async function openSettings(options = {}) {
   if (els.notificationDialog.open) els.notificationDialog.close();
   if (els.notificationReader.open) els.notificationReader.close();
-  setActiveAppTab("settings");
   const pendingAction =
     options && typeof options === "object" && "pendingAction" in options
       ? String(options.pendingAction || "")
       : "";
   pendingMatchAdminAction = pendingAction;
-  if (!els.settingsDialog.open) els.settingsDialog.show();
+  if (!els.settingsDialog.open) els.settingsDialog.showModal();
   await loadOwnerSettings();
 }
 
@@ -1011,11 +1006,8 @@ function updateNotificationBadge(count) {
   const normalized = Math.max(0, Math.floor(Number(count) || 0));
   void syncAppIconBadge(normalized);
 
-  for (const badge of [els.notificationBadge, els.tabNotificationBadge]) {
-    if (!badge) continue;
-    badge.hidden = normalized === 0;
-    badge.textContent = normalized > 99 ? "99+" : String(normalized);
-  }
+  els.notificationBadge.hidden = normalized === 0;
+  els.notificationBadge.textContent = normalized > 99 ? "99+" : String(normalized);
 }
 
 function storedNotificationIds(key) {
@@ -2708,31 +2700,9 @@ async function loadBoard() {
   }
 }
 
-function setActiveAppTab(tab) {
-  for (const [name, button] of [
-    ["home", els.tabHome],
-    ["notifications", els.tabNotifications],
-    ["settings", els.tabSettings],
-  ]) {
-    if (!button) continue;
-    const active = name === tab;
-    button.classList.toggle("is-active", active);
-    if (active) button.setAttribute("aria-current", "page");
-    else button.removeAttribute("aria-current");
-  }
-}
-
-function openHomeTab() {
-  if (els.notificationReader.open) els.notificationReader.close();
-  if (els.notificationDialog.open) els.notificationDialog.close();
-  if (els.settingsDialog.open) els.settingsDialog.close();
-  setActiveAppTab("home");
-}
-
 function openNotifications() {
   if (els.settingsDialog.open) els.settingsDialog.close();
-  if (!els.notificationDialog.open) els.notificationDialog.show();
-  setActiveAppTab("notifications");
+  if (!els.notificationDialog.open) els.notificationDialog.showModal();
   void Promise.all([loadBoard(), loadNotificationProfile()]);
 }
 
@@ -3097,13 +3067,7 @@ async function saveNotificationPreferencesFromUi() {
 
 els.notificationBell.addEventListener("click", openNotifications);
 els.settingsButton.addEventListener("click", openSettings);
-els.tabHome?.addEventListener("click", openHomeTab);
-els.tabNotifications?.addEventListener("click", openNotifications);
-els.tabSettings?.addEventListener("click", openSettings);
-els.closeSettings.addEventListener("click", () => {
-  els.settingsDialog.close();
-  setActiveAppTab("home");
-});
+els.closeSettings.addEventListener("click", () => els.settingsDialog.close());
 els.ownerLoginForm.addEventListener("submit", loginOwnerDevice);
 els.ownerSettingsForm.addEventListener("submit", saveOwnerSettings);
 els.ownerPasswordForm.addEventListener("submit", saveOwnerPassword);
@@ -3119,10 +3083,7 @@ els.nextGameShare.addEventListener("click", shareNextGame);
 els.testNotification.addEventListener("click", scheduleTestNotification);
 els.deleteAllNotifications.addEventListener("click", deleteAllNotifications);
 els.markAllNotificationsRead?.addEventListener("click", markAllNotificationsRead);
-els.closeNotifications.addEventListener("click", () => {
-  els.notificationDialog.close();
-  setActiveAppTab("home");
-});
+els.closeNotifications.addEventListener("click", () => els.notificationDialog.close());
 els.closeNotificationReader.addEventListener("click", closeNotificationReader);
 els.refresh.addEventListener("click", () => {
   void Promise.all([loadBoard(), loadNotificationProfile({ migrateLocal: false })]);
@@ -3176,7 +3137,6 @@ document.addEventListener("visibilitychange", () => {
 
 document.documentElement.classList.toggle("is-standalone", standalone());
 applyInstallState();
-setActiveAppTab("home");
 setNotificationFilter("all");
 renderNotificationPreferences();
 setSystemState("checking");
