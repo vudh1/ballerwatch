@@ -13,6 +13,7 @@ import {
   resolveDate,
   resolveScheduleDate,
   resolveScheduleRange,
+  todayGames,
   verifyFeedbackToken,
   verifyOwnerPassword,
   verifyOwnerToken,
@@ -86,6 +87,52 @@ test("dated league detail questions route locally and return targeted facts", ()
 test("natural pickup-specific date questions stay pickup-scoped", () => {
   assert.equal(directIntent("am i in for Thursday pickup?"), "pickup_status");
   assert.equal(directIntent("how many spots are left Thursday?"), "pickup_status");
+});
+
+test("pickup-specific dated detail does not mix in league facts", () => {
+  const data = snapshot();
+  data.league.teams[0].matches.push({
+    team: "Team Alpha",
+    opponent: "Team Gamma",
+    date: "2099-10-08",
+    startTime: "18:00:00",
+    location: "League Field Two",
+    jerseyColor: "White",
+  });
+
+  const reply = dateGameAnswer(data, "2099-10-08", "what time is pickup on 10/8?");
+  assert.match(reply, /8:00 PM/);
+  assert.doesNotMatch(reply, /6:00 PM|Team Gamma|League Field Two/);
+});
+
+test("unpublished weekday still resolves so the answer can say no game", () => {
+  const now = new Date("2099-10-04T12:00:00Z");
+  assert.equal(
+    resolveScheduleDate("do i have a game Tuesday?", snapshot(), {}, now),
+    "2099-10-06",
+  );
+  assert.match(
+    dateGameAnswer(snapshot(), "2099-10-06", "do i have a game Tuesday?"),
+    /No pickup or RATS game is currently published/,
+  );
+});
+
+test("mixed week pickup and opponent questions stay range-scoped", () => {
+  assert.equal(
+    directIntent("who do we play next week and am i in pickup?"),
+    "range_games",
+  );
+  assert.equal(
+    directIntent("pickup RSVP and opponent next week"),
+    "range_games",
+  );
+});
+
+test("today pickup answer includes RSVP count context", () => {
+  const reply = todayGames(snapshot(), new Date("2099-10-08T12:00:00-07:00"));
+  assert.match(reply, /Today's games/);
+  assert.match(reply, /14\/16 reserved/);
+  assert.match(reply, /Test Field/);
 });
 
 test("date schedule reply combines available published data", () => {

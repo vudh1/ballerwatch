@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.0.10",
+  "currentVersion": "7.0.11",
   "releases": [
+    {
+      "version": "7.0.11",
+      "date": "2026-10-05",
+      "type": "patch",
+      "source": "review-audit",
+      "title": "Q&A schedule and pickup reliability",
+      "webAnnouncement": "BallerWatch improves schedule and pickup answers based on recent wrong-answer review signals.",
+      "changes": [
+        "Keeps pickup-specific dated time/location questions scoped to pickup instead of mixing in league facts from the same date.",
+        "Routes mixed next-week pickup/RSVP/opponent questions to the schedule-range answer instead of a single pickup status.",
+        "Resolves weekday questions even when no game is published so BallerWatch can correctly answer that nothing is scheduled.",
+        "Makes Today pickup answers include RSVP count/capacity and user status context instead of only time and field."
+      ]
+    },
     {
       "version": "7.0.10",
       "date": "2026-10-05",

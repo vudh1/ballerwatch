@@ -1943,11 +1943,17 @@ export function resolveScheduleDate(text, snapshot, context = {}, now = new Date
 
   const dates = scheduleDates(snapshot);
   const lower = String(text || "").toLowerCase();
-  for (const name of ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"]) {
-    if (lower.includes(name)) {
-      const date = dates.find(value => value >= localDate(now) && weekday(value) === name);
-      if (date) return date;
-    }
+  const weekdayNames = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
+  for (const name of weekdayNames) {
+    if (!lower.includes(name)) continue;
+    const today = localDate(now);
+    const date = dates.find(value => value >= today && weekday(value) === name);
+    if (date) return date;
+
+    const todayIndex = weekdayNames.indexOf(weekday(today));
+    const targetIndex = weekdayNames.indexOf(name);
+    const delta = (targetIndex - todayIndex + 7) % 7;
+    return addDays(today, delta);
   }
   if (/\bthat (?:day|date)\b/.test(lower) && context.lastDate) return String(context.lastDate);
   return "";
@@ -2061,10 +2067,10 @@ function pickupFacts(snapshot, date) {
   };
 }
 
-function pickupStatus(snapshot, date) {
+function pickupStatus(snapshot, date, { includeDate = true } = {}) {
   const f = pickupFacts(snapshot,date);
   if (!f) return `I don't currently have RSVP data for ${formatDate(date)}.`;
-  let line = `${formatDate(date)}: `;
+  let line = includeDate ? `${formatDate(date)}: ` : "";
   if (f.reserved == null) line += "count unavailable.";
   else if (f.capacity == null) line += `${f.reserved} reserved.`;
   else if (f.remaining <= 0) line += `${f.reserved}/${f.capacity} reserved — full.`;
@@ -2190,7 +2196,9 @@ export function dateGameAnswer(snapshot, date, question = "") {
     }
   }
 
+  const pickupOnly = wantsPickup && !wantsOpponent && !wantsJersey;
   for (const game of leagueMatches(snapshot).filter((item) => String(item?.date || "") === date)) {
+    if (pickupOnly) continue;
     const lines = [`🏆 ${game.team || "RATS team"} vs ${game.opponent || "opponent"}`];
     if (wantsTime) {
       const time = clock(game.start || game.startTime);
@@ -2233,18 +2241,15 @@ export function gamesInRange(snapshot, startDate, endDate) {
     : `No pickup or RATS games are currently published from ${formatDate(startDate)} through ${formatDate(endDate)}.`;
 }
 
-function todayGames(snapshot) {
-  const date=localDate();
+export function todayGames(snapshot, now = new Date()) {
+  const date=localDate(now);
   const blocks=[];
   const p=pickupFacts(snapshot,date);
   if (p) {
-    const x=["⚽ Pickup"];
-    if (p.start || p.end) x.push(`🕒 ${p.start || "?"}${p.end ? `–${p.end}` : ""}`);
-    if (p.field) x.push(`📍 ${p.field}`);
-    blocks.push(x.join("\n"));
+    blocks.push(`⚽ Pickup\n${pickupStatus(snapshot, date, { includeDate: false })}`);
   }
-  for (const game of freePickupMatches(snapshot).filter((item) => item.date === date)) {
-    if (gameIsUpcoming(date, clock(game.startTime), clock(game.endTime), 120)) {
+  for (const game of freePickupMatches(snapshot, date).filter((item) => item.date === date)) {
+    if (gameIsUpcoming(date, clock(game.startTime), clock(game.endTime), 120, now)) {
       blocks.push(freePickupGameBlock(game));
     }
   }
@@ -2299,7 +2304,7 @@ export function directIntent(text) {
   if (/^\/?help\b/.test(lower)) return "help";
   if (
     resolveScheduleRange(clean) &&
-    /\b(?:game|games|match|matches|schedule|playing|soccer|have)\b/.test(lower)
+    /\b(?:game|games|match|matches|schedule|play|playing|soccer|have|who|opponent|pickup|rsvp|reserved|spots?|capacity|availability|waitlist)\b/.test(lower)
   ) return "range_games";
   if (/^\/?today(?:\s|$)/.test(lower)) return "today_games";
   if (/^\/?next(?:\s|$)/.test(lower)) return "next_game";
