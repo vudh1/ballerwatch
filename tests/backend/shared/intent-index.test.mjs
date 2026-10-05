@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { classifyIndexedIntent } from "../../shared/intent-index.mjs";
+import { classifyIndexedIntent } from "../../../backend/shared/intent-index.mjs";
 
 test("routes common pickup phrasing without AI", () => {
   assert.equal(classifyIndexedIntent("do we still have spots left?"), "pickup_status");

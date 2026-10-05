@@ -5,7 +5,7 @@ import {
   freePickupBase,
   furthestIsoDate,
   saturdayFreePickupDates,
-} from "../../shared/free-pickup.mjs";
+} from "../../../backend/shared/free-pickup.mjs";
 
 test("Saturday free pickup fills only through the furthest published source date", () => {
   assert.equal(

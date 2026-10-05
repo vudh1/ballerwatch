@@ -10,7 +10,7 @@ import {
   matchHidden,
   normalizeMatchOverrideInput,
   pickupOverrideId,
-} from "../../shared/match-overrides.mjs";
+} from "../../../backend/shared/match-overrides.mjs";
 
 test("match overrides normalize date/time and retain immutable source IDs", () => {
   assert.equal(normalizeClock24("8:15 PM"), "20:15");
@@ -105,7 +105,7 @@ test("invalid override records are dropped during state cleanup", () => {
 
 
 test("free pickup overrides retain the generated Saturday source identity", async () => {
-  const { applyFreePickupMatchOverride } = await import("../../shared/match-overrides.mjs");
+  const { applyFreePickupMatchOverride } = await import("../../../backend/shared/match-overrides.mjs");
   const source = {
     id: "free:2026-10-10",
     sourceDate: "2026-10-10",

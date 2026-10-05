@@ -5,7 +5,7 @@ import {
   localMinutesUntilStart,
   matchStartReminderDue,
   rsvpReminderDue,
-} from "../../shared/match-reminders.mjs";
+} from "../../../backend/shared/match-reminders.mjs";
 
 test("pickup reminder windows are one day and one hour before start", () => {
   assert.equal(localMinutesUntilStart({

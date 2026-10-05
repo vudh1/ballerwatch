@@ -4,14 +4,14 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
-import { decryptState } from "../../shared/state-crypto.mjs";
+import { decryptState } from "../../../backend/shared/state-crypto.mjs";
 import {
   recordUnknownQuestion,
   refreshPublicRequests,
   isPublicRequestSummary,
   publicRequestSummary,
   requestCategory,
-} from "../../shared/feature-requests.mjs";
+} from "../../../backend/shared/feature-requests.mjs";
 
 test("private request text never enters the public projection", () => {
   const summary = publicRequestSummary([
