@@ -714,6 +714,9 @@ async function promoteProductionRelease() {
 }
 
 async function openSettings(options = {}) {
+  if (els.notificationDialog.open) els.notificationDialog.close();
+  if (els.notificationReader.open) els.notificationReader.close();
+  setActiveAppTab("settings");
   const pendingAction =
     options && typeof options === "object" && "pendingAction" in options
       ? String(options.pendingAction || "")
@@ -742,7 +745,11 @@ async function loginOwnerDevice(event) {
     els.ownerLoginPassword.value = "";
     const resumeMatchAction = pendingMatchAdminAction;
     await loadOwnerSettings();
-    await loadRsvpStatus();
+    await Promise.all([
+      loadRsvpStatus(),
+      loadNotificationProfile(),
+    ]);
+    void syncCurrentPushRegistration();
     if (currentNextGame) {
       renderNextGame(currentNextGame, els.spotlightLabel.textContent || "NEXT GAME");
     }
@@ -891,8 +898,12 @@ async function saveOwnerPassword(event) {
 
 function disconnectOwnerDevice() {
   clearSession();
+  currentNotificationProfile = null;
   confirmedRsvpDates = new Set();
   waitlistedRsvpDates = new Set();
+  renderNotificationPreferences();
+  renderBoard(currentBoardEntries);
+  void syncCurrentPushRegistration();
   if (currentNextGame) {
     renderNextGame(currentNextGame, els.spotlightLabel.textContent || "NEXT GAME");
   }
@@ -909,8 +920,12 @@ async function revokeOwnerDevices() {
       body: "{}",
     });
     clearSession();
+    currentNotificationProfile = null;
     confirmedRsvpDates = new Set();
     waitlistedRsvpDates = new Set();
+    renderNotificationPreferences();
+    renderBoard(currentBoardEntries);
+    void syncCurrentPushRegistration();
     if (currentNextGame) {
       renderNextGame(currentNextGame, els.spotlightLabel.textContent || "NEXT GAME");
     }
@@ -2680,9 +2695,32 @@ async function loadBoard() {
   }
 }
 
+function setActiveAppTab(tab) {
+  for (const [name, button] of [
+    ["home", els.tabHome],
+    ["notifications", els.tabNotifications],
+    ["settings", els.tabSettings],
+  ]) {
+    if (!button) continue;
+    const active = name === tab;
+    button.classList.toggle("is-active", active);
+    if (active) button.setAttribute("aria-current", "page");
+    else button.removeAttribute("aria-current");
+  }
+}
+
+function openHomeTab() {
+  if (els.notificationReader.open) els.notificationReader.close();
+  if (els.notificationDialog.open) els.notificationDialog.close();
+  if (els.settingsDialog.open) els.settingsDialog.close();
+  setActiveAppTab("home");
+}
+
 function openNotifications() {
-  els.notificationDialog.showModal();
-  void loadBoard();
+  if (els.settingsDialog.open) els.settingsDialog.close();
+  if (!els.notificationDialog.open) els.notificationDialog.showModal();
+  setActiveAppTab("notifications");
+  void Promise.all([loadBoard(), loadNotificationProfile()]);
 }
 
 async function currentSubscription() {
@@ -2735,6 +2773,35 @@ async function updatePushStatus() {
   }
 }
 
+async function registerPushSubscription(subscription, action = "subscribe") {
+  if (!subscription) return null;
+  const serialized = subscription.toJSON();
+  const challenge = await api("/web/push/challenge", {
+    method: "POST",
+    body: JSON.stringify({ endpoint: serialized.endpoint }),
+  });
+  return api(`/web/push/${action}`, {
+    method: "POST",
+    headers: ownerHeaders(),
+    body: JSON.stringify({
+      subscription: serialized,
+      challenge: challenge.challenge,
+      channels: notificationChannels(),
+    }),
+  });
+}
+
+async function syncCurrentPushRegistration() {
+  const subscription = await currentSubscription().catch(() => null);
+  if (!subscription) return false;
+  try {
+    await registerPushSubscription(subscription, "subscribe");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function enablePush() {
   try {
     if (ios() && !standalone()) {
@@ -2761,18 +2828,7 @@ async function enablePush() {
         applicationServerKey: urlBase64ToUint8Array(config.push.applicationServerKey),
       });
     }
-    const serialized = subscription.toJSON();
-    const challenge = await api("/web/push/challenge", {
-      method: "POST",
-      body: JSON.stringify({ endpoint: serialized.endpoint }),
-    });
-    await api("/web/push/subscribe", {
-      method: "POST",
-      body: JSON.stringify({
-        subscription: serialized,
-        challenge: challenge.challenge,
-      }),
-    });
+    await registerPushSubscription(subscription, "subscribe");
   } catch (error) {
     els.bellPushStatus.title = error.message;
   } finally {
@@ -2784,20 +2840,7 @@ async function disablePush() {
   try {
     const subscription = await currentSubscription();
     if (!subscription) return;
-    const serialized = subscription.toJSON();
-    const challenge = await api("/web/push/challenge", {
-      method: "POST",
-      body: JSON.stringify({ endpoint: serialized.endpoint }),
-    }).catch(() => null);
-    if (challenge?.challenge) {
-      await api("/web/push/unsubscribe", {
-        method: "POST",
-        body: JSON.stringify({
-          subscription: serialized,
-          challenge: challenge.challenge,
-        }),
-      }).catch(() => null);
-    }
+    await registerPushSubscription(subscription, "unsubscribe").catch(() => null);
     await subscription.unsubscribe();
   } finally {
     await updatePushStatus();
