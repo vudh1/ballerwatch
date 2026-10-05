@@ -371,6 +371,6 @@ if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).
   else if (command === "clean") cleanRuntimeState(scope);
   else if (command === "audit") auditRuntimeStateBranch();
   else throw new Error(
-    "Usage: node shared/runtime-state.mjs pull|push|clean <scope> | purge | audit",
+    "Usage: node backend/shared/runtime-state.mjs pull|push|clean <scope> | purge | audit",
   );
 }
