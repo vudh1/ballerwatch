@@ -3,9 +3,11 @@ import assert from "node:assert/strict";
 import {
   applyLeagueMatchOverride,
   applyPickupMatchOverride,
+  cleanHiddenMatches,
   cleanMatchOverrides,
   leagueOverrideId,
   normalizeClock24,
+  matchHidden,
   normalizeMatchOverrideInput,
   pickupOverrideId,
 } from "../../shared/match-overrides.mjs";
@@ -131,4 +133,20 @@ test("free pickup overrides retain the generated Saturday source identity", asyn
   assert.equal(result.date, "2026-10-11");
   assert.equal(result.location, "Manual Park");
   assert.equal(result.manualOverride, true);
+});
+
+
+test("hidden match state is sanitized and keyed by immutable match ID", () => {
+  const hidden = cleanHiddenMatches({
+    "pickup:2026-10-08": {
+      label: "Pickup",
+      date: "2026-10-08",
+      hiddenAt: "2026-10-05T17:00:00Z",
+    },
+    invalid: { label: "drop me" },
+  });
+  assert.deepEqual(Object.keys(hidden), ["pickup:2026-10-08"]);
+  assert.equal(hidden["pickup:2026-10-08"].label, "Pickup");
+  assert.equal(matchHidden({ hiddenMatches: hidden }, "pickup:2026-10-08"), true);
+  assert.equal(matchHidden({ hiddenMatches: hidden }, "league:v2:other"), false);
 });

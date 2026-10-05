@@ -23,8 +23,10 @@ import {
   applyFreePickupMatchOverride,
   applyLeagueMatchOverride,
   applyPickupMatchOverride,
+  cleanHiddenMatches,
   cleanMatchOverrides,
   leagueOverrideId,
+  matchHidden,
   normalizeMatchOverrideId,
   normalizeMatchOverrideInput,
   pickupOverrideId,
@@ -821,6 +823,10 @@ async function ownerSettingsView(env, accountInput) {
     canManageMatches: canManage,
     passwordConfigured: Boolean(account.passwordRecord?.digest),
     users: canManage ? publicUserList(settings, env) : [],
+    deletedMatches: canManage
+      ? Object.values(cleanHiddenMatches(settings?.hiddenMatches))
+          .sort((a, b) => String(b.hiddenAt || "").localeCompare(String(a.hiddenAt || "")))
+      : [],
   };
 }
 
@@ -875,6 +881,51 @@ async function saveMatchOverrideDirect(env, input, { reset = false } = {}) {
     }
   }
   throw new Error("Unable to save match override.");
+}
+
+async function saveMatchVisibilityDirect(env, input, { hidden = true } = {}) {
+  const id = normalizeMatchOverrideId(input?.id);
+  const label = cleanText(input?.label, 180);
+  const date = cleanText(input?.date, 20);
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const record = await githubStateRecord(env, "state/user.json");
+      const current = await userStateDocument(env, record.value);
+      const hiddenMatches = cleanHiddenMatches(current.settings?.hiddenMatches);
+      if (hidden) {
+        hiddenMatches[id] = {
+          id,
+          label,
+          date,
+          hiddenAt: new Date().toISOString(),
+        };
+      } else {
+        delete hiddenMatches[id];
+      }
+      const settings = { ...current.settings, hiddenMatches };
+
+      await githubStatePut(
+        env,
+        "state/user.json",
+        await encryptState({ settings }, env),
+        record.sha,
+        hidden
+          ? "runtime(user): hide match from BallerWatch"
+          : "runtime(user): restore hidden match",
+      );
+      await invalidateUserSnapshotCache(env, settings);
+      return {
+        id,
+        hidden,
+        deletedMatches: Object.values(hiddenMatches),
+      };
+    } catch (error) {
+      if (/Invalid match override/.test(String(error?.message || ""))) throw error;
+      if (attempt === 2) throw error;
+    }
+  }
+  throw new Error("Unable to update match visibility.");
 }
 
 export async function verifyOwnerCapability(env, token, settingsOverride = null) {
@@ -1676,11 +1727,17 @@ function clock(value) {
   return `${hour % 12 || 12}:${m[2]} ${hour >= 12 ? "PM" : "AM"}`;
 }
 
-function sourcePickupDates(snapshot) {
+function allSourcePickupDates(snapshot) {
   return (snapshot.pickup?.dates || [])
     .map((item) => String(item?.date || ""))
     .filter(Boolean)
     .sort();
+}
+
+function sourcePickupDates(snapshot) {
+  const settings = snapshot.settings || {};
+  return allSourcePickupDates(snapshot)
+    .filter((sourceDate) => !matchHidden(settings, pickupOverrideId(sourceDate)));
 }
 
 function effectivePickupRecord(snapshot, sourceDate) {
@@ -1712,7 +1769,7 @@ function pickupSourceDateForDisplay(snapshot, displayDate) {
   return "";
 }
 
-function leagueMatches(snapshot) {
+function allLeagueMatches(snapshot) {
   return (snapshot.league?.teams || []).flatMap(team =>
     (team?.matches || []).map(game =>
       applyLeagueMatchOverride(
@@ -1723,21 +1780,31 @@ function leagueMatches(snapshot) {
   );
 }
 
+function leagueMatches(snapshot) {
+  const settings = snapshot.settings || {};
+  return allLeagueMatches(snapshot)
+    .filter((game) => !matchHidden(settings, game.overrideId || leagueOverrideId(game)));
+}
+
 function sourceScheduleHorizon(snapshot) {
   return furthestIsoDate([
-    ...availableDates(snapshot),
-    ...leagueMatches(snapshot).map((game) => String(game?.date || "")),
+    ...allSourcePickupDates(snapshot)
+      .map((sourceDate) => effectivePickupRecord(snapshot, sourceDate).date),
+    ...allLeagueMatches(snapshot).map((game) => String(game?.date || "")),
   ]);
 }
 
 function freePickupMatches(snapshot, startDate = localDate()) {
   const horizonDate = sourceScheduleHorizon(snapshot);
-  return saturdayFreePickupDates(startDate, horizonDate).map((sourceDate) =>
-    applyFreePickupMatchOverride(
-      freePickupBase(sourceDate),
-      snapshot.settings || {},
+  const settings = snapshot.settings || {};
+  return saturdayFreePickupDates(startDate, horizonDate)
+    .map((sourceDate) =>
+      applyFreePickupMatchOverride(
+        freePickupBase(sourceDate),
+        settings,
+      )
     )
-  );
+    .filter((game) => !matchHidden(settings, game.id));
 }
 
 function scheduleDates(snapshot) {
@@ -2642,7 +2709,11 @@ export function webSafeSnapshot(snapshot) {
     teams: Array.isArray(snapshot?.teams) ? snapshot.teams : [],
     settings: (() => {
       const matchOverrides = cleanMatchOverrides(snapshot?.settings?.matchOverrides);
-      return Object.keys(matchOverrides).length ? { matchOverrides } : {};
+      const hiddenMatches = cleanHiddenMatches(snapshot?.settings?.hiddenMatches);
+      const settings = {};
+      if (Object.keys(matchOverrides).length) settings.matchOverrides = matchOverrides;
+      if (Object.keys(hiddenMatches).length) settings.hiddenMatches = hiddenMatches;
+      return settings;
     })(),
     ownerName: "",
     version: snapshot?.version || "unknown",
@@ -3299,6 +3370,49 @@ export default {
           request,
           { ok: false, error: "Unable to start the production promotion right now." },
           { status: 503 },
+        );
+      }
+    }
+
+    if (
+      (request.method === "POST" || request.method === "DELETE") &&
+      userRoute(url.pathname, "match")
+    ) {
+      const account = await resolveOwnerCapability(env, bearerToken(request)).catch(() => null);
+      if (!account) {
+        return webJson(request, { ok: false, error: "User sign-in is required." }, { status: 401 });
+      }
+      if (account.role !== "admin") {
+        return webJson(request, { ok: false, error: "Administrator access is required." }, { status: 403 });
+      }
+
+      let body;
+      try { body = await request.json(); }
+      catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
+
+      try {
+        const saved = await saveMatchVisibilityDirect(
+          env,
+          body,
+          { hidden: request.method === "DELETE" },
+        );
+        ctx.waitUntil(
+          dispatchWorkflow(env, "watchdog.yml", { external_fallback: true })
+            .catch((error) => console.warn("Match visibility weather refresh dispatch failed", error)),
+        );
+        return webJson(request, {
+          ok: true,
+          id: saved.id,
+          hidden: saved.hidden,
+          deletedMatches: saved.deletedMatches,
+        });
+      } catch (error) {
+        const message = cleanText(error?.message, 220);
+        const status = /Invalid match override/.test(message) ? 400 : 503;
+        return webJson(
+          request,
+          { ok: false, error: status === 400 ? message : "Unable to update match visibility right now." },
+          { status },
         );
       }
     }

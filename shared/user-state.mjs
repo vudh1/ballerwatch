@@ -7,7 +7,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { decryptState, encryptState } from "./state-crypto.mjs";
-import { cleanMatchOverrides } from "./match-overrides.mjs";
+import { cleanHiddenMatches, cleanMatchOverrides } from "./match-overrides.mjs";
 
 export const USER_STATE_PATH = "state/user.json";
 
@@ -27,6 +27,7 @@ function defaults() {
     webAuthVersion: 1,
     webUsers: {},
     matchOverrides: {},
+    hiddenMatches: {},
   };
 }
 
@@ -58,6 +59,7 @@ function cleanSettings(value) {
     ...source,
     webUsers: cleanWebUsers(source.webUsers),
     matchOverrides: cleanMatchOverrides(source.matchOverrides),
+    hiddenMatches: cleanHiddenMatches(source.hiddenMatches),
   };
   delete next.webPairCodeHash;
   delete next.webPairExpiresAt;

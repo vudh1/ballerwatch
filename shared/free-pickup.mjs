@@ -12,7 +12,7 @@ export const FREE_PICKUP = Object.freeze({
   startTime: "10:30",
   endTime: "12:30",
   location: "Jefferson Park Playfield",
-  mapsQuery: "Jefferson Park Playfield, Seattle, WA",
+  mapsQuery: "1600 S Columbian Way, Seattle, WA 98108",
 });
 
 function validIsoDate(value) {

@@ -278,3 +278,34 @@ export function applyFreePickupMatchOverride(source, settings = {}) {
     overrideUpdatedAt: override.updatedAt,
   };
 }
+
+
+export function cleanHiddenMatches(value) {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const result = {};
+  for (const [rawId, rawRecord] of Object.entries(source)) {
+    try {
+      const id = normalizeMatchOverrideId(rawId);
+      const record = rawRecord && typeof rawRecord === "object" ? rawRecord : {};
+      result[id] = {
+        id,
+        label: clean(record.label, 180),
+        date: clean(record.date, 20),
+        hiddenAt: clean(record.hiddenAt, 80),
+      };
+    } catch {}
+  }
+  return result;
+}
+
+export function matchHidden(settings, id) {
+  try {
+    const key = normalizeMatchOverrideId(id);
+    return Object.prototype.hasOwnProperty.call(
+      cleanHiddenMatches(settings?.hiddenMatches),
+      key,
+    );
+  } catch {
+    return false;
+  }
+}

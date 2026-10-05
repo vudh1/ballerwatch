@@ -13,7 +13,10 @@ import {
   matchStartReminderDue,
 } from "../shared/match-reminders.mjs";
 import { appendWebNotification } from "../shared/web-notifications.mjs";
-import { applyLeagueMatchOverride } from "../shared/match-overrides.mjs";
+import {
+  applyLeagueMatchOverride,
+  matchHidden,
+} from "../shared/match-overrides.mjs";
 import { loadUserSettings } from "../shared/user-state.mjs";
 
 const TZ = "America/Los_Angeles";
@@ -55,6 +58,7 @@ export function buildWebText(updates, settings = {}) {
   const lines = [];
   for (const item of updates) {
     const match = applyLeagueMatchOverride(item.match || {}, settings);
+    if (matchHidden(settings, match.overrideId)) continue;
     const verb = item.action === "created" ? "Added" : "Updated";
     const location = match.location || "location not published";
     const jersey = match.jerseyColor || "not published";
@@ -94,7 +98,8 @@ function scheduleMatches(settings = {}) {
     return (Array.isArray(schedule?.teams) ? schedule.teams : [])
       .flatMap((team) => Array.isArray(team?.matches) ? team.matches : [])
       .filter((match) => match?.key && match?.start)
-      .map((match) => applyLeagueMatchOverride(match, settings));
+      .map((match) => applyLeagueMatchOverride(match, settings))
+      .filter((match) => !matchHidden(settings, match.overrideId));
   } catch {
     return [];
   }
@@ -156,13 +161,16 @@ export function notifyWeb({ now = new Date() } = {}) {
     const data = JSON.parse(fs.readFileSync(UPDATE, "utf8"));
     const updates = Array.isArray(data.updates) ? data.updates : [];
     if (updates.length) {
-      appendWebNotification("league", {
-        title: "RATS schedule updated",
-        body: buildWebText(updates, settings),
-        tag: `rats-${updates[0]?.match?.date || "schedule"}`,
-      });
-      console.log(`Web notification recorded for ${updates.length} schedule update(s).`);
-      recorded = true;
+      const body = buildWebText(updates, settings);
+      if (body) {
+        appendWebNotification("league", {
+          title: "RATS schedule updated",
+          body,
+          tag: `rats-${updates[0]?.match?.date || "schedule"}`,
+        });
+        console.log(`Web notification recorded for ${updates.length} schedule update(s).`);
+        recorded = true;
+      }
     }
   }
 

@@ -8,7 +8,11 @@ import crypto from "node:crypto";
 import { loadUserSettings } from "../shared/user-state.mjs";
 import { decryptState, encryptState } from "../shared/state-crypto.mjs";
 import { appendWebNotification } from "../shared/web-notifications.mjs";
-import { applyPickupMatchOverride, pickupOverrideId } from "../shared/match-overrides.mjs";
+import {
+  applyPickupMatchOverride,
+  matchHidden,
+  pickupOverrideId,
+} from "../shared/match-overrides.mjs";
 import {
   localMinutesUntilStart,
   matchStartReminderDue,
@@ -133,6 +137,7 @@ function currentFutureDates(nowDate) {
 }
 
 function eventForDate(sourceDate, settings = {}) {
+  if (matchHidden(settings, pickupOverrideId(sourceDate))) return null;
   const event = readJson(`${RUNTIME_DATES_DIR}/${sourceDate}.json`);
   if (!event?.ok) return null;
   const privateEvents = readJson(RUNTIME_PATH)?.events || {};

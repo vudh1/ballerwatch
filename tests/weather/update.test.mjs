@@ -258,3 +258,62 @@ test("weather includes synthetic Jefferson Park Saturdays only through the sourc
   assert.ok(free.every((game) => game.location === "Jefferson Park Playfield"));
   assert.ok(free.every((game) => game.startTime === "10:30"));
 });
+
+
+test("hidden matches are omitted from weather while Jefferson free pickup keeps a weather fallback", () => {
+  const result = collectUpcomingGames({
+    pickupFeed: {
+      events: {
+        "2026-10-07": {
+          ok: true,
+          startTime: "20:00",
+          endTime: "22:00",
+          reserved: 8,
+          capacity: 16,
+        },
+      },
+    },
+    pickupPrivate: {
+      events: {
+        "2026-10-07": {
+          fieldName: "Pickup Field",
+          address: "Seattle, WA",
+        },
+      },
+    },
+    leagueSchedule: {
+      teams: [{
+        name: "Team Alpha",
+        matches: [{
+          key: "v2:hidden-weather",
+          team: "Team Alpha",
+          opponent: "Team Beta",
+          date: "2026-10-10",
+          startTime: "19:00",
+          endTime: "21:00",
+          start: "2026-10-10T19:00:00-07:00",
+          end: "2026-10-10T21:00:00-07:00",
+          location: "League Field",
+        }],
+      }],
+    },
+    settings: {
+      hiddenMatches: {
+        "league:v2:hidden-weather": {
+          id: "league:v2:hidden-weather",
+          label: "Team Alpha vs Team Beta",
+          date: "2026-10-10",
+          hiddenAt: "2026-10-05T17:00:00Z",
+        },
+      },
+    },
+    now: new Date("2026-10-05T08:00:00-07:00"),
+    days: 14,
+  });
+
+  assert.equal(result.games.some((game) => game.id === "league:v2:hidden-weather"), false);
+  const free = result.games.find((game) => game.kind === "free_pickup");
+  assert.ok(free);
+  assert.equal(free.location, "Jefferson Park Playfield");
+  assert.equal(free.locationQuery, "1600 S Columbian Way, Seattle, WA 98108");
+});

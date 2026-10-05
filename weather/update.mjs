@@ -13,6 +13,7 @@ import {
   applyFreePickupMatchOverride,
   applyLeagueMatchOverride,
   applyPickupMatchOverride,
+  matchHidden,
   pickupOverrideId,
 } from "../shared/match-overrides.mjs";
 import {
@@ -158,7 +159,7 @@ function coordinatesForGame(game, locations) {
       source: "venue",
     };
   }
-  if (game.kind === "league") {
+  if (game.kind === "league" || game.kind === "free_pickup") {
     return {
       ...SEATTLE_WEATHER_FALLBACK,
       approximate: true,
@@ -184,7 +185,7 @@ export function collectUpcomingGames({
   const endDate = addDaysIso(startDate, Math.max(1, Number(days) || 14) - 1);
   const games = [];
 
-  const effectivePickup = Object.keys(pickupFeed?.events || {}).sort().map((sourceDate) => {
+  const allEffectivePickup = Object.keys(pickupFeed?.events || {}).sort().map((sourceDate) => {
     const pub = pickupFeed.events[sourceDate] || {};
     const priv = pickupPrivate?.events?.[sourceDate] || {};
     return {
@@ -202,7 +203,7 @@ export function collectUpcomingGames({
       }, settings),
     };
   });
-  const effectiveLeague = (leagueSchedule?.teams || []).flatMap((team) =>
+  const allEffectiveLeague = (leagueSchedule?.teams || []).flatMap((team) =>
     (team?.matches || []).map((sourceMatch) => ({
       team,
       match: applyLeagueMatchOverride(
@@ -212,9 +213,15 @@ export function collectUpcomingGames({
     }))
   );
   const horizonDate = furthestIsoDate([
-    ...effectivePickup.map((item) => item.effective.date),
-    ...effectiveLeague.map((item) => item.match.date),
+    ...allEffectivePickup.map((item) => item.effective.date),
+    ...allEffectiveLeague.map((item) => item.match.date),
   ]);
+  const effectivePickup = allEffectivePickup.filter(
+    ({ sourceDate }) => !matchHidden(settings, pickupOverrideId(sourceDate)),
+  );
+  const effectiveLeague = allEffectiveLeague.filter(
+    ({ match }) => !matchHidden(settings, match.overrideId),
+  );
 
   for (const { sourceDate, pub, effective } of effectivePickup) {
     const date = effective.date;
@@ -268,12 +275,13 @@ export function collectUpcomingGames({
       address: "",
       mapsQuery: location,
       jerseyColor: clean(match?.jerseyColor, 60),
-      locationQuery: locationQuery({ location }),
+      locationQuery: clean(game.mapsQuery || locationQuery({ location }), 260),
     });
   }
 
   for (const sourceDate of saturdayFreePickupDates(startDate, horizonDate)) {
     const game = applyFreePickupMatchOverride(freePickupBase(sourceDate), settings);
+    if (matchHidden(settings, game.id)) continue;
     const date = clean(game.date, 20);
     if (!date || date < startDate || date > endDate) continue;
     const window = gameWindow(game.startTime, game.endTime, "", "", 120);
