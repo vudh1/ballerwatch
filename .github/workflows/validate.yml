@@ -7,6 +7,7 @@ on:
       - "backend/league/**"
       - "backend/shared/**"
       - "backend/watchdog/**"
+      - "backend/weather/**"
       - "scripts/**"
       - "frontend/**"
       - "backend/infra/**"
