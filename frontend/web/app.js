@@ -448,6 +448,252 @@ function standalone() {
     window.navigator.standalone === true;
 }
 
+function reducedMotionPreferred() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function launchIntroSeenThisSession() {
+  try {
+    return sessionStorage.getItem(INTRO_SESSION_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function playLaunchIntro() {
+  if (!els.launchIntro || reducedMotionPreferred() || launchIntroSeenThisSession()) {
+    if (els.launchIntro) els.launchIntro.hidden = true;
+    return false;
+  }
+
+  try {
+    sessionStorage.setItem(INTRO_SESSION_KEY, "1");
+  } catch {}
+
+  els.launchIntro.hidden = false;
+  els.launchIntro.classList.remove("is-exiting");
+  window.requestAnimationFrame(() => {
+    els.launchIntro.classList.add("is-active");
+  });
+
+  window.setTimeout(() => {
+    els.launchIntro.classList.add("is-exiting");
+    window.setTimeout(() => {
+      els.launchIntro.classList.remove("is-active", "is-exiting");
+      els.launchIntro.hidden = true;
+    }, LAUNCH_INTRO_FADE_MS);
+  }, LAUNCH_INTRO_VISIBLE_MS);
+
+  return true;
+}
+
+function musicEnabled() {
+  try {
+    return localStorage.getItem(MUSIC_ENABLED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function storeMusicEnabled(enabled) {
+  try {
+    localStorage.setItem(MUSIC_ENABLED_KEY, enabled ? "1" : "0");
+  } catch {}
+}
+
+function audioContextConstructor() {
+  return window.AudioContext || window.webkitAudioContext || null;
+}
+
+function renderMusicControl(message = "") {
+  if (!els.musicToggle || !els.musicStatus) return;
+  const enabled = musicEnabled();
+  const supported = Boolean(audioContextConstructor());
+  els.musicToggle.disabled = !supported;
+  els.musicToggle.classList.toggle("is-on", enabled && supported);
+  els.musicToggle.setAttribute("aria-pressed", String(enabled && supported));
+  els.musicToggle.textContent = enabled && supported ? "On" : "Off";
+
+  if (!supported) {
+    els.musicStatus.textContent = "Music is not supported by this browser.";
+  } else if (message) {
+    els.musicStatus.textContent = message;
+  } else if (!enabled) {
+    els.musicStatus.textContent = "Music is off on this device.";
+  } else if (ambientAudioContext?.state === "running" && ambientMusicTimer !== null) {
+    els.musicStatus.textContent = "Music is playing quietly.";
+  } else {
+    els.musicStatus.textContent = "Music is on. It will start after your next tap.";
+  }
+}
+
+function playAmbientVoice(frequency, startTime, duration, level, type = "sine") {
+  const context = ambientAudioContext;
+  if (!context || !ambientMasterGain || context.state === "closed") return;
+
+  const oscillator = context.createOscillator();
+  const gain = context.createGain();
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(frequency, startTime);
+  gain.gain.setValueAtTime(0.0001, startTime);
+  gain.gain.exponentialRampToValueAtTime(level, startTime + 0.16);
+  gain.gain.exponentialRampToValueAtTime(
+    Math.max(0.0001, level * 0.48),
+    startTime + Math.max(0.22, duration * 0.58),
+  );
+  gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+  oscillator.connect(gain);
+  gain.connect(ambientMasterGain);
+  oscillator.start(startTime);
+  oscillator.stop(startTime + duration + 0.04);
+}
+
+function playBallerWatchAudioMark() {
+  if (!ambientAudioContext || ambientAudioContext.state !== "running") return;
+  const start = ambientAudioContext.currentTime + 0.02;
+  const notes = [392.0, 523.25, 659.25];
+  notes.forEach((frequency, index) => {
+    playAmbientVoice(frequency, start + index * 0.11, 0.62, 0.025, "sine");
+  });
+}
+
+function playAmbientPhrase() {
+  if (!musicEnabled() || ambientAudioContext?.state !== "running") return;
+  const progressions = [
+    [130.81, 196.0, 261.63],
+    [146.83, 220.0, 293.66],
+    [110.0, 164.81, 220.0],
+    [123.47, 185.0, 246.94],
+  ];
+  const chord = progressions[ambientPhraseIndex % progressions.length];
+  ambientPhraseIndex += 1;
+  const start = ambientAudioContext.currentTime + 0.04;
+  chord.forEach((frequency, index) => {
+    playAmbientVoice(
+      frequency,
+      start + index * 0.08,
+      4.8,
+      index === 0 ? 0.012 : 0.009,
+      index === 1 ? "triangle" : "sine",
+    );
+  });
+  playAmbientVoice(chord[2] * 2, start + 2.9, 1.4, 0.005, "sine");
+}
+
+function stopAmbientScheduler() {
+  if (ambientMusicTimer !== null) {
+    window.clearInterval(ambientMusicTimer);
+    ambientMusicTimer = null;
+  }
+}
+
+function scheduleAmbientMusic() {
+  if (!musicEnabled() || ambientAudioContext?.state !== "running") return;
+  if (ambientMusicTimer !== null) return;
+  playAmbientPhrase();
+  ambientMusicTimer = window.setInterval(playAmbientPhrase, AMBIENT_PHRASE_MS);
+}
+
+async function startAmbientMusic({ audioMark = false } = {}) {
+  if (!musicEnabled()) return false;
+  const Context = audioContextConstructor();
+  if (!Context) {
+    renderMusicControl();
+    return false;
+  }
+
+  if (!ambientAudioContext || ambientAudioContext.state === "closed") {
+    ambientAudioContext = new Context();
+    ambientMasterGain = ambientAudioContext.createGain();
+    ambientMasterGain.gain.setValueAtTime(0.48, ambientAudioContext.currentTime);
+    ambientMasterGain.connect(ambientAudioContext.destination);
+    ambientPhraseIndex = 0;
+  }
+
+  if (ambientAudioContext.state === "suspended") {
+    try {
+      await ambientAudioContext.resume();
+    } catch {
+      renderMusicControl();
+      return false;
+    }
+  }
+
+  if (ambientAudioContext.state !== "running") {
+    renderMusicControl();
+    return false;
+  }
+
+  if (audioMark) playBallerWatchAudioMark();
+  scheduleAmbientMusic();
+  renderMusicControl("Music is playing quietly.");
+  return true;
+}
+
+async function stopAmbientMusic() {
+  stopAmbientScheduler();
+  if (ambientAudioContext && ambientAudioContext.state !== "closed") {
+    try {
+      await ambientAudioContext.close();
+    } catch {}
+  }
+  ambientAudioContext = null;
+  ambientMasterGain = null;
+  ambientPhraseIndex = 0;
+  renderMusicControl();
+}
+
+function pauseAmbientMusic() {
+  stopAmbientScheduler();
+  if (ambientAudioContext?.state === "running") {
+    ambientAudioContext.suspend().catch(() => null);
+  }
+}
+
+function disarmMusicGesture() {
+  if (!musicGestureArmed) return;
+  musicGestureArmed = false;
+  document.removeEventListener("pointerdown", startMusicFromGesture, true);
+  document.removeEventListener("keydown", startMusicFromGesture, true);
+}
+
+function startMusicFromGesture() {
+  disarmMusicGesture();
+  void startAmbientMusic({ audioMark: true }).then((started) => {
+    if (!started && musicEnabled()) armMusicForFirstGesture();
+  });
+}
+
+function armMusicForFirstGesture() {
+  if (!musicEnabled() || musicGestureArmed || !audioContextConstructor()) return;
+  musicGestureArmed = true;
+  document.addEventListener("pointerdown", startMusicFromGesture, {
+    capture: true,
+    passive: true,
+  });
+  document.addEventListener("keydown", startMusicFromGesture, {
+    capture: true,
+  });
+}
+
+async function toggleMusic() {
+  const enabled = !musicEnabled();
+  storeMusicEnabled(enabled);
+  renderMusicControl();
+
+  if (!enabled) {
+    disarmMusicGesture();
+    await stopAmbientMusic();
+    return;
+  }
+
+  const started = await startAmbientMusic({ audioMark: true });
+  if (!started) {
+    armMusicForFirstGesture();
+    renderMusicControl("Music is on. Tap once to start audio.");
+  }
+}
+
 function pulseInteractionFeedback() {
   if (typeof navigator.vibrate !== "function") return false;
   try {
