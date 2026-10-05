@@ -595,6 +595,25 @@ test("notification inbox tracks unread state, opens full-screen detail, and anim
   assert.match(css, /height:\s*100dvh/);
 });
 
+test("installed app icon badge mirrors unread notifications and background push", () => {
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
+
+  assert.match(app, /async function syncAppIconBadge/);
+  assert.match(app, /navigator\.setAppBadge\(normalized\)/);
+  assert.match(app, /navigator\.clearAppBadge\(\)/);
+  assert.match(app, /type: "ballerwatch:badge-count"/);
+  assert.match(app, /void syncAppIconBadge\(normalized\)/);
+
+  assert.match(sw, /DEVICE_STATE_CACHE = "ballerwatch-device-state-v1"/);
+  assert.match(sw, /async function readBadgeCount/);
+  assert.match(sw, /async function incrementAppBadge/);
+  assert.match(sw, /self\.navigator\.setAppBadge\(normalized\)/);
+  assert.match(sw, /event\.data\?\.type === "ballerwatch:badge-count"/);
+  assert.match(sw, /incrementAppBadge\(\)/);
+  assert.match(sw, /key !== CACHE && key !== DEVICE_STATE_CACHE/);
+});
+
 test("notification push control is compact and only displays On or Off", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
