@@ -1053,8 +1053,21 @@ function notificationChannels() {
   return normalizedNotificationChannels(currentNotificationProfile?.channels);
 }
 
+async function syncServiceWorkerNotificationPreferences(channels = notificationChannels()) {
+  if (!("serviceWorker" in navigator)) return;
+  try {
+    const registration = serviceWorkerRegistration || await navigator.serviceWorker.ready;
+    const worker = registration?.active || navigator.serviceWorker.controller;
+    worker?.postMessage({
+      type: "ballerwatch:notification-preferences",
+      channels: normalizedNotificationChannels(channels),
+    });
+  } catch {}
+}
+
 function renderNotificationPreferences() {
   const channels = notificationChannels();
+  void syncServiceWorkerNotificationPreferences(channels);
   if (els.notificationPrefPickup) els.notificationPrefPickup.checked = channels.pickup;
   if (els.notificationPrefLeague) els.notificationPrefLeague.checked = channels.league;
   if (els.notificationPrefVersion) els.notificationPrefVersion.checked = channels.version;
