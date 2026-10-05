@@ -44,7 +44,7 @@ export async function postBridge(payload, { fetchImpl = globalThis.fetch } = {})
     if (await bridgeVersion(url, {fetchImpl}) < 2) {
       throw new Error(
         "Calendar reschedule detected but deployed Apps Script bridge is v1; " +
-        "redeploy league/google_apps_script/Code.gs before applying it",
+        "redeploy backend/league/google_apps_script/Code.gs before applying it",
       );
     }
   }
