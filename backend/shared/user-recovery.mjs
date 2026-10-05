@@ -96,7 +96,7 @@ export function resetUserPassword(usernameValue = "admin") {
 if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) {
   const command = process.argv[2] || "";
   if (command !== "reset") {
-    throw new Error("Usage: node shared/user-recovery.mjs reset [username]");
+    throw new Error("Usage: node backend/shared/user-recovery.mjs reset [username]");
   }
   const result = resetUserPassword(process.argv[3] || "admin");
   console.log(
