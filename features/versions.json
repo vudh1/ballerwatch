@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.0.9",
+  "currentVersion": "7.0.10",
   "releases": [
+    {
+      "version": "7.0.10",
+      "date": "2026-10-05",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Weather footer cleanup and safe review audit",
+      "webAnnouncement": "BallerWatch removes the remaining weather-footer separator and adds a privacy-safe engineering review path.",
+      "changes": [
+        "Removed the separator line above the calendar/weather Updated footer so it matches the match-card footer.",
+        "Added a maintainer-only manual workflow that decrypts only the pre-sanitized chat-review projection and category-only feature request summary.",
+        "Added regression coverage ensuring the review workflow never reads raw chat history or private feature-request text."
+      ]
+    },
     {
       "version": "7.0.9",
       "date": "2026-10-05",
