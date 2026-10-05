@@ -3473,7 +3473,7 @@ export default {
             dispatched: true,
             release,
             message:
-              `App update started for BallerWatch ${release.sourceVersion}. The existing release gate will validate and deploy it.`,
+              `App update started for BallerWatch ${release.sourceVersion}. It will install after validation completes.`,
           },
           { status: 202 },
         );
