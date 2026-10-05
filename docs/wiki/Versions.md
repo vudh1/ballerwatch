@@ -55,3 +55,4 @@ The source ledger on `main` is authoritative for the newest reviewed version. Th
 - **7.0.6** — Moves the match-card Updated footer down to the bottom edge and removes the inherited footer min-height that kept it floating too high on iPhone.
 
 - **7.0.7** — Keeps the soccer-pitch background while removing its outer frame, and introduces a new soccer-pitch + ball icon for the PWA and iPhone Home Screen.
+- **7.0.8** — Keeps all three notification preferences on one row, presents releases as App update, refreshes signed-in notification counts from shared account state while active, moves calendar/weather freshness into a subtle card footer, and removes the footer weather attribution line.
