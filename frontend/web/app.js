@@ -168,6 +168,7 @@ let notificationFilter = "all";
 let notificationSyncPromise = Promise.resolve();
 let pendingMatchAdminAction = "";
 let matchOverrideSourceState = null;
+let spotlightIdleResetTimer = null;
 
 const OWNER_TOKEN_KEY = SESSION_TOKEN_KEY;
 const OWNER_USERNAME_KEY = SESSION_USERNAME_KEY;
@@ -176,6 +177,7 @@ const NOTIFICATION_DELETED_KEY = LOCAL_NOTIFICATION_DELETED_KEY;
 const QUESTION_HISTORY_KEY = "ballerwatch-question-history-v1";
 const LIVE_DATA_REFRESH_MS = 60_000;
 const APP_UPDATE_CHECK_MS = 5 * 60_000;
+const SPOTLIGHT_IDLE_RESET_MS = 6_000;
 
 const COMMAND_SUGGESTIONS = [
   { value: "/today", label: "/today", description: "Today's games" },
@@ -1729,6 +1731,7 @@ function renderCalendarGamePicker(games, selectedId = "") {
       }
       renderNextGame(game, "SELECTED GAME");
       els.nextGameCard.classList.add("spotlight-selected");
+      scheduleSpotlightIdleReset();
     });
     els.calendarGamePicker.append(button);
   }
@@ -1844,6 +1847,47 @@ function ensureCalendarDateVisible(date) {
   return true;
 }
 
+function cancelSpotlightIdleReset() {
+  if (spotlightIdleResetTimer !== null) {
+    window.clearTimeout(spotlightIdleResetTimer);
+    spotlightIdleResetTimer = null;
+  }
+}
+
+function resetSpotlightToNextGame() {
+  cancelSpotlightIdleReset();
+  const games = currentCalendar?.games || [];
+  const nextGame = games[0] || null;
+  if (!nextGame) return false;
+
+  selectedCalendarGameId = "";
+  selectedCalendarDate = nextGame.date || "";
+  ensureCalendarDateVisible(selectedCalendarDate);
+  renderCalendarGrid();
+  renderCalendarGamePicker(
+    games.filter((game) => game.date === selectedCalendarDate),
+    nextGame.id || "",
+  );
+  renderNextGame(nextGame, "NEXT GAME");
+  els.nextGameCard.classList.remove("spotlight-selected");
+  syncSpotlightEdgeControls();
+  return true;
+}
+
+function scheduleSpotlightIdleReset() {
+  cancelSpotlightIdleReset();
+  if (!selectedCalendarGameId || !currentCalendar?.games?.length) return;
+
+  spotlightIdleResetTimer = window.setTimeout(() => {
+    spotlightIdleResetTimer = null;
+    if (document.hidden || document.querySelector("dialog[open]")) {
+      scheduleSpotlightIdleReset();
+      return;
+    }
+    resetSpotlightToNextGame();
+  }, SPOTLIGHT_IDLE_RESET_MS);
+}
+
 function selectCalendarDate(date, { scrollToSpotlight = false } = {}) {
   if (!currentCalendar) return;
   const games = (currentCalendar.games || []).filter((game) => game.date === date);
@@ -1861,6 +1905,7 @@ function selectCalendarDate(date, { scrollToSpotlight = false } = {}) {
   renderNextGame(game, "SELECTED GAME");
   els.nextGameCard.classList.add("spotlight-selected");
   syncSpotlightEdgeControls();
+  scheduleSpotlightIdleReset();
 
   if (scrollToSpotlight) {
     els.nextGameCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -2173,6 +2218,9 @@ function installSpotlightSwipe() {
   }, { passive: false });
 
   els.nextGameCard.addEventListener("touchcancel", settleBack);
+  carousel.addEventListener("pointerdown", () => {
+    if (selectedCalendarGameId) scheduleSpotlightIdleReset();
+  }, { passive: true });
 }
 
 function setCalendarExpanded(expanded) {
@@ -2228,6 +2276,7 @@ function renderCalendar(calendar) {
     renderCalendarGamePicker(sameDay, selectedGame.id || "");
     renderNextGame(selectedGame, "SELECTED GAME");
     els.nextGameCard.classList.add("spotlight-selected");
+    scheduleSpotlightIdleReset();
   } else if (firstGame) {
     renderCalendarGamePicker(
       availableGames.filter((game) => game.date === firstGame.date),
@@ -2235,9 +2284,11 @@ function renderCalendar(calendar) {
     );
     renderNextGame(firstGame, "NEXT GAME");
     els.nextGameCard.classList.remove("spotlight-selected");
+    cancelSpotlightIdleReset();
   } else {
     els.calendarGamePicker.hidden = true;
     renderNextGame(null, "NEXT GAME");
+    cancelSpotlightIdleReset();
   }
 
   syncSpotlightEdgeControls();
