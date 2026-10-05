@@ -30,18 +30,18 @@ jobs:
         env:
           GOOGLE_CALENDAR_WEBHOOK_URL: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_URL }}
           GOOGLE_CALENDAR_WEBHOOK_SECRET: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_SECRET }}
-        run: node league/google-calendar-purge.mjs
+        run: node backend/league/google-calendar-purge.mjs
 
       - name: Purge GitHub runtime-state branch
-        run: node shared/runtime-state.mjs purge
+        run: node backend/shared/runtime-state.mjs purge
 
       - name: Reinitialize empty Web Push identity
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
         run: |
-          node shared/web-push.mjs ensure
-          node shared/runtime-state.mjs push web
-          node shared/runtime-state.mjs clean web
+          node backend/shared/web-push.mjs ensure
+          node backend/shared/runtime-state.mjs push web
+          node backend/shared/runtime-state.mjs clean web
 
       - name: Show purge scope
         run: |
