@@ -6,7 +6,7 @@ import {
   syncExternalSchedulesOptional,
   verifyExternalSchedules,
   verifyGithubDispatchCredential,
-} from "../../infra/external-schedules.mjs";
+} from "../../../backend/infra/external-schedules.mjs";
 
 function job(spec, enabled = true) {
   return {

@@ -16,7 +16,7 @@ import {
   webCalendarDetails,
   webNextGameDetails,
   webSafeSnapshot,
-} from "../../../infra/web-worker/worker.mjs";
+} from "../../../../backend/infra/web-worker/worker.mjs";
 
 test("web snapshot strips private pickup roster and owner settings", () => {
   const safe = webSafeSnapshot({
@@ -569,7 +569,7 @@ test("web board keeps only the newest copy of identical historical notifications
 
 
 test("web feedback keeps original question and answer before encrypted review dispatch", () => {
-  const source = fs.readFileSync("infra/web-worker/worker.mjs", "utf8");
+  const source = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
   assert.match(source, /function retainPrivateText/);
   assert.match(source, /question:\s*retainPrivateText\(event\.question, 4000\)/);
   assert.match(source, /reply:\s*retainPrivateText\(event\.reply, 12000\)/);

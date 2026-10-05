@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { evaluateFallback } from "../../infra/fallback-gate.mjs";
+import { evaluateFallback } from "../../../backend/infra/fallback-gate.mjs";
 
 test("fresh Cloudflare heartbeat skips duplicate pickup work", () => {
   assert.deepEqual(
