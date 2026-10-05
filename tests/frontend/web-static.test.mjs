@@ -352,8 +352,8 @@ test("two-week dashboard renders cached match weather", () => {
 
   assert.match(html, /id="two-week-calendar"/);
   assert.match(html, /id="calendar-grid"/);
-  assert.match(html, /Open-Meteo/);
-  assert.match(html, /OpenStreetMap contributors/);
+  assert.doesNotMatch(html, /Open-Meteo/);
+  assert.doesNotMatch(html, /OpenStreetMap contributors/);
   assert.match(app, /\/web\/calendar/);
   assert.match(app, /weatherSummary/);
   assert.match(css, /\.calendar-grid/);
@@ -722,7 +722,8 @@ test("notification center supports filters, synced read state, and account prefe
   assert.match(css, /\.notification-preference-options \{[\s\S]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/);
   assert.match(app, /const notificationProfileRefresh = ownerToken\(\)/);
   assert.match(app, /loadNotificationProfile\(\{ migrateLocal: false \}\)/);
-  assert.match(app, /const \[calendarOk, boardOk, profileOk\] = await Promise\.all/);
+  assert.match(app, /const \[calendarOk, boardOk\] = await Promise\.all/);
+  assert.match(app, /await notificationProfileRefresh/);
   assert.match(app, /Synced when active for @/);
 });
 
@@ -1154,7 +1155,8 @@ test("calendar weather freshness sits in a subtle card footer without page water
     /<div class="calendar-card-footer">\s*<p class="calendar-updated calendar-update-credit" id="calendar-updated">Updated pending<\/p>/,
   );
   assert.match(css, /\.calendar-card-footer \{[\s\S]*position:\s*absolute;[\s\S]*bottom:\s*0\.42rem;[\s\S]*border-top:/);
-  assert.match(css, /\.calendar-card-footer \.calendar-update-credit \{[\s\S]*font-size:\s*0\.56rem;[\s\S]*color:\s*rgba\(148, 163, 184, 0\.46\)/);
+  assert.match(css, /\.calendar-card-footer \.calendar-update-credit \{[\s\S]*font-size:\s*0\.56rem;/);
+  assert.match(css, /\.calendar-card-footer \.calendar-update-credit \{[\s\S]*color:\s*rgba\(148, 163, 184, 0\.46\)/);
   assert.doesNotMatch(html, /class="data-attribution"/);
   assert.doesNotMatch(html, /Weather by|Open-Meteo|OpenStreetMap contributors/);
   assert.doesNotMatch(html, /class="weather-credit"/);
