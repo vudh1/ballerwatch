@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, Calendar sync, and quick answers into one installable app.
 
-**Current source version: 7.0.0**
+**Current source version: 7.0.1**
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
 
@@ -16,7 +16,7 @@ BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS leag
 - Use a real **Inbox** with Pickup / League / App filters, mark-all-read, swipe delete, and account-synced read state.
 - Choose account-level notification categories and keep the unread count synchronized to the installed app badge on supported devices.
 - Get allowed Web Push reminders and real schedule-change notifications.
-- Move between **Home / Inbox / Settings** with persistent app navigation.
+- Open **Inbox** and **Settings** from the top-right notification bell and gear.
 - Ask read-only questions such as `/next`, `What time is Thursday?`, or `What games are next week?`.
 - Sign in with separate user accounts and revocable sessions.
 - For administrators: manage users, monitored RATS teams, reversible match overrides/deletes, and app promotion.
@@ -36,7 +36,7 @@ BallerWatch 7 turns the PWA into a more complete account-backed app experience:
 - **Notification center:** Inbox filters Pickup, League, and App updates; supports mark-all-read and swipe/delete; and keeps the Home Screen badge aligned with unread state.
 - **Account-aware Web Push:** each device subscription can follow its signed-in account's notification categories without exposing account data in push payloads.
 - **Cleaner PWA architecture:** transport/session handling and notification persistence live in focused frontend modules instead of the main view controller.
-- **App navigation:** Home, Inbox, and Settings share one app surface with a persistent bottom navigation bar.
+- **App navigation:** Inbox and Settings stay one tap away through the top-right bell and gear, without a persistent bottom tab bar.
 
 Signed-out use still works: local read/delete state and anonymous Web Push remain available, and local notification state is migrated into the account after a successful sign-in.
 
