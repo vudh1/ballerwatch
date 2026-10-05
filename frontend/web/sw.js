@@ -9,6 +9,61 @@ const SHELL = [
 ];
 const API = "https://ballerwatch-web.vudhone.workers.dev";
 const APP_URL = "https://vudh1.github.io/ballerwatch/";
+const DEVICE_STATE_CACHE = "ballerwatch-device-state-v1";
+const BADGE_STATE_URL = new URL("./.badge-state", self.location.href).href;
+
+function normalizedBadgeCount(value) {
+  return Math.min(999, Math.max(0, Math.floor(Number(value) || 0)));
+}
+
+async function readBadgeCount() {
+  try {
+    const cache = await caches.open(DEVICE_STATE_CACHE);
+    const response = await cache.match(BADGE_STATE_URL);
+    if (!response) return 0;
+    const payload = await response.json();
+    return normalizedBadgeCount(payload?.count);
+  } catch {
+    return 0;
+  }
+}
+
+async function writeBadgeCount(count) {
+  const normalized = normalizedBadgeCount(count);
+  try {
+    const cache = await caches.open(DEVICE_STATE_CACHE);
+    await cache.put(
+      BADGE_STATE_URL,
+      new Response(JSON.stringify({ count: normalized }), {
+        headers: { "content-type": "application/json" },
+      }),
+    );
+  } catch {}
+  return normalized;
+}
+
+async function applyAppBadge(count) {
+  const normalized = normalizedBadgeCount(count);
+  try {
+    if (normalized > 0 && "setAppBadge" in self.navigator) {
+      await self.navigator.setAppBadge(normalized);
+    } else if ("clearAppBadge" in self.navigator) {
+      await self.navigator.clearAppBadge();
+    }
+  } catch {}
+  return normalized;
+}
+
+async function syncBadgeCount(count) {
+  const normalized = await writeBadgeCount(count);
+  await applyAppBadge(normalized);
+  return normalized;
+}
+
+async function incrementAppBadge() {
+  const current = await readBadgeCount();
+  return syncBadgeCount(current + 1);
+}
 
 function safeAppUrl(value) {
   try {
@@ -29,7 +84,11 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))))
+      .then((keys) => Promise.all(
+        keys
+          .filter((key) => key !== CACHE && key !== DEVICE_STATE_CACHE)
+          .map((key) => caches.delete(key)),
+      ))
       .then(() => self.clients.claim()),
   );
 });
@@ -53,6 +112,10 @@ self.addEventListener("fetch", (event) => {
 });
 
 self.addEventListener("message", (event) => {
+  if (event.data?.type === "ballerwatch:badge-count") {
+    event.waitUntil(syncBadgeCount(event.data?.count));
+    return;
+  }
   if (event.data?.type !== "ballerwatch:test-notification") return;
   const requestedDelay = Number(event.data?.delayMs);
   const delayMs = Number.isFinite(requestedDelay)
@@ -94,7 +157,10 @@ self.addEventListener("push", (event) => {
       renotify: true,
       data: { url: safeAppUrl(entry?.url) },
     };
-    await self.registration.showNotification(title, options);
+    await Promise.all([
+      incrementAppBadge(),
+      self.registration.showNotification(title, options),
+    ]);
   })());
 });
 
