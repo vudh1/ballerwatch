@@ -79,6 +79,6 @@ if (process.argv[1] && process.argv[1].endsWith("league-state.mjs")) {
     sealLeagueRuntimeState();
     console.log("Sealed league runtime state.");
   } else {
-    throw new Error("Usage: node shared/league-state.mjs prepare|seal");
+    throw new Error("Usage: node backend/shared/league-state.mjs prepare|seal");
   }
 }
