@@ -10,13 +10,13 @@ import {
   purgeRuntimeState,
   pushRuntimeState,
   snapshotPushArgs,
-} from "../../shared/runtime-state.mjs";
+} from "../../../backend/shared/runtime-state.mjs";
 import {
   decryptState,
   encryptState,
   isEncryptedStateEnvelope,
-} from "../../shared/state-crypto.mjs";
-import { saveFailoverState } from "../../shared/failover-state.mjs";
+} from "../../../backend/shared/state-crypto.mjs";
+import { saveFailoverState } from "../../../backend/shared/failover-state.mjs";
 
 test("snapshot pushes use an optimistic force-with-lease", () => {
   assert.deepEqual(

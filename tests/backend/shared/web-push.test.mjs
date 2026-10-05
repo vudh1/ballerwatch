@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { encryptState } from "../../shared/state-crypto.mjs";
+import { encryptState } from "../../../backend/shared/state-crypto.mjs";
 import {
   isUnsafeWebPushAddress,
   applyEncryptedRegistrationEventB64,
@@ -14,11 +14,11 @@ import {
   publicWebPushConfig,
   sendWebPushSignals,
   validateWebPushDestination,
-} from "../../shared/web-push.mjs";
+} from "../../../backend/shared/web-push.mjs";
 import {
   normalizeWebPushEndpoint,
   validWebPushEndpoint,
-} from "../../shared/web-push-endpoint.mjs";
+} from "../../../backend/shared/web-push-endpoint.mjs";
 
 const MOZILLA_ENDPOINT =
   "https://updates.push.services.mozilla.com/wpush/v2/synthetic-subscription";

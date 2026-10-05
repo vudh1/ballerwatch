@@ -8,7 +8,7 @@ import {
   isEncryptedStateEnvelope,
   isHardenedStateEnvelope,
   stateEnvelopeNeedsReseal,
-} from "../../shared/state-crypto.mjs";
+} from "../../../backend/shared/state-crypto.mjs";
 
 function legacyEncrypt(secret, value) {
   const key = crypto.createHash("sha256").update(secret).digest();

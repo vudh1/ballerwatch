@@ -7,7 +7,7 @@ import test from "node:test";
 import {
   appendWebNotification,
   loadWebNotificationChannel,
-} from "../../shared/web-notifications.mjs";
+} from "../../../backend/shared/web-notifications.mjs";
 
 test("stores notification board entries encrypted and returns sanitized metadata", (t) => {
   const cwd = process.cwd();
