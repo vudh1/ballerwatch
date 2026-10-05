@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   pickupWeatherChanged,
   pickupWeatherSignature,
-} from "../../weather/relevance.mjs";
+} from "../../../backend/weather/relevance.mjs";
 
 function state({
   date = "2026-10-07",

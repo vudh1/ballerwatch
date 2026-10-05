@@ -6,7 +6,7 @@ import {
   collectUpcomingGames,
   summarizeMatchWeather,
   weatherCondition,
-} from "../../weather/update.mjs";
+} from "../../../backend/weather/update.mjs";
 
 test("collectUpcomingGames returns located pickup and league games within 14 days", () => {
   const result = collectUpcomingGames({

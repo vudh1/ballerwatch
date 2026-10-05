@@ -4,7 +4,7 @@ import {
   formatCombinedVersionAnnouncement,
   pendingReleases,
   planVersionAnnouncement,
-} from "../../watchdog/release-announcement.mjs";
+} from "../../../backend/watchdog/release-announcement.mjs";
 
 const ledger = {
   currentVersion: "6.0.0",

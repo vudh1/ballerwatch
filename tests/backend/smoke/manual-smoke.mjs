@@ -4,9 +4,9 @@
  * Documentation baseline: v2.3.0. Runtime/private data must never be committed to Git.
  */
 import fs from "node:fs";
-import { decryptState } from "../../shared/state-crypto.mjs";
-import { loadUserSettings } from "../../shared/user-state.mjs";
-import { selectPrimaryEvent } from "../../pickup/selection.mjs";
+import { decryptState } from "../../../backend/shared/state-crypto.mjs";
+import { loadUserSettings } from "../../../backend/shared/user-state.mjs";
+import { selectPrimaryEvent } from "../../../backend/pickup/selection.mjs";
 
 const TZ = "America/Los_Angeles";
 
