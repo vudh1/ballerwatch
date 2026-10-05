@@ -722,7 +722,7 @@ async function openSettings(options = {}) {
       ? String(options.pendingAction || "")
       : "";
   pendingMatchAdminAction = pendingAction;
-  if (!els.settingsDialog.open) els.settingsDialog.showModal();
+  if (!els.settingsDialog.open) els.settingsDialog.show();
   await loadOwnerSettings();
 }
 
@@ -1276,7 +1276,7 @@ function openNotification(item) {
 function closeNotificationReader() {
   els.notificationReader.close();
   renderBoard(currentBoardEntries);
-  els.notificationDialog.showModal();
+  els.notificationDialog.show();
 }
 
 function setNotificationFilter(filter) {
@@ -2718,7 +2718,7 @@ function openHomeTab() {
 
 function openNotifications() {
   if (els.settingsDialog.open) els.settingsDialog.close();
-  if (!els.notificationDialog.open) els.notificationDialog.showModal();
+  if (!els.notificationDialog.open) els.notificationDialog.show();
   setActiveAppTab("notifications");
   void Promise.all([loadBoard(), loadNotificationProfile()]);
 }
