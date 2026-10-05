@@ -110,6 +110,6 @@ if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).
   } else if (command === "list-count") {
     console.log(loadLeagueTeams().length);
   } else {
-    throw new Error("Usage: node shared/league-teams.mjs prepare|migrate|list-count");
+    throw new Error("Usage: node backend/shared/league-teams.mjs prepare|migrate|list-count");
   }
 }
