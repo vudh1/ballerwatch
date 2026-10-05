@@ -152,6 +152,31 @@
       <p class="hint">Autocomplete uses your upcoming matches and recent successful questions, or type <strong>/</strong> for commands. Double-click an answer, or press and hold it on touch, to mark or unmark it as wrong.</p>
     </section>
 
+    <nav class="app-tabs" aria-label="Primary app navigation">
+      <button class="app-tab is-active" id="tab-home" type="button" aria-current="page">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 11.5 12 4l9 7.5V21h-6v-6H9v6H3Z"/>
+        </svg>
+        <span>Home</span>
+      </button>
+      <button class="app-tab" id="tab-notifications" type="button">
+        <span class="app-tab-icon">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>
+          </svg>
+          <span class="app-tab-badge" id="tab-notification-badge" hidden>0</span>
+        </span>
+        <span>Inbox</span>
+      </button>
+      <button class="app-tab" id="tab-settings" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/>
+          <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.09a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3v-4h.04A1.7 1.7 0 0 0 4.6 8.94a1.7 1.7 0 0 0-.34-1.88L4.2 7l2.83-2.83.06.06a1.7 1.7 0 0 0 1.88.34A1.7 1.7 0 0 0 10 3.01V3h4v.01a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06L19.8 7l-.06.06a1.7 1.7 0 0 0-.34 1.88 1.7 1.7 0 0 0 1.56 1.03H21v4h-.04A1.7 1.7 0 0 0 19.4 15Z"/>
+        </svg>
+        <span>Settings</span>
+      </button>
+    </nav>
+
     <footer>
       <section class="card footer-install" id="install-card">
         <div class="footer-install-copy">
@@ -183,7 +208,7 @@
       <div class="section-heading">
         <div>
           <p class="eyebrow">NOTIFICATIONS</p>
-          <h2>Recent updates</h2>
+          <h2>Inbox</h2>
         </div>
         <div class="dialog-actions">
           <label class="push-compact" aria-label="Push notifications">
@@ -199,6 +224,42 @@
           <button class="icon-button" id="close-notifications" type="button" aria-label="Close notifications">×</button>
         </div>
       </div>
+      <div class="notification-toolbar">
+        <div class="notification-filters" role="group" aria-label="Filter notifications">
+          <button class="notification-filter is-active" type="button"
+            data-notification-filter="all" aria-pressed="true">All</button>
+          <button class="notification-filter" type="button"
+            data-notification-filter="pickup" aria-pressed="false">Pickup</button>
+          <button class="notification-filter" type="button"
+            data-notification-filter="league" aria-pressed="false">League</button>
+          <button class="notification-filter" type="button"
+            data-notification-filter="version" aria-pressed="false">App</button>
+        </div>
+        <button class="subtle-action" id="mark-all-notifications-read"
+          type="button">Mark all read</button>
+      </div>
+
+      <section class="notification-preferences" id="notification-preferences">
+        <div class="notification-preferences-heading">
+          <strong>Notify me about</strong>
+          <span class="hint" id="notification-sync-status">Sign in to sync notification preferences.</span>
+        </div>
+        <div class="notification-preference-options">
+          <label>
+            <input id="notification-pref-pickup" type="checkbox" checked>
+            <span>Pickup</span>
+          </label>
+          <label>
+            <input id="notification-pref-league" type="checkbox" checked>
+            <span>League</span>
+          </label>
+          <label>
+            <input id="notification-pref-version" type="checkbox" checked>
+            <span>App updates</span>
+          </label>
+        </div>
+      </section>
+
       <div class="notification-test-row">
         <button class="subtle-action" id="test-notification" type="button">Send test</button>
         <button class="subtle-action subtle-danger" id="delete-all-notifications" type="button">Delete all</button>
