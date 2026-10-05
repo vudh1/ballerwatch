@@ -1,7 +1,41 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "6.4.3",
+  "currentVersion": "7.0.0",
   "releases": [
+    {
+      "version": "7.0.0",
+      "date": "2026-10-05",
+      "type": "major",
+      "source": "user-requested",
+      "title": "BallerWatch 7: synced accounts, notification center, and app navigation",
+      "webAnnouncement": "BallerWatch 7 adds cross-device notification state, a real filtered Inbox, account-level notification preferences, Home Screen badges, cleaner PWA modules, and persistent Home / Inbox / Settings navigation.",
+      "changes": [
+        "Moved notification read and deleted state from device-only storage into each signed-in account's encrypted runtime profile, with safe server-side merging so multiple devices stay in sync.",
+        "Added account-level Pickup, League, and App notification preferences and associated Web Push subscriptions with the signed-in account while preserving anonymous push support when signed out.",
+        "Added a full Inbox with category filters, mark-all-read, swipe/delete behavior, category labels, sync status, and cross-device read/delete reconciliation.",
+        "Added installed-app icon badge counts, including background Web Push badge updates and foreground reconciliation to the exact unread Inbox count on supported iPhone/iPad Home Screen apps.",
+        "Added a persistent Home / Inbox / Settings navigation bar and converted Inbox and Settings into in-surface app panels instead of isolated utility modals.",
+        "Split network/session transport and notification persistence out of the monolithic PWA shell into focused frontend modules while retaining installed-client storage compatibility.",
+        "Extended encrypted user-state normalization for bounded per-account notification profiles and upgraded Web Push runtime state for multi-user, multi-device category-aware delivery.",
+        "Preserved the 6.4.4 automatic post-promotion refresh, frontend/backend repository separation, and canonical encrypted runtime-state storage contracts as the foundation for BallerWatch 7."
+      ]
+    },
+    {
+      "version": "6.4.4",
+      "date": "2026-10-05",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Automatic app refresh and clearer frontend/backend layout",
+      "webAnnouncement": "Promoted app versions now refresh the open PWA automatically once the Worker and Pages deployment are both live.",
+      "changes": [
+        "After an administrator requests production promotion, the open PWA now watches the target Worker version and the deployed Pages shell, updates the service worker, and reloads automatically when both are live.",
+        "Extended the promotion watcher across the normal deployment window while preserving the existing periodic service-worker update checks as a fallback.",
+        "Separated browser source into frontend/web and backend runtime/integration source into backend domain folders, while preserving canonical encrypted runtime-state storage paths for compatibility.",
+        "Separated tests into tests/frontend and tests/backend with backend domain mirrors, and updated workflows, imports, deployment paths, privacy checks, and regression coverage for the new layout.",
+        "Rewrote the README for a shorter user-first overview and added a dedicated Versions wiki guide with links to release history.",
+        "Bumped the installed PWA shell and service-worker cache to 6.4.4."
+      ]
+    },
     {
       "version": "6.4.3",
       "date": "2026-10-05",

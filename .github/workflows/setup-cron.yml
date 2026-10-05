@@ -29,9 +29,9 @@ jobs:
           CRON_JOB_ORG_API_KEY: ${{ secrets.CRON_JOB_ORG_API_KEY }}
           CRON_GITHUB_PAT: ${{ secrets.CRON_GITHUB_PAT }}
           BALLERWATCH_BRANCH: production
-        run: node infra/external-schedules.mjs ensure-enabled-optional
+        run: node backend/infra/external-schedules.mjs ensure-enabled-optional
 
       - name: Verify enabled failover posture
         env:
           CRON_JOB_ORG_API_KEY: ${{ secrets.CRON_JOB_ORG_API_KEY }}
-        run: node infra/external-schedules.mjs check-enabled-optional
+        run: node backend/infra/external-schedules.mjs check-enabled-optional

@@ -43,25 +43,25 @@ jobs:
       - name: Pull GitHub watchdog state
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-        run: node shared/runtime-state.mjs pull watchdog
+        run: node backend/shared/runtime-state.mjs pull watchdog
 
       - name: Pull game/weather runtime state
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-        run: node shared/runtime-state.mjs pull weather
+        run: node backend/shared/runtime-state.mjs pull weather
 
       - name: Audit runtime-state encryption
-        run: node shared/runtime-state.mjs audit
+        run: node backend/shared/runtime-state.mjs audit
 
       - name: Refresh 14-day match weather
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-        run: node weather/update.mjs
+        run: node backend/weather/update.mjs
 
       - name: Persist match weather
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-        run: node shared/runtime-state.mjs push weather
+        run: node backend/shared/runtime-state.mjs push weather
 
       - name: Verify validation, privacy, edge health, and external schedules
         env:
@@ -69,32 +69,32 @@ jobs:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
           BALLERWATCH_WORKER_HEALTH_URL: https://ballerwatch-web.vudhone.workers.dev/health
           CRON_JOB_ORG_API_KEY: ${{ secrets.CRON_JOB_ORG_API_KEY }}
-        run: node watchdog/watchdog.mjs
+        run: node backend/watchdog/watchdog.mjs
 
       - name: Push GitHub watchdog state
         if: always()
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
           BALLERWATCH_ALLOW_OFFLINE: ${{ inputs.external_fallback }}
-        run: node shared/runtime-state.mjs push watchdog
+        run: node backend/shared/runtime-state.mjs push watchdog
 
       - name: Signal installed web app
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-        run: node shared/web-push.mjs send-pending
+        run: node backend/shared/web-push.mjs send-pending
 
       - name: Persist Web Push subscription cleanup
         if: always()
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
           BALLERWATCH_ALLOW_OFFLINE: ${{ inputs.external_fallback }}
-        run: node shared/runtime-state.mjs push watchdog
+        run: node backend/shared/runtime-state.mjs push watchdog
 
       - name: Build encrypted watchdog failover backup
         if: always()
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-        run: node shared/failover-state.mjs save watchdog
+        run: node backend/shared/failover-state.mjs save watchdog
 
       - name: Save encrypted watchdog state cache
         if: always()
@@ -106,7 +106,7 @@ jobs:
       - name: Remove local watchdog state
         if: always()
         run: |
-          node shared/runtime-state.mjs clean watchdog
-          node shared/runtime-state.mjs clean weather
+          node backend/shared/runtime-state.mjs clean watchdog
+          node backend/shared/runtime-state.mjs clean weather
           rm -rf .runtime
 

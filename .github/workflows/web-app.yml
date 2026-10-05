@@ -31,28 +31,28 @@ jobs:
       - name: Pull encrypted web runtime state
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-        run: node shared/runtime-state.mjs pull web
+        run: node backend/shared/runtime-state.mjs pull web
 
       - name: Ensure Web Push VAPID state
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-        run: node shared/web-push.mjs ensure
+        run: node backend/shared/web-push.mjs ensure
 
       - name: Apply encrypted registration event
         if: inputs.event_b64 != ''
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
           WEB_PUSH_EVENT_B64: ${{ inputs.event_b64 }}
-        run: node shared/web-push.mjs apply-event
+        run: node backend/shared/web-push.mjs apply-event
 
       - name: Persist encrypted web runtime state
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-        run: node shared/runtime-state.mjs push web
+        run: node backend/shared/runtime-state.mjs push web
 
       - name: Remove local web runtime state
         if: always()
         run: |
-          node shared/runtime-state.mjs clean web
+          node backend/shared/runtime-state.mjs clean web
           rm -rf .runtime
 

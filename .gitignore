@@ -3,34 +3,27 @@ __pycache__/
 *.pyc
 *.tmp
 
-# Pickup plaintext/runtime data must never be committed.
+# Canonical generated runtime data is stored only as encrypted documents on the
+# runtime-state branch. Local plaintext/runtime projections must never be committed.
 pickup/data/
-pickup/data/*.tmp
-
-# League plaintext/runtime data must never be committed.
-league/teams.json
-league/schedule.json
-league/today.json
-league/calendar-snapshot.json
-league/calendar-changes.json
-league/telegram-update.json
-league/score-changes.json
-
-# Original unsupported Telegram questions are encrypted when persisted.
-# requests/private.json is intentionally tracked only as an encrypted envelope.
-
-# Never commit external-service OAuth/config credentials.
-.clasp.json
-.clasprc.json
-
-# Generated at deploy time; contains the private Cloudflare KV binding ID.
-infra/telegram-webhook/wrangler.generated.jsonc
-
-# BallerWatch runtime state lives only in private Cloudflare KV.
 pickup/state/
 league/state/
 state/
 requests/private.json
 requests/unknown.json
 
+league/teams.json
+league/schedule.json
+league/today.json
+league/calendar-snapshot.json
+league/calendar-changes.json
+league/notification-update.json
+league/score-changes.json
 league/status.json
+
+# Never commit external-service OAuth/config credentials.
+.clasp.json
+.clasprc.json
+
+# Generated Cloudflare Worker config is deployment-only.
+backend/infra/web-worker/wrangler.generated.jsonc

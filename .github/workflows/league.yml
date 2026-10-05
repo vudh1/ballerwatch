@@ -35,7 +35,7 @@ jobs:
         env:
           EXTERNAL_FALLBACK: ${{ inputs.external_fallback }}
           BALLERWATCH_WORKER_HEALTH_URL: https://ballerwatch-web.vudhone.workers.dev/health
-        run: node infra/fallback-gate.mjs league
+        run: node backend/infra/fallback-gate.mjs league
 
       - name: Restore encrypted failover state cache
         if: steps.gate.outputs.should_run == 'true'
@@ -51,7 +51,7 @@ jobs:
         working-directory: .
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-        run: node shared/runtime-state.mjs pull league
+        run: node backend/shared/runtime-state.mjs pull league
 
       - name: Prepare encrypted league state
         if: steps.gate.outputs.should_run == 'true'
@@ -59,19 +59,19 @@ jobs:
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
         run: |
-          node shared/league-teams.mjs prepare
-          node shared/league-state.mjs prepare
+          node backend/shared/league-teams.mjs prepare
+          node backend/shared/league-state.mjs prepare
 
       - name: Fetch and validate league schedules
         if: steps.gate.outputs.should_run == 'true'
-        run: /usr/bin/time -f 'leagueWatcherSeconds=%e' node watcher.mjs
+        run: /usr/bin/time -f 'leagueWatcherSeconds=%e' node ../backend/league/watcher.mjs
 
       - name: Compare with applied Calendar snapshot
         if: steps.gate.outputs.should_run == 'true'
         id: calendar_gate
         shell: bash
         run: |
-          node calendar-gate.mjs | tee /tmp/calendar-gate.txt
+          node ../backend/league/calendar-gate.mjs | tee /tmp/calendar-gate.txt
           grep '^needsCalendar=' /tmp/calendar-gate.txt >> "$GITHUB_OUTPUT"
           grep '^pendingCount=' /tmp/calendar-gate.txt >> "$GITHUB_OUTPUT"
 
@@ -80,13 +80,13 @@ jobs:
         env:
           GOOGLE_CALENDAR_WEBHOOK_URL: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_URL }}
           GOOGLE_CALENDAR_WEBHOOK_SECRET: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_SECRET }}
-        run: node google-calendar-sync.mjs
+        run: node ../backend/league/google-calendar-sync.mjs
 
       - name: Record league web notifications
         if: steps.gate.outputs.should_run == 'true'
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-        run: node web-notify.mjs
+        run: node ../backend/league/web-notify.mjs
 
       - name: Seal league runtime state
         if: always() && steps.gate.outputs.should_run == 'true'
@@ -94,7 +94,7 @@ jobs:
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
         run: |
-          node shared/league-state.mjs seal
+          node backend/shared/league-state.mjs seal
           rm -f league/teams.json
 
       - name: Push GitHub runtime state
@@ -103,7 +103,7 @@ jobs:
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
           BALLERWATCH_ALLOW_OFFLINE: ${{ inputs.external_fallback }}
-        run: node shared/runtime-state.mjs push league
+        run: node backend/shared/runtime-state.mjs push league
 
       - name: Refresh weather after league schedule change
         if: always() && steps.gate.outputs.should_run == 'true' && steps.calendar_gate.outputs.needsCalendar == 'true'
@@ -111,16 +111,16 @@ jobs:
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
         run: |
-          node shared/runtime-state.mjs pull weather
-          node weather/update.mjs
-          node shared/runtime-state.mjs push weather
+          node backend/shared/runtime-state.mjs pull weather
+          node backend/weather/update.mjs
+          node backend/shared/runtime-state.mjs push weather
 
       - name: Signal installed web app
         if: steps.gate.outputs.should_run == 'true'
         working-directory: .
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-        run: node shared/web-push.mjs send-pending
+        run: node backend/shared/web-push.mjs send-pending
 
       - name: Persist Web Push subscription cleanup
         if: always() && steps.gate.outputs.should_run == 'true'
@@ -128,14 +128,14 @@ jobs:
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
           BALLERWATCH_ALLOW_OFFLINE: ${{ inputs.external_fallback }}
-        run: node shared/runtime-state.mjs push league
+        run: node backend/shared/runtime-state.mjs push league
 
       - name: Build encrypted failover backup
         if: always() && steps.gate.outputs.should_run == 'true'
         working-directory: .
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-        run: node shared/failover-state.mjs save league
+        run: node backend/shared/failover-state.mjs save league
 
       - name: Save encrypted failover state cache
         if: always() && steps.gate.outputs.should_run == 'true'
@@ -148,7 +148,7 @@ jobs:
         if: always()
         working-directory: .
         run: |
-          node shared/runtime-state.mjs clean league
+          node backend/shared/runtime-state.mjs clean league
           rm -rf .runtime
           rm -f league/teams.json league/schedule.json league/today.json
           rm -f league/calendar-snapshot.json league/calendar-changes.json

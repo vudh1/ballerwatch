@@ -23,11 +23,19 @@ This repository uses one consistent style across runtime code, workflows, tests,
 - Export reusable logic and cover it with `node:test`.
 - Keep functions focused; when a module grows beyond one domain, split it.
 
+## Source layout
+
+- Browser/PWA production source belongs in `frontend/web/`.
+- Backend production source belongs in `backend/`, grouped by domain (`infra`, `pickup`, `league`, `shared`, `watchdog`, `weather`).
+- Repository tooling belongs in `scripts/`.
+- Do not move canonical encrypted runtime-state paths merely to mirror source directories.
+
 ## Tests
 
-- All test-only source lives under `tests/`, mirroring the production source area where practical.
+- All test-only source lives under `tests/`.
+- Frontend tests belong in `tests/frontend/`; backend tests mirror backend domains under `tests/backend/`.
 - Production source folders should not contain `*.test.mjs` or smoke-only scripts.
-- Smoke helpers belong in `tests/smoke/`.
+- Smoke helpers belong in `tests/backend/smoke/`.
 - Tests must remain notification-silent: no Web Push delivery and no Calendar mutation.
 
 ## Workflows and configuration
@@ -54,7 +62,7 @@ Historical release snapshots are not rewritten merely to add comments; current d
 
 - Use the native system UI stack: `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif`.
 - Do not reference an external font unless the font is actually shipped and intentionally approved.
-- Reuse the PWA type tokens in `docs/styles.css` instead of adding one-off font sizes.
+- Reuse the PWA type tokens in `frontend/web/styles.css` instead of adding one-off font sizes.
 - Prefer standard font weights 400, 500, 600, 700, and 800; avoid synthetic intermediate weights such as 650 or 750.
 - Keep text inputs and textareas at 1rem/16px or larger so iOS does not zoom the page on focus.
 - Preserve hierarchy through the shared scale rather than arbitrary size changes.

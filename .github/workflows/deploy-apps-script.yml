@@ -73,7 +73,7 @@ jobs:
         working-directory: .runtime/apps-script
         run: |
           clasp pull
-          cp ../../league/google_apps_script/Code.gs ./Code.js
+          cp ../../backend/league/google_apps_script/Code.gs ./Code.js
           clasp push --force
 
       - name: Redeploy existing web app without changing its URL
@@ -97,7 +97,7 @@ jobs:
           GOOGLE_CALENDAR_WEBHOOK_URL: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_URL }}
           GOOGLE_CALENDAR_WEBHOOK_SECRET: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_SECRET }}
           BALLERWATCH_CALENDAR_PAIR_MARKER: bw-pair-7f3c2a91
-        run: node league/google-calendar-pair.mjs
+        run: node backend/league/google-calendar-pair.mjs
 
       - name: One-time full reset requested by release commit
         if: github.event_name == 'workflow_dispatch' && inputs.purge_all == true
@@ -106,8 +106,8 @@ jobs:
           GOOGLE_CALENDAR_WEBHOOK_SECRET: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_SECRET }}
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
         run: |
-          node league/google-calendar-purge.mjs
-          node shared/runtime-state.mjs purge
+          node backend/league/google-calendar-purge.mjs
+          node backend/shared/runtime-state.mjs purge
 
       - name: Remove OAuth material
         if: always()

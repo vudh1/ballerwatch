@@ -59,38 +59,38 @@ jobs:
         run: |
           set -euo pipefail
           for scope in user pickup league watchdog weather web; do
-            node shared/runtime-state.mjs pull "$scope"
-            node shared/runtime-state.mjs push "$scope"
-            node shared/runtime-state.mjs clean "$scope"
+            node backend/shared/runtime-state.mjs pull "$scope"
+            node backend/shared/runtime-state.mjs push "$scope"
+            node backend/shared/runtime-state.mjs clean "$scope"
           done
-          node shared/runtime-state.mjs audit
+          node backend/shared/runtime-state.mjs audit
 
       - name: Refresh match weather for released schedule
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
         run: |
           set -euo pipefail
-          node shared/runtime-state.mjs pull weather
-          node weather/update.mjs
-          node shared/runtime-state.mjs push weather
-          node shared/runtime-state.mjs clean weather
+          node backend/shared/runtime-state.mjs pull weather
+          node backend/weather/update.mjs
+          node backend/shared/runtime-state.mjs push weather
+          node backend/shared/runtime-state.mjs clean weather
 
       - name: Prepare Cloudflare runtime config
-        working-directory: infra/web-worker
+        working-directory: backend/infra/web-worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: node prepare-config.mjs
 
       - name: Deploy Worker shell
-        working-directory: infra/web-worker
+        working-directory: backend/infra/web-worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx --yes wrangler@4.145.0 deploy --config wrangler.generated.jsonc
 
       - name: Upload Worker secrets
-        working-directory: infra/web-worker
+        working-directory: backend/infra/web-worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -118,7 +118,7 @@ jobs:
           }))' | npx --yes wrangler@4.145.0 secret bulk --config wrangler.generated.jsonc
 
       - name: Redeploy with secret bindings
-        working-directory: infra/web-worker
+        working-directory: backend/infra/web-worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -202,7 +202,7 @@ jobs:
           CRON_JOB_ORG_API_KEY: ${{ secrets.CRON_JOB_ORG_API_KEY }}
           CRON_GITHUB_PAT: ${{ secrets.CRON_GITHUB_PAT }}
           BALLERWATCH_BRANCH: production
-        run: node infra/external-schedules.mjs ensure-enabled-optional
+        run: node backend/infra/external-schedules.mjs ensure-enabled-optional
 
       - name: Deploy Pages after Worker is healthy
         env:
@@ -213,4 +213,4 @@ jobs:
         if: always()
         run: |
           rm -f /tmp/ballerwatch-worker-secret
-          rm -f infra/web-worker/wrangler.generated.jsonc
+          rm -f backend/infra/web-worker/wrangler.generated.jsonc
