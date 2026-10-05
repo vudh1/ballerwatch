@@ -178,6 +178,7 @@ const QUESTION_HISTORY_KEY = "ballerwatch-question-history-v1";
 const LIVE_DATA_REFRESH_MS = 60_000;
 const APP_UPDATE_CHECK_MS = 5 * 60_000;
 const SPOTLIGHT_IDLE_RESET_MS = 6_000;
+const INTERACTION_VIBRATION_MS = 8;
 
 const COMMAND_SUGGESTIONS = [
   { value: "/today", label: "/today", description: "Today's games" },
@@ -432,6 +433,26 @@ function moveSuggestionSelection(delta) {
 function standalone() {
   return window.matchMedia("(display-mode: standalone)").matches ||
     window.navigator.standalone === true;
+}
+
+function pulseInteractionFeedback() {
+  if (typeof navigator.vibrate !== "function") return false;
+  try {
+    return navigator.vibrate(INTERACTION_VIBRATION_MS);
+  } catch {
+    return false;
+  }
+}
+
+function installInteractionFeedback() {
+  document.addEventListener("click", (event) => {
+    if (!event.isTrusted) return;
+    const control = event.target.closest?.(
+      "button:not(:disabled), a[href], input:not(:disabled), [role=button]",
+    );
+    if (!control) return;
+    pulseInteractionFeedback();
+  }, { passive: true });
 }
 
 function ios() {
@@ -2984,6 +3005,7 @@ els.calendarCard?.addEventListener("click", toggleCalendarExpandedFromEvent);
 
 installSpotlightSwipe();
 installSpotlightEdgeWaterfall();
+installInteractionFeedback();
 
 els.question.addEventListener("input", renderQuestionSuggestions);
 els.question.addEventListener("focus", renderQuestionSuggestions);
