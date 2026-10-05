@@ -19,7 +19,8 @@
         "Changing match visibility triggers the existing watchdog weather refresh path so restored/deleted games reconcile with weather state.",
         "Bumped the PWA shell to 6.4.0.",
         "Finalized regression coverage and corrected the concrete Jefferson weather query placement so league weather keeps its venue query while Free Pickup uses the street-address query.",
-        "Aligned regression coverage with the shared admin-action continuation so protected Edit and Delete both resume correctly after authentication."
+        "Aligned regression coverage with the shared admin-action continuation so protected Edit and Delete both resume correctly after authentication.",
+        "Updated the Jefferson address regression fixture to match the concrete weather/maps query while preserving Jefferson Park Playfield as the user-facing venue name."
       ]
     },
     {

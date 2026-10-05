@@ -29,7 +29,7 @@ test("free pickup base has fixed Jefferson Park schedule and no RSVP", () => {
   assert.equal(game.startTime, "10:30");
   assert.equal(game.endTime, "12:30");
   assert.equal(game.location, "Jefferson Park Playfield");
-  assert.equal(game.mapsQuery, "Jefferson Park Playfield, Seattle, WA");
+  assert.equal(game.mapsQuery, "1600 S Columbian Way, Seattle, WA 98108");
   assert.equal(game.rsvpUrl, "");
   assert.equal(FREE_PICKUP.title, "Free Pickup");
 });
