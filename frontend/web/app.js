@@ -631,12 +631,12 @@ function renderReleaseStatus(release) {
   if (release.updateAvailable) {
     els.releaseVersionSummary.textContent = `Production ${production} → Available ${source}`;
     els.releaseTitleSummary.textContent = release.title || "";
-    els.promoteRelease.textContent = `Update app to ${source}`;
+    els.promoteRelease.textContent = "App update";
     els.promoteRelease.disabled = false;
   } else {
     els.releaseVersionSummary.textContent = `Production ${production} · Up to date`;
     els.releaseTitleSummary.textContent = release.title || "";
-    els.promoteRelease.textContent = "App is up to date";
+    els.promoteRelease.textContent = "Up to date";
     els.promoteRelease.disabled = true;
   }
 }
@@ -645,7 +645,7 @@ async function loadReleaseStatus() {
   if (!ownerToken() || els.releaseManagement.hidden) return;
   els.promoteRelease.disabled = true;
   els.promoteRelease.textContent = "Checking…";
-  els.promoteReleaseStatus.textContent = "Checking main against production…";
+  els.promoteReleaseStatus.textContent = "Checking for app updates…";
   try {
     const payload = await api("/web/user/release-status", {
       headers: ownerHeaders(),
@@ -653,8 +653,8 @@ async function loadReleaseStatus() {
     });
     renderReleaseStatus(payload.release || null);
     els.promoteReleaseStatus.textContent = payload.release?.updateAvailable
-      ? "Ready to run the existing validated production-promotion workflow."
-      : "Production already matches the current source version.";
+      ? "App update is ready."
+      : "App is up to date.";
   } catch (error) {
     if (error.status === 401) {
       clearSession();
@@ -673,13 +673,13 @@ async function promoteProductionRelease() {
   }
 
   const version = currentReleaseStatus.sourceVersion || "the latest version";
-  if (!window.confirm(`Promote BallerWatch ${version} to production?\n\nThe normal validation and release gates will still apply.`)) {
+  if (!window.confirm(`Start the BallerWatch ${version} app update?\n\nThe normal validation and release gates will still apply.`)) {
     return;
   }
 
   els.promoteRelease.disabled = true;
-  els.promoteRelease.textContent = "Starting…";
-  els.promoteReleaseStatus.textContent = "Requesting production promotion…";
+  els.promoteRelease.textContent = "Updating…";
+  els.promoteReleaseStatus.textContent = "Starting app update…";
   try {
     const payload = await api("/web/user/promote-release", {
       method: "POST",
@@ -689,22 +689,22 @@ async function promoteProductionRelease() {
     renderReleaseStatus(payload.release || currentReleaseStatus);
     if (payload.dispatched) {
       els.promoteRelease.disabled = true;
-      els.promoteRelease.textContent = "Promotion requested";
+      els.promoteRelease.textContent = "Update started";
       els.promoteReleaseStatus.textContent =
-        payload.message || "Promotion requested. Waiting for the new app version…";
+        payload.message || "App update started. Waiting for the new version…";
       void watchPromotedRelease(version);
     } else {
       els.promoteReleaseStatus.textContent =
-        payload.message || "Promotion request accepted.";
+        payload.message || "App update request accepted.";
     }
   } catch (error) {
     if (error.status === 401) {
       clearSession();
-      showLoginSettings("Sign in again to promote an app update.");
+      showLoginSettings("Sign in again to update the app.");
       return;
     }
     els.promoteRelease.disabled = false;
-    els.promoteRelease.textContent = `Update app to ${version}`;
+    els.promoteRelease.textContent = "App update";
     els.promoteReleaseStatus.textContent = error.message;
   }
 }
@@ -960,7 +960,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=7.0.7", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=7.0.8", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -1077,7 +1077,7 @@ function renderNotificationPreferences() {
   }
   if (els.notificationSyncStatus) {
     els.notificationSyncStatus.textContent = signedIn
-      ? `Synced across devices for @${sessionUsername()}`
+      ? `Synced when active for @${sessionUsername()}`
       : "Sign in to sync read state, deletes, and notification preferences.";
   }
 }
@@ -2269,8 +2269,15 @@ async function refreshLiveData() {
   liveRefreshInFlight = true;
   setSystemState("checking");
   try {
-    const [calendarOk, boardOk] = await Promise.all([loadCalendar(), loadBoard()]);
-    setSystemState(calendarOk && boardOk ? "live" : "offline");
+    const notificationProfileRefresh = ownerToken()
+      ? loadNotificationProfile({ migrateLocal: false })
+      : Promise.resolve(true);
+    const [calendarOk, boardOk, profileOk] = await Promise.all([
+      loadCalendar(),
+      loadBoard(),
+      notificationProfileRefresh,
+    ]);
+    setSystemState(calendarOk && boardOk && profileOk ? "live" : "offline");
   } catch {
     setSystemState("offline");
   } finally {
@@ -2330,7 +2337,7 @@ async function watchPromotedRelease(version, {
   }
 
   els.promoteReleaseStatus.textContent =
-    "Promotion is still deploying. BallerWatch will keep checking for app updates automatically.";
+    "App update is still deploying. BallerWatch will keep checking automatically.";
   return false;
 }
 
@@ -3157,7 +3164,6 @@ document.addEventListener("visibilitychange", () => {
     return;
   }
   refreshLiveData().catch(() => null);
-  loadNotificationProfile({ migrateLocal: false }).catch(() => null);
   checkForAppUpdate().catch(() => null);
 });
 
