@@ -1242,7 +1242,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=7.0.11", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=7.0.12", {
     scope: "./",
     updateViaCache: "none",
   });
