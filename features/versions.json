@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.0.8",
+  "currentVersion": "7.0.9",
   "releases": [
+    {
+      "version": "7.0.9",
+      "date": "2026-10-05",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Match-card idle reset and footer polish",
+      "webAnnouncement": "BallerWatch keeps match freshness quieter, returns selected matches to Next Game after inactivity, and adds tactile feedback where the browser supports it.",
+      "changes": [
+        "Removed the separator above the match-card footer and matched its Updated color and size to the subtle calendar/weather footer.",
+        "Changed match Updated text to show only the local time, including manually overridden matches.",
+        "Returns a swiped or calendar-selected match to the default Next Game after 6 seconds without interaction, while interactions and open dialogs postpone the reset.",
+        "Added a short interaction vibration for browsers with navigator.vibrate support; current iPhone WebKit does not expose that API."
+      ]
+    },
     {
       "version": "7.0.8",
       "date": "2026-10-05",

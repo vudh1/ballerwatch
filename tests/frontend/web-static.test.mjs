@@ -12,19 +12,19 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
 
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   assert.match(html, /manifest\.webmanifest/);
-  assert.match(html, /apple-touch-icon\.png\?v=7\.0\.8/);
+  assert.match(html, /apple-touch-icon\.png\?v=7\.0\.9/);
   assert.match(html, /class="brand-icon"/);
-  assert.match(html, /icon\.svg\?v=7\.0\.8/);
+  assert.match(html, /icon\.svg\?v=7\.0\.9/);
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=7\.0\.8/);
-  assert.match(html, /app\.js\?v=7\.0\.8/);
+  assert.match(html, /styles\.css\?v=7\.0\.9/);
+  assert.match(html, /app\.js\?v=7\.0\.9/);
 
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v7-0-8-shell/);
+  assert.match(sw, /ballerwatch-v7-0-9-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -92,7 +92,7 @@ test("promotion watches Worker and Pages then refreshes the open PWA", () => {
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=7\.0\.8/);
+  assert.match(app, /sw\.js\?v=7\.0\.9/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -140,6 +140,11 @@ test("match spotlight shows a subtle source freshness line", () => {
 
   assert.match(html, /id="next-game-updated"/);
   assert.match(app, /function matchUpdatedText/);
+  assert.match(app, /hour: "numeric"/);
+  assert.match(app, /minute: "2-digit"/);
+  const matchUpdated = app.match(/function matchUpdatedText\(value\)[\s\S]*?\n}/)?.[0] || "";
+  assert.doesNotMatch(matchUpdated, /month:|day:/);
+  assert.doesNotMatch(app, /Manual override", matchUpdatedText/);
   assert.match(app, /game\.sourceUpdatedAt/);
   assert.match(css, /\.match-update-credit \{[\s\S]*color:\s*#64748b;[\s\S]*font-size:\s*var\(--type-caption\)/);
   assert.match(worker, /pickup\/state\/source-health\.json/);
@@ -421,6 +426,28 @@ test("calendar selection reuses the main spotlight instead of a second detail pa
   assert.match(app, /scrollIntoView\(\{ behavior: "smooth"/);
 });
 
+test("selected spotlight returns to Next Game after idle interaction timeout", () => {
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  assert.match(app, /SPOTLIGHT_IDLE_RESET_MS = 6_000/);
+  assert.match(app, /function scheduleSpotlightIdleReset/);
+  assert.match(app, /function resetSpotlightToNextGame/);
+  assert.match(app, /selectedCalendarGameId = ""/);
+  assert.match(app, /renderNextGame\(nextGame, "NEXT GAME"\)/);
+  assert.match(app, /nextGameCard\.classList\.remove\("spotlight-selected"\)/);
+  assert.match(app, /document\.querySelector\("dialog\[open\]"\)/);
+  assert.match(app, /carousel\.addEventListener\("pointerdown"/);
+});
+
+test("supported browsers get a short interaction vibration without requiring it", () => {
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  assert.match(app, /INTERACTION_VIBRATION_MS = 8/);
+  assert.match(app, /function pulseInteractionFeedback/);
+  assert.match(app, /typeof navigator\.vibrate !== "function"/);
+  assert.match(app, /navigator\.vibrate\(INTERACTION_VIBRATION_MS\)/);
+  assert.match(app, /function installInteractionFeedback/);
+  assert.match(app, /event\.isTrusted/);
+});
+
 test("liquid glass visual system has blur, translucent layers, and fallback", () => {
   const css = fs.readFileSync("frontend/web/styles.css", "utf8");
   assert.match(css, /\/\* v5\.1 liquid glass \*\//);
@@ -661,7 +688,7 @@ test("footer contains no secondary messaging shortcut", () => {
 });
 
 
-test("BallerWatch 7.0.8 uses the top-right bell and gear without bottom app tabs", () => {
+test("BallerWatch 7.0.9 uses the top-right bell and gear without bottom app tabs", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   assert.match(html, /id="settings-button"/);
@@ -685,7 +712,7 @@ test("page uses a soccer-pitch backdrop with readable translucent cards", () => 
   assert.match(icon, /A soccer pitch with a soccer ball/);
   assert.match(icon, /<circle cx="256" cy="256" r="54"\/>/);
   assert.match(icon, /translate\(347 344\)/);
-  assert.match(manifest, /icon\.svg\?v=7\.0\.8/);
+  assert.match(manifest, /icon\.svg\?v=7\.0\.9/);
   assert.match(css, /\.card,[\s\S]*\.footer-install \{[\s\S]*rgba\(6, 18, 22, 0\.57\)/);
   assert.match(css, /\.spotlight-card \{[\s\S]*rgba\(4, 16, 22, 0\.72\)/);
   assert.match(css, /backdrop-filter:\s*blur\(24px\) saturate\(135%\)/);
@@ -1143,7 +1170,8 @@ test("match type pill opens a touch-safe Edit/Delete action sheet and freshness 
   );
   assert.match(css, /\.spotlight-card \{[\s\S]*--spotlight-card-inset:\s*clamp\(1\.35rem, 4vw, 1\.8rem\);[\s\S]*padding:\s*var\(--spotlight-card-inset\)/);
   assert.match(css, /\.match-card-footer \{[\s\S]*position:\s*absolute;[\s\S]*right:\s*var\(--spotlight-card-inset[\s\S]*bottom:\s*0\.45rem;[\s\S]*left:\s*var\(--spotlight-card-inset[\s\S]*min-height:\s*0;[\s\S]*padding-top:\s*0\.42rem/);
-  assert.match(css, /\.match-card-footer \.match-update-credit[\s\S]*font-size:\s*0\.60rem[\s\S]*text-align:\s*right/);
+  assert.match(css, /\.match-card-footer \{[\s\S]*border-top:\s*0;/);
+  assert.match(css, /\.match-card-footer \.match-update-credit[\s\S]*font-size:\s*0\.56rem[\s\S]*color:\s*rgba\(148, 163, 184, 0\.46\)[\s\S]*text-align:\s*right/);
 });
 
 test("calendar weather freshness sits in a subtle card footer without page watermark", () => {
