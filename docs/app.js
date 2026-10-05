@@ -948,7 +948,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=6.4.1", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=6.4.3", {
     scope: "./",
     updateViaCache: "none",
   });
