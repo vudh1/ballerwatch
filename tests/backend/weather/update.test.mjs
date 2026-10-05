@@ -6,7 +6,7 @@ import {
   collectUpcomingGames,
   summarizeMatchWeather,
   weatherCondition,
-} from "../../../backend/weather/update.mjs";
+} from "../../../backend/backend/weather/update.mjs";
 
 test("collectUpcomingGames returns located pickup and league games within 14 days", () => {
   const result = collectUpcomingGames({
@@ -95,14 +95,14 @@ test("weather helpers support 14-day range and common WMO conditions", () => {
 
 
 test("weather request stays inside the two-week free-tier window", () => {
-  const source = fs.readFileSync("weather/update.mjs", "utf8");
+  const source = fs.readFileSync("backend/weather/update.mjs", "utf8");
   assert.match(source, /forecast_days", "14"/);
   assert.doesNotMatch(source, /forecast_days", "16"/);
 });
 
 
 test("league weather fallback is explicitly bounded to Seattle RATS games", () => {
-  const source = fs.readFileSync("weather/update.mjs", "utf8");
+  const source = fs.readFileSync("backend/weather/update.mjs", "utf8");
   assert.match(source, /SEATTLE_WEATHER_FALLBACK/);
   assert.match(source, /game\.kind === "league"/);
   assert.match(source, /source: "seattle-fallback"/);
@@ -137,7 +137,7 @@ test("summarizeMatchWeather handles a match that crosses midnight", () => {
 });
 
 test("Open-Meteo forecast requests Pacific-local hourly timestamps", () => {
-  const source = fs.readFileSync("weather/update.mjs", "utf8");
+  const source = fs.readFileSync("backend/weather/update.mjs", "utf8");
   assert.match(source, /const TIME_ZONE = "America\/Los_Angeles"/);
   assert.match(source, /url\.searchParams\.set\("timezone", TIME_ZONE\)/);
   assert.match(
