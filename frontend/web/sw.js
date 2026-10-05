@@ -8,6 +8,7 @@ const SHELL = [
   "./lib/notification-state.js",
   "./manifest.webmanifest?v=7.0.7",
   "./icon.svg?v=7.0.7",
+  "./apple-touch-icon.png?v=7.0.7",
 ];
 const API = "https://ballerwatch-web.vudhone.workers.dev";
 const APP_URL = "https://vudh1.github.io/ballerwatch/";
