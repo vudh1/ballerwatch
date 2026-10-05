@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 
 test("pickup notifications use threshold/detail changes plus scheduled reminders", () => {
-  const source = fs.readFileSync("pickup/notify.mjs", "utf8");
+  const source = fs.readFileSync("backend/pickup/notify.mjs", "utf8");
 
   assert.match(source, /processScheduledReminders/);
   assert.match(source, /rsvpReminderDue/);
@@ -17,7 +17,7 @@ test("pickup notifications use threshold/detail changes plus scheduled reminders
 });
 
 test("pickup web delivery uses the public-safe text boundary", () => {
-  const source = fs.readFileSync("pickup/notify.mjs", "utf8");
+  const source = fs.readFileSync("backend/pickup/notify.mjs", "utf8");
   assert.match(source, /body: webText \|\| body/);
   assert.doesNotMatch(source, /Changes:\s*["'\`]/);
 });
