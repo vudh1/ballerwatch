@@ -2062,8 +2062,9 @@ h1 {
 }
 
 .spotlight-card {
+  --spotlight-card-inset: clamp(1.35rem, 4vw, 1.8rem);
   min-height: 25rem;
-  padding: clamp(1.35rem, 4vw, 1.8rem);
+  padding: var(--spotlight-card-inset);
   border-radius: 32px;
   border-color: rgba(255, 255, 255, 0.23);
   background:
@@ -3670,9 +3671,9 @@ body::after {
 
 .match-card-footer {
   position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
+  right: var(--spotlight-card-inset, clamp(1.35rem, 4vw, 1.8rem));
+  bottom: var(--spotlight-card-inset, clamp(1.35rem, 4vw, 1.8rem));
+  left: var(--spotlight-card-inset, clamp(1.35rem, 4vw, 1.8rem));
   display: block;
   margin: 0;
   padding-top: 0.52rem;

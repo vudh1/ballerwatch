@@ -14,17 +14,17 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /manifest\.webmanifest/);
   assert.match(html, /apple-touch-icon\.png/);
   assert.match(html, /class="brand-icon"/);
-  assert.match(html, /icon\.svg\?v=7\.0\.4/);
+  assert.match(html, /icon\.svg\?v=7\.0\.5/);
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=7\.0\.4/);
-  assert.match(html, /app\.js\?v=7\.0\.4/);
+  assert.match(html, /styles\.css\?v=7\.0\.5/);
+  assert.match(html, /app\.js\?v=7\.0\.5/);
 
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v7-0-4-shell/);
+  assert.match(sw, /ballerwatch-v7-0-5-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -92,7 +92,7 @@ test("promotion watches Worker and Pages then refreshes the open PWA", () => {
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=7\.0\.4/);
+  assert.match(app, /sw\.js\?v=7\.0\.5/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -661,7 +661,7 @@ test("footer contains no secondary messaging shortcut", () => {
 });
 
 
-test("BallerWatch 7.0.4 uses the top-right bell and gear without bottom app tabs", () => {
+test("BallerWatch 7.0.5 uses the top-right bell and gear without bottom app tabs", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   assert.match(html, /id="settings-button"/);
@@ -1119,7 +1119,12 @@ test("match type pill opens a touch-safe Edit/Delete action sheet and freshness 
   assert.match(css, /"location weather"[\s\S]*"capacity rsvp"/);
   assert.match(css, /\.next-game-rsvp-pill \{[\s\S]*grid-area:\s*rsvp/);
   assert.match(css, /\.spotlight-content \{[\s\S]*padding-bottom:\s*2\.2rem/);
-  assert.match(css, /\.match-card-footer \{[\s\S]*position:\s*absolute;[\s\S]*right:\s*0;[\s\S]*bottom:\s*0;[\s\S]*left:\s*0;/);
+  assert.match(
+    html,
+    /id="next-game-hint"><\/p>\s*<\/div>\s*<div class="match-card-footer">\s*<p class="match-update-credit" id="next-game-updated"><\/p>/,
+  );
+  assert.match(css, /\.spotlight-card \{[\s\S]*--spotlight-card-inset:\s*clamp\(1\.35rem, 4vw, 1\.8rem\);[\s\S]*padding:\s*var\(--spotlight-card-inset\)/);
+  assert.match(css, /\.match-card-footer \{[\s\S]*position:\s*absolute;[\s\S]*right:\s*var\(--spotlight-card-inset[\s\S]*bottom:\s*var\(--spotlight-card-inset[\s\S]*left:\s*var\(--spotlight-card-inset/);
   assert.match(css, /\.match-card-footer \.match-update-credit[\s\S]*font-size:\s*0\.60rem[\s\S]*text-align:\s*right/);
 });
 
