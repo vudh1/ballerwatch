@@ -12,19 +12,19 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
 
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   assert.match(html, /manifest\.webmanifest/);
-  assert.match(html, /apple-touch-icon\.png/);
+  assert.match(html, /apple-touch-icon\.png\?v=7\.0\.7/);
   assert.match(html, /class="brand-icon"/);
-  assert.match(html, /icon\.svg\?v=7\.0\.6/);
+  assert.match(html, /icon\.svg\?v=7\.0\.7/);
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=7\.0\.6/);
-  assert.match(html, /app\.js\?v=7\.0\.6/);
+  assert.match(html, /styles\.css\?v=7\.0\.7/);
+  assert.match(html, /app\.js\?v=7\.0\.7/);
 
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v7-0-6-shell/);
+  assert.match(sw, /ballerwatch-v7-0-7-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -92,7 +92,7 @@ test("promotion watches Worker and Pages then refreshes the open PWA", () => {
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=7\.0\.6/);
+  assert.match(app, /sw\.js\?v=7\.0\.7/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -661,7 +661,7 @@ test("footer contains no secondary messaging shortcut", () => {
 });
 
 
-test("BallerWatch 7.0.6 uses the top-right bell and gear without bottom app tabs", () => {
+test("BallerWatch 7.0.7 uses the top-right bell and gear without bottom app tabs", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   assert.match(html, /id="settings-button"/);
@@ -678,8 +678,14 @@ test("BallerWatch 7.0.6 uses the top-right bell and gear without bottom app tabs
 test("page uses a soccer-pitch backdrop with readable translucent cards", () => {
   const css = fs.readFileSync("frontend/web/styles.css", "utf8");
   assert.match(css, /repeating-linear-gradient\([\s\S]*rgba\(34, 197, 94, 0\.055\)/);
-  assert.match(css, /body::before \{[\s\S]*border:\s*1px solid rgba\(220, 252, 231, 0\.20\)/);
+  assert.match(css, /body::before \{[\s\S]*border:\s*0;[\s\S]*box-shadow:\s*none/);
   assert.match(css, /body::before \{[\s\S]*radial-gradient\([\s\S]*circle at 50% 50%/);
+  const icon = fs.readFileSync("frontend/web/icon.svg", "utf8");
+  const manifest = fs.readFileSync("frontend/web/manifest.webmanifest", "utf8");
+  assert.match(icon, /A soccer pitch with a soccer ball/);
+  assert.match(icon, /<circle cx="256" cy="256" r="54"\/>/);
+  assert.match(icon, /translate\(347 344\)/);
+  assert.match(manifest, /icon\.svg\?v=7\.0\.7/);
   assert.match(css, /\.card,[\s\S]*\.footer-install \{[\s\S]*rgba\(6, 18, 22, 0\.57\)/);
   assert.match(css, /\.spotlight-card \{[\s\S]*rgba\(4, 16, 22, 0\.72\)/);
   assert.match(css, /backdrop-filter:\s*blur\(24px\) saturate\(135%\)/);

@@ -53,3 +53,5 @@ Signed-in Inbox read/delete state is merged into the encrypted user profile so m
 The source ledger on `main` is authoritative for the newest reviewed version. The GitHub Releases page is authoritative for what has actually been published to production. A release or fix branch can therefore show a newer version before it is merged or promoted.
 - **7.0.5** — Pins the match-card Updated timestamp footer to the card itself so iPhone installed-web-app layout matches the website footer position.
 - **7.0.6** — Moves the match-card Updated footer down to the bottom edge and removes the inherited footer min-height that kept it floating too high on iPhone.
+
+- **7.0.7** — Keeps the soccer-pitch background while removing its outer frame, and introduces a new soccer-pitch + ball icon for the PWA and iPhone Home Screen.

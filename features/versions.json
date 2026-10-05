@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.0.6",
+  "currentVersion": "7.0.7",
   "releases": [
+    {
+      "version": "7.0.7",
+      "date": "2026-10-05",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Clean pitch background and soccer icon",
+      "webAnnouncement": "BallerWatch keeps the soccer-pitch background without the outer field frame and adds a new pitch-and-ball app icon.",
+      "changes": [
+        "Removed the outer field border and frame glow while preserving the soccer-pitch stripes, center circle, and halfway line.",
+        "Redesigned the app artwork as a high-contrast soccer pitch with a soccer ball, including the 180×180 iPhone Home Screen icon.",
+        "Versioned and precached the new icon assets so browsers and installed apps can refresh them with the 7.0.7 shell."
+      ]
+    },
     {
       "version": "7.0.6",
       "date": "2026-10-05",
