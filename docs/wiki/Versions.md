@@ -44,10 +44,10 @@ This means an installed app should not need to be manually closed and reopened a
 
 ## BallerWatch 7
 
-Version 7 introduces account-backed notification state, a filtered Inbox, per-account notification categories, installed-app badge synchronization, and a cleaner modular PWA client. In 7.0.1, Inbox and Settings returned to the top-right bell and gear instead of persistent bottom tabs.
+Version 7 introduces account-backed notification state, a filtered Inbox, per-account notification categories, installed-app badge synchronization, and a cleaner modular PWA client. In 7.0.1, Inbox and Settings returned to the top-right bell and gear instead of persistent bottom tabs. In 7.0.2, adjacent match cards were tightened into a true edge-to-edge sliding train.
 
 Signed-in Inbox read/delete state is merged into the encrypted user profile so multiple devices converge instead of keeping unrelated local histories. Signed-out devices keep a local fallback until the user signs in.
 
 ## Current development line
 
-The source ledger on `main` is authoritative for the newest reviewed version. The GitHub Releases page is authoritative for what has actually been published to production. A release branch can therefore show 7.0.0 before 7.0.0 is merged or promoted.
+The source ledger on `main` is authoritative for the newest reviewed version. The GitHub Releases page is authoritative for what has actually been published to production. A release or fix branch can therefore show a newer version before it is merged or promoted.
