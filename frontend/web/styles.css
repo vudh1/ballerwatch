@@ -3558,129 +3558,172 @@ html.is-standalone .status-bar-glass {
 }
 
 
-/* v7.0 app navigation, synced inbox, and in-surface panels */
-:root {
-  --app-tab-height: 4.75rem;
+/* v7.0.1 top-icon navigation, soccer-pitch backdrop, and true card footer */
+body {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 18% 2%, rgba(72, 187, 120, 0.20), transparent 28rem),
+    radial-gradient(circle at 82% 10%, rgba(56, 189, 248, 0.12), transparent 24rem),
+    repeating-linear-gradient(
+      90deg,
+      rgba(34, 197, 94, 0.055) 0,
+      rgba(34, 197, 94, 0.055) 12.5%,
+      rgba(3, 20, 16, 0.08) 12.5%,
+      rgba(3, 20, 16, 0.08) 25%
+    ),
+    linear-gradient(180deg, #123f2e 0%, #0c3327 34%, #08251f 68%, #061a18 100%);
+  background-attachment: fixed;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  z-index: 0;
+  top: max(5.2rem, calc(env(safe-area-inset-top) + 4.4rem));
+  right: clamp(0.75rem, 4vw, 3rem);
+  bottom: max(1.25rem, calc(env(safe-area-inset-bottom) + 0.75rem));
+  left: clamp(0.75rem, 4vw, 3rem);
+  width: auto;
+  height: auto;
+  border: 1px solid rgba(220, 252, 231, 0.20);
+  border-radius: 28px;
+  background:
+    radial-gradient(
+      circle at 50% 50%,
+      transparent 0 8.9rem,
+      rgba(220, 252, 231, 0.15) 9rem 9.12rem,
+      transparent 9.22rem
+    ),
+    linear-gradient(
+      180deg,
+      transparent calc(50% - 0.7px),
+      rgba(220, 252, 231, 0.18) calc(50% - 0.7px),
+      rgba(220, 252, 231, 0.18) calc(50% + 0.7px),
+      transparent calc(50% + 0.7px)
+    );
+  box-shadow:
+    inset 0 0 90px rgba(2, 16, 12, 0.18),
+    0 0 90px rgba(2, 16, 12, 0.12);
+  filter: none;
+  opacity: 0.82;
+  pointer-events: none;
+}
+
+body::after {
+  z-index: 0;
+  opacity: 0.18;
 }
 
 .shell {
-  padding-bottom: calc(7.25rem + env(safe-area-inset-bottom)) !important;
-}
-
-.app-tabs {
-  position: fixed;
-  left: 50%;
-  bottom: max(0.55rem, env(safe-area-inset-bottom));
-  transform: translateX(-50%);
-  z-index: 120;
-  width: min(calc(100% - 1rem), var(--app-surface-width));
-  min-height: var(--app-tab-height);
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.35rem;
-  padding: 0.45rem;
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  border-radius: 24px;
-  background: rgba(13, 22, 37, 0.91);
-  box-shadow: 0 18px 50px rgba(2, 6, 23, 0.36);
-  backdrop-filter: blur(24px) saturate(150%);
-  -webkit-backdrop-filter: blur(24px) saturate(150%);
-}
-
-.app-tab {
   position: relative;
-  min-width: 0;
-  min-height: 3.75rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.22rem;
-  padding: 0.42rem 0.55rem;
-  border: 0;
-  border-radius: 18px;
-  background: transparent;
-  color: var(--muted);
-  box-shadow: none;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
+  z-index: 1;
+  padding-bottom: max(2rem, env(safe-area-inset-bottom));
 }
 
-.app-tab:hover,
-.app-tab:focus-visible {
-  background: rgba(148, 163, 184, 0.08);
-  color: var(--text);
+.card,
+.footer-install {
+  border-color: rgba(226, 232, 240, 0.16);
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.095),
+      rgba(255, 255, 255, 0.018) 42%,
+      rgba(2, 12, 10, 0.12)
+    ),
+    rgba(6, 18, 22, 0.57);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 24px 60px rgba(0, 7, 6, 0.26);
+  -webkit-backdrop-filter: blur(24px) saturate(135%);
+  backdrop-filter: blur(24px) saturate(135%);
 }
 
-.app-tab.is-active {
-  background: rgba(96, 165, 250, 0.14);
-  color: #dbeafe;
-}
-
-.app-tab svg {
-  width: 1.35rem;
-  height: 1.35rem;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.app-tab-icon {
+.spotlight-card {
   position: relative;
-  display: grid;
-  place-items: center;
+  background:
+    radial-gradient(circle at 88% 18%, rgba(74, 222, 128, 0.15), transparent 17rem),
+    radial-gradient(circle at 18% 2%, rgba(56, 189, 248, 0.12), transparent 18rem),
+    linear-gradient(110deg, rgba(4, 16, 22, 0.72), rgba(8, 24, 28, 0.56) 52%, rgba(13, 39, 31, 0.46));
 }
 
-.app-tab-badge {
+.calendar-card,
+.ask-card,
+.footer-install.card {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.012)),
+    rgba(5, 19, 22, 0.54);
+}
+
+.spotlight-content {
+  position: relative;
+  grid-template-areas:
+    "heading heading"
+    "meta meta"
+    "location weather"
+    "capacity rsvp"
+    "actions actions"
+    "hint hint";
+  grid-template-rows: auto auto auto auto auto 1fr;
+  padding-bottom: 2.2rem;
+}
+
+.match-card-footer {
   position: absolute;
-  top: -0.42rem;
-  right: -0.72rem;
-  min-width: 1.1rem;
-  height: 1.1rem;
-  padding: 0 0.26rem;
-  border: 2px solid rgba(13, 22, 37, 0.96);
-  border-radius: 999px;
-  background: #ef4444;
-  color: #fff;
-  font-size: 0.62rem;
-  font-weight: 800;
-  line-height: 0.95rem;
-  text-align: center;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: block;
+  margin: 0;
+  padding-top: 0.52rem;
+  border-top: 1px solid rgba(226, 232, 240, 0.10);
+  pointer-events: none;
+}
+
+.match-card-footer .match-update-credit {
+  margin: 0;
+  color: rgba(203, 213, 225, 0.58);
+  font-size: 0.60rem;
+  line-height: 1.15;
+  opacity: 1;
+  text-align: right;
 }
 
 .notification-dialog,
 .settings-dialog {
-  position: fixed;
-  inset: max(4.6rem, calc(env(safe-area-inset-top) + 3.35rem))
-    auto calc(var(--app-tab-height) + 1.45rem + env(safe-area-inset-bottom)) 50%;
-  transform: translateX(-50%);
-  width: min(calc(100% - 1rem), var(--app-surface-width));
-  max-width: var(--app-surface-width);
-  height: auto;
-  max-height: none;
-  margin: 0;
-  overflow: hidden;
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  width: min(var(--app-surface-width), calc(100vw - 2rem));
+  max-width: min(var(--app-surface-width), calc(100vw - 2rem));
+  margin: auto;
+  border: 1px solid rgba(226, 232, 240, 0.16);
   border-radius: 28px;
-  background: rgba(13, 22, 37, 0.985);
-  box-shadow: 0 22px 70px rgba(2, 6, 23, 0.5);
-  z-index: 100;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.015)),
+    rgba(6, 18, 22, 0.88);
+  -webkit-backdrop-filter: blur(30px) saturate(145%);
+  backdrop-filter: blur(30px) saturate(145%);
+}
+
+.notification-dialog {
+  top: 50%;
+  right: auto;
+  bottom: auto;
+  left: 50%;
+  max-height: min(86dvh, 48rem);
+  transform: translate(-50%, -50%);
 }
 
 .notification-dialog .dialog-shell,
 .settings-dialog .dialog-shell {
-  height: 100%;
-  max-height: 100%;
+  max-height: min(86dvh, 48rem);
   overflow-y: auto;
   overscroll-behavior: contain;
 }
 
 .notification-dialog::backdrop,
 .settings-dialog::backdrop {
-  background: transparent;
+  background: rgba(2, 12, 10, 0.32);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
 }
 
 .notification-toolbar {
@@ -3717,9 +3760,9 @@ html.is-standalone .status-bar-glass {
 }
 
 .notification-filter.is-active {
-  border-color: rgba(96, 165, 250, 0.4);
-  background: rgba(96, 165, 250, 0.16);
-  color: #dbeafe;
+  border-color: rgba(74, 222, 128, 0.34);
+  background: rgba(34, 197, 94, 0.13);
+  color: #dcfce7;
 }
 
 .notification-preferences {
@@ -3727,7 +3770,7 @@ html.is-standalone .status-bar-glass {
   padding: 0.75rem;
   border: 1px solid rgba(148, 163, 184, 0.12);
   border-radius: 18px;
-  background: rgba(148, 163, 184, 0.045);
+  background: rgba(3, 18, 15, 0.20);
 }
 
 .notification-preferences.is-local-only {
@@ -3764,13 +3807,13 @@ html.is-standalone .status-bar-glass {
   min-height: 2rem;
   padding: 0.3rem 0.58rem;
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.48);
+  background: rgba(2, 14, 12, 0.42);
   color: var(--text);
   font-size: 0.76rem;
 }
 
 .notification-preference-options input {
-  accent-color: #60a5fa;
+  accent-color: #4ade80;
 }
 
 .notice-heading {
@@ -3788,18 +3831,36 @@ html.is-standalone .status-bar-glass {
   flex: 0 0 auto;
   padding: 0.18rem 0.44rem;
   border-radius: 999px;
-  background: rgba(96, 165, 250, 0.1);
-  color: #bfdbfe;
+  background: rgba(74, 222, 128, 0.10);
+  color: #bbf7d0;
   font-size: 0.65rem;
   font-weight: 700;
   text-transform: capitalize;
 }
 
 @media (max-width: 560px) {
+  body::before {
+    top: max(4.5rem, calc(env(safe-area-inset-top) + 3.8rem));
+    right: 0.45rem;
+    bottom: max(0.65rem, env(safe-area-inset-bottom));
+    left: 0.45rem;
+    border-radius: 22px;
+  }
+
   .notification-dialog,
   .settings-dialog {
-    top: max(4.1rem, calc(env(safe-area-inset-top) + 3rem));
+    width: calc(100vw - 0.75rem);
+    max-width: calc(100vw - 0.75rem);
     border-radius: 24px;
+  }
+
+  .notification-dialog {
+    max-height: calc(100dvh - 0.75rem);
+  }
+
+  .notification-dialog .dialog-shell,
+  .settings-dialog .dialog-shell {
+    max-height: calc(100dvh - 0.75rem);
   }
 
   .notification-toolbar,
@@ -3810,11 +3871,5 @@ html.is-standalone .status-bar-glass {
 
   .notification-preferences-heading .hint {
     text-align: left;
-  }
-}
-
-@media (display-mode: standalone) {
-  .app-tabs {
-    bottom: max(0.5rem, env(safe-area-inset-bottom));
   }
 }
