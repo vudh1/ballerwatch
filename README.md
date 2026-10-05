@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, Calendar sync, and quick answers into one installable app.
 
-**Current source version: 6.4.4**
+**Current source version: 7.0.0**
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
 
@@ -13,7 +13,10 @@ BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS leag
 - See the next **Pickup** or **League** match, field, weather, and timing.
 - See RSVP capacity for RSVP pickup games and jump to the RSVP site.
 - Browse a rolling match calendar and swipe between match cards.
+- Use a real **Inbox** with Pickup / League / App filters, mark-all-read, swipe delete, and account-synced read state.
+- Choose account-level notification categories and keep the unread count synchronized to the installed app badge on supported devices.
 - Get allowed Web Push reminders and real schedule-change notifications.
+- Move between **Home / Inbox / Settings** with persistent app navigation.
 - Ask read-only questions such as `/next`, `What time is Thursday?`, or `What games are next week?`.
 - Sign in with separate user accounts and revocable sessions.
 - For administrators: manage users, monitored RATS teams, reversible match overrides/deletes, and app promotion.
@@ -24,6 +27,19 @@ Saturday synthetic pickup is shown simply as **Pickup** and has no RSVP/capacity
 ## Demo
 
 ![BallerWatch web app demo](docs/demo.jpg)
+
+## BallerWatch 7
+
+BallerWatch 7 turns the PWA into a more complete account-backed app experience:
+
+- **Cross-device state:** signed-in notification reads, deletes, and category preferences are stored in the encrypted user profile and merge safely across devices.
+- **Notification center:** Inbox filters Pickup, League, and App updates; supports mark-all-read and swipe/delete; and keeps the Home Screen badge aligned with unread state.
+- **Account-aware Web Push:** each device subscription can follow its signed-in account's notification categories without exposing account data in push payloads.
+- **Cleaner PWA architecture:** transport/session handling and notification persistence live in focused frontend modules instead of the main view controller.
+- **App navigation:** Home, Inbox, and Settings share one app surface with a persistent bottom navigation bar.
+
+Signed-out use still works: local read/delete state and anonymous Web Push remain available, and local notification state is migrated into the account after a successful sign-in.
+
 
 ## App updates
 
@@ -49,7 +65,7 @@ GitHub Pages PWA
 Cloudflare Worker
   |        |
   |        +--> encrypted runtime-state
-  +-----------> auth / Q&A / push registration / API
+  +-----------> auth / synced Inbox / Q&A / push registration / API
 
 cron-job.org
   |--> Pickup watcher every 2 min
@@ -70,7 +86,8 @@ The repository now separates browser code from backend code explicitly:
 
 ```text
 frontend/
-  web/                    GitHub Pages PWA: HTML, CSS, JS, manifest, service worker
+  web/                    GitHub Pages PWA: HTML, CSS, app shell, manifest, service worker
+    lib/                  session/API transport + notification-state modules
 
 backend/
   infra/                  Cloudflare Worker + scheduler/infrastructure helpers
@@ -97,7 +114,7 @@ The encrypted `runtime-state` branch intentionally keeps stable storage paths su
 
 ## Accounts and recovery
 
-BallerWatch supports up to 20 encrypted web accounts. Each account has its own username, password, RSVP display name, authentication revision, and revocable sessions.
+BallerWatch supports up to 20 encrypted web accounts. Each account has its own username, password, RSVP display name, authentication revision, revocable sessions, and bounded notification profile for cross-device read/delete state and category preferences.
 
 Administrators can manage users and shared league configuration. Regular users can manage their own RSVP name/password.
 
@@ -120,7 +137,8 @@ Canonical runtime documents are stored as complete hardened AES-GCM envelopes on
 Other important boundaries:
 
 - Web Push registration accepts only validated public browser push-service endpoints and revalidates them before delivery.
-- User-specific RSVP names, confirmation state, and waitlist information are never put on the public notification board.
+- User-specific RSVP names, confirmation state, waitlist information, notification read/delete state, and notification preferences are never put on the public notification board.
+- Web Push signals remain payload-free; account/category metadata stays inside encrypted runtime state.
 - The Worker API emits CSP/anti-framing/content-type/referrer/permissions security headers.
 - Tests, smoke checks, builds, deploys, watchdog health events, commits, PRs, and score-only changes never send user notifications.
 - Exact Q&A text is retained only under the narrow documented conditions and time limits.
@@ -180,6 +198,10 @@ node backend/shared/runtime-state.mjs audit
 ```
 
 Tests and smoke helpers must remain notification-silent and must not mutate Google Calendar.
+
+## Copyright
+
+Copyright © 2026 BallerWatch. All rights reserved. See [COPYRIGHT.md](COPYRIGHT.md) for the repository publication notice.
 
 ## Failure behavior
 
