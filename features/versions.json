@@ -1,7 +1,23 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.0.0",
+  "currentVersion": "7.0.1",
   "releases": [
+    {
+      "version": "7.0.1",
+      "date": "2026-10-05",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Top utility icons, true match footer, and soccer-pitch glass background",
+      "webAnnouncement": "BallerWatch returns Inbox and Settings to the top-right icons, pins match freshness to the card footer, and adds a translucent soccer-pitch visual treatment.",
+      "changes": [
+        "Removed the persistent Home / Inbox / Settings bottom tab bar and restored navigation through the existing top-right notification bell and settings gear.",
+        "Returned Inbox and Settings to centered modal surfaces opened from the top-right utility icons while preserving the BallerWatch 7 synced notification center.",
+        "Pinned the selected match Updated / Manual override freshness line to the actual bottom-right footer area of the match card.",
+        "Replaced the generic page gradient with a dark soccer-pitch background using grass striping, a touchline, halfway line, and center-circle treatment rendered entirely in CSS.",
+        "Made dashboard, match, calendar, ask, and install cards more translucent with backdrop blur so the pitch remains visible without reducing text readability.",
+        "Added regression coverage for top-icon navigation, the absolute match footer position, and the soccer-field glass-card treatment."
+      ]
+    },
     {
       "version": "7.0.0",
       "date": "2026-10-05",
