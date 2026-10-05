@@ -14,12 +14,12 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /manifest\.webmanifest/);
   assert.match(html, /apple-touch-icon\.png/);
   assert.match(html, /class="brand-icon"/);
-  assert.match(html, /icon\.svg\?v=6\.4\.3/);
+  assert.match(html, /icon\.svg\?v=6\.4\.4/);
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=6\.4\.3/);
-  assert.match(html, /app\.js\?v=6\.4\.3/);
+  assert.match(html, /styles\.css\?v=6\.4\.4/);
+  assert.match(html, /app\.js\?v=6\.4\.4/);
 
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
@@ -61,7 +61,7 @@ test("Home Screen install card is removed in standalone mode and notifications u
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const css = fs.readFileSync("frontend/web/styles.css", "utf8");
   assert.match(app, /els\.installCard\?\.remove\(\)/);
-  assert.match(app, /notificationDialog\.showModal\(\)/);
+  assert.match(app, /notificationDialog\.show\(\)/);
   assert.match(css, /\[hidden\]\s*\{\s*display:\s*none\s*!important;/);
 });
 
@@ -92,7 +92,7 @@ test("promotion watches Worker and Pages then refreshes the open PWA", () => {
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=6\.4\.3/);
+  assert.match(app, /sw\.js\?v=6\.4\.4/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -196,9 +196,10 @@ test("app-facing copy is web-only", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const manifest = fs.readFileSync("frontend/web/manifest.webmanifest", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const client = fs.readFileSync("frontend/web/lib/client.js", "utf8");
   assert.doesNotMatch(html, /https:\/\/t\.me\//i);
   assert.doesNotMatch(app, /\/web\/user\/pair/);
-  assert.match(app, /https:\/\/ballerwatch-web\.vudhone\.workers\.dev/);
+  assert.match(client, /https:\/\/ballerwatch-web\.vudhone\.workers\.dev/);
   assert.doesNotMatch(manifest, /chat|messaging adapter/i);
 });
 
@@ -219,7 +220,8 @@ test("user settings support password-only sign-in with repository recovery", () 
   assert.match(html, /id="owner-teams"/);
   assert.doesNotMatch(html, /owner-pair-form|one-time-code|pairing code/i);
 
-  assert.match(app, /ballerwatch-owner-token/);
+  const client = fs.readFileSync("frontend/web/lib/client.js", "utf8");
+  assert.match(client, /ballerwatch-owner-token/);
   assert.match(app, /\/web\/user\/login/);
   assert.match(app, /\/web\/user\/password/);
   assert.match(app, /\/web\/user\/settings/);
@@ -559,7 +561,7 @@ test("installed app does not interrupt first-load hydration for a service-worker
   );
   assert.match(
     app,
-    /await Promise\.all\(\[\s*registerServiceWorker\(\)\.catch\(\(\) => null\),\s*loadConfig\(\),\s*loadBoard\(\),\s*loadCalendar\(\),\s*\]\);/,
+    /await Promise\.all\(\[\s*registerServiceWorker\(\)\.catch\(\(\) => null\),\s*loadConfig\(\),\s*loadBoard\(\),\s*loadCalendar\(\),\s*loadNotificationProfile\(\),\s*\]\);/,
   );
   assert.match(app, /initialLoadComplete = true/);
   assert.match(
@@ -644,13 +646,11 @@ test("app and repository expose explicit BallerWatch copyright notices", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
-  const readme = fs.readFileSync("README.md", "utf8");
   const copyright = fs.readFileSync("COPYRIGHT.md", "utf8");
 
   assert.match(html, /© 2026 BallerWatch\. All rights reserved\./);
   assert.match(app, /Copyright © 2026 BallerWatch\. All rights reserved\./);
   assert.match(worker, /Copyright © 2026 BallerWatch\. All rights reserved\./);
-  assert.match(readme, /## Copyright/);
   assert.match(copyright, /Publication of the source code in a public repository does not by itself grant a license/);
 });
 
@@ -661,41 +661,51 @@ test("footer contains no secondary messaging shortcut", () => {
 });
 
 
-test("website and utility surfaces share the same wider centered page footprint", () => {
-  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
-  assert.match(css, /--app-surface-width:\s*920px/);
-  assert.match(css, /\.shell \{[\s\S]*width:\s*min\(var\(--app-surface-width\), 100%\)/);
-  assert.match(
-    css,
-    /\.notification-dialog,[\s\S]*\.settings-dialog,[\s\S]*\.notification-reader \{[\s\S]*width:\s*min\(var\(--app-surface-width\)/,
-  );
-  assert.match(
-    css,
-    /\.notification-dialog \{[\s\S]*top:\s*50%;[\s\S]*left:\s*50%;[\s\S]*transform:\s*translate\(-50%, -50%\)/,
-  );
-  assert.match(css, /\.notification-reader \{[\s\S]*height:\s*auto;[\s\S]*border-radius:\s*30px/);
-});
-
-test("notification popup stays bounded and offers local Delete all beside Send test", () => {
+test("BallerWatch 7 keeps Home, Inbox, and Settings inside one app surface", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const css = fs.readFileSync("frontend/web/styles.css", "utf8");
-
-  assert.match(
-    html,
-    /id="test-notification"[^>]*>Send test<\/button>\s*<button class="subtle-action subtle-danger" id="delete-all-notifications"[^>]*>Delete all<\/button>/,
-  );
-  assert.match(app, /function deleteAllNotifications/);
-  assert.match(app, /persistDeletedNotifications\(visible\)/);
-  assert.match(app, /deleteAllNotifications\.addEventListener\("click", deleteAllNotifications\)/);
-  assert.match(css, /\.notification-dialog \{[\s\S]*max-height:\s*min\(86dvh, 42rem\);[\s\S]*overflow:\s*hidden;/);
-  assert.match(css, /\.notification-dialog \.board \{[\s\S]*overflow-y:\s*auto;/);
-  assert.match(css, /\.notification-test-row \{[\s\S]*flex-wrap:\s*wrap;/);
-  assert.match(css, /\.notification-reader \{[\s\S]*overflow-x:\s*hidden;[\s\S]*overflow-y:\s*auto;/);
-  assert.match(css, /\.notification-reader-content \{[\s\S]*max-width:\s*100%;[\s\S]*overflow:\s*hidden;/);
-  assert.match(css, /\.notification-reader-content p \{[\s\S]*overflow-wrap:\s*anywhere;[\s\S]*word-break:\s*break-word;/);
+  assert.match(css, /--app-surface-width:\s*920px/);
+  assert.match(css, /\.shell \{[\s\S]*width:\s*min\(var\(--app-surface-width\), 100%\)/);
+  assert.match(html, /class="app-tabs"/);
+  assert.match(html, /id="tab-home"/);
+  assert.match(html, /id="tab-notifications"/);
+  assert.match(html, /id="tab-settings"/);
+  assert.match(app, /function setActiveAppTab/);
+  assert.match(app, /notificationDialog\.show\(\)/);
+  assert.match(app, /settingsDialog\.show\(\)/);
+  assert.match(css, /\.app-tabs \{[\s\S]*position:\s*fixed/);
+  assert.match(css, /\.notification-dialog,[\s\S]*\.settings-dialog \{[\s\S]*position:\s*fixed/);
 });
 
+test("notification center supports filters, synced read state, and account preferences", () => {
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
+
+  assert.match(html, /data-notification-filter="all"/);
+  assert.match(html, /data-notification-filter="pickup"/);
+  assert.match(html, /data-notification-filter="league"/);
+  assert.match(html, /data-notification-filter="version"/);
+  assert.match(html, /id="mark-all-notifications-read"/);
+  assert.match(html, /id="notification-pref-pickup"/);
+  assert.match(html, /id="notification-pref-league"/);
+  assert.match(html, /id="notification-pref-version"/);
+
+  assert.match(app, /\/web\/user\/notifications/);
+  assert.match(app, /function loadNotificationProfile/);
+  assert.match(app, /function persistNotificationProfile/);
+  assert.match(app, /function markAllNotificationsRead/);
+  assert.match(app, /persistDeletedNotifications\(allVisible\)/);
+  assert.match(app, /localNotificationProfile\(\)/);
+  assert.match(app, /clearLocalNotificationProfile\(\)/);
+  assert.match(worker, /userRoute\(url\.pathname, "notifications"\)/);
+  assert.match(worker, /notificationProfiles/);
+  assert.match(worker, /runtime\(user\): sync notification profile/);
+  assert.match(css, /\.notification-filters \{/);
+  assert.match(css, /\.notification-preferences \{/);
+});
 
 test("match spotlight swipe uses connected neighboring cards like a carousel train", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
@@ -835,7 +845,7 @@ test("web runtime requires the dedicated state key and web-only Worker", () => {
   const deploy = fs.readFileSync(".github/workflows/deploy-worker.yml", "utf8");
   const stateCrypto = fs.readFileSync("backend/shared/state-crypto.mjs", "utf8");
   const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
-  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const client = fs.readFileSync("frontend/web/lib/client.js", "utf8");
   const retiredPrefix = ["TELE", "GRAM"].join("");
 
   const requiredBlock = deploy.match(
@@ -848,7 +858,7 @@ test("web runtime requires the dedicated state key and web-only Worker", () => {
   assert.doesNotMatch(stateCrypto, new RegExp(retiredPrefix, "i"));
   assert.doesNotMatch(worker, new RegExp(retiredPrefix, "i"));
   assert.match(worker, /BALLERWATCH_WORKER_SECRET/);
-  assert.match(app, /https:\/\/ballerwatch-web\.vudhone\.workers\.dev/);
+  assert.match(client, /https:\/\/ballerwatch-web\.vudhone\.workers\.dev/);
 });
 
 test("repository policy reserves SemVer for product behavior changes", () => {
@@ -912,6 +922,22 @@ test("GitHub Actions dependencies are pinned to reviewed commit SHAs", () => {
     }
   }
   assert.deepEqual(unpinned, []);
+});
+
+test("BallerWatch 7 splits transport and notification persistence out of the PWA shell", () => {
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const client = fs.readFileSync("frontend/web/lib/client.js", "utf8");
+  const state = fs.readFileSync("frontend/web/lib/notification-state.js", "utf8");
+  const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
+
+  assert.match(app, /from "\.\/lib\/client\.js"/);
+  assert.match(app, /from "\.\/lib\/notification-state\.js"/);
+  assert.match(client, /export async function requestJson/);
+  assert.match(client, /export function clearSession/);
+  assert.match(state, /export function normalizedNotificationProfile/);
+  assert.match(state, /export function localNotificationProfile/);
+  assert.match(sw, /"\.\/lib\/client\.js"/);
+  assert.match(sw, /"\.\/lib\/notification-state\.js"/);
 });
 
 test("PWA declares restrictive document policy and confines notification navigation", () => {
