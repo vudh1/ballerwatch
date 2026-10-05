@@ -11,17 +11,30 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="BallerWatch">
   <title>BallerWatch</title>
-  <link rel="manifest" href="./manifest.webmanifest?v=7.0.11">
-  <link rel="icon" href="./icon.svg?v=7.0.11" type="image/svg+xml">
-  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=7.0.11">
-  <link rel="stylesheet" href="./styles.css?v=7.0.11">
+  <link rel="manifest" href="./manifest.webmanifest?v=7.0.12">
+  <link rel="icon" href="./icon.svg?v=7.0.12" type="image/svg+xml">
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=7.0.12">
+  <link rel="stylesheet" href="./styles.css?v=7.0.12">
 </head>
 <body>
+  <div class="launch-intro" id="launch-intro" aria-hidden="true" hidden>
+    <div class="launch-intro-stage">
+      <div class="launch-intro-beam launch-intro-beam-a"></div>
+      <div class="launch-intro-beam launch-intro-beam-b"></div>
+      <div class="launch-intro-beam launch-intro-beam-c"></div>
+      <div class="launch-intro-word" aria-label="BallerWatch">
+        <span class="launch-intro-word-shadow" aria-hidden="true">BallerWatch</span>
+        <span class="launch-intro-word-main">BallerWatch</span>
+      </div>
+      <div class="launch-intro-pulse" aria-hidden="true"></div>
+    </div>
+  </div>
+
   <div class="status-bar-glass" aria-hidden="true"></div>
   <main class="shell">
     <header class="hero">
       <div class="brand-lockup">
-        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=7.0.11" alt=""></div>
+        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=7.0.12" alt=""></div>
         <div>
           <p class="eyebrow">SOCCER AT A GLANCE</p>
           <h1>BallerWatch</h1>
@@ -268,6 +281,21 @@
         <button class="icon-button" id="close-settings" type="button" aria-label="Close settings">×</button>
       </div>
 
+      <section class="experience-settings" aria-labelledby="experience-settings-title">
+        <h3 class="settings-subheading" id="experience-settings-title">Experience</h3>
+        <div class="experience-setting-row">
+          <div>
+            <strong>Music</strong>
+            <p class="hint">Original BallerWatch ambient soundtrack. On iPhone it starts after your first tap.</p>
+          </div>
+          <button class="secondary experience-toggle" id="music-toggle" type="button"
+            aria-pressed="false">Off</button>
+        </div>
+        <p class="hint experience-status" id="music-status">Music is off on this device.</p>
+      </section>
+
+      <div class="settings-divider"></div>
+
       <section id="settings-login-view">
         <p class="muted">Sign in to manage your private BallerWatch settings on this device.</p>
         <form id="owner-login-form" class="settings-form">
@@ -419,6 +447,6 @@
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=7.0.11"></script>
+  <script type="module" src="./app.js?v=7.0.12"></script>
 </body>
 </html>
