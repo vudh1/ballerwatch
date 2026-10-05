@@ -14,7 +14,7 @@ import { decryptState, encryptState } from "./state-crypto.mjs";
 import { normalizeWebPushEndpoint } from "./web-push-endpoint.mjs";
 
 const STATE_PATH = "state/web-push.json";
-const MAX_SUBSCRIPTIONS = 8;
+const MAX_SUBSCRIPTIONS = 24;
 const VAPID_SUBJECT = "mailto:ballerwatch@users.noreply.github.com";
 
 function clean(value, max = 1000) {
@@ -41,7 +41,7 @@ function createState() {
   const publicJwk = publicKey.export({ format: "jwk" });
   const privateJwk = privateKey.export({ format: "jwk" });
   return {
-    version: 1,
+    version: 2,
     vapid: {
       subject: VAPID_SUBJECT,
       publicJwk,
@@ -58,12 +58,20 @@ export function loadWebPushState() {
     const encrypted = JSON.parse(fs.readFileSync(STATE_PATH, "utf8"));
     const value = decryptState(encrypted);
     if (
-      value?.version === 1 &&
+      [1, 2].includes(value?.version) &&
       value?.vapid?.privateJwk &&
       value?.vapid?.applicationServerKey &&
       Array.isArray(value?.subscriptions)
     ) {
-      return value;
+      return {
+        ...value,
+        version: 2,
+        subscriptions: value.subscriptions.map((item) => ({
+          ...item,
+          userId: clean(item?.userId, 32).toLowerCase(),
+          channels: normalizedChannels(item?.channels),
+        })),
+      };
     }
   } catch {}
   return null;
@@ -87,6 +95,15 @@ export function ensureWebPushState() {
   saveWebPushState(created);
   console.log("Created encrypted Web Push VAPID state.");
   return created;
+}
+
+function normalizedChannels(value) {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  return {
+    pickup: source.pickup !== false,
+    league: source.league !== false,
+    version: source.version !== false,
+  };
 }
 
 function normalizedSubscription(value) {
@@ -232,9 +249,14 @@ export function applyRegistrationEvent(event) {
   const state = ensureWebPushState();
   const action = clean(event?.action, 30);
   const subscription = normalizedSubscription(event?.subscription);
+  const userId = clean(event?.userId, 32).toLowerCase();
+  const channels = normalizedChannels(event?.channels);
   const now = new Date().toISOString();
 
   if (action === "subscribe") {
+    const previous = state.subscriptions.find(
+      (item) => item.endpoint === subscription.endpoint,
+    );
     const existing = state.subscriptions.filter(
       (item) => item.endpoint !== subscription.endpoint,
     );
@@ -242,9 +264,9 @@ export function applyRegistrationEvent(event) {
       ...existing,
       {
         ...subscription,
-        createdAt:
-          state.subscriptions.find((item) => item.endpoint === subscription.endpoint)
-            ?.createdAt || now,
+        userId,
+        channels,
+        createdAt: previous?.createdAt || now,
         updatedAt: now,
       },
     ].slice(-MAX_SUBSCRIPTIONS);
@@ -294,6 +316,7 @@ export async function sendWebPushSignals({
   fetchImpl = globalThis.fetch,
   resolveHost = dnsLookup,
   now = new Date(),
+  channel = "",
 } = {}) {
   const state = loadWebPushState();
   if (!state?.subscriptions?.length) {
@@ -306,6 +329,10 @@ export async function sendWebPushSignals({
   const staleEndpoints = new Set();
 
   for (const subscription of state.subscriptions) {
+    if (channel && normalizedChannels(subscription?.channels)[channel] === false) {
+      continue;
+    }
+
     let endpoint;
     try {
       endpoint = await validateWebPushDestination(subscription.endpoint, { resolveHost });
@@ -360,7 +387,12 @@ export async function sendPendingWebPushSignals(options = {}) {
     return { sent: 0, stale: 0, failed: 0, skipped: true };
   }
   try {
-    const result = await sendWebPushSignals(options);
+    let channel = "";
+    try {
+      const pending = JSON.parse(fs.readFileSync(".runtime/web-push-pending", "utf8"));
+      channel = clean(pending?.channel, 30);
+    } catch {}
+    const result = await sendWebPushSignals({ ...options, channel });
     return { ...result, skipped: false };
   } finally {
     fs.rmSync(".runtime/web-push-pending", { force: true });
