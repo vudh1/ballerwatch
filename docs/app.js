@@ -33,6 +33,8 @@ const els = {
   ownerTeams: document.querySelector("#owner-teams"),
   userManagement: document.querySelector("#user-management"),
   userList: document.querySelector("#user-list"),
+  deletedMatchManagement: document.querySelector("#deleted-match-management"),
+  deletedMatchList: document.querySelector("#deleted-match-list"),
   userCreateForm: document.querySelector("#user-create-form"),
   userCreateUsername: document.querySelector("#user-create-username"),
   userCreateName: document.querySelector("#user-create-name"),
@@ -75,6 +77,10 @@ const els = {
   spotlightLabel: document.querySelector("#spotlight-label"),
   nextGameTitle: document.querySelector("#next-game-title"),
   nextGameType: document.querySelector("#next-game-type"),
+  nextGameMenuTrigger: document.querySelector("#next-game-menu-trigger"),
+  nextGameMenu: document.querySelector("#next-game-menu"),
+  nextGameMenuEdit: document.querySelector("#next-game-menu-edit"),
+  nextGameMenuDelete: document.querySelector("#next-game-menu-delete"),
   nextGameMeta: document.querySelector("#next-game-meta"),
   nextGameLocation: document.querySelector("#next-game-location"),
   nextGameCapacity: document.querySelector("#next-game-capacity"),
@@ -132,7 +138,7 @@ let feedbackId = "";
 let feedbackInFlight = false;
 let currentUserSettings = null;
 let currentReleaseStatus = null;
-let pendingMatchOverrideAfterLogin = false;
+let pendingMatchAdminAction = "";
 let matchOverrideSourceState = null;
 
 const OWNER_TOKEN_KEY = "ballerwatch-owner-token";
@@ -538,6 +544,31 @@ function renderManagedUsers(users) {
   }
 }
 
+function renderDeletedMatches(matches) {
+  els.deletedMatchList.replaceChildren();
+  for (const match of Array.isArray(matches) ? matches : []) {
+    const row = document.createElement("div");
+    row.className = "deleted-match-row";
+
+    const copy = document.createElement("div");
+    copy.className = "deleted-match-meta";
+    const title = document.createElement("strong");
+    title.textContent = match.label || match.id || "Deleted match";
+    const detail = document.createElement("span");
+    detail.textContent = [match.date || "", match.id || ""].filter(Boolean).join(" · ");
+    copy.append(title, detail);
+
+    const restore = document.createElement("button");
+    restore.type = "button";
+    restore.className = "subtle-action";
+    restore.dataset.restoreMatchId = match.id || "";
+    restore.textContent = "Restore";
+
+    row.append(copy, restore);
+    els.deletedMatchList.append(row);
+  }
+}
+
 function showOwnerSettings(settings) {
   currentUserSettings = settings || null;
   els.settingsLoginView.hidden = true;
@@ -550,8 +581,11 @@ function showOwnerSettings(settings) {
   els.ownerTeams.value = Array.isArray(settings?.teams) ? settings.teams.join("\n") : "";
   els.ownerTeamSettings.hidden = !settings?.canManageTeams;
   els.userManagement.hidden = !settings?.canManageUsers;
+  const deletedMatches = Array.isArray(settings?.deletedMatches) ? settings.deletedMatches : [];
+  els.deletedMatchManagement.hidden = !settings?.canManageMatches || deletedMatches.length === 0;
   els.releaseManagement.hidden = !settings?.canManageMatches;
   if (settings?.canManageUsers) renderManagedUsers(settings?.users);
+  if (settings?.canManageMatches) renderDeletedMatches(deletedMatches);
   if (!settings?.canManageMatches) {
     currentReleaseStatus = null;
     els.promoteRelease.disabled = true;
@@ -682,7 +716,7 @@ async function openSettings(options = {}) {
     options && typeof options === "object" && "pendingAction" in options
       ? String(options.pendingAction || "")
       : "";
-  pendingMatchOverrideAfterLogin = pendingAction === "match-override";
+  pendingMatchAdminAction = pendingAction;
   if (!els.settingsDialog.open) els.settingsDialog.showModal();
   await loadOwnerSettings();
 }
@@ -702,21 +736,25 @@ async function loginOwnerDevice(event) {
     localStorage.setItem(OWNER_TOKEN_KEY, payload.token);
     localStorage.setItem(OWNER_USERNAME_KEY, payload.username || username || "admin");
     els.ownerLoginPassword.value = "";
-    const resumeMatchOverride = pendingMatchOverrideAfterLogin;
+    const resumeMatchAction = pendingMatchAdminAction;
     await loadOwnerSettings();
     await loadRsvpStatus();
     if (currentNextGame) {
       renderNextGame(currentNextGame, els.spotlightLabel.textContent || "NEXT GAME");
     }
 
-    if (resumeMatchOverride) {
-      pendingMatchOverrideAfterLogin = false;
+    if (resumeMatchAction) {
+      pendingMatchAdminAction = "";
       if (currentUserSettings?.canManageMatches) {
         if (els.settingsDialog.open) els.settingsDialog.close();
-        await openMatchOverrideEditor();
+        if (resumeMatchAction === "match-delete") {
+          await deleteSelectedMatch({ authorized: true });
+        } else {
+          await openMatchOverrideEditor({ authorized: true });
+        }
       } else {
         els.ownerSettingsStatus.textContent =
-          "Administrator access is required to edit match details.";
+          "Administrator access is required to edit or delete match details.";
       }
     }
   } catch (error) {
@@ -909,7 +947,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=6.3.3", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=6.4.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -1276,6 +1314,7 @@ function applySpotlightModel(targets, game, label = "NEXT GAME") {
   targets.updated.hidden = !model.updated;
   targets.actions.hidden = model.actionsHidden;
   if (targets.edit) targets.edit.hidden = model.editHidden;
+  if (targets.menuTrigger) targets.menuTrigger.hidden = model.editHidden;
   targets.hint.textContent = "";
 
   if (model.rsvp) {
@@ -1311,6 +1350,7 @@ function currentSpotlightTargets() {
     label: els.spotlightLabel,
     title: els.nextGameTitle,
     type: els.nextGameType,
+    menuTrigger: els.nextGameMenuTrigger,
     meta: els.nextGameMeta,
     location: els.nextGameLocation,
     capacity: els.nextGameCapacity,
@@ -1328,6 +1368,7 @@ function currentSpotlightTargets() {
 }
 
 function renderNextGame(game, label = "NEXT GAME") {
+  closeMatchCardMenu();
   currentNextGame = game
     ? {
         ...game,
@@ -1368,6 +1409,7 @@ function buildSpotlightTrainCard(game) {
       label: role("spotlight-label"),
       title: role("next-game-title"),
       type: role("next-game-type"),
+      menuTrigger: role("next-game-menu-trigger"),
       meta: role("next-game-meta"),
       location: role("next-game-location"),
       capacity: role("next-game-capacity"),
@@ -2082,11 +2124,13 @@ function inputClockValue(value) {
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
-async function matchOverrideAdminSettings() {
+async function matchAdminSettings(pendingAction = "match-override") {
   if (!ownerToken()) {
-    await openSettings({ pendingAction: "match-override" });
+    await openSettings({ pendingAction });
     els.ownerLoginStatus.textContent =
-      "Administrator sign-in is required. After sign-in, BallerWatch will return to the match editor.";
+      pendingAction === "match-delete"
+        ? "Administrator sign-in is required. After sign-in, BallerWatch will return to the delete action."
+        : "Administrator sign-in is required. After sign-in, BallerWatch will return to the match editor.";
     return null;
   }
   if (currentUserSettings?.canManageMatches) return currentUserSettings;
@@ -2105,9 +2149,11 @@ async function matchOverrideAdminSettings() {
   } catch (error) {
     if (error.status === 401) {
       localStorage.removeItem(OWNER_TOKEN_KEY);
-      await openSettings({ pendingAction: "match-override" });
+      await openSettings({ pendingAction });
       els.ownerLoginStatus.textContent =
-        "Administrator sign-in is required. After sign-in, BallerWatch will return to the match editor.";
+        pendingAction === "match-delete"
+          ? "Administrator sign-in is required. After sign-in, BallerWatch will return to the delete action."
+          : "Administrator sign-in is required. After sign-in, BallerWatch will return to the match editor.";
     } else {
       els.nextGameHint.textContent = error.message;
     }
@@ -2115,12 +2161,90 @@ async function matchOverrideAdminSettings() {
   }
 }
 
-async function openMatchOverrideEditor() {
+function closeMatchCardMenu() {
+  els.nextGameMenu.hidden = true;
+  els.nextGameMenuTrigger.setAttribute("aria-expanded", "false");
+}
+
+function toggleMatchCardMenu() {
+  if (!currentNextGame?.id) return;
+  const willOpen = els.nextGameMenu.hidden;
+  els.nextGameMenu.hidden = !willOpen;
+  els.nextGameMenuTrigger.setAttribute("aria-expanded", String(willOpen));
+}
+
+async function deleteSelectedMatch({ authorized = false } = {}) {
+  if (!currentNextGame?.id) return;
+  const settings = authorized ? currentUserSettings : await matchAdminSettings("match-delete");
+  if (!settings?.canManageMatches) return;
+
+  const game = { ...currentNextGame };
+  const label = game.title || game.dateLabel || "this match";
+  if (!window.confirm(
+    `Delete ${label} from BallerWatch?\n\nThis hides the match in BallerWatch only. The RSVP/RATS source and Google Calendar are not deleted.`,
+  )) {
+    return;
+  }
+
+  closeMatchCardMenu();
+  try {
+    const payload = await api("/web/user/match", {
+      method: "DELETE",
+      headers: ownerHeaders(),
+      retryNetwork: true,
+      body: JSON.stringify({
+        id: game.id,
+        label: [game.title || "", game.dateLabel || ""].filter(Boolean).join(" — "),
+        date: game.date || "",
+      }),
+    });
+    if (currentUserSettings) {
+      currentUserSettings = {
+        ...currentUserSettings,
+        deletedMatches: payload.deletedMatches || [],
+      };
+    }
+    await loadCalendar();
+  } catch (error) {
+    if (error.status === 401) {
+      localStorage.removeItem(OWNER_TOKEN_KEY);
+      await openSettings({ pendingAction: "match-delete" });
+      els.ownerLoginStatus.textContent =
+        "Sign in again. BallerWatch will return to the delete action.";
+    } else {
+      els.nextGameHint.textContent = error.message;
+    }
+  }
+}
+
+async function restoreDeletedMatch(id) {
+  if (!id) return;
+  try {
+    const payload = await api("/web/user/match", {
+      method: "POST",
+      headers: ownerHeaders(),
+      retryNetwork: true,
+      body: JSON.stringify({ id }),
+    });
+    if (currentUserSettings) {
+      currentUserSettings = {
+        ...currentUserSettings,
+        deletedMatches: payload.deletedMatches || [],
+      };
+      showOwnerSettings(currentUserSettings);
+    }
+    await loadCalendar();
+  } catch (error) {
+    els.ownerSettingsStatus.textContent = error.message;
+  }
+}
+
+async function openMatchOverrideEditor({ authorized = false } = {}) {
   if (!currentNextGame?.id) {
     els.nextGameHint.textContent = "Select a match before editing.";
     return;
   }
-  const settings = await matchOverrideAdminSettings();
+  const settings = authorized ? currentUserSettings : await matchAdminSettings("match-override");
   if (!settings?.canManageMatches) return;
 
   matchOverrideSourceState = matchSourceState(currentNextGame);
@@ -2615,6 +2739,25 @@ els.answer.addEventListener("contextmenu", (event) => event.preventDefault());
 els.answer.addEventListener("selectstart", (event) => event.preventDefault());
 
 els.nextGameEdit.addEventListener("click", () => void openMatchOverrideEditor());
+els.nextGameMenuTrigger.addEventListener("click", (event) => {
+  event.stopPropagation();
+  toggleMatchCardMenu();
+});
+els.nextGameMenuEdit.addEventListener("click", () => {
+  closeMatchCardMenu();
+  void openMatchOverrideEditor();
+});
+els.nextGameMenuDelete.addEventListener("click", () => {
+  closeMatchCardMenu();
+  void deleteSelectedMatch();
+});
+document.addEventListener("click", (event) => {
+  if (!event.target.closest(".match-card-menu-wrap")) closeMatchCardMenu();
+});
+els.deletedMatchList.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-restore-match-id]");
+  if (button?.dataset?.restoreMatchId) void restoreDeletedMatch(button.dataset.restoreMatchId);
+});
 els.matchOverrideForm.addEventListener("submit", saveMatchOverride);
 els.matchOverrideReset.addEventListener("click", resetMatchOverride);
 els.matchOverrideCancel.addEventListener("click", () => els.matchOverrideDialog.close());

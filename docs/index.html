@@ -11,17 +11,17 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="BallerWatch">
   <title>BallerWatch</title>
-  <link rel="manifest" href="./manifest.webmanifest?v=6.3.3">
-  <link rel="icon" href="./icon.svg?v=6.3.3" type="image/svg+xml">
-  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=6.3.3">
-  <link rel="stylesheet" href="./styles.css?v=6.3.3">
+  <link rel="manifest" href="./manifest.webmanifest?v=6.4.0">
+  <link rel="icon" href="./icon.svg?v=6.4.0" type="image/svg+xml">
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=6.4.0">
+  <link rel="stylesheet" href="./styles.css?v=6.4.0">
 </head>
 <body>
   <div class="status-bar-glass" aria-hidden="true"></div>
   <main class="shell">
     <header class="hero">
       <div class="brand-lockup">
-        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=6.3.3" alt=""></div>
+        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=6.4.0" alt=""></div>
         <div>
           <p class="eyebrow">SOCCER AT A GLANCE</p>
           <h1>BallerWatch</h1>
@@ -67,7 +67,18 @@
               <p class="eyebrow" id="spotlight-label">NEXT GAME</p>
               <h2 id="next-game-title">Loading…</h2>
             </div>
-            <span class="status-dot" id="next-game-type">Upcoming</span>
+            <div class="match-card-menu-wrap">
+              <button class="status-dot match-card-menu-trigger" id="next-game-menu-trigger"
+                type="button" aria-haspopup="menu" aria-expanded="false">
+                <span id="next-game-type">Upcoming</span>
+                <span class="match-card-menu-glyph" aria-hidden="true">•••</span>
+              </button>
+              <div class="match-card-menu" id="next-game-menu" role="menu" hidden>
+                <button id="next-game-menu-edit" type="button" role="menuitem">Edit</button>
+                <button class="match-card-menu-delete" id="next-game-menu-delete"
+                  type="button" role="menuitem">Delete</button>
+              </div>
+            </div>
           </div>
           <p class="next-game-meta" id="next-game-meta"></p>
           <p class="next-game-location muted" id="next-game-location"></p>
@@ -89,8 +100,8 @@
           </div>
           <p class="hint" id="next-game-hint"></p>
           <div class="match-card-footer">
-            <p class="match-update-credit" id="next-game-updated"></p>
             <button class="match-edit-link" id="next-game-edit" type="button">Edit</button>
+            <p class="match-update-credit" id="next-game-updated"></p>
           </div>
         </div>
       </section>
@@ -268,6 +279,13 @@
           <p class="hint" id="user-create-status"></p>
         </section>
 
+        <section id="deleted-match-management" hidden>
+          <div class="settings-divider"></div>
+          <h3 class="settings-subheading">Deleted matches</h3>
+          <div class="deleted-match-list" id="deleted-match-list"></div>
+          <p class="hint">Delete only hides a match from BallerWatch. The RSVP/RATS source and Google Calendar are not deleted.</p>
+        </section>
+
         <section id="release-management" hidden>
           <div class="settings-divider"></div>
           <h3 class="settings-subheading">App update</h3>
@@ -360,6 +378,6 @@
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=6.3.3"></script>
+  <script type="module" src="./app.js?v=6.4.0"></script>
 </body>
 </html>

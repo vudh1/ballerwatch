@@ -14,17 +14,17 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /manifest\.webmanifest/);
   assert.match(html, /apple-touch-icon\.png/);
   assert.match(html, /class="brand-icon"/);
-  assert.match(html, /icon\.svg\?v=6\.3\.3/);
+  assert.match(html, /icon\.svg\?v=6\.4\.0/);
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=6\.3\.3/);
-  assert.match(html, /app\.js\?v=6\.3\.3/);
+  assert.match(html, /styles\.css\?v=6\.4\.0/);
+  assert.match(html, /app\.js\?v=6\.4\.0/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v6-3-3-shell/);
+  assert.match(sw, /ballerwatch-v6-4-0-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -80,7 +80,7 @@ test("Home Screen install prompt uses the same card layout system as dashboard c
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=6\.3\.3/);
+  assert.match(app, /sw\.js\?v=6\.4\.0/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -1007,4 +1007,22 @@ test("admin Settings can safely dispatch the existing production promotion workf
   assert.match(worker, /githubFile\(env, "features\/versions\.json", PRODUCTION_REF\)/);
   assert.match(worker, /dispatchWorkflow\(env, "promote-release\.yml", \{\}, "main"\)/);
   assert.match(worker, /async function dispatchWorkflow\(env, workflow, inputs = \{\}, ref = PRODUCTION_REF\)/);
+});
+
+
+test("match type pill opens Edit/Delete menu and freshness is isolated in footer", () => {
+  const html = fs.readFileSync("docs/index.html", "utf8");
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  const css = fs.readFileSync("docs/styles.css", "utf8");
+  assert.match(html, /id="next-game-menu-trigger"/);
+  assert.match(html, /id="next-game-menu-edit"/);
+  assert.match(html, /id="next-game-menu-delete"/);
+  assert.match(html, /id="deleted-match-management"/);
+  assert.match(app, /toggleMatchCardMenu/);
+  assert.match(app, /deleteSelectedMatch/);
+  assert.match(app, /restoreDeletedMatch/);
+  assert.match(app, /\/web\/user\/match/);
+  assert.match(css, /\.match-card-menu \{/);
+  assert.match(css, /\.match-card-footer[\s\S]*grid-template-columns:\s*1fr/);
+  assert.match(css, /\.match-card-footer \.match-update-credit[\s\S]*font-size:\s*0\.60rem/);
 });

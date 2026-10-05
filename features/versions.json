@@ -1,7 +1,25 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "6.3.3",
+  "currentVersion": "6.4.0",
   "releases": [
+    {
+      "version": "6.4.0",
+      "date": "2026-10-05",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Match-card action menu, reversible delete, and weather repair",
+      "webAnnouncement": "Match cards now have an Edit/Delete menu, deleted matches can be restored, and Jefferson Park Free Pickup weather is repaired.",
+      "changes": [
+        "Turned the Pickup / League / Free Pickup pill in the selected card's upper-right corner into an action menu with Edit and Delete.",
+        "Added encrypted BallerWatch-only soft delete keyed by immutable match ID; deleted matches disappear from cards, Q&A, weather, and reminder surfaces without deleting the upstream RSVP/RATS source or Google Calendar.",
+        "Added Settings → Deleted matches with Restore so match deletion is reversible.",
+        "Kept the subtle footer Edit link, but moved Updated/Manual override freshness text onto its own lower footer row with smaller, dimmer typography so it no longer crowds the action.",
+        "Diagnosed missing weather on newly generated Saturday games from production logs: Jefferson Park Free Pickup was unresolved by Nominatim while normal league/pickup forecasts were healthy.",
+        "Changed Jefferson Park's weather/maps query to the concrete soccer-field address and added the existing Seattle-area weather fallback for Free Pickup if venue geocoding is unavailable.",
+        "Changing match visibility triggers the existing watchdog weather refresh path so restored/deleted games reconcile with weather state.",
+        "Bumped the PWA shell to 6.4.0."
+      ]
+    },
     {
       "version": "6.3.3",
       "date": "2026-10-03",

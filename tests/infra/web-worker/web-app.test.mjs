@@ -727,3 +727,78 @@ test("Saturday free pickup can become the next game without exposing RSVP state"
   assert.equal(details.location, "Jefferson Park Playfield");
   assert.equal(details.rsvpUrl, "");
 });
+
+
+test("web calendar omits encrypted soft-deleted pickup, league, and free-pickup matches", () => {
+  const snapshot = {
+    pickup: {
+      dates: [{ date: "2099-10-08" }],
+      events: {
+        "2099-10-08": {
+          ok: true,
+          reserved: 8,
+          capacity: 16,
+          startTime: "20:00",
+          endTime: "22:00",
+        },
+      },
+    },
+    pickupPrivate: {
+      events: {
+        "2099-10-08": {
+          fieldName: "Pickup Field",
+          address: "Seattle, WA",
+          players: [],
+          waitlist: [],
+        },
+      },
+    },
+    league: {
+      teams: [{
+        name: "Team Alpha",
+        matches: [{
+          key: "v2:delete-me",
+          team: "Team Alpha",
+          opponent: "Team Beta",
+          date: "2099-10-09",
+          startTime: "19:00",
+          endTime: "21:00",
+          location: "League Field",
+        }],
+      }],
+    },
+    settings: {
+      hiddenMatches: {
+        "pickup:2099-10-08": {
+          id: "pickup:2099-10-08",
+          label: "Pickup",
+          date: "2099-10-08",
+          hiddenAt: "2099-10-01T12:00:00Z",
+        },
+        "league:v2:delete-me": {
+          id: "league:v2:delete-me",
+          label: "Team Alpha vs Team Beta",
+          date: "2099-10-09",
+          hiddenAt: "2099-10-01T12:00:00Z",
+        },
+        "free:2099-10-10": {
+          id: "free:2099-10-10",
+          label: "Free Pickup",
+          date: "2099-10-10",
+          hiddenAt: "2099-10-01T12:00:00Z",
+        },
+      },
+    },
+  };
+
+  const calendar = webCalendarDetails(
+    snapshot,
+    {},
+    14,
+    "2099-10-01",
+    new Date("2099-10-01T12:00:00Z"),
+  );
+  assert.equal(calendar.games.some((game) => game.id === "pickup:2099-10-08"), false);
+  assert.equal(calendar.games.some((game) => game.id === "league:v2:delete-me"), false);
+  assert.equal(calendar.games.some((game) => game.id === "free:2099-10-10"), false);
+});

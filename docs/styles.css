@@ -3401,3 +3401,130 @@ html.is-standalone .status-bar-glass {
     width: 100%;
   }
 }
+
+
+/* v6.4 match-card menu, reversible delete, and quieter freshness footer */
+.match-card-menu-wrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.match-card-menu-trigger.status-dot {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  margin: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.match-card-menu-glyph {
+  color: #64748b;
+  font-size: 0.62rem;
+  letter-spacing: -0.08em;
+}
+
+.match-card-menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 0.38rem);
+  right: 0;
+  display: grid;
+  min-width: 8.5rem;
+  padding: 0.32rem;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 12px;
+  background: rgba(8, 18, 31, 0.98);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.38);
+}
+
+.match-card-menu[hidden] {
+  display: none;
+}
+
+.match-card-menu button {
+  width: 100%;
+  min-height: 2.3rem;
+  padding: 0.52rem 0.68rem;
+  border: 0;
+  border-radius: 9px;
+  color: #cbd5e1;
+  background: transparent;
+  text-align: left;
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.match-card-menu button:hover,
+.match-card-menu button:focus-visible {
+  background: rgba(148, 163, 184, 0.10);
+  color: #f8fafc;
+}
+
+.match-card-menu .match-card-menu-delete {
+  color: #fca5a5;
+}
+
+.match-card-footer {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.42rem;
+  align-items: start;
+  margin-top: 0.9rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.08);
+}
+
+.match-card-footer .match-edit-link {
+  justify-self: start;
+}
+
+.match-card-footer .match-update-credit {
+  justify-self: end;
+  margin: 0;
+  color: #475569;
+  font-size: 0.60rem;
+  line-height: 1.15;
+  opacity: 0.78;
+  letter-spacing: 0.015em;
+  text-align: right;
+}
+
+.deleted-match-list {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.65rem;
+}
+
+.deleted-match-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.68rem 0.75rem;
+  border-radius: 13px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: rgba(15, 23, 42, 0.38);
+}
+
+.deleted-match-meta {
+  min-width: 0;
+  display: grid;
+  gap: 0.15rem;
+}
+
+.deleted-match-meta strong {
+  color: #dbeafe;
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.deleted-match-meta span {
+  color: #64748b;
+  font-size: 0.64rem;
+  overflow-wrap: anywhere;
+}

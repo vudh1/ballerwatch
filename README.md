@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer operations PWA for pickup games and Seattle RATS league matches.
 
-**Current source version: 6.3.3**
+**Current source version: 6.4.0**
 
 **Production source of truth:** the commit pointed to by `production` and its published GitHub Release. `main` may be newer without changing the live app.
 
@@ -19,7 +19,7 @@ BallerWatch is a privacy-first soccer operations PWA for pickup games and Seattl
 - Supports answer-specific wrong-answer feedback without granting Settings access: double-click an answer on desktop, or press and hold it on touch; repeat the gesture to undo.
 - Lets a signed-in user submit encrypted feature requests with `/feature describe what you want`; only category/count aggregates are exposed publicly.
 - Synchronizes real RATS schedule changes to Google Calendar.
-- Lets the administrator apply encrypted manual date/time/location overrides to the selected match: tap the subtle Edit control in the selected match-card footer. If administrator sign-in is required, BallerWatch resumes directly into the requested match editor after authentication. Reset to source restores the discovered values immediately, even before Save, and removes a persisted override when one exists. Overrides also drive reminder timing and weather; RATS overrides additionally drive Google Calendar reconciliation.
+- Lets the administrator apply encrypted manual date/time/location overrides or soft-delete a selected match from BallerWatch: tap the subtle Edit control in the selected match-card footer. If administrator sign-in is required, BallerWatch resumes directly into the requested match editor after authentication. Reset to source restores the discovered values immediately, even before Save, and removes a persisted override when one exists. Overrides also drive reminder timing and weather; RATS overrides additionally drive Google Calendar reconciliation.
 
 **Live app:** https://vudh1.github.io/ballerwatch/
 
@@ -256,3 +256,8 @@ More operational detail is maintained under `docs/wiki/`.
 ## Copyright
 
 Copyright © 2026 BallerWatch. All rights reserved. See `COPYRIGHT.md` for the repository copyright notice and third-party attribution boundary.
+
+
+### Match card actions
+
+The Pickup / League / Free Pickup pill at the upper-right of the selected match card opens a small administrator menu with **Edit** and **Delete**. Delete is a reversible BallerWatch-only soft delete: it hides the stable match ID from BallerWatch cards, Q&A, weather, and reminder surfaces without deleting the RSVP/RATS source or Google Calendar. Deleted matches can be restored from **Settings → Deleted matches**.
