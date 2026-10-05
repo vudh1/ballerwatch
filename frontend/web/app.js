@@ -960,7 +960,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=7.0.8", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=7.0.9", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -1437,8 +1437,6 @@ function matchUpdatedText(value) {
   const date = new Date(value || "");
   if (Number.isNaN(date.getTime())) return "";
   return `Updated ${new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
     hour: "numeric",
     minute: "2-digit",
   }).format(date)}`;
@@ -1505,10 +1503,11 @@ function spotlightModel(game, label = "NEXT GAME") {
       game.weatherStale,
       game.weatherApproximate,
     ),
-    updated: game.overrideActive
-      ? ["Manual override", matchUpdatedText(game.overrideUpdatedAt || game.sourceUpdatedAt)]
-          .filter(Boolean).join(" · ")
-      : matchUpdatedText(game.sourceUpdatedAt),
+    updated: matchUpdatedText(
+      game.overrideActive
+        ? (game.overrideUpdatedAt || game.sourceUpdatedAt)
+        : game.sourceUpdatedAt,
+    ),
     rsvp: game.kind === "pickup" ? String(game.rsvpUrl || "") : "",
     rsvpConfirmed: game.kind === "pickup" && confirmedRsvpDates.has(game.date),
     rsvpWaitlisted: game.kind === "pickup" && waitlistedRsvpDates.has(game.date),
