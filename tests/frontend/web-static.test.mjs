@@ -12,19 +12,19 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
 
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   assert.match(html, /manifest\.webmanifest/);
-  assert.match(html, /apple-touch-icon\.png\?v=7\.0\.7/);
+  assert.match(html, /apple-touch-icon\.png\?v=7\.0\.8/);
   assert.match(html, /class="brand-icon"/);
-  assert.match(html, /icon\.svg\?v=7\.0\.7/);
+  assert.match(html, /icon\.svg\?v=7\.0\.8/);
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=7\.0\.7/);
-  assert.match(html, /app\.js\?v=7\.0\.7/);
+  assert.match(html, /styles\.css\?v=7\.0\.8/);
+  assert.match(html, /app\.js\?v=7\.0\.8/);
 
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v7-0-7-shell/);
+  assert.match(sw, /ballerwatch-v7-0-8-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -92,7 +92,7 @@ test("promotion watches Worker and Pages then refreshes the open PWA", () => {
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=7\.0\.7/);
+  assert.match(app, /sw\.js\?v=7\.0\.8/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -661,7 +661,7 @@ test("footer contains no secondary messaging shortcut", () => {
 });
 
 
-test("BallerWatch 7.0.7 uses the top-right bell and gear without bottom app tabs", () => {
+test("BallerWatch 7.0.8 uses the top-right bell and gear without bottom app tabs", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   assert.match(html, /id="settings-button"/);
@@ -685,7 +685,7 @@ test("page uses a soccer-pitch backdrop with readable translucent cards", () => 
   assert.match(icon, /A soccer pitch with a soccer ball/);
   assert.match(icon, /<circle cx="256" cy="256" r="54"\/>/);
   assert.match(icon, /translate\(347 344\)/);
-  assert.match(manifest, /icon\.svg\?v=7\.0\.7/);
+  assert.match(manifest, /icon\.svg\?v=7\.0\.8/);
   assert.match(css, /\.card,[\s\S]*\.footer-install \{[\s\S]*rgba\(6, 18, 22, 0\.57\)/);
   assert.match(css, /\.spotlight-card \{[\s\S]*rgba\(4, 16, 22, 0\.72\)/);
   assert.match(css, /backdrop-filter:\s*blur\(24px\) saturate\(135%\)/);
@@ -718,6 +718,12 @@ test("notification center supports filters, synced read state, and account prefe
   assert.match(worker, /runtime\(user\): sync notification profile/);
   assert.match(css, /\.notification-filters \{/);
   assert.match(css, /\.notification-preferences \{/);
+  assert.match(html, /<span>App update<\/span>/);
+  assert.match(css, /\.notification-preference-options \{[\s\S]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(app, /const notificationProfileRefresh = ownerToken\(\)/);
+  assert.match(app, /loadNotificationProfile\(\{ migrateLocal: false \}\)/);
+  assert.match(app, /const \[calendarOk, boardOk, profileOk\] = await Promise\.all/);
+  assert.match(app, /Synced when active for @/);
 });
 
 test("match spotlight swipe uses connected neighboring cards like a carousel train", () => {
@@ -1076,7 +1082,7 @@ test("match override modal is independently centered and constrained", () => {
 });
 
 
-test("admin Settings can safely dispatch the existing production promotion workflow", () => {
+test("admin Settings presents production rollout only as an app update", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
@@ -1084,18 +1090,23 @@ test("admin Settings can safely dispatch the existing production promotion workf
   assert.match(html, /id="release-management"/);
   assert.match(html, /id="promote-release"/);
   assert.match(html, />App update</);
+  assert.match(html, /validated app-update workflow/);
   assert.match(app, /function renderReleaseStatus/);
   assert.match(app, /async function loadReleaseStatus/);
   assert.match(app, /async function promoteProductionRelease/);
   assert.match(app, /\/web\/user\/release-status/);
   assert.match(app, /\/web\/user\/promote-release/);
   assert.match(app, /Production \$\{production\} → Available \$\{source\}/);
-  assert.match(app, /Update app to \$\{source\}/);
+  assert.match(app, /promoteRelease\.textContent = "App update"/);
+  assert.match(app, /Start the BallerWatch \$\{version\} app update/);
   assert.match(app, /normal validation and release gates will still apply/);
+  assert.doesNotMatch(app, /Promote BallerWatch|Promotion requested|Requesting production promotion|Promotion is still deploying/);
 
   assert.match(worker, /userRoute\(url\.pathname, "release-status"\)/);
   assert.match(worker, /userRoute\(url\.pathname, "promote-release"\)/);
   assert.match(worker, /account\.role !== "admin"/);
+  assert.match(worker, /App update started for BallerWatch/);
+  assert.match(worker, /Unable to start the app update right now/);
   assert.match(worker, /githubFile\(env, "features\/versions\.json", "main"\)/);
   assert.match(worker, /githubFile\(env, "features\/versions\.json", PRODUCTION_REF\)/);
   assert.match(worker, /dispatchWorkflow\(env, "promote-release\.yml", \{\}, "main"\)/);
@@ -1134,10 +1145,18 @@ test("match type pill opens a touch-safe Edit/Delete action sheet and freshness 
   assert.match(css, /\.match-card-footer \.match-update-credit[\s\S]*font-size:\s*0\.60rem[\s\S]*text-align:\s*right/);
 });
 
-test("calendar freshness replaces the provider credit line and failed demos are removed", () => {
+test("calendar weather freshness sits in a subtle card footer without page watermark", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
-  assert.match(html, /class="calendar-updated calendar-update-credit" id="calendar-updated">Updated pending<\/p>/);
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
+  assert.match(
+    html,
+    /<div class="calendar-card-footer">\s*<p class="calendar-updated calendar-update-credit" id="calendar-updated">Updated pending<\/p>/,
+  );
+  assert.match(css, /\.calendar-card-footer \{[\s\S]*position:\s*absolute;[\s\S]*bottom:\s*0\.42rem;[\s\S]*border-top:/);
+  assert.match(css, /\.calendar-card-footer \.calendar-update-credit \{[\s\S]*font-size:\s*0\.56rem;[\s\S]*color:\s*rgba\(148, 163, 184, 0\.46\)/);
+  assert.doesNotMatch(html, /class="data-attribution"/);
+  assert.doesNotMatch(html, /Weather by|Open-Meteo|OpenStreetMap contributors/);
   assert.doesNotMatch(html, /class="weather-credit"/);
   assert.doesNotMatch(app, /Weather updated/);
   assert.match(app, /Updated pending/);
