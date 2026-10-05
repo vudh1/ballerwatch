@@ -1,3 +1,7 @@
+/**
+ * Reads only the pre-sanitized engineering review and category-only feature summary.
+ * Raw chat history and private feature-request text are intentionally never opened.
+ */
 import fs from "node:fs";
 import path from "node:path";
 import { decryptState } from "../backend/shared/state-crypto.mjs";
