@@ -3070,9 +3070,27 @@ els.matchOverrideReset.addEventListener("click", resetMatchOverride);
 els.matchOverrideCancel.addEventListener("click", () => els.matchOverrideDialog.close());
 els.closeMatchOverride.addEventListener("click", () => els.matchOverrideDialog.close());
 
+async function saveNotificationPreferencesFromUi() {
+  if (!accountNotificationStateActive()) return;
+  const channels = {
+    pickup: Boolean(els.notificationPrefPickup?.checked),
+    league: Boolean(els.notificationPrefLeague?.checked),
+    version: Boolean(els.notificationPrefVersion?.checked),
+  };
+  optimisticNotificationProfile({ channels });
+  renderNotificationPreferences();
+  await persistNotificationProfile({ channels }, { refreshPush: true });
+}
+
 els.notificationBell.addEventListener("click", openNotifications);
 els.settingsButton.addEventListener("click", openSettings);
-els.closeSettings.addEventListener("click", () => els.settingsDialog.close());
+els.tabHome?.addEventListener("click", openHomeTab);
+els.tabNotifications?.addEventListener("click", openNotifications);
+els.tabSettings?.addEventListener("click", openSettings);
+els.closeSettings.addEventListener("click", () => {
+  els.settingsDialog.close();
+  setActiveAppTab("home");
+});
 els.ownerLoginForm.addEventListener("submit", loginOwnerDevice);
 els.ownerSettingsForm.addEventListener("submit", saveOwnerSettings);
 els.ownerPasswordForm.addEventListener("submit", saveOwnerPassword);
@@ -3087,9 +3105,25 @@ els.ownerRevoke.addEventListener("click", revokeOwnerDevices);
 els.nextGameShare.addEventListener("click", shareNextGame);
 els.testNotification.addEventListener("click", scheduleTestNotification);
 els.deleteAllNotifications.addEventListener("click", deleteAllNotifications);
-els.closeNotifications.addEventListener("click", () => els.notificationDialog.close());
+els.markAllNotificationsRead?.addEventListener("click", markAllNotificationsRead);
+els.closeNotifications.addEventListener("click", () => {
+  els.notificationDialog.close();
+  setActiveAppTab("home");
+});
 els.closeNotificationReader.addEventListener("click", closeNotificationReader);
-els.refresh.addEventListener("click", loadBoard);
+els.refresh.addEventListener("click", () => {
+  void Promise.all([loadBoard(), loadNotificationProfile({ migrateLocal: false })]);
+});
+for (const button of els.notificationFilters) {
+  button.addEventListener("click", () => setNotificationFilter(button.dataset.notificationFilter));
+}
+for (const input of [
+  els.notificationPrefPickup,
+  els.notificationPrefLeague,
+  els.notificationPrefVersion,
+]) {
+  input?.addEventListener("change", () => void saveNotificationPreferencesFromUi());
+}
 els.bellPushToggle.addEventListener("change", async () => {
   const requested = els.bellPushToggle.checked;
   els.bellPushToggle.disabled = true;
@@ -3123,21 +3157,27 @@ document.addEventListener("visibilitychange", () => {
     return;
   }
   refreshLiveData().catch(() => null);
+  loadNotificationProfile({ migrateLocal: false }).catch(() => null);
   checkForAppUpdate().catch(() => null);
 });
 
 document.documentElement.classList.toggle("is-standalone", standalone());
 applyInstallState();
+setActiveAppTab("home");
+setNotificationFilter("all");
+renderNotificationPreferences();
 setSystemState("checking");
 const [, configOk, boardOk, calendarOk] = await Promise.all([
   registerServiceWorker().catch(() => null),
   loadConfig(),
   loadBoard(),
   loadCalendar(),
+  loadNotificationProfile(),
 ]);
 setSystemState(configOk && boardOk && calendarOk ? "live" : "offline");
 initialLoadComplete = true;
 await updatePushStatus();
+if (ownerToken()) void syncCurrentPushRegistration();
 
 window.setInterval(() => {
   refreshLiveData().catch(() => null);
