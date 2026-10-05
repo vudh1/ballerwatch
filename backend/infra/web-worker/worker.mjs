@@ -1289,11 +1289,17 @@ async function deleteManagedUser(env, usernameValue) {
         throw new Error("User account not found.");
       }
       delete users[username];
+      const profiles = { ...notificationProfiles(current.settings) };
+      delete profiles[username];
       await githubStatePut(
         env,
         "state/user.json",
         await encryptState({
-          settings: { ...current.settings, webUsers: users },
+          settings: {
+            ...current.settings,
+            webUsers: users,
+            notificationProfiles: profiles,
+          },
         }, env),
         record.sha,
         "runtime(user): remove user account",
