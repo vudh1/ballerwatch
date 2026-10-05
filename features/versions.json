@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.0.2",
+  "currentVersion": "7.0.3",
   "releases": [
+    {
+      "version": "7.0.3",
+      "date": "2026-10-05",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Single-rail match-card swipe alignment",
+      "webAnnouncement": "BallerWatch keeps the current and adjacent match cards on the exact same horizontal rail while you swipe.",
+      "changes": [
+        "Anchored the swipe preview to the live match card’s actual layout position instead of assuming the card begins at the carousel origin.",
+        "Matched the preview width and height to the live card before drag and settle animations so adjacent cards remain vertically aligned.",
+        "Added regression coverage for preview top, left, width, and height geometry and bumped the installed PWA cache to 7.0.3."
+      ]
+    },
     {
       "version": "7.0.2",
       "date": "2026-10-05",

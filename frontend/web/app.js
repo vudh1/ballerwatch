@@ -960,7 +960,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=7.0.2", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=7.0.3", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -1963,12 +1963,22 @@ function installSpotlightSwipe() {
     return Number.isFinite(value) ? value : 0;
   };
 
-  const trainDistance = () => {
-    const cardWidth = current.getBoundingClientRect().width;
-    const width = Number.isFinite(cardWidth) && cardWidth > 0
-      ? cardWidth
+  const trainGeometry = () => {
+    const cardRect = current.getBoundingClientRect();
+    const width = Number.isFinite(cardRect.width) && cardRect.width > 0
+      ? cardRect.width
       : carousel.clientWidth;
-    return width + gap();
+    const height = Number.isFinite(cardRect.height) && cardRect.height > 0
+      ? cardRect.height
+      : current.offsetHeight;
+
+    return {
+      left: current.offsetLeft,
+      top: current.offsetTop,
+      width,
+      height,
+      distance: width + gap(),
+    };
   };
 
   const clearInlineMotion = () => {
@@ -2000,7 +2010,15 @@ function installSpotlightSwipe() {
     const preview = buildSpotlightTrainCard(target.game);
     carousel.append(preview);
 
-    const distance = trainDistance();
+    const geometry = trainGeometry();
+    preview.style.left = `${geometry.left}px`;
+    preview.style.top = `${geometry.top}px`;
+    preview.style.width = `${geometry.width}px`;
+    if (Number.isFinite(geometry.height) && geometry.height > 0) {
+      preview.style.height = `${geometry.height}px`;
+    }
+
+    const distance = geometry.distance;
     const baseOffset = direction * distance;
     preview.style.transform = `translate3d(${baseOffset}px, 0, 0)`;
 

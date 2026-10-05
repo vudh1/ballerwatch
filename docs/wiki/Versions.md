@@ -44,7 +44,7 @@ This means an installed app should not need to be manually closed and reopened a
 
 ## BallerWatch 7
 
-Version 7 introduces account-backed notification state, a filtered Inbox, per-account notification categories, installed-app badge synchronization, and a cleaner modular PWA client. In 7.0.1, Inbox and Settings returned to the top-right bell and gear instead of persistent bottom tabs. In 7.0.2, adjacent match cards were tightened into a true edge-to-edge sliding train.
+Version 7 introduces account-backed notification state, a filtered Inbox, per-account notification categories, installed-app badge synchronization, and a cleaner modular PWA client. In 7.0.1, Inbox and Settings returned to the top-right bell and gear instead of persistent bottom tabs. In 7.0.2, adjacent match cards were tightened into a true edge-to-edge sliding train. In 7.0.3, the adjacent preview is locked to the live card’s exact rendered rail so both cards stay vertically aligned throughout drag and settle.
 
 Signed-in Inbox read/delete state is merged into the encrypted user profile so multiple devices converge instead of keeping unrelated local histories. Signed-out devices keep a local fallback until the user signs in.
 

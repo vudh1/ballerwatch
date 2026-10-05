@@ -14,17 +14,17 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /manifest\.webmanifest/);
   assert.match(html, /apple-touch-icon\.png/);
   assert.match(html, /class="brand-icon"/);
-  assert.match(html, /icon\.svg\?v=7\.0\.2/);
+  assert.match(html, /icon\.svg\?v=7\.0\.3/);
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=7\.0\.2/);
-  assert.match(html, /app\.js\?v=7\.0\.2/);
+  assert.match(html, /styles\.css\?v=7\.0\.3/);
+  assert.match(html, /app\.js\?v=7\.0\.3/);
 
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v7-0-2-shell/);
+  assert.match(sw, /ballerwatch-v7-0-3-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -92,7 +92,7 @@ test("promotion watches Worker and Pages then refreshes the open PWA", () => {
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=7\.0\.2/);
+  assert.match(app, /sw\.js\?v=7\.0\.3/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -661,7 +661,7 @@ test("footer contains no secondary messaging shortcut", () => {
 });
 
 
-test("BallerWatch 7.0.2 uses the top-right bell and gear without bottom app tabs", () => {
+test("BallerWatch 7.0.3 uses the top-right bell and gear without bottom app tabs", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   assert.match(html, /id="settings-button"/);
@@ -741,9 +741,15 @@ test("match spotlight swipe uses connected neighboring cards like a carousel tra
   assert.match(app, /classList\.add\("spotlight-train-card"\)/);
   assert.match(app, /preview\.style\.transform = `translate3d/);
   assert.match(app, /current\.style\.transform = `translate3d/);
-  assert.match(app, /const trainDistance = \(\) =>/);
-  assert.match(app, /current\.getBoundingClientRect\(\)\.width/);
-  assert.match(app, /return width \+ gap\(\)/);
+  assert.match(app, /const trainGeometry = \(\) =>/);
+  assert.match(app, /const cardRect = current\.getBoundingClientRect\(\)/);
+  assert.match(app, /left:\s*current\.offsetLeft/);
+  assert.match(app, /top:\s*current\.offsetTop/);
+  assert.match(app, /distance:\s*width \+ gap\(\)/);
+  assert.match(app, /preview\.style\.left = `\$\{geometry\.left\}px`/);
+  assert.match(app, /preview\.style\.top = `\$\{geometry\.top\}px`/);
+  assert.match(app, /preview\.style\.width = `\$\{geometry\.width\}px`/);
+  assert.match(app, /preview\.style\.height = `\$\{geometry\.height\}px`/);
   assert.doesNotMatch(app, /carousel\.clientWidth \+ gap\(\)/);
   assert.match(app, /committedTrain\.preview\.style\.transform = "translate3d\(0, 0, 0\)"/);
   assert.match(app, /selectCalendarDate\(committedTrain\.target\.date\)/);
