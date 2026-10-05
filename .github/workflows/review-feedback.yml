@@ -2,6 +2,11 @@ name: Review safe feedback summaries
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/review-feedback.yml"
+      - "scripts/review-feedback.mjs"
 
 permissions:
   contents: read
