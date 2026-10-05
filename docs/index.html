@@ -11,17 +11,17 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="BallerWatch">
   <title>BallerWatch</title>
-  <link rel="manifest" href="./manifest.webmanifest?v=6.4.1">
-  <link rel="icon" href="./icon.svg?v=6.4.1" type="image/svg+xml">
-  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=6.4.1">
-  <link rel="stylesheet" href="./styles.css?v=6.4.1">
+  <link rel="manifest" href="./manifest.webmanifest?v=6.4.3">
+  <link rel="icon" href="./icon.svg?v=6.4.3" type="image/svg+xml">
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=6.4.3">
+  <link rel="stylesheet" href="./styles.css?v=6.4.3">
 </head>
 <body>
   <div class="status-bar-glass" aria-hidden="true"></div>
   <main class="shell">
     <header class="hero">
       <div class="brand-lockup">
-        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=6.4.1" alt=""></div>
+        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=6.4.3" alt=""></div>
         <div>
           <p class="eyebrow">SOCCER AT A GLANCE</p>
           <h1>BallerWatch</h1>
@@ -89,6 +89,7 @@
           </div>
           <p class="next-game-meta" id="next-game-meta"></p>
           <p class="next-game-location muted" id="next-game-location"></p>
+          <div class="next-game-weather" id="next-game-weather" hidden></div>
           <div class="next-game-capacity" id="next-game-capacity" hidden>
             <div class="next-game-capacity-row">
               <span class="next-game-capacity-label" id="next-game-capacity-label"></span>
@@ -98,10 +99,9 @@
               <span class="next-game-capacity-fill" id="next-game-capacity-fill"></span>
             </div>
           </div>
-          <div class="next-game-weather" id="next-game-weather" hidden></div>
+          <a class="button-link pickup-rsvp-link next-game-rsvp-pill" id="next-game-rsvp"
+            target="_blank" rel="noopener" hidden>RSVP</a>
           <div class="button-row next-game-actions" id="next-game-actions" hidden>
-            <a class="button-link pickup-rsvp-link" id="next-game-rsvp"
-              target="_blank" rel="noopener" hidden>RSVP</a>
             <a class="button-link" id="next-game-directions" target="_blank" rel="noopener">Directions</a>
             <button class="secondary" id="next-game-share" type="button">Share</button>
           </div>
@@ -119,13 +119,10 @@
           <p class="eyebrow">MATCH DAYS</p>
           <h2 id="calendar-title">14-Day Calendar</h2>
         </div>
-        <div class="calendar-heading-actions">
-          <span class="calendar-updated" id="calendar-updated">Weather every 6h</span>
-        </div>
       </div>
       <div class="calendar-grid" id="calendar-grid" aria-label="Two-week game calendar"></div>
       <div class="calendar-game-picker" id="calendar-game-picker" hidden></div>
-      <p class="weather-credit">Weather: Open-Meteo · Venue geocoding: © OpenStreetMap contributors</p>
+      <p class="calendar-updated calendar-update-credit" id="calendar-updated">Updated pending</p>
     </section>
 
     <section class="card ask-card">
@@ -172,6 +169,11 @@
         <a href="https://github.com/vudh1/ballerwatch/wiki">Wiki</a>
         <span>•</span>
         <span class="copyright">© 2026 BallerWatch. All rights reserved.</span>
+      </div>
+      <div class="data-attribution">
+        Weather by <a href="https://open-meteo.com/">Open-Meteo</a>
+        <span>·</span>
+        Venue data © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>
       </div>
     </footer>
   </main>
@@ -384,6 +386,6 @@
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=6.4.1"></script>
+  <script type="module" src="./app.js?v=6.4.3"></script>
 </body>
 </html>
