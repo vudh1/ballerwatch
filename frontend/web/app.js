@@ -1,14 +1,31 @@
 /**
  * Copyright © 2026 BallerWatch. All rights reserved.
  *
- * BallerWatch PWA client: renders the dashboard, read-only Q&A, notifications,
- * user Settings, connected-card navigation, and installed-app update behavior.
- *
- * v6.0 is web-only. Legacy `owner-*` DOM IDs and the existing localStorage
- * token key remain for installed-client compatibility, while authentication,
- * recovery, settings, Q&A, and notifications are all web-native.
+ * BallerWatch 7 PWA shell. Network/session and notification persistence are
+ * split into focused modules so app.js can concentrate on view orchestration.
  */
-const API = "https://ballerwatch-web.vudhone.workers.dev";
+import {
+  API_ORIGIN as API,
+  SESSION_TOKEN_KEY,
+  SESSION_USERNAME_KEY,
+  authHeaders,
+  clearSession,
+  requestJson as api,
+  saveSession,
+  saveSessionUsername,
+  sessionToken,
+  sessionUsername,
+} from "./lib/client.js";
+import {
+  LOCAL_NOTIFICATION_DELETED_KEY,
+  LOCAL_NOTIFICATION_READ_KEY,
+  clearLocalNotificationProfile,
+  localNotificationIds,
+  localNotificationProfile,
+  normalizedNotificationChannels,
+  normalizedNotificationProfile,
+  saveLocalNotificationIds,
+} from "./lib/notification-state.js";
 
 const els = {
   system: document.querySelector("#system-status"),
@@ -62,6 +79,17 @@ const els = {
   notificationReaderTime: document.querySelector("#notification-reader-time"),
   bellPushToggle: document.querySelector("#bell-push-toggle"),
   bellPushStatus: document.querySelector("#bell-push-status"),
+  notificationFilters: [...document.querySelectorAll("[data-notification-filter]")],
+  markAllNotificationsRead: document.querySelector("#mark-all-notifications-read"),
+  notificationPreferences: document.querySelector("#notification-preferences"),
+  notificationPrefPickup: document.querySelector("#notification-pref-pickup"),
+  notificationPrefLeague: document.querySelector("#notification-pref-league"),
+  notificationPrefVersion: document.querySelector("#notification-pref-version"),
+  notificationSyncStatus: document.querySelector("#notification-sync-status"),
+  tabHome: document.querySelector("#tab-home"),
+  tabNotifications: document.querySelector("#tab-notifications"),
+  tabSettings: document.querySelector("#tab-settings"),
+  tabNotificationBadge: document.querySelector("#tab-notification-badge"),
   form: document.querySelector("#question-form"),
   question: document.querySelector("#question"),
   answer: document.querySelector("#answer"),
@@ -139,13 +167,16 @@ let feedbackId = "";
 let feedbackInFlight = false;
 let currentUserSettings = null;
 let currentReleaseStatus = null;
+let currentNotificationProfile = null;
+let notificationFilter = "all";
+let notificationSyncPromise = Promise.resolve();
 let pendingMatchAdminAction = "";
 let matchOverrideSourceState = null;
 
-const OWNER_TOKEN_KEY = "ballerwatch-owner-token";
-const OWNER_USERNAME_KEY = "ballerwatch-user-name";
-const NOTIFICATION_READ_KEY = "ballerwatch-notification-read-v1";
-const NOTIFICATION_DELETED_KEY = "ballerwatch-notification-deleted-v1";
+const OWNER_TOKEN_KEY = SESSION_TOKEN_KEY;
+const OWNER_USERNAME_KEY = SESSION_USERNAME_KEY;
+const NOTIFICATION_READ_KEY = LOCAL_NOTIFICATION_READ_KEY;
+const NOTIFICATION_DELETED_KEY = LOCAL_NOTIFICATION_DELETED_KEY;
 const QUESTION_HISTORY_KEY = "ballerwatch-question-history-v1";
 const LIVE_DATA_REFRESH_MS = 60_000;
 const APP_UPDATE_CHECK_MS = 5 * 60_000;
@@ -438,12 +469,11 @@ function subscriptionMatchesConfig(subscription) {
 }
 
 function ownerToken() {
-  return localStorage.getItem(OWNER_TOKEN_KEY) || "";
+  return sessionToken();
 }
 
 function ownerHeaders() {
-  const token = ownerToken();
-  return token ? { authorization: `Bearer ${token}` } : {};
+  return authHeaders();
 }
 
 async function loadRsvpStatus() {
@@ -468,42 +498,9 @@ async function loadRsvpStatus() {
   } catch (error) {
     confirmedRsvpDates = new Set();
     waitlistedRsvpDates = new Set();
-    if (error.status === 401) localStorage.removeItem(OWNER_TOKEN_KEY);
+    if (error.status === 401) clearSession();
     return false;
   }
-}
-
-async function api(path, options = {}) {
-  const { retryNetwork = false, ...requestOptions } = options;
-  const attempts = retryNetwork ? 2 : 1;
-  let lastError = null;
-
-  for (let attempt = 0; attempt < attempts; attempt += 1) {
-    try {
-      const response = await fetch(API + path, {
-        cache: "no-store",
-        ...requestOptions,
-        headers: {
-          "content-type": "application/json",
-          ...(requestOptions.headers || {}),
-        },
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok || payload.ok === false) {
-        const error = new Error(payload.error || `Request failed (HTTP ${response.status})`);
-        error.status = response.status;
-        throw error;
-      }
-      return payload;
-    } catch (error) {
-      lastError = error;
-      const networkFailure = error instanceof TypeError || /load failed|failed to fetch/i.test(String(error?.message || ""));
-      if (!retryNetwork || !networkFailure || attempt === attempts - 1) throw error;
-      await new Promise((resolve) => window.setTimeout(resolve, 250));
-    }
-  }
-
-  throw lastError || new Error("Request failed.");
 }
 
 function showLoginSettings(message = "") {
@@ -511,7 +508,7 @@ function showLoginSettings(message = "") {
   els.settingsLoginView.hidden = false;
   els.settingsOwnerView.hidden = true;
   if (els.ownerLoginUsername) {
-    els.ownerLoginUsername.value = localStorage.getItem(OWNER_USERNAME_KEY) || "admin";
+    els.ownerLoginUsername.value = sessionUsername();
   }
   els.ownerLoginStatus.textContent = message;
 }
@@ -574,8 +571,8 @@ function showOwnerSettings(settings) {
   currentUserSettings = settings || null;
   els.settingsLoginView.hidden = true;
   els.settingsOwnerView.hidden = false;
-  const username = settings?.username || localStorage.getItem(OWNER_USERNAME_KEY) || "admin";
-  localStorage.setItem(OWNER_USERNAME_KEY, username);
+  const username = settings?.username || sessionUsername();
+  saveSessionUsername(username);
   els.currentUserSummary.textContent =
     `Signed in as @${username} · ${settings?.role === "admin" ? "Administrator" : "User"}`;
   els.ownerName.value = settings?.ownerName || "";
@@ -615,7 +612,7 @@ async function loadOwnerSettings() {
     }
   } catch (error) {
     if (error.status === 401) {
-      localStorage.removeItem(OWNER_TOKEN_KEY);
+      clearSession();
       showLoginSettings("Sign in again to edit user settings.");
       return;
     }
@@ -664,7 +661,7 @@ async function loadReleaseStatus() {
       : "Production already matches the current source version.";
   } catch (error) {
     if (error.status === 401) {
-      localStorage.removeItem(OWNER_TOKEN_KEY);
+      clearSession();
       showLoginSettings("Sign in again to manage app updates.");
       return;
     }
@@ -706,7 +703,7 @@ async function promoteProductionRelease() {
     }
   } catch (error) {
     if (error.status === 401) {
-      localStorage.removeItem(OWNER_TOKEN_KEY);
+      clearSession();
       showLoginSettings("Sign in again to promote an app update.");
       return;
     }
@@ -738,8 +735,10 @@ async function loginOwnerDevice(event) {
       method: "POST",
       body: JSON.stringify({ username, password }),
     });
-    localStorage.setItem(OWNER_TOKEN_KEY, payload.token);
-    localStorage.setItem(OWNER_USERNAME_KEY, payload.username || username || "admin");
+    saveSession({
+      token: payload.token,
+      username: payload.username || username || "admin",
+    });
     els.ownerLoginPassword.value = "";
     const resumeMatchAction = pendingMatchAdminAction;
     await loadOwnerSettings();
@@ -798,7 +797,7 @@ async function saveOwnerSettings(event) {
       : "Saved. Monitoring updates on the next league refresh.";
   } catch (error) {
     if (error.status === 401) {
-      localStorage.removeItem(OWNER_TOKEN_KEY);
+      clearSession();
       showLoginSettings("Sign in again to edit user settings.");
     } else {
       els.ownerSettingsStatus.textContent = error.message;
@@ -828,7 +827,7 @@ async function createManagedUser(event) {
     els.userCreateStatus.textContent = "User added.";
   } catch (error) {
     if (error.status === 401) {
-      localStorage.removeItem(OWNER_TOKEN_KEY);
+      clearSession();
       showLoginSettings("Sign in again to manage users.");
     } else {
       els.userCreateStatus.textContent = error.message;
@@ -873,15 +872,14 @@ async function saveOwnerPassword(event) {
       headers: ownerHeaders(),
       body: JSON.stringify({ password }),
     });
-    if (payload.token) localStorage.setItem(OWNER_TOKEN_KEY, payload.token);
-    if (payload.username) localStorage.setItem(OWNER_USERNAME_KEY, payload.username);
+    saveSession({ token: payload.token, username: payload.username });
     els.ownerPasswordNew.value = "";
     els.ownerPasswordConfirm.value = "";
     els.ownerPasswordStatus.textContent = payload.message ||
       "Password saved. Your other sessions were revoked.";
   } catch (error) {
     if (error.status === 401) {
-      localStorage.removeItem(OWNER_TOKEN_KEY);
+      clearSession();
       showLoginSettings("Sign in again to change your password.");
     } else {
       els.ownerPasswordStatus.textContent = error.message;
@@ -892,7 +890,7 @@ async function saveOwnerPassword(event) {
 }
 
 function disconnectOwnerDevice() {
-  localStorage.removeItem(OWNER_TOKEN_KEY);
+  clearSession();
   confirmedRsvpDates = new Set();
   waitlistedRsvpDates = new Set();
   if (currentNextGame) {
@@ -910,7 +908,7 @@ async function revokeOwnerDevices() {
       headers: ownerHeaders(),
       body: "{}",
     });
-    localStorage.removeItem(OWNER_TOKEN_KEY);
+    clearSession();
     confirmedRsvpDates = new Set();
     waitlistedRsvpDates = new Set();
     if (currentNextGame) {
@@ -919,7 +917,7 @@ async function revokeOwnerDevices() {
     showLoginSettings("All sessions for this user were revoked. Sign in again when needed.");
   } catch (error) {
     if (error.status === 401) {
-      localStorage.removeItem(OWNER_TOKEN_KEY);
+      clearSession();
       showLoginSettings("This sign-in has expired. Sign in again.");
     } else {
       els.ownerSettingsStatus.textContent = error.message;
@@ -1007,18 +1005,11 @@ function updateNotificationBadge(count) {
 }
 
 function storedNotificationIds(key) {
-  try {
-    const value = JSON.parse(localStorage.getItem(key) || "[]");
-    return new Set(Array.isArray(value) ? value.map(String) : []);
-  } catch {
-    return new Set();
-  }
+  return localNotificationIds(key);
 }
 
 function saveNotificationIds(key, values) {
-  try {
-    localStorage.setItem(key, JSON.stringify([...values].slice(-160)));
-  } catch {}
+  saveLocalNotificationIds(key, values);
 }
 
 function notificationId(item) {
@@ -2229,7 +2220,7 @@ async function matchAdminSettings(pendingAction = "match-override") {
     return payload.settings;
   } catch (error) {
     if (error.status === 401) {
-      localStorage.removeItem(OWNER_TOKEN_KEY);
+      clearSession();
       await openSettings({ pendingAction });
       els.ownerLoginStatus.textContent =
         pendingAction === "match-delete"
@@ -2293,7 +2284,7 @@ async function deleteSelectedMatch({ authorized = false } = {}) {
     await loadCalendar();
   } catch (error) {
     if (error.status === 401) {
-      localStorage.removeItem(OWNER_TOKEN_KEY);
+      clearSession();
       await openSettings({ pendingAction: "match-delete" });
       els.ownerLoginStatus.textContent =
         "Sign in again. BallerWatch will return to the delete action.";
@@ -2377,7 +2368,7 @@ async function saveMatchOverride(event) {
     }, 180);
   } catch (error) {
     if (error.status === 401) {
-      localStorage.removeItem(OWNER_TOKEN_KEY);
+      clearSession();
       els.matchOverrideDialog.close();
       await openSettings();
       els.ownerLoginStatus.textContent = "Sign in again to edit match overrides.";
