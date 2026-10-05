@@ -3556,3 +3556,265 @@ html.is-standalone .status-bar-glass {
   font-size: 0.64rem;
   overflow-wrap: anywhere;
 }
+
+
+/* v7.0 app navigation, synced inbox, and in-surface panels */
+:root {
+  --app-tab-height: 4.75rem;
+}
+
+.shell {
+  padding-bottom: calc(7.25rem + env(safe-area-inset-bottom)) !important;
+}
+
+.app-tabs {
+  position: fixed;
+  left: 50%;
+  bottom: max(0.55rem, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 120;
+  width: min(calc(100% - 1rem), var(--app-surface-width));
+  min-height: var(--app-tab-height);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
+  padding: 0.45rem;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 24px;
+  background: rgba(13, 22, 37, 0.91);
+  box-shadow: 0 18px 50px rgba(2, 6, 23, 0.36);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+}
+
+.app-tab {
+  position: relative;
+  min-width: 0;
+  min-height: 3.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.22rem;
+  padding: 0.42rem 0.55rem;
+  border: 0;
+  border-radius: 18px;
+  background: transparent;
+  color: var(--muted);
+  box-shadow: none;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.app-tab:hover,
+.app-tab:focus-visible {
+  background: rgba(148, 163, 184, 0.08);
+  color: var(--text);
+}
+
+.app-tab.is-active {
+  background: rgba(96, 165, 250, 0.14);
+  color: #dbeafe;
+}
+
+.app-tab svg {
+  width: 1.35rem;
+  height: 1.35rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.app-tab-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.app-tab-badge {
+  position: absolute;
+  top: -0.42rem;
+  right: -0.72rem;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  padding: 0 0.26rem;
+  border: 2px solid rgba(13, 22, 37, 0.96);
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 0.95rem;
+  text-align: center;
+}
+
+.notification-dialog,
+.settings-dialog {
+  position: fixed;
+  inset: max(4.6rem, calc(env(safe-area-inset-top) + 3.35rem))
+    auto calc(var(--app-tab-height) + 1.45rem + env(safe-area-inset-bottom)) 50%;
+  transform: translateX(-50%);
+  width: min(calc(100% - 1rem), var(--app-surface-width));
+  max-width: var(--app-surface-width);
+  height: auto;
+  max-height: none;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 28px;
+  background: rgba(13, 22, 37, 0.985);
+  box-shadow: 0 22px 70px rgba(2, 6, 23, 0.5);
+  z-index: 100;
+}
+
+.notification-dialog .dialog-shell,
+.settings-dialog .dialog-shell {
+  height: 100%;
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.notification-dialog::backdrop,
+.settings-dialog::backdrop {
+  background: transparent;
+}
+
+.notification-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  margin: 0.75rem 0;
+}
+
+.notification-filters {
+  display: flex;
+  gap: 0.35rem;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.notification-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.notification-filter {
+  flex: 0 0 auto;
+  min-height: 2rem;
+  padding: 0.3rem 0.68rem;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.06);
+  color: var(--muted);
+  box-shadow: none;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.notification-filter.is-active {
+  border-color: rgba(96, 165, 250, 0.4);
+  background: rgba(96, 165, 250, 0.16);
+  color: #dbeafe;
+}
+
+.notification-preferences {
+  margin: 0.2rem 0 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 18px;
+  background: rgba(148, 163, 184, 0.045);
+}
+
+.notification-preferences.is-local-only {
+  opacity: 0.72;
+}
+
+.notification-preferences-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.55rem;
+}
+
+.notification-preferences-heading strong {
+  font-size: 0.82rem;
+}
+
+.notification-preferences-heading .hint {
+  margin: 0;
+  text-align: right;
+}
+
+.notification-preference-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.notification-preference-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  min-height: 2rem;
+  padding: 0.3rem 0.58rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.48);
+  color: var(--text);
+  font-size: 0.76rem;
+}
+
+.notification-preference-options input {
+  accent-color: #60a5fa;
+}
+
+.notice-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.notice-heading h3 {
+  min-width: 0;
+}
+
+.notice-channel {
+  flex: 0 0 auto;
+  padding: 0.18rem 0.44rem;
+  border-radius: 999px;
+  background: rgba(96, 165, 250, 0.1);
+  color: #bfdbfe;
+  font-size: 0.65rem;
+  font-weight: 750;
+  text-transform: capitalize;
+}
+
+@media (max-width: 560px) {
+  .notification-dialog,
+  .settings-dialog {
+    inset-top: max(4.1rem, calc(env(safe-area-inset-top) + 3rem));
+    border-radius: 24px;
+  }
+
+  .notification-toolbar,
+  .notification-preferences-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .notification-preferences-heading .hint {
+    text-align: left;
+  }
+}
+
+@media (display-mode: standalone) {
+  .app-tabs {
+    bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+}
