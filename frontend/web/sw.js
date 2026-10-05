@@ -4,8 +4,8 @@ const SHELL = [
   "./index.html",
   "./styles.css?v=7.0.0",
   "./app.js?v=7.0.0",
-  "./lib/client.js?v=7.0.0",
-  "./lib/notification-state.js?v=7.0.0",
+  "./lib/client.js",
+  "./lib/notification-state.js",
   "./manifest.webmanifest?v=7.0.0",
   "./icon.svg?v=7.0.0",
 ];
