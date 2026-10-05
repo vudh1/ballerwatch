@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { canonicalJson, digest, zonedIso } from "../../league/rats-utils.mjs";
+import { canonicalJson, digest, zonedIso } from "../../../backend/league/rats-utils.mjs";
 
 test("canonical digest matches legacy Python json.dumps hashing", () => {
   const sample = {b: 2, a: "é", arr: [true, null, "😀"]};

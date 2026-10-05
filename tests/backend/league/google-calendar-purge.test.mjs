@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { purgeCalendarEvents } from "../../league/google-calendar-purge.mjs";
+import { purgeCalendarEvents } from "../../../backend/league/google-calendar-purge.mjs";
 
 function fakeResponse(payload) {
   return {ok: true, status: 200, json: async () => payload};

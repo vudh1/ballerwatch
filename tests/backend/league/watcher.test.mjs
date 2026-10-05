@@ -15,7 +15,7 @@ import {
   isTransientSourceError,
   normalize,
   validPreviousSchedule,
-} from "../../league/watcher.mjs";
+} from "../../../backend/league/watcher.mjs";
 
 const TEAM_NAMES = ["Team Alpha", "Team Beta"];
 

@@ -10,8 +10,8 @@ import {
   jerseyIcon,
   notifyWeb,
   recordLeagueStartReminders,
-} from "../../league/web-notify.mjs";
-import { loadWebNotificationChannel } from "../../shared/web-notifications.mjs";
+} from "../../../backend/league/web-notify.mjs";
+import { loadWebNotificationChannel } from "../../../backend/shared/web-notifications.mjs";
 
 test("formatting preserves Pacific time and jersey icon behavior", () => {
   assert.equal(formatTime("2026-10-05T19:15:00-07:00"), "Mon 10/05 7:15 PM");

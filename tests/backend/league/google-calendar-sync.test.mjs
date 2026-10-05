@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { syncCalendar } from "../../league/google-calendar-sync.mjs";
+import { syncCalendar } from "../../../backend/league/google-calendar-sync.mjs";
 
 test("successful changed match advances state and records one updated notification", async () => {
   const originalCwd = process.cwd();
