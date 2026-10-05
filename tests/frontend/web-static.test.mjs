@@ -14,17 +14,17 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /manifest\.webmanifest/);
   assert.match(html, /apple-touch-icon\.png/);
   assert.match(html, /class="brand-icon"/);
-  assert.match(html, /icon\.svg\?v=7\.0\.3/);
+  assert.match(html, /icon\.svg\?v=7\.0\.4/);
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=7\.0\.3/);
-  assert.match(html, /app\.js\?v=7\.0\.3/);
+  assert.match(html, /styles\.css\?v=7\.0\.4/);
+  assert.match(html, /app\.js\?v=7\.0\.4/);
 
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v7-0-3-shell/);
+  assert.match(sw, /ballerwatch-v7-0-4-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -92,7 +92,7 @@ test("promotion watches Worker and Pages then refreshes the open PWA", () => {
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=7\.0\.3/);
+  assert.match(app, /sw\.js\?v=7\.0\.4/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -661,7 +661,7 @@ test("footer contains no secondary messaging shortcut", () => {
 });
 
 
-test("BallerWatch 7.0.3 uses the top-right bell and gear without bottom app tabs", () => {
+test("BallerWatch 7.0.4 uses the top-right bell and gear without bottom app tabs", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   assert.match(html, /id="settings-button"/);
@@ -763,6 +763,11 @@ test("match spotlight swipe uses connected neighboring cards like a carousel tra
   assert.match(css, /\/\* v5\.3\.3 connected-card carousel swipe \*\//);
   assert.match(css, /\.spotlight-carousel \{[\s\S]*overflow:\s*hidden;/);
   assert.match(css, /--spotlight-train-gap:\s*0px/);
+  assert.match(
+    css,
+    /\.spotlight-carousel \.spotlight-card\.spotlight-train-card \{[\s\S]*position:\s*absolute;/,
+  );
+  assert.match(css, /\.spotlight-card \{[\s\S]*position:\s*relative;/);
   assert.match(css, /height:\s*var\(--spotlight-card-height, auto\)/);
   assert.match(css, /\.spotlight-measure-card \{[\s\S]*height:\s*auto !important;/);
   assert.match(css, /\.spotlight-train-card \{[\s\S]*position:\s*absolute;/);

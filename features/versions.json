@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.0.3",
+  "currentVersion": "7.0.4",
   "releases": [
+    {
+      "version": "7.0.4",
+      "date": "2026-10-05",
+      "type": "patch",
+      "source": "user-recording",
+      "title": "Match-card train CSS cascade fix",
+      "webAnnouncement": "BallerWatch keeps the incoming match card on the same horizontal rail instead of letting it stack below the current card.",
+      "changes": [
+        "Fixed a CSS cascade bug where a later `.spotlight-card { position: relative; }` rule overrode the train preview’s absolute positioning.",
+        "Raised the train positioning selector specificity so adjacent match cards remain overlaid on the same carousel rail during click, drag, and settle animations.",
+        "Added regression coverage that explicitly preserves absolute train positioning even while the later spotlight-card relative-positioning rule remains."
+      ]
+    },
     {
       "version": "7.0.3",
       "date": "2026-10-05",

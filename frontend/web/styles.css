@@ -1904,7 +1904,7 @@ textarea {
   transition: none !important;
 }
 
-.spotlight-train-card {
+.spotlight-carousel .spotlight-card.spotlight-train-card {
   position: absolute;
   top: 0;
   left: 0;
