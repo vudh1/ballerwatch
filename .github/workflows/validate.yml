@@ -3,13 +3,13 @@ name: Validate code
 on:
   push:
     paths:
-      - "pickup/**"
-      - "league/**"
-      - "shared/**"
-      - "watchdog/**"
+      - "backend/pickup/**"
+      - "backend/league/**"
+      - "backend/shared/**"
+      - "backend/watchdog/**"
       - "scripts/**"
-      - "docs/**"
-      - "infra/**"
+      - "frontend/**"
+      - "backend/infra/**"
       - "features/**"
       - "skills/**"
       - "tests/**"
@@ -50,17 +50,17 @@ jobs:
           done < <(find tests -name '*.test.mjs' -print0 | sort -z)
 
       - name: Bundle Cloudflare Worker
-        working-directory: infra/web-worker
+        working-directory: backend/infra/web-worker
         run: npx --yes wrangler@4.145.0 deploy --dry-run --outdir /tmp/ballerwatch-worker
 
       - name: Validate release history
-        run: node infra/validate-versions.mjs
+        run: node backend/infra/validate-versions.mjs
 
       - name: Enforce public-repository privacy
-        run: node privacy-audit.mjs
+        run: node scripts/privacy-audit.mjs
 
       - name: Validate Apps Script syntax
         run: |
-          cp league/google_apps_script/Code.gs /tmp/ballerwatch-calendar-bridge.mjs
+          cp backend/league/google_apps_script/Code.gs /tmp/ballerwatch-calendar-bridge.mjs
           node --check /tmp/ballerwatch-calendar-bridge.mjs
 
