@@ -1938,7 +1938,7 @@ function renderCalendar(calendar) {
 
   if (!calendar?.startDate) {
     els.calendarGamePicker.hidden = true;
-    els.calendarUpdated.textContent = "Weather unavailable";
+    els.calendarUpdated.textContent = "Updated unavailable";
     return;
   }
 
@@ -1948,8 +1948,8 @@ function renderCalendar(calendar) {
 
   const updated = new Date(calendar.updatedAt || "");
   els.calendarUpdated.textContent = Number.isNaN(updated.getTime())
-    ? "Weather pending"
-    : `Weather updated ${new Intl.DateTimeFormat(undefined, {
+    ? "Updated pending"
+    : `Updated ${new Intl.DateTimeFormat(undefined, {
         hour: "numeric",
         minute: "2-digit",
       }).format(updated)}`;
