@@ -155,9 +155,9 @@ export function isTransientSourceError(error) {
   let current = error;
   while (current) {
     if (current instanceof HttpError) {
-      return [429, 502, 503, 504].includes(current.status);
+      return [408, 429, 500, 502, 503, 504].includes(current.status);
     }
-    if ([429, 502, 503, 504].includes(Number(current.status))) return true;
+    if ([408, 429, 500, 502, 503, 504].includes(Number(current.status))) return true;
     if (["AbortError", "TimeoutError"].includes(current.name)) return true;
     if (
       ["ETIMEDOUT", "ECONNRESET", "ECONNREFUSED", "EAI_AGAIN", "ENETUNREACH"].includes(
@@ -216,7 +216,9 @@ export async function discoverLatestSeason(
 ) {
   let lastError = null;
   const candidates = [];
-  if (typeof preferred === "string" && preferred.trim()) candidates.push(preferred.trim());
+  const preferredSeason =
+    typeof preferred === "string" && preferred.trim() ? preferred.trim() : null;
+  if (preferredSeason) candidates.push(preferredSeason);
   for (const season of seasonCandidates(now)) {
     if (!candidates.includes(season)) candidates.push(season);
   }
@@ -227,6 +229,10 @@ export async function discoverLatestSeason(
       aggregate = await callFn("get-aggregate", {season: seasonId});
     } catch (error) {
       lastError = error;
+      // When the last validated season is temporarily unavailable, scanning older or
+      // future seasons only amplifies the outage. Bubble the transient error so the
+      // caller can retain the verified last-good schedule immediately.
+      if (seasonId === preferredSeason && isTransientSourceError(error)) throw error;
       continue;
     }
     if (!aggregate || typeof aggregate !== "object" || Array.isArray(aggregate)) continue;
