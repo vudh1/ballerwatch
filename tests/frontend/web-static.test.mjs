@@ -12,19 +12,19 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
 
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   assert.match(html, /manifest\.webmanifest/);
-  assert.match(html, /apple-touch-icon\.png\?v=7\.0\.9/);
+  assert.match(html, /apple-touch-icon\.png\?v=7\.0\.10/);
   assert.match(html, /class="brand-icon"/);
-  assert.match(html, /icon\.svg\?v=7\.0\.9/);
+  assert.match(html, /icon\.svg\?v=7\.0\.10/);
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=7\.0\.9/);
-  assert.match(html, /app\.js\?v=7\.0\.9/);
+  assert.match(html, /styles\.css\?v=7\.0\.10/);
+  assert.match(html, /app\.js\?v=7\.0\.10/);
 
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v7-0-9-shell/);
+  assert.match(sw, /ballerwatch-v7-0-10-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -92,7 +92,7 @@ test("promotion watches Worker and Pages then refreshes the open PWA", () => {
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=7\.0\.9/);
+  assert.match(app, /sw\.js\?v=7\.0\.10/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -688,7 +688,7 @@ test("footer contains no secondary messaging shortcut", () => {
 });
 
 
-test("BallerWatch 7.0.9 uses the top-right bell and gear without bottom app tabs", () => {
+test("BallerWatch 7.0.10 uses the top-right bell and gear without bottom app tabs", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   assert.match(html, /id="settings-button"/);
@@ -712,7 +712,7 @@ test("page uses a soccer-pitch backdrop with readable translucent cards", () => 
   assert.match(icon, /A soccer pitch with a soccer ball/);
   assert.match(icon, /<circle cx="256" cy="256" r="54"\/>/);
   assert.match(icon, /translate\(347 344\)/);
-  assert.match(manifest, /icon\.svg\?v=7\.0\.9/);
+  assert.match(manifest, /icon\.svg\?v=7\.0\.10/);
   assert.match(css, /\.card,[\s\S]*\.footer-install \{[\s\S]*rgba\(6, 18, 22, 0\.57\)/);
   assert.match(css, /\.spotlight-card \{[\s\S]*rgba\(4, 16, 22, 0\.72\)/);
   assert.match(css, /backdrop-filter:\s*blur\(24px\) saturate\(135%\)/);
@@ -1182,7 +1182,7 @@ test("calendar weather freshness sits in a subtle card footer without page water
     html,
     /<div class="calendar-card-footer">\s*<p class="calendar-updated calendar-update-credit" id="calendar-updated">Updated pending<\/p>/,
   );
-  assert.match(css, /\.calendar-card-footer \{[\s\S]*position:\s*absolute;[\s\S]*bottom:\s*0\.42rem;[\s\S]*border-top:/);
+  assert.match(css, /\.calendar-card-footer \{[\s\S]*position:\s*absolute;[\s\S]*bottom:\s*0\.42rem;[\s\S]*border-top:\s*0;/);
   assert.match(css, /\.calendar-card-footer \.calendar-update-credit \{[\s\S]*font-size:\s*0\.56rem;/);
   assert.match(css, /\.calendar-card-footer \.calendar-update-credit \{[\s\S]*color:\s*rgba\(148, 163, 184, 0\.46\)/);
   assert.doesNotMatch(html, /class="data-attribution"/);
@@ -1200,4 +1200,21 @@ test("release deploy refreshes weather immediately for newly generated match car
   assert.match(workflow, /node backend\/shared\/runtime-state\.mjs pull weather/);
   assert.match(workflow, /node backend\/weather\/update\.mjs/);
   assert.match(workflow, /node backend\/shared\/runtime-state\.mjs push weather/);
+});
+
+
+test("safe feedback review tooling never reads raw private chat or request text", () => {
+  const script = fs.readFileSync("scripts/review-feedback.mjs", "utf8");
+  const workflow = fs.readFileSync(".github/workflows/review-feedback.yml", "utf8");
+
+  assert.match(script, /state\/chat-review\.json/);
+  assert.match(script, /requests\/unknown\.json/);
+  assert.doesNotMatch(script, /state\/chat-history\.json/);
+  assert.doesNotMatch(script, /requests\/private\.json/);
+  assert.match(script, /kind: String\(signal\?\.kind/);
+  assert.match(script, /summary: String\(signal\?\.summary/);
+  assert.match(script, /reason: String\(signal\?\.reason/);
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.match(workflow, /ref: runtime-state/);
+  assert.match(workflow, /TRACKER_STATE_KEY: \$\{\{ secrets\.TRACKER_STATE_KEY \}\}/);
 });
