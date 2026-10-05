@@ -972,12 +972,37 @@ async function loadConfig() {
   }
 }
 
+async function syncAppIconBadge(count) {
+  const normalized = Math.max(0, Math.floor(Number(count) || 0));
+
+  try {
+    if (normalized > 0 && "setAppBadge" in navigator) {
+      await navigator.setAppBadge(normalized);
+    } else if ("clearAppBadge" in navigator) {
+      await navigator.clearAppBadge();
+    }
+  } catch {}
+
+  if (!("serviceWorker" in navigator)) return;
+  try {
+    const registration = serviceWorkerRegistration || await navigator.serviceWorker.ready;
+    const worker = registration?.active || navigator.serviceWorker.controller;
+    worker?.postMessage({
+      type: "ballerwatch:badge-count",
+      count: normalized,
+    });
+  } catch {}
+}
+
 function updateNotificationBadge(count) {
-  if (!count) {
+  const normalized = Math.max(0, Math.floor(Number(count) || 0));
+  void syncAppIconBadge(normalized);
+
+  if (!normalized) {
     els.notificationBadge.hidden = true;
     return;
   }
-  els.notificationBadge.textContent = count > 9 ? "9+" : String(count);
+  els.notificationBadge.textContent = normalized > 9 ? "9+" : String(normalized);
   els.notificationBadge.hidden = false;
 }
 
