@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "6.4.1",
+  "currentVersion": "6.4.2",
   "releases": [
+    {
+      "version": "6.4.2",
+      "date": "2026-10-05",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Resilient RATS source recovery",
+      "changes": [
+        "Classified RATS HTTP 408 and 500 responses as transient source failures alongside the existing retryable rate-limit, gateway, timeout, and network errors.",
+        "Retry transient RATS HTTP 500 responses instead of treating an intermittent upstream server error as a permanent watcher failure.",
+        "When the previously validated RATS season is temporarily unavailable, stop broad season probing and retain the verified last-good schedule immediately after bounded retries.",
+        "Kept authentication, configuration, schema, and schedule-integrity failures fail-closed so resilience cannot hide real data problems.",
+        "Added regression coverage for HTTP 500 retry/retention and preferred-season outage short-circuiting."
+      ]
+    },
     {
       "version": "6.4.1",
       "date": "2026-10-05",
