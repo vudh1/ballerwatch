@@ -4,6 +4,8 @@ const SHELL = [
   "./index.html",
   "./styles.css?v=6.4.4",
   "./app.js?v=6.4.4",
+  "./lib/client.js",
+  "./lib/notification-state.js",
   "./manifest.webmanifest?v=6.4.4",
   "./icon.svg?v=6.4.4",
 ];
@@ -11,6 +13,7 @@ const API = "https://ballerwatch-web.vudhone.workers.dev";
 const APP_URL = "https://vudh1.github.io/ballerwatch/";
 const DEVICE_STATE_CACHE = "ballerwatch-device-state-v1";
 const BADGE_STATE_URL = new URL("./.badge-state", self.location.href).href;
+const NOTIFICATION_PREFS_URL = new URL("./.notification-prefs", self.location.href).href;
 
 function normalizedBadgeCount(value) {
   return Math.min(999, Math.max(0, Math.floor(Number(value) || 0)));
@@ -65,6 +68,39 @@ async function incrementAppBadge() {
   return syncBadgeCount(current + 1);
 }
 
+function normalizedChannels(value) {
+  return {
+    pickup: value?.pickup !== false,
+    league: value?.league !== false,
+    version: value?.version !== false,
+  };
+}
+
+async function readNotificationChannels() {
+  try {
+    const cache = await caches.open(DEVICE_STATE_CACHE);
+    const response = await cache.match(NOTIFICATION_PREFS_URL);
+    if (!response) return normalizedChannels();
+    return normalizedChannels(await response.json());
+  } catch {
+    return normalizedChannels();
+  }
+}
+
+async function writeNotificationChannels(channels) {
+  const normalized = normalizedChannels(channels);
+  try {
+    const cache = await caches.open(DEVICE_STATE_CACHE);
+    await cache.put(
+      NOTIFICATION_PREFS_URL,
+      new Response(JSON.stringify(normalized), {
+        headers: { "content-type": "application/json" },
+      }),
+    );
+  } catch {}
+  return normalized;
+}
+
 function safeAppUrl(value) {
   try {
     const url = new URL(String(value || APP_URL), APP_URL);
@@ -116,6 +152,10 @@ self.addEventListener("message", (event) => {
     event.waitUntil(syncBadgeCount(event.data?.count));
     return;
   }
+  if (event.data?.type === "ballerwatch:notification-preferences") {
+    event.waitUntil(writeNotificationChannels(event.data?.channels));
+    return;
+  }
   if (event.data?.type !== "ballerwatch:test-notification") return;
   const requestedDelay = Number(event.data?.delayMs);
   const delayMs = Number.isFinite(requestedDelay)
@@ -143,19 +183,26 @@ self.addEventListener("push", (event) => {
   event.waitUntil((async () => {
     let entry = null;
     try {
-      const response = await fetch(API + "/web/board?limit=1", { cache: "no-store" });
+      const [response, channels] = await Promise.all([
+        fetch(API + "/web/board?limit=30", { cache: "no-store" }),
+        readNotificationChannels(),
+      ]);
       const payload = await response.json();
-      entry = payload?.entries?.[0] || null;
+      entry = (payload?.entries || []).find((item) => {
+        const channel = String(item?.channel || "");
+        return !channel || channels[channel] !== false;
+      }) || null;
     } catch {}
 
-    const title = entry?.title || "BallerWatch updated";
+    if (!entry) return;
+    const title = entry.title || "BallerWatch updated";
     const options = {
-      body: entry?.body || "Open BallerWatch for the latest soccer update.",
+      body: entry.body || "Open BallerWatch for the latest soccer update.",
       icon: "./icon.svg",
       badge: "./icon.svg",
-      tag: entry?.tag || "ballerwatch-update",
+      tag: entry.tag || "ballerwatch-update",
       renotify: true,
-      data: { url: safeAppUrl(entry?.url) },
+      data: { url: safeAppUrl(entry.url) },
     };
     await Promise.all([
       incrementAppBadge(),
