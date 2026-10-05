@@ -51,3 +51,4 @@ Signed-in Inbox read/delete state is merged into the encrypted user profile so m
 ## Current development line
 
 The source ledger on `main` is authoritative for the newest reviewed version. The GitHub Releases page is authoritative for what has actually been published to production. A release or fix branch can therefore show a newer version before it is merged or promoted.
+- **7.0.5** — Pins the match-card Updated timestamp footer to the card itself so iPhone installed-web-app layout matches the website footer position.
