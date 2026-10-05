@@ -77,6 +77,18 @@ test("Home Screen install prompt uses the same card layout system as dashboard c
   assert.match(css, /\.footer-install\.card \{[\s\S]*border-radius:\s*30px/);
 });
 
+test("promotion watches Worker and Pages then refreshes the open PWA", () => {
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  assert.match(app, /async function watchPromotedRelease/);
+  assert.match(app, /async function deployedAppVersion/);
+  assert.match(app, /\/web\/config/);
+  assert.match(app, /index\.html\?release=/);
+  assert.match(app, /html\.includes\(\`app\.js\?v=\$\{expected\}\`\)/);
+  assert.match(app, /void watchPromotedRelease\(version\)/);
+  assert.match(app, /BallerWatch \$\{expected\} is live\. Refreshing this app/);
+  assert.match(app, /window\.location\.reload\(\)/);
+});
+
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
