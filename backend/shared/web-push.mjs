@@ -392,6 +392,6 @@ if (isCli) {
   } else if (command === "send-pending") {
     await sendPendingWebPushSignals();
   } else {
-    throw new Error("Usage: node shared/web-push.mjs ensure|apply-event|send|send-pending");
+    throw new Error("Usage: node backend/shared/web-push.mjs ensure|apply-event|send|send-pending");
   }
 }
