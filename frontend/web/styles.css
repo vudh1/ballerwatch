@@ -3791,14 +3791,14 @@ html.is-standalone .status-bar-glass {
   background: rgba(96, 165, 250, 0.1);
   color: #bfdbfe;
   font-size: 0.65rem;
-  font-weight: 750;
+  font-weight: 700;
   text-transform: capitalize;
 }
 
 @media (max-width: 560px) {
   .notification-dialog,
   .settings-dialog {
-    inset-top: max(4.1rem, calc(env(safe-area-inset-top) + 3rem));
+    top: max(4.1rem, calc(env(safe-area-inset-top) + 3rem));
     border-radius: 24px;
   }
 
