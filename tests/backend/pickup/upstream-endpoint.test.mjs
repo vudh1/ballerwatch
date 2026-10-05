@@ -4,7 +4,7 @@ import {
   discoverPublicRsvpEndpoint,
   extractPublicRsvpEndpoint,
   shouldRediscoverEndpoint,
-} from "../../pickup/upstream-endpoint.mjs";
+} from "../../../backend/pickup/upstream-endpoint.mjs";
 
 test("extracts only the normal public Apps Script endpoint", () => {
   const source = [

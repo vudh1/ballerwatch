@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { saveFailoverState, restoreFailoverState } from "../../shared/failover-state.mjs";
+import { saveFailoverState, restoreFailoverState } from "../../../backend/shared/failover-state.mjs";
 
 test("encrypted failover backup round-trips runtime files", () => {
   const previous = process.cwd();

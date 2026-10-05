@@ -4,8 +4,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { recordChatExchange } from "../../shared/chat-history.mjs";
-import { decryptState } from "../../shared/state-crypto.mjs";
+import { recordChatExchange } from "../../../backend/shared/chat-history.mjs";
+import { decryptState } from "../../../backend/shared/state-crypto.mjs";
 
 test("chat history and sanitized review projection are both encrypted at rest", async (t) => {
   const cwd = process.cwd();

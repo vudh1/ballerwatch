@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { aiProviders, requestAiJson } from "../../shared/ai-provider.mjs";
-import { answerUnknownWithAi, DAILY_AI_LIMIT } from "../../shared/ai-fallback.mjs";
-import { classifyWithAi, directIntent } from "../../infra/web-worker/worker.mjs";
+import { aiProviders, requestAiJson } from "../../../backend/shared/ai-provider.mjs";
+import { answerUnknownWithAi, DAILY_AI_LIMIT } from "../../../backend/shared/ai-fallback.mjs";
+import { classifyWithAi, directIntent } from "../../../backend/infra/web-worker/worker.mjs";
 
 const gemini = value => new Response(JSON.stringify({ candidates: [{ finishReason: "STOP", content: { parts: [{ text: JSON.stringify(value) }] } }] }));
 const groq = value => new Response(JSON.stringify({ choices: [{ finish_reason: "stop", message: { content: JSON.stringify(value) } }] }));
