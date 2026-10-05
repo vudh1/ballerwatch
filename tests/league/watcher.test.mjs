@@ -92,6 +92,22 @@ test("preferred season is tried first", async () => {
   assert.deepEqual(calls, [["get-aggregate", {season: "fall-2026"}]]);
 });
 
+test("preferred season transient outage stops discovery immediately", async () => {
+  const calls = [];
+  await assert.rejects(
+    discoverLatestSeason("fall-2026", {
+      teamNames: TEAM_NAMES,
+      callFn: async (action, params) => {
+        calls.push([action, params]);
+        throw new HttpError(500);
+      },
+      now: new Date("2026-10-01T12:00:00-07:00"),
+    }),
+    /HTTP 500/,
+  );
+  assert.deepEqual(calls, [["get-aggregate", {season: "fall-2026"}]]);
+});
+
 test("fresh edge signal replaces duplicate aggregate fetch", () => {
   const {aggregate} = fixtures();
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ballerwatch-edge-"));
@@ -212,14 +228,16 @@ test("DST switches to Pacific standard time in November", () => {
 });
 
 test("transient errors are narrowly classified", () => {
+  assert.equal(isTransientSourceError(new HttpError(500)), true);
   assert.equal(isTransientSourceError(new HttpError(503)), true);
   assert.equal(isTransientSourceError(new HttpError(401)), false);
+  assert.equal(isTransientSourceError(new HttpError(501)), false);
   assert.equal(isTransientSourceError(new Error("schema changed")), false);
 });
 
 test("RATS call retries transient errors then succeeds", async () => {
   const responses = [
-    {ok: false, status: 502},
+    {ok: false, status: 500},
     {ok: false, status: 502},
     {ok: true, status: 200, json: async () => ({ok: true})},
   ];
@@ -257,6 +275,7 @@ test("only verified last-good schedules can mask transient outages", () => {
   assert.equal(validPreviousSchedule(previous), true);
   assert.equal(validPreviousSchedule({ok: false, teams: []}), false);
   assert.equal(validPreviousSchedule(null), false);
+  assert.equal(canRetainPreviousSchedule(new HttpError(500), previous), true);
   assert.equal(canRetainPreviousSchedule(new HttpError(503), previous), true);
   assert.equal(canRetainPreviousSchedule(new Error("schema"), previous), false);
   assert.equal(canRetainPreviousSchedule(new HttpError(503), null), false);
