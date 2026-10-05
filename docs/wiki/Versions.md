@@ -24,7 +24,7 @@ BallerWatch follows semantic versioning for actual product behavior:
 
 - **PATCH** — backward-compatible reliability, privacy, security, UI, or compatibility fix
 - **MINOR** — new backward-compatible capability
-- **MAJOR** — intentional breaking product change
+- **MAJOR** — a generation-level product/architecture change or an intentional incompatible change
 
 Documentation-only edits, behavior-preserving refactors, tests, formatting, and CI/tooling cleanup do not get a version by themselves.
 
@@ -42,6 +42,12 @@ The release then moves through:
 
 This means an installed app should not need to be manually closed and reopened after a normal promotion.
 
+## BallerWatch 7
+
+Version 7 introduces account-backed notification state, a filtered Inbox, per-account notification categories, installed-app badge synchronization, persistent Home / Inbox / Settings navigation, and a cleaner modular PWA client.
+
+Signed-in Inbox read/delete state is merged into the encrypted user profile so multiple devices converge instead of keeping unrelated local histories. Signed-out devices keep a local fallback until the user signs in.
+
 ## Current development line
 
-The source ledger on `main` is authoritative for the newest reviewed version. The GitHub Releases page is authoritative for what has actually been published to production.
+The source ledger on `main` is authoritative for the newest reviewed version. The GitHub Releases page is authoritative for what has actually been published to production. A release branch can therefore show 7.0.0 before 7.0.0 is merged or promoted.
