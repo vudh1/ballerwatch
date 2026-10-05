@@ -3873,3 +3873,63 @@ body::after {
     text-align: left;
   }
 }
+
+
+/* v7.0.8 notification-row and calendar freshness polish */
+.notification-preference-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.notification-preference-options label {
+  width: 100%;
+  min-width: 0;
+  justify-content: center;
+  padding-inline: 0.38rem;
+  white-space: nowrap;
+}
+
+.calendar-card {
+  --calendar-card-inset: clamp(1.15rem, 4vw, 1.5rem);
+  position: relative;
+  padding: var(--calendar-card-inset);
+  padding-bottom: calc(var(--calendar-card-inset) + 1.55rem);
+}
+
+.calendar-card-footer {
+  position: absolute;
+  right: var(--calendar-card-inset);
+  bottom: 0.42rem;
+  left: var(--calendar-card-inset);
+  min-height: 0;
+  margin: 0;
+  padding-top: 0.34rem;
+  border-top: 1px solid rgba(226, 232, 240, 0.08);
+  pointer-events: none;
+}
+
+.calendar-card-footer .calendar-update-credit {
+  width: auto;
+  max-width: none;
+  margin: 0;
+  color: rgba(148, 163, 184, 0.46);
+  font-size: 0.56rem;
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: 0.015em;
+  opacity: 1;
+  text-align: right;
+}
+
+@media (max-width: 560px) {
+  .notification-preference-options {
+    gap: 0.32rem;
+  }
+
+  .notification-preference-options label {
+    gap: 0.3rem;
+    padding-inline: 0.28rem;
+    font-size: 0.70rem;
+  }
+}

@@ -3473,7 +3473,7 @@ export default {
             dispatched: true,
             release,
             message:
-              `Promotion requested for BallerWatch ${release.sourceVersion}. The existing release gate will validate and deploy it.`,
+              `App update started for BallerWatch ${release.sourceVersion}. It will install after validation completes.`,
           },
           { status: 202 },
         );
@@ -3481,7 +3481,7 @@ export default {
         console.error("Production promotion dispatch failed", error);
         return webJson(
           request,
-          { ok: false, error: "Unable to start the production promotion right now." },
+          { ok: false, error: "Unable to start the app update right now." },
           { status: 503 },
         );
       }

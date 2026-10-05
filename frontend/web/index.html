@@ -11,17 +11,17 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="BallerWatch">
   <title>BallerWatch</title>
-  <link rel="manifest" href="./manifest.webmanifest?v=7.0.7">
-  <link rel="icon" href="./icon.svg?v=7.0.7" type="image/svg+xml">
-  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=7.0.7">
-  <link rel="stylesheet" href="./styles.css?v=7.0.7">
+  <link rel="manifest" href="./manifest.webmanifest?v=7.0.8">
+  <link rel="icon" href="./icon.svg?v=7.0.8" type="image/svg+xml">
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=7.0.8">
+  <link rel="stylesheet" href="./styles.css?v=7.0.8">
 </head>
 <body>
   <div class="status-bar-glass" aria-hidden="true"></div>
   <main class="shell">
     <header class="hero">
       <div class="brand-lockup">
-        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=7.0.7" alt=""></div>
+        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=7.0.8" alt=""></div>
         <div>
           <p class="eyebrow">SOCCER AT A GLANCE</p>
           <h1>BallerWatch</h1>
@@ -122,7 +122,9 @@
       </div>
       <div class="calendar-grid" id="calendar-grid" aria-label="Two-week game calendar"></div>
       <div class="calendar-game-picker" id="calendar-game-picker" hidden></div>
-      <p class="calendar-updated calendar-update-credit" id="calendar-updated">Updated pending</p>
+      <div class="calendar-card-footer">
+        <p class="calendar-updated calendar-update-credit" id="calendar-updated">Updated pending</p>
+      </div>
     </section>
 
     <section class="card ask-card">
@@ -169,11 +171,6 @@
         <a href="https://github.com/vudh1/ballerwatch/wiki">Wiki</a>
         <span>•</span>
         <span class="copyright">© 2026 BallerWatch. All rights reserved.</span>
-      </div>
-      <div class="data-attribution">
-        Weather by <a href="https://open-meteo.com/">Open-Meteo</a>
-        <span>·</span>
-        Venue data © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>
       </div>
     </footer>
   </main>
@@ -230,7 +227,7 @@
           </label>
           <label>
             <input id="notification-pref-version" type="checkbox" checked>
-            <span>App updates</span>
+            <span>App update</span>
           </label>
         </div>
       </section>
@@ -341,7 +338,7 @@
             <button id="promote-release" type="button" disabled>Checking…</button>
           </div>
           <p class="hint" id="promote-release-status">
-            Uses the existing validated production-promotion workflow. No GitHub token is exposed to the app.
+            Runs the existing validated app-update workflow. No GitHub token is exposed to the app.
           </p>
         </section>
 
@@ -422,6 +419,6 @@
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=7.0.7"></script>
+  <script type="module" src="./app.js?v=7.0.8"></script>
 </body>
 </html>

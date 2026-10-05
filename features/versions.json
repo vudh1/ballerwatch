@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.0.7",
+  "currentVersion": "7.0.8",
   "releases": [
+    {
+      "version": "7.0.8",
+      "date": "2026-10-05",
+      "type": "patch",
+      "source": "user-screenshot",
+      "title": "Notification and weather-card polish",
+      "webAnnouncement": "BallerWatch keeps notification controls aligned, simplifies App update wording, and puts weather freshness in a subtle card footer.",
+      "changes": [
+        "Kept Pickup, League, and App update notification preferences on one row on iPhone and removed user-facing promote/promotion wording from the app-update flow.",
+        "Made active signed-in devices refresh the shared notification profile together with the notification board so bell counts and Home Screen badges converge from account read/delete state.",
+        "Moved the 14-day calendar/weather Updated timestamp into a subtle bottom card footer and removed the page-level Open-Meteo/OpenStreetMap attribution line."
+      ]
+    },
     {
       "version": "7.0.7",
       "date": "2026-10-05",
