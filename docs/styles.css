@@ -3264,29 +3264,6 @@ html.is-standalone .status-bar-glass {
   min-width: 0;
 }
 
-.match-edit-link {
-  appearance: none;
-  -webkit-appearance: none;
-  flex: 0 0 auto;
-  border: 0;
-  padding: 0.1rem 0;
-  margin: 0;
-  background: transparent;
-  color: #64748b;
-  font: inherit;
-  font-size: 0.68rem;
-  line-height: 1;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.match-edit-link:hover,
-.match-edit-link:focus-visible {
-  color: #cbd5e1;
-  text-decoration: underline;
-  text-underline-offset: 0.16rem;
-}
-
 .match-override-dialog {
   width: min(34rem, calc(100vw - 1.25rem));
   max-width: min(34rem, calc(100vw - 1.25rem));
@@ -3403,93 +3380,93 @@ html.is-standalone .status-bar-glass {
 }
 
 
-/* v6.4 match-card menu, reversible delete, and quieter freshness footer */
+/* v6.4.1 touch-safe match actions and quieter freshness footer */
 .match-card-menu-wrap {
   position: relative;
   flex: 0 0 auto;
+  z-index: 8;
 }
 
 .match-card-menu-trigger.status-dot {
   appearance: none;
   -webkit-appearance: none;
+  position: relative;
+  z-index: 9;
   display: inline-flex;
   align-items: center;
-  gap: 0.38rem;
+  justify-content: center;
+  min-height: 2.15rem;
   margin: 0;
   cursor: pointer;
   font: inherit;
   font-size: 0.75rem;
   line-height: 1;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
-.match-card-menu-glyph {
-  color: #64748b;
-  font-size: 0.62rem;
-  letter-spacing: -0.08em;
+.match-card-action-dialog {
+  width: min(20rem, calc(100vw - 1.5rem));
+  max-width: min(20rem, calc(100vw - 1.5rem));
+  margin: auto;
+  padding: 0;
+  border: 1px solid rgba(148, 163, 184, 0.20);
+  border-radius: 20px;
+  color: #e2e8f0;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.02)),
+    rgba(8, 18, 31, 0.97);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.46);
+  -webkit-backdrop-filter: blur(26px) saturate(170%);
+  backdrop-filter: blur(26px) saturate(170%);
 }
 
-.match-card-menu {
-  position: absolute;
-  z-index: 30;
-  top: calc(100% + 0.38rem);
-  right: 0;
+.match-card-action-dialog::backdrop {
+  background: rgba(2, 6, 23, 0.34);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+
+.match-card-action-shell {
+  padding: 1rem;
+}
+
+.match-card-action-shell h3 {
+  margin: 0 0 0.85rem;
+  font-size: 1rem;
+}
+
+.match-card-action-buttons {
   display: grid;
-  min-width: 8.5rem;
-  padding: 0.32rem;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  border-radius: 12px;
-  background: rgba(8, 18, 31, 0.98);
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.38);
+  gap: 0.55rem;
 }
 
-.match-card-menu[hidden] {
-  display: none;
-}
-
-.match-card-menu button {
+.match-card-action-buttons button {
   width: 100%;
-  min-height: 2.3rem;
-  padding: 0.52rem 0.68rem;
-  border: 0;
-  border-radius: 9px;
-  color: #cbd5e1;
-  background: transparent;
-  text-align: left;
-  font-size: 0.78rem;
-  font-weight: 600;
+  min-height: 2.75rem;
 }
 
-.match-card-menu button:hover,
-.match-card-menu button:focus-visible {
-  background: rgba(148, 163, 184, 0.10);
-  color: #f8fafc;
-}
-
-.match-card-menu .match-card-menu-delete {
-  color: #fca5a5;
+.match-card-action-buttons .match-card-menu-delete {
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.24);
+  background: rgba(127, 29, 29, 0.20);
 }
 
 .match-card-footer {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.42rem;
-  align-items: start;
+  display: block;
   margin-top: 0.9rem;
   padding-top: 0.6rem;
   border-top: 1px solid rgba(148, 163, 184, 0.08);
 }
 
-.match-card-footer .match-edit-link {
-  justify-self: start;
-}
-
 .match-card-footer .match-update-credit {
-  justify-self: end;
   margin: 0;
   color: #475569;
   font-size: 0.60rem;
   line-height: 1.15;
-  opacity: 0.78;
+  opacity: 0.72;
   letter-spacing: 0.015em;
   text-align: right;
 }

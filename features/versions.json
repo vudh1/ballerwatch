@@ -1,7 +1,25 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "6.4.0",
+  "currentVersion": "6.4.1",
   "releases": [
+    {
+      "version": "6.4.1",
+      "date": "2026-10-05",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Touch-safe match actions and immediate Saturday weather",
+      "webAnnouncement": "Match type pills now reliably open Edit/Delete on touch, and Saturday pickup weather refreshes during release.",
+      "changes": [
+        "Fixed iPhone/PWA pill taps being swallowed by the match-card swipe touchend handler; card swipe logic now ignores buttons, links, and dialogs from touchstart through touchend.",
+        "Replaced the clipped inline Edit/Delete dropdown with a modal match action sheet in the browser top layer, so the Pickup/League pill is reliable inside the overflow-hidden carousel card.",
+        "Removed the three-dot glyph: the upper-right pill contains only Pickup or League, and synthetic Saturday pickup also displays simply as Pickup.",
+        "Tapping anywhere on the action-sheet backdrop, Cancel, Edit, or Delete closes the Edit/Delete choices.",
+        "Removed the separate footer Edit link; the card footer now contains only the subtle source/update freshness line.",
+        "Renamed Reset to source to Reset while preserving immediate local source restoration and persisted override removal.",
+        "Added a release-deployment weather refresh so newly generated Saturday pickup cards receive weather immediately instead of waiting for the next six-hour watchdog cycle.",
+        "Bumped the installed PWA shell to 6.4.1."
+      ]
+    },
     {
       "version": "6.4.0",
       "date": "2026-10-05",

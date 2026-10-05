@@ -14,17 +14,17 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /manifest\.webmanifest/);
   assert.match(html, /apple-touch-icon\.png/);
   assert.match(html, /class="brand-icon"/);
-  assert.match(html, /icon\.svg\?v=6\.4\.0/);
+  assert.match(html, /icon\.svg\?v=6\.4\.1/);
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=6\.4\.0/);
-  assert.match(html, /app\.js\?v=6\.4\.0/);
+  assert.match(html, /styles\.css\?v=6\.4\.1/);
+  assert.match(html, /app\.js\?v=6\.4\.1/);
 
   const sw = fs.readFileSync("docs/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v6-4-0-shell/);
+  assert.match(sw, /ballerwatch-v6-4-1-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -80,7 +80,7 @@ test("Home Screen install prompt uses the same card layout system as dashboard c
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   const sw = fs.readFileSync("docs/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=6\.4\.0/);
+  assert.match(app, /sw\.js\?v=6\.4\.1/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -927,20 +927,20 @@ test("README includes the web app demo and multi-user settings are exposed", () 
 });
 
 
-test("match override editor uses an explicit footer Edit control and local Reset", () => {
+test("match override editor uses the type pill action sheet and local Reset", () => {
   const html = fs.readFileSync("docs/index.html", "utf8");
   const app = fs.readFileSync("docs/app.js", "utf8");
   const css = fs.readFileSync("docs/styles.css", "utf8");
 
   assert.match(html, /id="match-override-dialog" class="match-override-dialog"/);
   assert.match(html, /id="match-override-reset"/);
-  assert.match(html, />Reset to source</);
-  assert.match(html, /id="next-game-edit"[^>]*>Edit<\/button>/);
+  assert.match(html, />Reset<\/button>/);
+  assert.doesNotMatch(html, /id="next-game-edit"/);
   assert.match(html, /<span id="version">BallerWatch<\/span>/);
   assert.match(html, /<button type="submit">Save<\/button>/);
   assert.doesNotMatch(html, /Save override/);
 
-  assert.match(app, /nextGameEdit\.addEventListener\("click"/);
+  assert.match(app, /nextGameMenuTrigger\.addEventListener\("click"/);
   assert.match(app, /matchSourceState/);
   assert.match(app, /sourceGameView/);
   assert.match(app, /fillMatchOverrideForm/);
@@ -959,7 +959,7 @@ test("match override editor uses an explicit footer Edit control and local Reset
   assert.doesNotMatch(app, /nextGameCard\.addEventListener\("dblclick"/);
   assert.doesNotMatch(app, /version\.addEventListener\("dblclick"/);
 
-  assert.match(css, /\.match-edit-link/);
+  assert.doesNotMatch(css, /\.match-edit-link/);
   assert.match(css, /grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/);
   assert.match(css, /\.match-override-actions button \{[\s\S]*min-height:\s*2\.75rem/);
 });
@@ -1015,7 +1015,7 @@ test("admin Settings can safely dispatch the existing production promotion workf
 });
 
 
-test("match type pill opens Edit/Delete menu and freshness is isolated in footer", () => {
+test("match type pill opens a touch-safe Edit/Delete action sheet and freshness stays in footer", () => {
   const html = fs.readFileSync("docs/index.html", "utf8");
   const app = fs.readFileSync("docs/app.js", "utf8");
   const css = fs.readFileSync("docs/styles.css", "utf8");
@@ -1027,7 +1027,22 @@ test("match type pill opens Edit/Delete menu and freshness is isolated in footer
   assert.match(app, /deleteSelectedMatch/);
   assert.match(app, /restoreDeletedMatch/);
   assert.match(app, /\/web\/user\/match/);
-  assert.match(css, /\.match-card-menu \{/);
-  assert.match(css, /\.match-card-footer[\s\S]*grid-template-columns:\s*1fr/);
+  assert.match(html, /class="match-card-action-dialog"/);
+  assert.doesNotMatch(html, /match-card-menu-glyph/);
+  assert.match(app, /nextGameMenu\.showModal\(\)/);
+  assert.match(app, /event\.target === els\.nextGameMenu/);
+  assert.match(app, /closest\?\.\("a, button, dialog"\)/);
+  assert.match(app, /type: game\.kind === "league" \? "League" : "Pickup"/);
+  assert.match(css, /\.match-card-action-dialog \{/);
+  assert.match(css, /\.match-card-footer \{[\s\S]*display:\s*block/);
   assert.match(css, /\.match-card-footer \.match-update-credit[\s\S]*font-size:\s*0\.60rem/);
+});
+
+
+test("release deploy refreshes weather immediately for newly generated match cards", () => {
+  const workflow = fs.readFileSync(".github/workflows/deploy-worker.yml", "utf8");
+  assert.match(workflow, /Refresh match weather for released schedule/);
+  assert.match(workflow, /node shared\/runtime-state\.mjs pull weather/);
+  assert.match(workflow, /node weather\/update\.mjs/);
+  assert.match(workflow, /node shared\/runtime-state\.mjs push weather/);
 });

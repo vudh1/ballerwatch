@@ -65,6 +65,16 @@ jobs:
           done
           node shared/runtime-state.mjs audit
 
+      - name: Refresh match weather for released schedule
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: |
+          set -euo pipefail
+          node shared/runtime-state.mjs pull weather
+          node weather/update.mjs
+          node shared/runtime-state.mjs push weather
+          node shared/runtime-state.mjs clean weather
+
       - name: Prepare Cloudflare runtime config
         working-directory: infra/web-worker
         env:

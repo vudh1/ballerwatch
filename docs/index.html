@@ -11,17 +11,17 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="BallerWatch">
   <title>BallerWatch</title>
-  <link rel="manifest" href="./manifest.webmanifest?v=6.4.0">
-  <link rel="icon" href="./icon.svg?v=6.4.0" type="image/svg+xml">
-  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=6.4.0">
-  <link rel="stylesheet" href="./styles.css?v=6.4.0">
+  <link rel="manifest" href="./manifest.webmanifest?v=6.4.1">
+  <link rel="icon" href="./icon.svg?v=6.4.1" type="image/svg+xml">
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=6.4.1">
+  <link rel="stylesheet" href="./styles.css?v=6.4.1">
 </head>
 <body>
   <div class="status-bar-glass" aria-hidden="true"></div>
   <main class="shell">
     <header class="hero">
       <div class="brand-lockup">
-        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=6.4.0" alt=""></div>
+        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=6.4.1" alt=""></div>
         <div>
           <p class="eyebrow">SOCCER AT A GLANCE</p>
           <h1>BallerWatch</h1>
@@ -69,15 +69,22 @@
             </div>
             <div class="match-card-menu-wrap">
               <button class="status-dot match-card-menu-trigger" id="next-game-menu-trigger"
-                type="button" aria-haspopup="menu" aria-expanded="false">
+                type="button" aria-haspopup="dialog" aria-expanded="false">
                 <span id="next-game-type">Upcoming</span>
-                <span class="match-card-menu-glyph" aria-hidden="true">•••</span>
               </button>
-              <div class="match-card-menu" id="next-game-menu" role="menu" hidden>
-                <button id="next-game-menu-edit" type="button" role="menuitem">Edit</button>
-                <button class="match-card-menu-delete" id="next-game-menu-delete"
-                  type="button" role="menuitem">Delete</button>
-              </div>
+              <dialog class="match-card-action-dialog" id="next-game-menu"
+                aria-labelledby="next-game-menu-title">
+                <div class="match-card-action-shell">
+                  <p class="eyebrow">MATCH</p>
+                  <h3 id="next-game-menu-title">Match actions</h3>
+                  <div class="match-card-action-buttons">
+                    <button id="next-game-menu-edit" type="button">Edit</button>
+                    <button class="match-card-menu-delete" id="next-game-menu-delete"
+                      type="button">Delete</button>
+                    <button class="secondary" id="next-game-menu-cancel" type="button">Cancel</button>
+                  </div>
+                </div>
+              </dialog>
             </div>
           </div>
           <p class="next-game-meta" id="next-game-meta"></p>
@@ -100,7 +107,6 @@
           </div>
           <p class="hint" id="next-game-hint"></p>
           <div class="match-card-footer">
-            <button class="match-edit-link" id="next-game-edit" type="button">Edit</button>
             <p class="match-update-credit" id="next-game-updated"></p>
           </div>
         </div>
@@ -353,7 +359,7 @@
 
         <div class="match-override-actions">
           <button class="secondary" id="match-override-reset"
-            type="button">Reset to source</button>
+            type="button">Reset</button>
           <button class="secondary" id="match-override-cancel" type="button">Cancel</button>
           <button type="submit">Save</button>
         </div>
@@ -378,6 +384,6 @@
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=6.4.0"></script>
+  <script type="module" src="./app.js?v=6.4.1"></script>
 </body>
 </html>

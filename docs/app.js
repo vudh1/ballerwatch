@@ -81,6 +81,8 @@ const els = {
   nextGameMenu: document.querySelector("#next-game-menu"),
   nextGameMenuEdit: document.querySelector("#next-game-menu-edit"),
   nextGameMenuDelete: document.querySelector("#next-game-menu-delete"),
+  nextGameMenuCancel: document.querySelector("#next-game-menu-cancel"),
+  nextGameMenuTitle: document.querySelector("#next-game-menu-title"),
   nextGameMeta: document.querySelector("#next-game-meta"),
   nextGameLocation: document.querySelector("#next-game-location"),
   nextGameCapacity: document.querySelector("#next-game-capacity"),
@@ -94,7 +96,6 @@ const els = {
   nextGameShare: document.querySelector("#next-game-share"),
   nextGameHint: document.querySelector("#next-game-hint"),
   nextGameUpdated: document.querySelector("#next-game-updated"),
-  nextGameEdit: document.querySelector("#next-game-edit"),
   testNotification: document.querySelector("#test-notification"),
   deleteAllNotifications: document.querySelector("#delete-all-notifications"),
   testNotificationStatus: document.querySelector("#test-notification-status"),
@@ -947,7 +948,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=6.4.0", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=6.4.1", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -1267,11 +1268,7 @@ function spotlightModel(game, label = "NEXT GAME") {
   return {
     label,
     title: game.dateLabel || game.title || "Upcoming game",
-    type: game.kind === "pickup"
-      ? "Pickup"
-      : game.kind === "free_pickup"
-        ? "Free Pickup"
-        : "League",
+    type: game.kind === "league" ? "League" : "Pickup",
     meta: [game.time, game.title && game.title !== game.dateLabel ? game.title : ""]
       .filter(Boolean)
       .join(" • "),
@@ -1293,7 +1290,6 @@ function spotlightModel(game, label = "NEXT GAME") {
     rsvpWaitlisted: game.kind === "pickup" && waitlistedRsvpDates.has(game.date),
     directions: googleMapsUrl(game.mapsQuery),
     actionsHidden: false,
-    editHidden: false,
   };
 }
 
@@ -1313,8 +1309,7 @@ function applySpotlightModel(targets, game, label = "NEXT GAME") {
   targets.updated.textContent = model.updated;
   targets.updated.hidden = !model.updated;
   targets.actions.hidden = model.actionsHidden;
-  if (targets.edit) targets.edit.hidden = model.editHidden;
-  if (targets.menuTrigger) targets.menuTrigger.hidden = model.editHidden;
+  if (targets.menuTrigger) targets.menuTrigger.hidden = !game?.id;
   targets.hint.textContent = "";
 
   if (model.rsvp) {
@@ -1359,7 +1354,6 @@ function currentSpotlightTargets() {
     capacityFill: els.nextGameCapacityFill,
     weather: els.nextGameWeather,
     updated: els.nextGameUpdated,
-    edit: els.nextGameEdit,
     actions: els.nextGameActions,
     rsvp: els.nextGameRsvp,
     directions: els.nextGameDirections,
@@ -1418,7 +1412,6 @@ function buildSpotlightTrainCard(game) {
       capacityFill: role("next-game-capacity-fill"),
       weather: role("next-game-weather"),
       updated: role("next-game-updated"),
-      edit: role("next-game-edit"),
       actions: role("next-game-actions"),
       rsvp: role("next-game-rsvp"),
       directions: role("next-game-directions"),
@@ -1851,7 +1844,10 @@ function installSpotlightSwipe() {
   els.spotlightNext.addEventListener("click", () => activateEdgeStep(1));
 
   els.nextGameCard.addEventListener("touchstart", (event) => {
-    if (settling || event.target.closest?.("a, button")) return;
+    if (settling || event.target.closest?.("a, button, dialog")) {
+      resetGesture();
+      return;
+    }
     const touch = event.changedTouches?.[0];
     if (!touch) return;
     touchStartX = touch.clientX;
@@ -1860,6 +1856,10 @@ function installSpotlightSwipe() {
   }, { passive: true });
 
   els.nextGameCard.addEventListener("touchmove", (event) => {
+    if (event.target.closest?.("a, button, dialog")) {
+      resetGesture();
+      return;
+    }
     const touch = event.changedTouches?.[0];
     if (!touch || touchStartX == null || touchStartY == null || settling) return;
 
@@ -1897,6 +1897,10 @@ function installSpotlightSwipe() {
   }, { passive: false });
 
   els.nextGameCard.addEventListener("touchend", (event) => {
+    if (event.target.closest?.("a, button, dialog")) {
+      resetGesture();
+      return;
+    }
     const touch = event.changedTouches?.[0];
     if (!touch || touchStartX == null || touchStartY == null || settling) {
       if (!settling) resetGesture();
@@ -2162,15 +2166,20 @@ async function matchAdminSettings(pendingAction = "match-override") {
 }
 
 function closeMatchCardMenu() {
-  els.nextGameMenu.hidden = true;
+  if (els.nextGameMenu.open) els.nextGameMenu.close();
   els.nextGameMenuTrigger.setAttribute("aria-expanded", "false");
 }
 
 function toggleMatchCardMenu() {
   if (!currentNextGame?.id) return;
-  const willOpen = els.nextGameMenu.hidden;
-  els.nextGameMenu.hidden = !willOpen;
-  els.nextGameMenuTrigger.setAttribute("aria-expanded", String(willOpen));
+  if (els.nextGameMenu.open) {
+    closeMatchCardMenu();
+    return;
+  }
+  els.nextGameMenuTitle.textContent =
+    currentNextGame.title || currentNextGame.dateLabel || "Match actions";
+  els.nextGameMenuTrigger.setAttribute("aria-expanded", "true");
+  els.nextGameMenu.showModal();
 }
 
 async function deleteSelectedMatch({ authorized = false } = {}) {
@@ -2738,7 +2747,6 @@ els.answer.addEventListener("dblclick", (event) => {
 els.answer.addEventListener("contextmenu", (event) => event.preventDefault());
 els.answer.addEventListener("selectstart", (event) => event.preventDefault());
 
-els.nextGameEdit.addEventListener("click", () => void openMatchOverrideEditor());
 els.nextGameMenuTrigger.addEventListener("click", (event) => {
   event.stopPropagation();
   toggleMatchCardMenu();
@@ -2751,8 +2759,12 @@ els.nextGameMenuDelete.addEventListener("click", () => {
   closeMatchCardMenu();
   void deleteSelectedMatch();
 });
-document.addEventListener("click", (event) => {
-  if (!event.target.closest(".match-card-menu-wrap")) closeMatchCardMenu();
+els.nextGameMenuCancel.addEventListener("click", closeMatchCardMenu);
+els.nextGameMenu.addEventListener("click", (event) => {
+  if (event.target === els.nextGameMenu) closeMatchCardMenu();
+});
+els.nextGameMenu.addEventListener("close", () => {
+  els.nextGameMenuTrigger.setAttribute("aria-expanded", "false");
 });
 els.deletedMatchList.addEventListener("click", (event) => {
   const button = event.target.closest("[data-restore-match-id]");
