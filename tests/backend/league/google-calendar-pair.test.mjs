@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { pairCalendar } from "../../league/google-calendar-pair.mjs";
+import { pairCalendar } from "../../../backend/league/google-calendar-pair.mjs";
 
 function fakeResponse(payload) {
   return {ok: true, status: 200, json: async () => payload};

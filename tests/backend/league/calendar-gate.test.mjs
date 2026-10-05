@@ -6,7 +6,7 @@ import {
   compare,
   pairHash,
   sameCalendarMatch,
-} from "../../league/calendar-gate.mjs";
+} from "../../../backend/league/calendar-gate.mjs";
 
 const NOW = new Date("2026-10-01T12:00:00-07:00");
 

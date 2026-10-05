@@ -3,7 +3,7 @@ import fs from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 
-const source = fs.readFileSync("league/google_apps_script/Code.gs", "utf8");
+const source = fs.readFileSync("backend/backend/league/google_apps_script/Code.gs", "utf8");
 
 function loadBridge() {
   const context = vm.createContext({});
