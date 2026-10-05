@@ -2272,12 +2272,12 @@ async function refreshLiveData() {
     const notificationProfileRefresh = ownerToken()
       ? loadNotificationProfile({ migrateLocal: false })
       : Promise.resolve(true);
-    const [calendarOk, boardOk, profileOk] = await Promise.all([
+    const [calendarOk, boardOk] = await Promise.all([
       loadCalendar(),
       loadBoard(),
-      notificationProfileRefresh,
     ]);
-    setSystemState(calendarOk && boardOk && profileOk ? "live" : "offline");
+    await notificationProfileRefresh;
+    setSystemState(calendarOk && boardOk ? "live" : "offline");
   } catch {
     setSystemState("offline");
   } finally {
