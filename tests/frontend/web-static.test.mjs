@@ -3,14 +3,14 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 
 test("GitHub Pages PWA has installable project-path manifest and service worker", () => {
-  const manifest = JSON.parse(fs.readFileSync("docs/manifest.webmanifest", "utf8"));
+  const manifest = JSON.parse(fs.readFileSync("frontend/web/manifest.webmanifest", "utf8"));
   assert.equal(manifest.start_url, "/ballerwatch/");
   assert.equal(manifest.scope, "/ballerwatch/");
   assert.equal(manifest.display, "standalone");
   assert.ok(Array.isArray(manifest.icons) && manifest.icons.length > 0);
-  assert.equal(fs.existsSync("docs/apple-touch-icon.png"), true);
+  assert.equal(fs.existsSync("frontend/web/apple-touch-icon.png"), true);
 
-  const html = fs.readFileSync("docs/index.html", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
   assert.match(html, /manifest\.webmanifest/);
   assert.match(html, /apple-touch-icon\.png/);
   assert.match(html, /class="brand-icon"/);
@@ -21,7 +21,7 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /styles\.css\?v=6\.4\.3/);
   assert.match(html, /app\.js\?v=6\.4\.3/);
 
-  const sw = fs.readFileSync("docs/sw.js", "utf8");
+  const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
   assert.match(sw, /ballerwatch-v6-4-3-shell/);
@@ -29,12 +29,12 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
 
 test("static web app contains no repository secrets or private runtime data", () => {
   const files = [
-    "docs/index.html",
-    "docs/app.js",
-    "docs/sw.js",
-    "docs/styles.css",
-    "docs/manifest.webmanifest",
-    "docs/icon.svg",
+    "frontend/web/index.html",
+    "frontend/web/app.js",
+    "frontend/web/sw.js",
+    "frontend/web/styles.css",
+    "frontend/web/manifest.webmanifest",
+    "frontend/web/icon.svg",
   ];
   const text = files.map((file) => fs.readFileSync(file, "utf8")).join("\n");
   assert.doesNotMatch(
@@ -58,8 +58,8 @@ test("GitHub Pages workflow self-recovers missing Pages activation", () => {
 
 
 test("Home Screen install card is removed in standalone mode and notifications use the bell panel", () => {
-  const app = fs.readFileSync("docs/app.js", "utf8");
-  const css = fs.readFileSync("docs/styles.css", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
   assert.match(app, /els\.installCard\?\.remove\(\)/);
   assert.match(app, /notificationDialog\.showModal\(\)/);
   assert.match(css, /\[hidden\]\s*\{\s*display:\s*none\s*!important;/);
@@ -69,8 +69,8 @@ test("Home Screen install card is removed in standalone mode and notifications u
 
 
 test("Home Screen install prompt uses the same card layout system as dashboard cards", () => {
-  const html = fs.readFileSync("docs/index.html", "utf8");
-  const css = fs.readFileSync("docs/styles.css", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
   assert.match(html, /class="card footer-install" id="install-card"/);
   assert.match(html, /class="footer-install-copy"/);
   assert.match(css, /\.footer-install\.card \{[\s\S]*padding:\s*clamp/);
@@ -78,7 +78,7 @@ test("Home Screen install prompt uses the same card layout system as dashboard c
 });
 
 test("promotion watches Worker and Pages then refreshes the open PWA", () => {
-  const app = fs.readFileSync("docs/app.js", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
   assert.match(app, /async function watchPromotedRelease/);
   assert.match(app, /async function deployedAppVersion/);
   assert.match(app, /\/web\/config/);
@@ -90,8 +90,8 @@ test("promotion watches Worker and Pages then refreshes the open PWA", () => {
 });
 
 test("installed PWA aggressively revalidates release assets", () => {
-  const app = fs.readFileSync("docs/app.js", "utf8");
-  const sw = fs.readFileSync("docs/sw.js", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(app, /sw\.js\?v=6\.4\.3/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
@@ -101,9 +101,9 @@ test("installed PWA aggressively revalidates release assets", () => {
 
 
 test("notification bell exposes a synchronized push switch", () => {
-  const html = fs.readFileSync("docs/index.html", "utf8");
-  const app = fs.readFileSync("docs/app.js", "utf8");
-  const css = fs.readFileSync("docs/styles.css", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
   assert.match(html, /id="bell-push-toggle"/);
   assert.match(html, /role="switch"/);
   assert.match(html, /id="bell-push-status"/);
@@ -117,8 +117,8 @@ test("notification bell exposes a synchronized push switch", () => {
 
 
 test("next-game card exposes pickup RSVP, directions, and native share", () => {
-  const html = fs.readFileSync("docs/index.html", "utf8");
-  const app = fs.readFileSync("docs/app.js", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
   assert.match(html, /id="next-game-card"/);
   assert.match(html, /id="next-game-rsvp"/);
   assert.match(html, /id="next-game-directions"/);
@@ -133,10 +133,10 @@ test("next-game card exposes pickup RSVP, directions, and native share", () => {
 
 
 test("match spotlight shows a subtle source freshness line", () => {
-  const html = fs.readFileSync("docs/index.html", "utf8");
-  const app = fs.readFileSync("docs/app.js", "utf8");
-  const css = fs.readFileSync("docs/styles.css", "utf8");
-  const worker = fs.readFileSync("infra/web-worker/worker.mjs", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
 
   assert.match(html, /id="next-game-updated"/);
   assert.match(app, /function matchUpdatedText/);
@@ -147,8 +147,8 @@ test("match spotlight shows a subtle source freshness line", () => {
 });
 
 test("pickup RSVP button is neutral until authenticated confirmation is known", () => {
-  const app = fs.readFileSync("docs/app.js", "utf8");
-  const css = fs.readFileSync("docs/styles.css", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
   assert.match(app, /confirmedRsvpDates = new Set/);
   assert.match(app, /model\.rsvpConfirmed \? "RSVP'd" : "RSVP"/);
   assert.match(css, /\.pickup-rsvp-link \{[\s\S]*rgba\(71, 85, 105, 0\.36\)/);
@@ -157,9 +157,9 @@ test("pickup RSVP button is neutral until authenticated confirmation is known", 
 });
 
 test("notification test is local and service-worker driven", () => {
-  const html = fs.readFileSync("docs/index.html", "utf8");
-  const app = fs.readFileSync("docs/app.js", "utf8");
-  const sw = fs.readFileSync("docs/sw.js", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(html, /id="test-notification"/);
   assert.match(app, /ballerwatch:test-notification/);
   assert.match(app, /delayMs:\s*5_000/);
@@ -170,7 +170,7 @@ test("notification test is local and service-worker driven", () => {
 
 
 test("main page keeps push controls inside the bell only and install help in the footer", () => {
-  const html = fs.readFileSync("docs/index.html", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
   assert.match(html, /<footer>[\s\S]*id="install-card"[\s\S]*id="version"/);
   assert.match(html, /id="bell-push-toggle"/);
   assert.doesNotMatch(html, /id="enable-push"/);
@@ -179,8 +179,8 @@ test("main page keeps push controls inside the bell only and install help in the
 });
 
 test("question box supports slash commands and autosuggestions", () => {
-  const html = fs.readFileSync("docs/index.html", "utf8");
-  const app = fs.readFileSync("docs/app.js", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
   assert.match(html, /id="question-suggestions"/);
   assert.match(html, /aria-autocomplete="list"/);
   assert.match(html, /\/ commands|type <strong>\/<\/strong> for commands/);
@@ -193,9 +193,9 @@ test("question box supports slash commands and autosuggestions", () => {
 
 
 test("app-facing copy is web-only", () => {
-  const html = fs.readFileSync("docs/index.html", "utf8");
-  const manifest = fs.readFileSync("docs/manifest.webmanifest", "utf8");
-  const app = fs.readFileSync("docs/app.js", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const manifest = fs.readFileSync("frontend/web/manifest.webmanifest", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
   assert.doesNotMatch(html, /https:\/\/t\.me\//i);
   assert.doesNotMatch(app, /\/web\/user\/pair/);
   assert.match(app, /https:\/\/ballerwatch-web\.vudhone\.workers\.dev/);
@@ -204,9 +204,9 @@ test("app-facing copy is web-only", () => {
 
 
 test("user settings support password-only sign-in with repository recovery", () => {
-  const html = fs.readFileSync("docs/index.html", "utf8");
-  const app = fs.readFileSync("docs/app.js", "utf8");
-  const worker = fs.readFileSync("infra/web-worker/worker.mjs", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
   const recovery = fs.readFileSync(".github/workflows/reset-user-password.yml", "utf8");
 
   assert.match(html, /id="settings-button"/);
@@ -237,14 +237,14 @@ test("user settings support password-only sign-in with repository recovery", () 
   assert.doesNotMatch(worker, /userRoute\(url\.pathname, "pair"\)/);
 
   assert.match(recovery, /BALLERWATCH_RECOVERY_PASSWORD/);
-  assert.match(recovery, /node shared\/user-recovery\.mjs reset/);
-  assert.match(recovery, /node shared\/runtime-state\.mjs pull user/);
-  assert.match(recovery, /node shared\/runtime-state\.mjs push user/);
+  assert.match(recovery, /node backend\/shared\/user-recovery\.mjs reset/);
+  assert.match(recovery, /node backend\/shared\/runtime-state\.mjs pull user/);
+  assert.match(recovery, /node backend\/shared\/runtime-state\.mjs push user/);
 });
 
 test("notification test control is deliberately subtle", () => {
-  const html = fs.readFileSync("docs/index.html", "utf8");
-  const css = fs.readFileSync("docs/styles.css", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
   assert.match(html, /class="subtle-action" id="test-notification"/);
   assert.match(css, /\.subtle-action/);
   assert.doesNotMatch(html, /secondary" id="test-notification"/);
@@ -253,10 +253,10 @@ test("notification test control is deliberately subtle", () => {
 
 
 test("answer feedback is gesture-only, answer-scoped, and persists directly through the web runtime", () => {
-  const html = fs.readFileSync("docs/index.html", "utf8");
-  const app = fs.readFileSync("docs/app.js", "utf8");
-  const css = fs.readFileSync("docs/styles.css", "utf8");
-  const worker = fs.readFileSync("infra/web-worker/worker.mjs", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
 
   assert.doesNotMatch(html, /id="answer-feedback-button"/);
   assert.match(html, /id="answer-feedback-status"/);
@@ -276,9 +276,9 @@ test("answer feedback is gesture-only, answer-scoped, and persists directly thro
 });
 
 test("signed-in web feature requests persist privately and expose only aggregate categories", () => {
-  const worker = fs.readFileSync("infra/web-worker/worker.mjs", "utf8");
-  const paths = fs.readFileSync("shared/runtime-paths.mjs", "utf8");
-  const summary = fs.readFileSync("shared/feature-request-summary.mjs", "utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
+  const paths = fs.readFileSync("backend/shared/runtime-paths.mjs", "utf8");
+  const summary = fs.readFileSync("backend/shared/feature-request-summary.mjs", "utf8");
 
   assert.match(worker, /async function persistFeatureRequest/);
   assert.match(worker, /requests\/private\.json/);
@@ -293,8 +293,8 @@ test("signed-in web feature requests persist privately and expose only aggregate
 });
 
 test("chat history fallback keeps answer intent when AI compaction is unavailable", () => {
-  const app = fs.readFileSync("docs/app.js", "utf8");
-  const worker = fs.readFileSync("infra/web-worker/worker.mjs", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
 
   assert.match(app, /intent: payload\.intent \|\| ""/);
   assert.match(worker, /intent: cleanText\(event\.intent, 60\)/);
@@ -304,7 +304,7 @@ test("chat history fallback keeps answer intent when AI compaction is unavailabl
 });
 
 test("question autocomplete predicts full sentences from typed prefixes", () => {
-  const app = fs.readFileSync("docs/app.js", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
   assert.match(app, /BASE_QUESTION_COMPLETIONS/);
   assert.match(app, /sentenceCompletionScore/);
   assert.match(app, /calendarQuestionCompletions/);
@@ -320,7 +320,7 @@ test("question autocomplete predicts full sentences from typed prefixes", () => 
 
 
 test("mobile header keeps settings and bell on the same row", () => {
-  const css = fs.readFileSync("docs/styles.css", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
   assert.match(css, /@media \(max-width: 560px\)[\s\S]*\.hero-actions \{[^}]*flex-direction:\s*row;/);
   assert.match(css, /\.hero-actions \{[^}]*display:\s*flex;/);
 });
@@ -329,7 +329,7 @@ test("mobile header keeps settings and bell on the same row", () => {
 
 test("password recovery is admin-controlled, temporary-secret based, and revokes sessions", () => {
   const recovery = fs.readFileSync(".github/workflows/reset-user-password.yml", "utf8");
-  const helper = fs.readFileSync("shared/user-recovery.mjs", "utf8");
+  const helper = fs.readFileSync("backend/shared/user-recovery.mjs", "utf8");
 
   assert.match(recovery, /workflow_dispatch:/);
   assert.match(recovery, /Confirmation must be RESET/);
@@ -343,9 +343,9 @@ test("password recovery is admin-controlled, temporary-secret based, and revokes
 });
 
 test("two-week dashboard renders cached match weather", () => {
-  const html = fs.readFileSync("docs/index.html", "utf8");
-  const app = fs.readFileSync("docs/app.js", "utf8");
-  const css = fs.readFileSync("docs/styles.css", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
   const watchdog = fs.readFileSync(".github/workflows/watchdog.yml", "utf8");
 
   assert.match(html, /id="two-week-calendar"/);
@@ -358,13 +358,13 @@ test("two-week dashboard renders cached match weather", () => {
   assert.match(css, /\.spotlight-card/);
   assert.match(css, /\/\* v5 dashboard \*\//);
   assert.match(watchdog, /cron: "17 \*\/6 \* \* \*"/);
-  assert.match(watchdog, /node weather\/update\.mjs/);
+  assert.match(watchdog, /node backend\/weather\/update\.mjs/);
 });
 
 test("calendar rolls by week with spotlight navigation and expands through the latest match week", () => {
-  const html = fs.readFileSync("docs/index.html", "utf8");
-  const app = fs.readFileSync("docs/app.js", "utf8");
-  const css = fs.readFileSync("docs/styles.css", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
 
   assert.doesNotMatch(html, /id="calendar-expand-toggle"/);
   assert.match(html, /id="two-week-calendar" aria-expanded="false"/);
@@ -380,7 +380,7 @@ test("calendar rolls by week with spotlight navigation and expands through the l
 
 
 test("cron-job.org is reserved for pickup and league while watchdog is retired", () => {
-  const schedules = fs.readFileSync("infra/external-schedules.mjs", "utf8");
+  const schedules = fs.readFileSync("backend/infra/external-schedules.mjs", "utf8");
   assert.match(schedules, /BallerWatch - Pickup watcher/);
   assert.match(schedules, /BallerWatch - League watcher/);
   assert.match(schedules, /RETIRED_EXTERNAL_SCHEDULE_SPECS/);
@@ -398,17 +398,17 @@ test("weather refresh is owned by schedule changes and the watchdog without a du
 
   assert.equal(fs.existsSync(".github/workflows/weather-refresh.yml"), false);
   assert.match(pickup, /Refresh weather after pickup schedule change/);
-  assert.match(pickup, /node weather\/update\.mjs/);
+  assert.match(pickup, /node backend\/weather\/update\.mjs/);
   assert.match(league, /Refresh weather after league schedule change/);
-  assert.match(league, /node weather\/update\.mjs/);
+  assert.match(league, /node backend\/weather\/update\.mjs/);
   assert.match(watchdog, /cron: "17 \*\/6 \* \* \*"/);
-  assert.match(watchdog, /node weather\/update\.mjs/);
+  assert.match(watchdog, /node backend\/weather\/update\.mjs/);
 });
 
 
 test("calendar selection reuses the main spotlight instead of a second detail panel", () => {
-  const html = fs.readFileSync("docs/index.html", "utf8");
-  const app = fs.readFileSync("docs/app.js", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
 
   assert.match(html, /id="spotlight-label"/);
   assert.match(html, /id="calendar-game-picker"/);
@@ -420,7 +420,7 @@ test("calendar selection reuses the main spotlight instead of a second detail pa
 });
 
 test("liquid glass visual system has blur, translucent layers, and fallback", () => {
-  const css = fs.readFileSync("docs/styles.css", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
   assert.match(css, /\/\* v5\.1 liquid glass \*\//);
   assert.match(css, /backdrop-filter:\s*blur\(/);
   assert.match(css, /-webkit-backdrop-filter:\s*blur\(/);
@@ -431,7 +431,7 @@ test("liquid glass visual system has blur, translucent layers, and fallback", ()
 
 
 test("typography uses one native system stack and normalized scale", () => {
-  const css = fs.readFileSync("docs/styles.css", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
   assert.match(css, /\/\* v5\.1\.1 typography system \*\//);
   assert.match(css, /--font-ui:\s*-apple-system, BlinkMacSystemFont/);
   assert.match(css, /--type-caption:\s*0\.6875rem/);
@@ -445,7 +445,7 @@ test("typography uses one native system stack and normalized scale", () => {
 
 
 test("pickup spotlight shows reserved and capacity", () => {
-  const app = fs.readFileSync("docs/app.js", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
   assert.match(app, /game\.kind === "pickup" && game\.reserved != null/);
   assert.match(app, /\$\{game\.reserved\} \/ \$\{game\.capacity\} reserved/);
   assert.match(app, /capacityText/);
@@ -455,8 +455,8 @@ test("pickup spotlight shows reserved and capacity", () => {
 
 
 test("installed app refreshes data and release updates automatically", () => {
-  const app = fs.readFileSync("docs/app.js", "utf8");
-  const css = fs.readFileSync("docs/styles.css", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
 
   assert.match(app, /LIVE_DATA_REFRESH_MS = 60_000/);
   assert.match(app, /APP_UPDATE_CHECK_MS = 5 \* 60_000/);
@@ -471,7 +471,7 @@ test("installed app refreshes data and release updates automatically", () => {
 });
 
 test("web Live status requires successful runtime-backed reads", () => {
-  const app = fs.readFileSync("docs/app.js", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const refresh = app.match(/async function refreshLiveData\(\)[\s\S]*?\n}\n/)?.[0] || "";
   const config = app.match(/async function loadConfig\(\)[\s\S]*?\n}\n/)?.[0] || "";
   const online = app.match(/window\.addEventListener\("online"[\s\S]*?\n}\);/)?.[0] || "";
@@ -484,7 +484,7 @@ test("web Live status requires successful runtime-backed reads", () => {
 });
 
 test("Worker readiness uses a dedicated GitHub contents credential and probes live data", () => {
-  const worker = fs.readFileSync("infra/web-worker/worker.mjs", "utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
   const deploy = fs.readFileSync(".github/workflows/deploy-worker.yml", "utf8");
 
   assert.match(worker, /GITHUB_CONTENTS_TOKEN/);
@@ -507,7 +507,7 @@ test("Worker readiness uses a dedicated GitHub contents credential and probes li
 });
 
 test("calendar refresh preserves an explicitly selected future game", () => {
-  const app = fs.readFileSync("docs/app.js", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
   assert.match(app, /let selectedCalendarGameId = ""/);
   assert.match(app, /availableGames\.find\(\(game\) => game\.id === selectedCalendarGameId\)/);
   assert.match(app, /renderNextGame\(selectedGame, "SELECTED GAME"\)/);
@@ -515,7 +515,7 @@ test("calendar refresh preserves an explicitly selected future game", () => {
 
 
 test("autocomplete floats above the Ask card without resizing the input row", () => {
-  const css = fs.readFileSync("docs/styles.css", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
 
   assert.match(css, /\/\* v5\.6 autocomplete overlay \*\//);
   assert.match(css, /\.ask-card \{[\s\S]*overflow:\s*visible;/);
@@ -541,7 +541,7 @@ test("weather refresh is immediate only for schedule-relevant changes", () => {
   assert.match(pickup, /pickupWeatherChanged/);
   assert.match(pickup, /weather-refresh-needed/);
   assert.match(pickupWorkflow, /Refresh weather after pickup schedule change/);
-  assert.match(pickupWorkflow, /node weather\/update\.mjs/);
+  assert.match(pickupWorkflow, /node backend\/weather\/update\.mjs/);
   assert.match(leagueWorkflow, /Refresh weather after league schedule change/);
   assert.match(leagueWorkflow, /needsCalendar == 'true'/);
   assert.doesNotMatch(relevance, /reserved|capacity|players|waitlist/);
@@ -549,7 +549,7 @@ test("weather refresh is immediate only for schedule-relevant changes", () => {
 
 
 test("installed app does not interrupt first-load hydration for a service-worker update", () => {
-  const app = fs.readFileSync("docs/app.js", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
 
   assert.match(app, /let initialLoadComplete = false/);
   assert.match(app, /let appRefreshDeferred = false/);
@@ -570,9 +570,9 @@ test("installed app does not interrupt first-load hydration for a service-worker
 
 
 test("notification inbox tracks unread state, opens full-screen detail, and animates swipe delete", () => {
-  const html = fs.readFileSync("docs/index.html", "utf8");
-  const app = fs.readFileSync("docs/app.js", "utf8");
-  const css = fs.readFileSync("docs/styles.css", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
 
   assert.match(html, /id="notification-reader"/);
   assert.match(html, /class="push-compact"/);
@@ -596,9 +596,9 @@ test("notification inbox tracks unread state, opens full-screen detail, and anim
 });
 
 test("notification push control is compact and only displays On or Off", () => {
-  const html = fs.readFileSync("docs/index.html", "utf8");
-  const app = fs.readFileSync("docs/app.js", "utf8");
-  const css = fs.readFileSync("docs/styles.css", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
 
   assert.match(html, /class="push-compact"/);
   assert.doesNotMatch(html, /class="notification-push-row"/);
@@ -608,8 +608,8 @@ test("notification push control is compact and only displays On or Off", () => {
 });
 
 test("next-game sharing uses the generic device share sheet", () => {
-  const html = fs.readFileSync("docs/index.html", "utf8");
-  const app = fs.readFileSync("docs/app.js", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
 
   assert.match(html, /id="next-game-share" type="button">Share<\/button>/);
   assert.match(app, /navigator\.share/);
@@ -622,9 +622,9 @@ test("next-game sharing uses the generic device share sheet", () => {
 
 
 test("app and repository expose explicit BallerWatch copyright notices", () => {
-  const html = fs.readFileSync("docs/index.html", "utf8");
-  const app = fs.readFileSync("docs/app.js", "utf8");
-  const worker = fs.readFileSync("infra/web-worker/worker.mjs", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
   const readme = fs.readFileSync("README.md", "utf8");
   const copyright = fs.readFileSync("COPYRIGHT.md", "utf8");
 
@@ -636,14 +636,14 @@ test("app and repository expose explicit BallerWatch copyright notices", () => {
 });
 
 test("footer contains no secondary messaging shortcut", () => {
-  const html = fs.readFileSync("docs/index.html", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
   assert.doesNotMatch(html, /https:\/\/t\.me\//i);
   assert.match(html, /id="install-card"/);
 });
 
 
 test("website and utility surfaces share the same wider centered page footprint", () => {
-  const css = fs.readFileSync("docs/styles.css", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
   assert.match(css, /--app-surface-width:\s*920px/);
   assert.match(css, /\.shell \{[\s\S]*width:\s*min\(var\(--app-surface-width\), 100%\)/);
   assert.match(
@@ -658,9 +658,9 @@ test("website and utility surfaces share the same wider centered page footprint"
 });
 
 test("notification popup stays bounded and offers local Delete all beside Send test", () => {
-  const html = fs.readFileSync("docs/index.html", "utf8");
-  const app = fs.readFileSync("docs/app.js", "utf8");
-  const css = fs.readFileSync("docs/styles.css", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
 
   assert.match(
     html,
@@ -679,9 +679,9 @@ test("notification popup stays bounded and offers local Delete all beside Send t
 
 
 test("match spotlight swipe uses connected neighboring cards like a carousel train", () => {
-  const html = fs.readFileSync("docs/index.html", "utf8");
-  const app = fs.readFileSync("docs/app.js", "utf8");
-  const css = fs.readFileSync("docs/styles.css", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
 
   assert.match(html, /id="spotlight-carousel"/);
   assert.match(html, /id="spotlight-previous"/);
@@ -740,9 +740,9 @@ test("match spotlight swipe uses connected neighboring cards like a carousel tra
 
 
 test("v5.5 dashboard matches the iPhone-first demo direction", () => {
-  const html = fs.readFileSync("docs/index.html", "utf8");
-  const app = fs.readFileSync("docs/app.js", "utf8");
-  const css = fs.readFileSync("docs/styles.css", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
 
   assert.match(html, /Pickup \+ RATS monitor/);
   assert.match(html, /<h2 id="calendar-title">14-Day Calendar<\/h2>/);
@@ -760,9 +760,9 @@ test("v5.5 dashboard matches the iPhone-first demo direction", () => {
 });
 
 test("installed iPhone mode adds a blurred status-area separation layer", () => {
-  const html = fs.readFileSync("docs/index.html", "utf8");
-  const app = fs.readFileSync("docs/app.js", "utf8");
-  const css = fs.readFileSync("docs/styles.css", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
 
   assert.match(html, /class="status-bar-glass"/);
   assert.match(app, /classList\.toggle\("is-standalone", standalone\(\)\)/);
@@ -782,7 +782,7 @@ test("production rollout is release-gated and Pages waits for Worker readiness",
   const pickup = fs.readFileSync(".github/workflows/pickup.yml", "utf8");
   const league = fs.readFileSync(".github/workflows/league.yml", "utf8");
   const watchdog = fs.readFileSync(".github/workflows/watchdog.yml", "utf8");
-  const schedules = fs.readFileSync("infra/external-schedules.mjs", "utf8");
+  const schedules = fs.readFileSync("backend/infra/external-schedules.mjs", "utf8");
 
   for (const workflow of [worker, webRuntime, calendarBridge]) {
     assert.match(workflow, /release:\s*\n\s*types:\s*\[published\]/);
@@ -814,9 +814,9 @@ test("production rollout is release-gated and Pages waits for Worker readiness",
 
 test("web runtime requires the dedicated state key and web-only Worker", () => {
   const deploy = fs.readFileSync(".github/workflows/deploy-worker.yml", "utf8");
-  const stateCrypto = fs.readFileSync("shared/state-crypto.mjs", "utf8");
-  const worker = fs.readFileSync("infra/web-worker/worker.mjs", "utf8");
-  const app = fs.readFileSync("docs/app.js", "utf8");
+  const stateCrypto = fs.readFileSync("backend/shared/state-crypto.mjs", "utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const retiredPrefix = ["TELE", "GRAM"].join("");
 
   const requiredBlock = deploy.match(
@@ -849,12 +849,12 @@ test("repository policy reserves SemVer for product behavior changes", () => {
 test("runtime deployment migrates every web scope and audits full branch encryption", () => {
   const deploy = fs.readFileSync(".github/workflows/deploy-worker.yml", "utf8");
   const watchdog = fs.readFileSync(".github/workflows/watchdog.yml", "utf8");
-  const worker = fs.readFileSync("infra/web-worker/worker.mjs", "utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
 
   assert.match(deploy, /for scope in user pickup league watchdog weather web/);
-  assert.match(deploy, /node shared\/runtime-state\.mjs audit/);
+  assert.match(deploy, /node backend\/shared\/runtime-state\.mjs audit/);
   assert.match(watchdog, /Audit runtime-state encryption/);
-  assert.match(watchdog, /node shared\/runtime-state\.mjs audit/);
+  assert.match(watchdog, /node backend\/shared\/runtime-state\.mjs audit/);
   assert.match(worker, /async function userStateDocument/);
   assert.match(worker, /githubStateRecord\(env, "state\/user\.json"\)/);
   assert.match(worker, /await encryptState\((?:next|\{ settings \}), env\)/);
@@ -896,8 +896,8 @@ test("GitHub Actions dependencies are pinned to reviewed commit SHAs", () => {
 });
 
 test("PWA declares restrictive document policy and confines notification navigation", () => {
-  const html = fs.readFileSync("docs/index.html", "utf8");
-  const sw = fs.readFileSync("docs/sw.js", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(html, /http-equiv="Content-Security-Policy"/);
   assert.match(html, /script-src 'self'/);
   assert.match(html, /object-src 'none'/);
@@ -910,7 +910,7 @@ test("PWA declares restrictive document policy and confines notification navigat
 });
 
 test("Worker web API sets defense-in-depth security headers and protects push registration", () => {
-  const worker = fs.readFileSync("infra/web-worker/worker.mjs", "utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
   assert.match(worker, /"content-security-policy"/);
   assert.match(worker, /frame-ancestors 'none'/);
   assert.match(worker, /"x-content-type-options": "nosniff"/);
@@ -926,8 +926,8 @@ test("Worker web API sets defense-in-depth security headers and protects push re
 
 test("README includes the web app demo and multi-user settings are exposed", () => {
   const readme = fs.readFileSync("README.md", "utf8");
-  const html = fs.readFileSync("docs/index.html", "utf8");
-  const app = fs.readFileSync("docs/app.js", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
   assert.match(readme, /!\[BallerWatch web app demo\]\(docs\/demo\.jpg\)/);
   assert.equal(fs.existsSync("docs/demo.jpg"), true);
   assert.match(html, /id="owner-login-username"/);
@@ -940,9 +940,9 @@ test("README includes the web app demo and multi-user settings are exposed", () 
 
 
 test("match override editor uses the type pill action sheet and local Reset", () => {
-  const html = fs.readFileSync("docs/index.html", "utf8");
-  const app = fs.readFileSync("docs/app.js", "utf8");
-  const css = fs.readFileSync("docs/styles.css", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
 
   assert.match(html, /id="match-override-dialog" class="match-override-dialog"/);
   assert.match(html, /id="match-override-reset"/);
@@ -978,8 +978,8 @@ test("match override editor uses the type pill action sheet and local Reset", ()
 
 
 test("Saturday synthetic pickup keeps an internal kind but is labeled simply Pickup", () => {
-  const app = fs.readFileSync("docs/app.js", "utf8");
-  const worker = fs.readFileSync("infra/web-worker/worker.mjs", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
   assert.match(worker, /kind: "free_pickup"/);
   assert.match(app, /type: game\.kind === "league" \? "League" : "Pickup"/);
   assert.doesNotMatch(app, /Free Pickup/);
@@ -990,7 +990,7 @@ test("Saturday synthetic pickup keeps an internal kind but is labeled simply Pic
 
 
 test("match override modal is independently centered and constrained", () => {
-  const css = fs.readFileSync("docs/styles.css", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
   assert.match(
     css,
     /\.match-override-dialog \{[\s\S]*width:\s*min\(34rem, calc\(100vw - 1\.25rem\)\);[\s\S]*margin:\s*auto;[\s\S]*padding:\s*0;/,
@@ -1004,9 +1004,9 @@ test("match override modal is independently centered and constrained", () => {
 
 
 test("admin Settings can safely dispatch the existing production promotion workflow", () => {
-  const html = fs.readFileSync("docs/index.html", "utf8");
-  const app = fs.readFileSync("docs/app.js", "utf8");
-  const worker = fs.readFileSync("infra/web-worker/worker.mjs", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
 
   assert.match(html, /id="release-management"/);
   assert.match(html, /id="promote-release"/);
@@ -1031,9 +1031,9 @@ test("admin Settings can safely dispatch the existing production promotion workf
 
 
 test("match type pill opens a touch-safe Edit/Delete action sheet and freshness stays in footer", () => {
-  const html = fs.readFileSync("docs/index.html", "utf8");
-  const app = fs.readFileSync("docs/app.js", "utf8");
-  const css = fs.readFileSync("docs/styles.css", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
   assert.match(html, /id="next-game-menu-trigger"/);
   assert.match(html, /id="next-game-menu-edit"/);
   assert.match(html, /id="next-game-menu-delete"/);
@@ -1056,8 +1056,8 @@ test("match type pill opens a touch-safe Edit/Delete action sheet and freshness 
 });
 
 test("calendar freshness replaces the provider credit line and failed demos are removed", () => {
-  const html = fs.readFileSync("docs/index.html", "utf8");
-  const app = fs.readFileSync("docs/app.js", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
   assert.match(html, /class="calendar-updated calendar-update-credit" id="calendar-updated">Updated pending<\/p>/);
   assert.doesNotMatch(html, /class="weather-credit"/);
   assert.doesNotMatch(app, /Weather updated/);
@@ -1069,7 +1069,7 @@ test("calendar freshness replaces the provider credit line and failed demos are 
 test("release deploy refreshes weather immediately for newly generated match cards", () => {
   const workflow = fs.readFileSync(".github/workflows/deploy-worker.yml", "utf8");
   assert.match(workflow, /Refresh match weather for released schedule/);
-  assert.match(workflow, /node shared\/runtime-state\.mjs pull weather/);
-  assert.match(workflow, /node weather\/update\.mjs/);
-  assert.match(workflow, /node shared\/runtime-state\.mjs push weather/);
+  assert.match(workflow, /node backend\/shared\/runtime-state\.mjs pull weather/);
+  assert.match(workflow, /node backend\/weather\/update\.mjs/);
+  assert.match(workflow, /node backend\/shared\/runtime-state\.mjs push weather/);
 });
