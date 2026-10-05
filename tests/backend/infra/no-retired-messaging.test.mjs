@@ -22,9 +22,9 @@ function sourceFiles(root = ".") {
 
 test("retired messaging integration cannot be reintroduced", () => {
   const removedPaths = [
-    path.join("shared", retiredBrand + ".mjs"),
-    path.join("league", retiredBrand + "-notify.mjs"),
-    path.join("infra", retiredBrand + "-webhook"),
+    path.join("backend", "shared", retiredBrand + ".mjs"),
+    path.join("backend", "league", retiredBrand + "-notify.mjs"),
+    path.join("backend", "infra", retiredBrand + "-webhook"),
     path.join(".github", "workflows", "deploy-" + retiredBrand + "-webhook.yml"),
     path.join(".github", "workflows", "listener.yml"),
     path.join("listener", "bot.mjs"),
@@ -43,7 +43,7 @@ test("retired messaging integration cannot be reintroduced", () => {
   ];
 
   for (const file of sourceFiles()) {
-    if (file.endsWith(path.join("tests", "infra", "no-retired-messaging.test.mjs"))) continue;
+    if (file.endsWith(path.join("tests", "backend", "infra", "no-retired-messaging.test.mjs"))) continue;
     const value = fs.readFileSync(file, "utf8");
     for (const forbidden of forbiddenText) {
       assert.equal(
