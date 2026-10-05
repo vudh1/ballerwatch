@@ -14,12 +14,12 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   assert.match(html, /manifest\.webmanifest/);
   assert.match(html, /apple-touch-icon\.png/);
   assert.match(html, /class="brand-icon"/);
-  assert.match(html, /icon\.svg\?v=7\.0\.1/);
+  assert.match(html, /icon\.svg\?v=7\.0\.2/);
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=7\.0\.1/);
-  assert.match(html, /app\.js\?v=7\.0\.1/);
+  assert.match(html, /styles\.css\?v=7\.0\.2/);
+  assert.match(html, /app\.js\?v=7\.0\.2/);
 
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
@@ -92,7 +92,7 @@ test("promotion watches Worker and Pages then refreshes the open PWA", () => {
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=7\.0\.1/);
+  assert.match(app, /sw\.js\?v=7\.0\.2/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
