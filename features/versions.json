@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.0.4",
+  "currentVersion": "7.0.5",
   "releases": [
+    {
+      "version": "7.0.5",
+      "date": "2026-10-05",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "iPhone match-card timestamp footer alignment",
+      "webAnnouncement": "The Updated timestamp now stays pinned to the same match-card footer position in the iPhone installed web app as on the website.",
+      "changes": [
+        "Moved the match-card timestamp footer out of the inner spotlight content grid so it anchors to the match card itself.",
+        "Tied the footer inset to the card padding instead of relying on inner-content height, eliminating iPhone standalone layout drift.",
+        "Added regression coverage for the footer DOM hierarchy and card-relative CSS anchoring."
+      ]
+    },
     {
       "version": "7.0.4",
       "date": "2026-10-05",
