@@ -6,6 +6,9 @@ BallerWatch separates the browser UI, backend runtime, encrypted generated state
 
 ```text
 frontend/web/ GitHub Pages PWA
+  |-- app.js              view orchestration
+  |-- lib/client.js       API/session transport
+  |-- lib/notification-state.js local fallback + profile normalization
              |
              v
 backend/infra/web-worker/ Cloudflare Worker
@@ -38,9 +41,17 @@ The PWA uses username/password sign-in. First-time bootstrap or forgotten-passwo
 
 Signed user tokens carry a server-side auth revision. Password changes, recovery resets, and global sign-out advance that revision and revoke earlier tokens.
 
+## Accounts and notification state
+
+The authenticated user document remains a complete AES-GCM encrypted runtime-state envelope. BallerWatch 7 adds a bounded notification profile per account containing read IDs, deleted IDs, and Pickup / League / App category preferences.
+
+Notification mutations merge server-side instead of replacing the full profile, so actions from two signed-in devices converge without one device overwriting the other. Existing local notification state is migrated into the signed-in profile after authentication.
+
 ## Notifications
 
-Proactive output is limited to the documented Web Push / notification-board policy. User-specific RSVP names, confirmation state, and waitlist data remain authenticated-only.
+Proactive output is limited to the documented Web Push / notification-board policy. User-specific RSVP names, confirmation state, waitlist data, read/delete state, and preferences remain authenticated/encrypted-only.
+
+Web Push remains payload-free. Subscription state can associate an endpoint with an account and category snapshot inside encrypted runtime state; delivery can skip categories before contacting the browser push service. The service worker also keeps the installed-app badge and local background category preferences synchronized.
 
 ## Production pinning
 
