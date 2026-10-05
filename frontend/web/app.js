@@ -3431,6 +3431,7 @@ async function saveNotificationPreferencesFromUi() {
 
 els.notificationBell.addEventListener("click", openNotifications);
 els.settingsButton.addEventListener("click", openSettings);
+els.musicToggle?.addEventListener("click", () => void toggleMusic());
 els.closeSettings.addEventListener("click", () => els.settingsDialog.close());
 els.ownerLoginForm.addEventListener("submit", loginOwnerDevice);
 els.ownerSettingsForm.addEventListener("submit", saveOwnerSettings);
@@ -3489,7 +3490,15 @@ window.addEventListener("online", () => {
 });
 window.addEventListener("offline", () => setSystemState("offline"));
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState !== "visible") return;
+  if (document.visibilityState !== "visible") {
+    pauseAmbientMusic();
+    return;
+  }
+  if (musicEnabled()) {
+    void startAmbientMusic().then((started) => {
+      if (!started) armMusicForFirstGesture();
+    });
+  }
   if (appRefreshDeferred && initialLoadComplete) {
     window.location.reload();
     return;
@@ -3499,6 +3508,9 @@ document.addEventListener("visibilitychange", () => {
 });
 
 document.documentElement.classList.toggle("is-standalone", standalone());
+playLaunchIntro();
+renderMusicControl();
+if (musicEnabled()) armMusicForFirstGesture();
 applyInstallState();
 setNotificationFilter("all");
 renderNotificationPreferences();
