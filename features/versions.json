@@ -17,7 +17,8 @@
         "Removed the separate footer Edit link; the card footer now contains only the subtle source/update freshness line.",
         "Renamed Reset to source to Reset while preserving immediate local source restoration and persisted override removal.",
         "Added a release-deployment weather refresh so newly generated Saturday pickup cards receive weather immediately instead of waiting for the next six-hour watchdog cycle.",
-        "Bumped the installed PWA shell to 6.4.1."
+        "Bumped the installed PWA shell to 6.4.1.",
+        "Updated regression coverage for the control-safe carousel touch contract and the simplified Pickup/League pill labels."
       ]
     },
     {

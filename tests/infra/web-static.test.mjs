@@ -701,7 +701,7 @@ test("match spotlight swipe uses connected neighboring cards like a carousel tra
     /button\.setAttribute\("aria-selected", String\(button\.dataset\.date === date\)\)/,
   );
   assert.match(app, /renderCalendarGamePicker\(games, game\.id \|\| ""\)/);
-  assert.match(app, /event\.target\.closest\?\.\("a, button"\)/);
+  assert.match(app, /event\.target\.closest\?\.\("a, button, dialog"\)/);
   assert.match(css, /\/\* v5\.3\.3 connected-card carousel swipe \*\//);
   assert.match(css, /\.spotlight-carousel \{[\s\S]*overflow:\s*hidden;/);
   assert.match(css, /--spotlight-train-gap:\s*12px/);
@@ -968,7 +968,8 @@ test("match override editor uses the type pill action sheet and local Reset", ()
 test("Saturday free pickup is visually distinct and never exposes RSVP controls", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
   assert.match(app, /game\.kind === "free_pickup"/);
-  assert.match(app, /\? "Free Pickup"/);
+  assert.match(app, /type: game\.kind === "league" \? "League" : "Pickup"/);
+  assert.doesNotMatch(app, /\? "Free Pickup"/);
   assert.match(app, /rsvp: game\.kind === "pickup"/);
   assert.match(app, /hasCapacity = game\.kind === "pickup"/);
 });
