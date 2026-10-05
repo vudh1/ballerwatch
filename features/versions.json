@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.0.5",
+  "currentVersion": "7.0.6",
   "releases": [
+    {
+      "version": "7.0.6",
+      "date": "2026-10-05",
+      "type": "patch",
+      "source": "user-screenshot",
+      "title": "Match timestamp bottom-edge alignment",
+      "webAnnouncement": "The Updated timestamp now sits tight against the bottom edge of the match card on iPhone.",
+      "changes": [
+        "Reduced the match-card footer bottom offset from the full card inset to a small edge gap.",
+        "Cleared the older inherited footer min-height that was lifting the timestamp away from the card border.",
+        "Tightened the footer top padding and added regression coverage for the final bottom-edge geometry."
+      ]
+    },
     {
       "version": "7.0.5",
       "date": "2026-10-05",

@@ -3672,11 +3672,12 @@ body::after {
 .match-card-footer {
   position: absolute;
   right: var(--spotlight-card-inset, clamp(1.35rem, 4vw, 1.8rem));
-  bottom: var(--spotlight-card-inset, clamp(1.35rem, 4vw, 1.8rem));
+  bottom: 0.45rem;
   left: var(--spotlight-card-inset, clamp(1.35rem, 4vw, 1.8rem));
   display: block;
+  min-height: 0;
   margin: 0;
-  padding-top: 0.52rem;
+  padding-top: 0.42rem;
   border-top: 1px solid rgba(226, 232, 240, 0.10);
   pointer-events: none;
 }
