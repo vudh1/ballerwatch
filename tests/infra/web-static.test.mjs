@@ -947,8 +947,11 @@ test("match override editor uses an explicit footer Edit control and local Reset
   assert.match(app, /Source values restored locally/);
   assert.match(app, /persistedOverride/);
   assert.match(app, /method: "DELETE"/);
-  assert.match(app, /pendingMatchOverrideAfterLogin/);
+  assert.match(app, /pendingMatchAdminAction/);
   assert.match(app, /openSettings\(\{ pendingAction: "match-override" \}\)/);
+  assert.match(html, /id="next-game-menu-trigger"/);
+  assert.match(html, /id="next-game-menu-edit"/);
+  assert.match(html, /id="next-game-menu-delete"/);
   assert.doesNotMatch(app, /MATCH_OVERRIDE_DOUBLE_TAP_MS/);
   assert.doesNotMatch(app, /installTouchDoubleTap/);
   assert.doesNotMatch(app, /nextGameCard\.addEventListener\("dblclick"/);

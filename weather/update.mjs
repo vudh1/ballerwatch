@@ -275,7 +275,7 @@ export function collectUpcomingGames({
       address: "",
       mapsQuery: location,
       jerseyColor: clean(match?.jerseyColor, 60),
-      locationQuery: clean(game.mapsQuery || locationQuery({ location }), 260),
+      locationQuery: locationQuery({ location }),
     });
   }
 
@@ -299,7 +299,7 @@ export function collectUpcomingGames({
       mapsQuery: clean(game.mapsQuery || location, 220),
       reserved: null,
       capacity: null,
-      locationQuery: locationQuery({ location }),
+      locationQuery: clean(game.mapsQuery || locationQuery({ location }), 260),
       manualOverride: Boolean(game.manualOverride),
     });
   }

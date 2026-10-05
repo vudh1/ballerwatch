@@ -17,7 +17,8 @@
         "Diagnosed missing weather on newly generated Saturday games from production logs: Jefferson Park Free Pickup was unresolved by Nominatim while normal league/pickup forecasts were healthy.",
         "Changed Jefferson Park's weather/maps query to the concrete soccer-field address and added the existing Seattle-area weather fallback for Free Pickup if venue geocoding is unavailable.",
         "Changing match visibility triggers the existing watchdog weather refresh path so restored/deleted games reconcile with weather state.",
-        "Bumped the PWA shell to 6.4.0."
+        "Bumped the PWA shell to 6.4.0.",
+        "Finalized regression coverage and corrected the concrete Jefferson weather query placement so league weather keeps its venue query while Free Pickup uses the street-address query."
       ]
     },
     {
