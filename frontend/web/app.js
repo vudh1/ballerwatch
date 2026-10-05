@@ -28,6 +28,9 @@ import {
 } from "./lib/notification-state.js";
 
 const els = {
+  launchIntro: document.querySelector("#launch-intro"),
+  musicToggle: document.querySelector("#music-toggle"),
+  musicStatus: document.querySelector("#music-status"),
   system: document.querySelector("#system-status"),
   systemLine: document.querySelector(".system-line"),
   version: document.querySelector("#version"),
@@ -169,6 +172,11 @@ let notificationSyncPromise = Promise.resolve();
 let pendingMatchAdminAction = "";
 let matchOverrideSourceState = null;
 let spotlightIdleResetTimer = null;
+let ambientAudioContext = null;
+let ambientMasterGain = null;
+let ambientMusicTimer = null;
+let ambientPhraseIndex = 0;
+let musicGestureArmed = false;
 
 const OWNER_TOKEN_KEY = SESSION_TOKEN_KEY;
 const OWNER_USERNAME_KEY = SESSION_USERNAME_KEY;
@@ -179,6 +187,11 @@ const LIVE_DATA_REFRESH_MS = 60_000;
 const APP_UPDATE_CHECK_MS = 5 * 60_000;
 const SPOTLIGHT_IDLE_RESET_MS = 6_000;
 const INTERACTION_VIBRATION_MS = 8;
+const INTRO_SESSION_KEY = "ballerwatch-intro-seen-v1";
+const MUSIC_ENABLED_KEY = "ballerwatch-music-enabled-v1";
+const LAUNCH_INTRO_VISIBLE_MS = 2_250;
+const LAUNCH_INTRO_FADE_MS = 420;
+const AMBIENT_PHRASE_MS = 7_200;
 
 const COMMAND_SUGGESTIONS = [
   { value: "/today", label: "/today", description: "Today's games" },
