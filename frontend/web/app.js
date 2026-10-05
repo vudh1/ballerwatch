@@ -2066,7 +2066,7 @@ async function deployedAppVersion(version) {
 }
 
 async function watchPromotedRelease(version, {
-  attempts = 36,
+  attempts = 120,
   intervalMs = 5_000,
 } = {}) {
   const expected = String(version || "").trim();
