@@ -741,6 +741,10 @@ test("match spotlight swipe uses connected neighboring cards like a carousel tra
   assert.match(app, /classList\.add\("spotlight-train-card"\)/);
   assert.match(app, /preview\.style\.transform = `translate3d/);
   assert.match(app, /current\.style\.transform = `translate3d/);
+  assert.match(app, /const trainDistance = \(\) =>/);
+  assert.match(app, /current\.getBoundingClientRect\(\)\.width/);
+  assert.match(app, /return width \+ gap\(\)/);
+  assert.doesNotMatch(app, /carousel\.clientWidth \+ gap\(\)/);
   assert.match(app, /committedTrain\.preview\.style\.transform = "translate3d\(0, 0, 0\)"/);
   assert.match(app, /selectCalendarDate\(committedTrain\.target\.date\)/);
   assert.match(app, /document\.documentElement\.classList\.add\("spotlight-swipe-active"\)/);
@@ -752,7 +756,7 @@ test("match spotlight swipe uses connected neighboring cards like a carousel tra
   assert.match(app, /event\.target\.closest\?\.\("a, button, dialog"\)/);
   assert.match(css, /\/\* v5\.3\.3 connected-card carousel swipe \*\//);
   assert.match(css, /\.spotlight-carousel \{[\s\S]*overflow:\s*hidden;/);
-  assert.match(css, /--spotlight-train-gap:\s*12px/);
+  assert.match(css, /--spotlight-train-gap:\s*0px/);
   assert.match(css, /height:\s*var\(--spotlight-card-height, auto\)/);
   assert.match(css, /\.spotlight-measure-card \{[\s\S]*height:\s*auto !important;/);
   assert.match(css, /\.spotlight-train-card \{[\s\S]*position:\s*absolute;/);
