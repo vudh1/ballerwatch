@@ -1037,10 +1037,22 @@ test("match type pill opens a touch-safe Edit/Delete action sheet and freshness 
   assert.match(app, /closest\?\.\("a, button, dialog"\)/);
   assert.match(app, /type: game\.kind === "league" \? "League" : "Pickup"/);
   assert.match(css, /\.match-card-action-dialog \{/);
-  assert.match(css, /\.match-card-footer \{[\s\S]*display:\s*block/);
+  assert.match(css, /"location weather"[\s\S]*"capacity rsvp"[\s\S]*"footer footer"/);
+  assert.match(css, /\.next-game-rsvp-pill \{[\s\S]*grid-area:\s*rsvp/);
+  assert.match(css, /\.match-card-footer \{[\s\S]*grid-area:\s*footer[\s\S]*border-top:/);
   assert.match(css, /\.match-card-footer \.match-update-credit[\s\S]*font-size:\s*0\.60rem/);
 });
 
+test("calendar freshness replaces the provider credit line and failed demos are removed", () => {
+  const html = fs.readFileSync("docs/index.html", "utf8");
+  const app = fs.readFileSync("docs/app.js", "utf8");
+  assert.match(html, /class="calendar-updated calendar-update-credit" id="calendar-updated">Updated pending<\/p>/);
+  assert.doesNotMatch(html, /class="weather-credit"/);
+  assert.doesNotMatch(app, /Weather updated/);
+  assert.match(app, /Updated pending/);
+  assert.equal(fs.existsSync("docs/demo_failed.jpg"), false);
+  assert.equal(fs.existsSync("docs/demo_failed 1.jpg"), false);
+});
 
 test("release deploy refreshes weather immediately for newly generated match cards", () => {
   const workflow = fs.readFileSync(".github/workflows/deploy-worker.yml", "utf8");
