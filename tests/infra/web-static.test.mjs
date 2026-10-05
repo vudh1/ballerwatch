@@ -965,11 +965,13 @@ test("match override editor uses the type pill action sheet and local Reset", ()
 });
 
 
-test("Saturday free pickup is visually distinct and never exposes RSVP controls", () => {
+test("Saturday synthetic pickup keeps an internal kind but is labeled simply Pickup", () => {
   const app = fs.readFileSync("docs/app.js", "utf8");
-  assert.match(app, /game\.kind === "free_pickup"/);
+  const worker = fs.readFileSync("infra/web-worker/worker.mjs", "utf8");
+  assert.match(worker, /kind: "free_pickup"/);
   assert.match(app, /type: game\.kind === "league" \? "League" : "Pickup"/);
-  assert.doesNotMatch(app, /\? "Free Pickup"/);
+  assert.doesNotMatch(app, /Free Pickup/);
+  assert.doesNotMatch(worker, /Free Pickup/);
   assert.match(app, /rsvp: game\.kind === "pickup"/);
   assert.match(app, /hasCapacity = game\.kind === "pickup"/);
 });

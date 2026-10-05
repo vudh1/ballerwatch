@@ -2009,7 +2009,7 @@ export function pickupUserRsvpView(snapshot, userRsvpName = "") {
 }
 
 function freePickupGameBlock(game) {
-  const lines=["⚽ Free Pickup"];
+  const lines=["⚽ Pickup"];
   const start=clock(game.startTime);
   const end=clock(game.endTime);
   if(start || end) lines.push(`🕒 ${start || "?"}${end ? `–${end}` : ""}`);
@@ -2073,7 +2073,7 @@ export function dateGameAnswer(snapshot, date, question = "") {
 
   if (!wantsJersey && !wantsOpponent && !wantsRsvp) {
     for (const game of freePickupMatches(snapshot).filter((item) => String(item?.date || "") === date)) {
-      const lines = ["⚽ Free Pickup"];
+      const lines = ["⚽ Pickup"];
       if (wantsTime || wantsPickup) {
         const start = clock(game.startTime);
         const end = clock(game.endTime);
@@ -2423,7 +2423,7 @@ export function webCalendarDetails(
       kind: "free_pickup",
       date,
       dateLabel: formatDate(date),
-      title: "Free Pickup",
+      title: "Pickup",
       startTime,
       endTime,
       time: startTime && endTime ? `${startTime}–${endTime}` : startTime,
@@ -2620,7 +2620,7 @@ export function webNextGameDetails(snapshot, now = new Date()) {
       kind: "free_pickup",
       date: next.date,
       dateLabel: formatDate(next.date),
-      title: "Free Pickup",
+      title: "Pickup",
       startTime,
       endTime,
       time,
@@ -2639,7 +2639,7 @@ export function webNextGameDetails(snapshot, now = new Date()) {
       sourceUpdatedAt: "",
       jerseyColor: "",
       shareText: [
-        `Free Pickup — ${formatDate(next.date)}`,
+        `Pickup — ${formatDate(next.date)}`,
         time,
         location,
       ].filter(Boolean).join("\n"),
