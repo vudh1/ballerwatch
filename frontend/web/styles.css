@@ -1878,7 +1878,7 @@ textarea {
 
 /* v5.3.3 connected-card carousel swipe */
 .spotlight-carousel {
-  --spotlight-train-gap: 12px;
+  --spotlight-train-gap: 0px;
   position: relative;
   margin: 0.9rem 0;
   overflow: hidden;

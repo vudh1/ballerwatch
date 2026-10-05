@@ -960,7 +960,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=7.0.1", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=7.0.2", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -1960,7 +1960,15 @@ function installSpotlightSwipe() {
     const value = Number.parseFloat(
       getComputedStyle(carousel).getPropertyValue("--spotlight-train-gap"),
     );
-    return Number.isFinite(value) ? value : 12;
+    return Number.isFinite(value) ? value : 0;
+  };
+
+  const trainDistance = () => {
+    const cardWidth = current.getBoundingClientRect().width;
+    const width = Number.isFinite(cardWidth) && cardWidth > 0
+      ? cardWidth
+      : carousel.clientWidth;
+    return width + gap();
   };
 
   const clearInlineMotion = () => {
@@ -1992,7 +2000,7 @@ function installSpotlightSwipe() {
     const preview = buildSpotlightTrainCard(target.game);
     carousel.append(preview);
 
-    const distance = carousel.clientWidth + gap();
+    const distance = trainDistance();
     const baseOffset = direction * distance;
     preview.style.transform = `translate3d(${baseOffset}px, 0, 0)`;
 

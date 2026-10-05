@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.0.1",
+  "currentVersion": "7.0.2",
   "releases": [
+    {
+      "version": "7.0.2",
+      "date": "2026-10-05",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Connected match-card train spacing",
+      "webAnnouncement": "BallerWatch keeps adjacent match cards directly connected while swiping between games.",
+      "changes": [
+        "Removed the intentional 12px gap between the current and adjacent match cards in the sliding spotlight train.",
+        "Based carousel travel distance on the actual rendered match-card width instead of the carousel container width so neighboring card edges stay aligned throughout drag and settle animations.",
+        "Added regression coverage for zero-gap train geometry and card-width-based swipe distance."
+      ]
+    },
     {
       "version": "7.0.1",
       "date": "2026-10-05",
