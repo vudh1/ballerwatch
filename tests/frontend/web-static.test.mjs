@@ -1338,6 +1338,16 @@ test("league workflow writes notifications to the shared root before Web Push", 
 });
 
 
+test("pickup RSVP roster empty-state uses normalized entry variables", () => {
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+
+  assert.match(
+    app,
+    /if \(!confirmedEntries\.length && !queuedEntries\.length\) \{[\s\S]*No RSVP names are available yet/,
+  );
+  assert.doesNotMatch(app, /if \(!players\.length && !waitlist\.length\)/);
+});
+
 test("pickup capacity opens a compact signed-in RSVP roster without public name leakage", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
