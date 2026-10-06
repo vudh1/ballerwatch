@@ -915,7 +915,7 @@ async function openRsvpRoster() {
       renderRsvpRosterList(els.rsvpRosterWaitlistList, queuedEntries);
     }
 
-    if (!players.length && !waitlist.length) {
+    if (!confirmedEntries.length && !queuedEntries.length) {
       els.rsvpRosterSummary.textContent = "No RSVP names are available yet.";
     }
   } catch (error) {
