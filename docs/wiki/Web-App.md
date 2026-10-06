@@ -14,6 +14,10 @@ A signed-in user can change:
 
 There is no in-app pairing-code recovery path. First-time bootstrap or forgotten-password recovery is administrator-controlled through **Reset web user password** with a temporary `BALLERWATCH_RECOVERY_PASSWORD` Actions secret.
 
+## Match-card action hierarchy
+
+Pickup match cards deliberately avoid using the same capsule treatment for every element. The Pickup/League type remains a compact tag, weather is shown as lightweight informational text, RSVP uses a stronger rounded-rectangle action shape, and Directions/Share are quieter secondary controls. RSVP remains neutral until authenticated confirmation is known; only a confirmed RSVP uses the green success treatment and check mark.
+
 ## Pickup RSVP roster
 
 For RSVP-enabled pickup matches, the capacity pill is an interactive control that opens the signed-in RSVP roster. On touch devices, including the installed iPhone PWA, match-card swipe navigation excludes links, buttons, ARIA buttons, and form controls so a normal tap on the capacity pill is not consumed by the swipe gesture.
