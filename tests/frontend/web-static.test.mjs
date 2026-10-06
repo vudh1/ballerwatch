@@ -24,7 +24,7 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v7-0-16-shell/);
+  assert.match(sw, /ballerwatch-v7-0-17-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -693,7 +693,7 @@ test("footer contains no secondary messaging shortcut", () => {
 });
 
 
-test("BallerWatch 7.0.16 uses the top-right bell and gear without bottom app tabs", () => {
+test("BallerWatch 7.0.17 uses the top-right bell and gear without bottom app tabs", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   assert.match(html, /id="settings-button"/);
