@@ -119,6 +119,17 @@ const els = {
   nextGameCapacityLabel: document.querySelector("#next-game-capacity-label"),
   nextGameCapacitySpots: document.querySelector("#next-game-capacity-spots"),
   nextGameCapacityFill: document.querySelector("#next-game-capacity-fill"),
+  rsvpRosterDialog: document.querySelector("#rsvp-roster-dialog"),
+  closeRsvpRoster: document.querySelector("#close-rsvp-roster"),
+  rsvpRosterTitle: document.querySelector("#rsvp-roster-title"),
+  rsvpRosterSummary: document.querySelector("#rsvp-roster-summary"),
+  rsvpRosterConfirmed: document.querySelector("#rsvp-roster-confirmed"),
+  rsvpRosterConfirmedCount: document.querySelector("#rsvp-roster-confirmed-count"),
+  rsvpRosterConfirmedList: document.querySelector("#rsvp-roster-confirmed-list"),
+  rsvpRosterWaitlist: document.querySelector("#rsvp-roster-waitlist"),
+  rsvpRosterWaitlistCount: document.querySelector("#rsvp-roster-waitlist-count"),
+  rsvpRosterWaitlistList: document.querySelector("#rsvp-roster-waitlist-list"),
+  rsvpRosterSignIn: document.querySelector("#rsvp-roster-sign-in"),
   nextGameWeather: document.querySelector("#next-game-weather"),
   nextGameActions: document.querySelector("#next-game-actions"),
   nextGameRsvp: document.querySelector("#next-game-rsvp"),
@@ -180,6 +191,7 @@ let ambientMasterGain = null;
 let ambientMusicTimer = null;
 let ambientPhraseIndex = 0;
 let musicGestureArmed = false;
+let rsvpRosterRequestId = 0;
 
 const OWNER_TOKEN_KEY = SESSION_TOKEN_KEY;
 const OWNER_USERNAME_KEY = SESSION_USERNAME_KEY;
@@ -1265,7 +1277,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=7.0.15", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=7.0.16", {
     scope: "./",
     updateViaCache: "none",
   });
