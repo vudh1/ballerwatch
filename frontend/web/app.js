@@ -657,7 +657,8 @@ function disarmMusicGesture() {
   document.removeEventListener("keydown", startMusicFromGesture, true);
 }
 
-function startMusicFromGesture() {
+function startMusicFromGesture(event) {
+  if (event?.target?.closest?.("#music-toggle")) return;
   disarmMusicGesture();
   void startAmbientMusic({ audioMark: true }).then((started) => {
     if (!started && musicEnabled()) armMusicForFirstGesture();
