@@ -70,3 +70,4 @@ The source ledger on `main` is authoritative for the newest reviewed version. Th
 - **7.0.20** — Replaces the ambient music loop with an original self-contained stadium-football anthem synthesized in Web Audio, with no third-party audio assets.
 - **7.0.21** — Fixes installed-iPhone taps on the pickup capacity pill so the RSVP roster opens instead of the match-card swipe handler suppressing the tap.
 - **7.0.22** — Gives the desktop Pickup/League pill pointer priority over the overlapping right-edge carousel navigation zone.
+- **7.0.23** — Clears the lingering green capacity-pill focus ring after pointer/touch roster use while preserving keyboard focus behavior.
