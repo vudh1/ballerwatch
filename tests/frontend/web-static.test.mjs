@@ -1355,6 +1355,28 @@ test("pickup RSVP roster empty-state uses normalized entry variables", () => {
   assert.doesNotMatch(app, /if \(!players\.length && !waitlist\.length\)/);
 });
 
+test("iPhone spotlight swipe preserves taps on ARIA button controls", () => {
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+
+  assert.match(
+    app,
+    /function isSpotlightInteractiveTarget\(target\)[\s\S]*\[role=button\][\s\S]*input[\s\S]*select[\s\S]*textarea[\s\S]*label/,
+  );
+  assert.match(
+    app,
+    /nextGameCard\.addEventListener\("touchstart",[\s\S]*isSpotlightInteractiveTarget\(event\.target\)/,
+  );
+  assert.match(
+    app,
+    /nextGameCard\.addEventListener\("touchmove",[\s\S]*isSpotlightInteractiveTarget\(event\.target\)/,
+  );
+  assert.match(
+    app,
+    /nextGameCard\.addEventListener\("touchend",[\s\S]*isSpotlightInteractiveTarget\(event\.target\)/,
+  );
+  assert.match(app, /nextGameCapacity\.addEventListener\("click",[\s\S]*openRsvpRoster/);
+});
+
 test("pickup capacity opens a compact signed-in RSVP roster without public name leakage", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
