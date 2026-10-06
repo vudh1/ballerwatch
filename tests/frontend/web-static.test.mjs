@@ -30,6 +30,7 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
 test("static web app contains no repository secrets or private runtime data", () => {
   const files = [
     "frontend/web/index.html",
+    "frontend/web/launch-prepaint.js",
     "frontend/web/app.js",
     "frontend/web/sw.js",
     "frontend/web/styles.css",
@@ -1225,25 +1226,37 @@ test("safe feedback review tooling never reads raw private chat or request text"
 });
 
 
-test("cinematic launch is original, session-scoped, and reduced-motion safe", () => {
+test("cinematic launch owns first paint, stays session-scoped, and is reduced-motion safe", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const gate = fs.readFileSync("frontend/web/launch-prepaint.js", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const css = fs.readFileSync("frontend/web/styles.css", "utf8");
+  const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
 
-  assert.match(html, /id="launch-intro"/);
+  assert.match(html, /<html lang="en" class="launch-intro-pending">/);
+  assert.match(html, /<script src="\.\/launch-prepaint\.js\?v=7\.0\.16"><\/script>[\s\S]*<link rel="stylesheet"/);
+  assert.match(html, /id="launch-intro" aria-hidden="true">/);
+  assert.doesNotMatch(html, /id="launch-intro"[^>]*\shidden/);
   assert.match(html, /class="launch-intro-word-main">BallerWatch<\/span>/);
   assert.match(html, /launch-intro-beam-a/);
+  assert.match(gate, /ballerwatch-intro-seen-v1/);
+  assert.match(gate, /sessionStorage\.getItem\(introSessionKey\)/);
+  assert.match(gate, /prefers-reduced-motion: reduce/);
+  assert.match(gate, /classList\.remove\("launch-intro-pending"\)/);
   assert.match(app, /INTRO_SESSION_KEY = "ballerwatch-intro-seen-v1"/);
   assert.match(app, /LAUNCH_INTRO_VISIBLE_MS = 2_250/);
   assert.match(app, /function playLaunchIntro/);
   assert.match(app, /sessionStorage\.getItem\(INTRO_SESSION_KEY\)/);
   assert.match(app, /sessionStorage\.setItem\(INTRO_SESSION_KEY, "1"\)/);
+  assert.match(app, /clearLaunchIntroPaintGate\(\)/);
   assert.match(app, /prefers-reduced-motion: reduce/);
+  assert.match(css, /html\.launch-intro-pending \.launch-intro \{[\s\S]*opacity:\s*1;[\s\S]*visibility:\s*visible;[\s\S]*pointer-events:\s*auto/);
   assert.match(css, /@keyframes ballerwatch-intro-word/);
   assert.match(css, /@keyframes ballerwatch-intro-shine/);
   assert.match(css, /\.launch-intro\.is-active \{[\s\S]*pointer-events:\s*auto/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.launch-intro \{[\s\S]*display:\s*none !important/);
-  assert.doesNotMatch([html, app, css].join("\n"), /Netflix/i);
+  assert.match(sw, /\.\/launch-prepaint\.js\?v=7\.0\.16/);
+  assert.doesNotMatch([html, gate, app, css].join("\n"), /Netflix/i);
 });
 
 test("music is an icon-only opt-in control and remains gesture-safe", () => {
