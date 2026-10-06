@@ -2081,7 +2081,7 @@ function buildSpotlightTrainCard(game) {
     "SELECTED GAME",
   );
 
-  for (const control of card.querySelectorAll("a, button")) {
+  for (const control of card.querySelectorAll("a, button, [tabindex]")) {
     control.tabIndex = -1;
   }
 
