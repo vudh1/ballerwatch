@@ -64,3 +64,4 @@ The source ledger on `main` is authoritative for the newest reviewed version. Th
 - **7.0.14** — Keeps Settings and Notifications inside a symmetric iPhone-safe vertical frame below the top system/header area, with matching top and bottom insets.
 - **7.0.15** — Fixes the league one-hour reminder handoff so reminders recorded inside the league workflow reach the shared notification board/Web Push sender, and self-repairs recorded-but-undelivered reminders while the match is still upcoming.
 - **7.0.16** — Makes the pickup capacity pill open a compact signed-in RSVP roster, ordered by BallerWatch RSVP observation order, with guest counts, waitlist, and outside-tap dismissal.
+- **7.0.17** — Makes the cinematic launch own the browser's first paint so the dashboard no longer flashes briefly before the intro, while keeping session and reduced-motion behavior.

@@ -475,8 +475,13 @@ function launchIntroSeenThisSession() {
   }
 }
 
+function clearLaunchIntroPaintGate() {
+  document.documentElement.classList.remove("launch-intro-pending");
+}
+
 function playLaunchIntro() {
   if (!els.launchIntro || reducedMotionPreferred() || launchIntroSeenThisSession()) {
+    clearLaunchIntroPaintGate();
     if (els.launchIntro) els.launchIntro.hidden = true;
     return false;
   }
@@ -489,6 +494,7 @@ function playLaunchIntro() {
   els.launchIntro.classList.remove("is-exiting");
   window.requestAnimationFrame(() => {
     els.launchIntro.classList.add("is-active");
+    clearLaunchIntroPaintGate();
   });
 
   window.setTimeout(() => {
@@ -1401,7 +1407,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=7.0.16", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=7.0.17", {
     scope: "./",
     updateViaCache: "none",
   });
