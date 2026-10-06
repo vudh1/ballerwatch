@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, Calendar sync, and quick answers into one installable app.
 
-**Current source version: 7.0.19**
+**Current source version: 7.0.20**
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
 
@@ -39,6 +39,7 @@ BallerWatch 7 turns the PWA into a more complete account-backed app experience:
 - **App navigation:** Inbox and Settings stay one tap away through the top-right bell and gear, without a persistent bottom tab bar.
 - **Notification layering:** Notification details return to Inbox as a true modal, keeping the notification surface above the dashboard until it is actually closed.
 - **Launch experience:** the cinematic intro owns the first browser paint on a fresh session, preventing the dashboard from flashing underneath it before the animation starts.
+- **Original stadium music:** the optional music toggle now drives a self-contained Web Audio football anthem with percussion, claps, brass-like stabs, bass, and an original celebratory hook; no third-party audio files are bundled.
 
 Signed-out use still works: local read/delete state and anonymous Web Push remain available, and local notification state is migrated into the account after a successful sign-in.
 
