@@ -28,6 +28,12 @@ Inbox and notification details both use modal top-layer dialogs. Returning from 
 
 On a fresh site/app session, the cinematic launch overlay is selected before the browser's first paint so the dashboard cannot flash underneath it. The intro remains once-per-session and is skipped when the device requests reduced motion.
 
+## Music
+
+The optional Settings speaker control plays an original stadium-football anthem synthesized locally with the browser Web Audio API. The arrangement uses synthesized kick percussion, clap texture, bass, brass-like chord stabs, and an original celebratory hook. BallerWatch does not download, stream, or bundle third-party music files for this feature.
+
+The preference remains local to the device. Playback starts only after a browser-permitted user gesture and pauses when the app is no longer visible.
+
 ## Live status
 
 The Live indicator is shown only when runtime-backed config, game/calendar data, and notification-board reads succeed. A healthy static shell with unavailable runtime data must display Offline.
