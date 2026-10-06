@@ -4739,3 +4739,10 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
   }
 }
 
+/* v7.0.25 preserve match-type action priority over desktop carousel edge */
+@media (hover: hover) and (pointer: fine) {
+  .spotlight-edge-next {
+    top: 5.75rem;
+  }
+}
+
