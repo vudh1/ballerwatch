@@ -2795,6 +2795,7 @@ html.is-standalone .status-bar-glass {
   }
 
   .spotlight-edge-next {
+    top: 4.6rem;
     right: 0;
     justify-content: flex-end;
     padding-right: 0.7rem;
