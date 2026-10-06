@@ -105,7 +105,7 @@
           <p class="next-game-location muted" id="next-game-location"></p>
           <div class="next-game-weather" id="next-game-weather" hidden></div>
           <div class="next-game-capacity" id="next-game-capacity" role="button" tabindex="0"
-            aria-haspopup="dialog" aria-expanded="false" aria-label="View pickup RSVP roster" hidden>
+            aria-haspopup="dialog" aria-expanded="false" aria-label="View pickup RSVP roster and RSVP" hidden>
             <div class="next-game-capacity-row">
               <span class="next-game-capacity-label" id="next-game-capacity-label"></span>
               <span class="next-game-capacity-spots" id="next-game-capacity-spots"></span>
@@ -114,8 +114,6 @@
               <span class="next-game-capacity-fill" id="next-game-capacity-fill"></span>
             </div>
           </div>
-          <a class="button-link pickup-rsvp-link next-game-rsvp-pill" id="next-game-rsvp"
-            target="_blank" rel="noopener" hidden>RSVP</a>
           <div class="button-row next-game-actions" id="next-game-actions" hidden>
             <a class="button-link" id="next-game-directions" target="_blank" rel="noopener">Directions</a>
             <button class="secondary" id="next-game-share" type="button">Share</button>
@@ -242,8 +240,12 @@
         </div>
         <ol class="rsvp-roster-list" id="rsvp-roster-waitlist-list"></ol>
       </section>
-      <button class="secondary rsvp-roster-sign-in" id="rsvp-roster-sign-in"
-        type="button" hidden>Sign in</button>
+      <div class="rsvp-roster-actions">
+        <a class="button-link pickup-rsvp-link rsvp-roster-rsvp" id="rsvp-roster-rsvp"
+          target="_blank" rel="noopener" hidden>RSVP</a>
+        <button class="secondary rsvp-roster-sign-in" id="rsvp-roster-sign-in"
+          type="button" hidden>Sign in to view names</button>
+      </div>
     </div>
   </dialog>
 
