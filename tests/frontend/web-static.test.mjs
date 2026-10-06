@@ -117,15 +117,17 @@ test("notification bell exposes a synchronized push switch", () => {
 });
 
 
-test("next-game card exposes pickup RSVP, directions, and native share", () => {
+test("pickup capacity sheet owns RSVP while the card keeps secondary actions", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   assert.match(html, /id="next-game-card"/);
-  assert.match(html, /id="next-game-rsvp"/);
+  assert.doesNotMatch(html, /id="next-game-rsvp"/);
+  assert.match(html, /id="rsvp-roster-rsvp"/);
   assert.match(html, /id="next-game-directions"/);
   assert.match(html, /id="next-game-share"/);
+  assert.match(app, /function applyRsvpAction/);
+  assert.match(app, /applyRsvpAction\(els\.rsvpRosterRsvp, spotlightModel\(game, "SELECTED GAME"\)\)/);
   assert.match(app, /\/web\/next-game/);
-  assert.match(app, /model\.rsvp/);
   assert.match(app, /google\.com\/maps\/search\/\?api=1/);
   assert.match(app, /navigator\.share/);
   assert.match(app, /navigator\.clipboard\.writeText/);
@@ -203,6 +205,8 @@ test("pickup RSVP button is neutral until authenticated confirmation is known", 
   const css = fs.readFileSync("frontend/web/styles.css", "utf8");
   assert.match(app, /confirmedRsvpDates = new Set/);
   assert.match(app, /model\.rsvpConfirmed \? "RSVP'd" : "RSVP"/);
+  assert.match(app, /rsvpRosterRsvp: document\.querySelector\("#rsvp-roster-rsvp"\)/);
+  assert.doesNotMatch(app, /nextGameRsvp: document\.querySelector/);
   assert.match(css, /\.pickup-rsvp-link \{[\s\S]*rgba\(71, 85, 105, 0\.36\)/);
   assert.match(css, /\.pickup-rsvp-link\.is-confirmed \{[\s\S]*rgba\(74, 222, 128/);
   assert.match(css, /\.pickup-rsvp-link\.is-confirmed::before \{[\s\S]*content:\s*"✓"/);
@@ -1448,7 +1452,7 @@ test("closing a pointer-opened RSVP roster clears the lingering capacity focus r
   );
 });
 
-test("pickup capacity opens a compact signed-in RSVP roster without public name leakage", () => {
+test("pickup capacity opens a full-width signed-in RSVP roster without public name leakage", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const css = fs.readFileSync("frontend/web/styles.css", "utf8");
@@ -1462,6 +1466,7 @@ test("pickup capacity opens a compact signed-in RSVP roster without public name 
   assert.match(html, /id="rsvp-roster-dialog" class="rsvp-roster-dialog"/);
   assert.match(html, /id="rsvp-roster-confirmed-list"/);
   assert.match(html, /id="rsvp-roster-waitlist-list"/);
+  assert.match(html, /id="rsvp-roster-rsvp"[\s\S]*>RSVP<\/a>/);
 
   assert.match(app, /async function openRsvpRoster/);
   assert.match(app, /\/web\/user\/rsvp-roster\?date=/);
@@ -1470,7 +1475,13 @@ test("pickup capacity opens a compact signed-in RSVP roster without public name 
   assert.match(app, /Sign in to view RSVP names/);
   assert.match(app, /a, button, \[tabindex\]/);
 
-  assert.match(css, /\.rsvp-roster-dialog \{[\s\S]*width:\s*min\(27rem/);
+  const rosterSheet = css.split("/* v7.0.25 full-width RSVP roster sheet */")[1] || "";
+  assert.match(
+    rosterSheet,
+    /\.rsvp-roster-dialog \{[\s\S]*width:\s*min\(var\(--app-surface-width\), calc\(100vw - 2rem\)\)/,
+  );
+  assert.match(rosterSheet, /\.rsvp-roster-actions \{[\s\S]*position:\s*sticky;[\s\S]*bottom:\s*0;/);
+  assert.match(rosterSheet, /"capacity capacity"/);
   assert.match(css, /\.rsvp-roster-dialog::backdrop/);
   assert.match(css, /\.next-game-capacity\[role="button"\]/);
 
