@@ -1284,7 +1284,7 @@ test("music is an icon-only opt-in control and remains gesture-safe", () => {
   assert.match(app, /createBuffer\(1, frameCount, context\.sampleRate\)/);
   assert.match(app, /Stadium music is playing quietly/);
   assert.doesNotMatch(html, /<audio|autoplay/i);
-  assert.doesNotMatch(app, /new Audio\\(|createMediaElementSource|\\.mp3|\\.wav|\\.ogg/i);
+  assert.doesNotMatch(app, /new Audio\(|createMediaElementSource|\.mp3|\.wav|\.ogg/i);
 });
 
 
