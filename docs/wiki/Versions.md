@@ -67,3 +67,4 @@ The source ledger on `main` is authoritative for the newest reviewed version. Th
 - **7.0.17** — Makes the cinematic launch own the browser's first paint so the dashboard no longer flashes briefly before the intro, while keeping session and reduced-motion behavior.
 - **7.0.18** — Keeps Inbox in the browser modal top layer when returning from a notification detail, preventing it from falling behind dashboard cards.
 - **7.0.19** — Fixes the pickup RSVP roster empty-state check so signed-in roster viewing no longer throws `players is not defined`.
+- **7.0.20** — Replaces the ambient music loop with an original self-contained stadium-football anthem synthesized in Web Audio, with no third-party audio assets.
