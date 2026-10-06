@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.0.14",
+  "currentVersion": "7.0.15",
   "releases": [
+    {
+      "version": "7.0.15",
+      "date": "2026-10-05",
+      "type": "patch",
+      "source": "live-incident",
+      "title": "League reminder Web Push handoff repair",
+      "webAnnouncement": "BallerWatch fixes one-hour league reminders that were recorded but not signaled to the installed app.",
+      "changes": [
+        "Routes league notification-board writes and the Web Push pending marker from the league workflow into the shared repository-root runtime state used by the push sender.",
+        "Repairs a reminder whose encrypted reminder state says sent but whose shared notification board has no matching reminder entry, allowing it to be re-queued while the match is still upcoming.",
+        "Adds regression coverage that reproduces the league subdirectory/root mismatch that caused the missed reminder."
+      ]
+    },
     {
       "version": "7.0.14",
       "date": "2026-10-05",

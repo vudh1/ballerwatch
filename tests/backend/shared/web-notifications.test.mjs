@@ -69,3 +69,37 @@ test("suppresses exact duplicate board entries and does not queue another push",
   assert.equal(second.id, first.id);
   assert.equal(fs.existsSync(".runtime/web-push-pending"), false);
 });
+
+
+test("explicit rootDir keeps notification board and pending marker at repo root", (ctx) => {
+  const cwd = process.cwd();
+  const env = process.env;
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "ballerwatch-board-root-"));
+  const leagueDir = path.join(root, "league");
+  fs.mkdirSync(leagueDir, { recursive: true });
+  process.chdir(leagueDir);
+  process.env = { ...env, TRACKER_STATE_KEY: "synthetic-board-root-key" };
+  ctx.after(() => {
+    process.chdir(cwd);
+    process.env = env;
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  appendWebNotification("league", {
+    title: "Match starts in 1 hour",
+    body: "Team Alpha vs Team Beta",
+    tag: "rats-start-test",
+  }, {
+    now: new Date("2026-10-05T19:00:00-07:00"),
+    rootDir: "..",
+  });
+
+  assert.equal(fs.existsSync(path.join(root, "state/web-board-league.json")), true);
+  assert.equal(fs.existsSync(path.join(root, ".runtime/web-push-pending")), true);
+  assert.equal(fs.existsSync(path.join(leagueDir, "state/web-board-league.json")), false);
+  assert.equal(fs.existsSync(path.join(leagueDir, ".runtime/web-push-pending")), false);
+
+  const board = loadWebNotificationChannel("league", { rootDir: ".." });
+  assert.equal(board.entries.length, 1);
+  assert.equal(board.entries[0].tag, "rats-start-test");
+});

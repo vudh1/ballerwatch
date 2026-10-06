@@ -12,19 +12,19 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
 
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   assert.match(html, /manifest\.webmanifest/);
-  assert.match(html, /apple-touch-icon\.png\?v=7\.0\.14/);
+  assert.match(html, /apple-touch-icon\.png\?v=7\.0\.15/);
   assert.match(html, /class="brand-icon"/);
-  assert.match(html, /icon\.svg\?v=7\.0\.14/);
+  assert.match(html, /icon\.svg\?v=7\.0\.15/);
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=7\.0\.14/);
-  assert.match(html, /app\.js\?v=7\.0\.14/);
+  assert.match(html, /styles\.css\?v=7\.0\.15/);
+  assert.match(html, /app\.js\?v=7\.0\.15/);
 
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v7-0-14-shell/);
+  assert.match(sw, /ballerwatch-v7-0-15-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -92,7 +92,7 @@ test("promotion watches Worker and Pages then refreshes the open PWA", () => {
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=7\.0\.14/);
+  assert.match(app, /sw\.js\?v=7\.0\.15/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -692,7 +692,7 @@ test("footer contains no secondary messaging shortcut", () => {
 });
 
 
-test("BallerWatch 7.0.14 uses the top-right bell and gear without bottom app tabs", () => {
+test("BallerWatch 7.0.15 uses the top-right bell and gear without bottom app tabs", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   assert.match(html, /id="settings-button"/);
@@ -716,7 +716,7 @@ test("page uses a soccer-pitch backdrop with readable translucent cards", () => 
   assert.match(icon, /A soccer pitch with a soccer ball/);
   assert.match(icon, /<circle cx="256" cy="256" r="54"\/>/);
   assert.match(icon, /translate\(347 344\)/);
-  assert.match(manifest, /icon\.svg\?v=7\.0\.14/);
+  assert.match(manifest, /icon\.svg\?v=7\.0\.15/);
   assert.match(css, /\.card,[\s\S]*\.footer-install \{[\s\S]*rgba\(6, 18, 22, 0\.57\)/);
   assert.match(css, /\.spotlight-card \{[\s\S]*rgba\(4, 16, 22, 0\.72\)/);
   assert.match(css, /backdrop-filter:\s*blur\(24px\) saturate\(135%\)/);
@@ -1295,4 +1295,21 @@ test("iPhone Settings and Notifications share a symmetric safe vertical frame", 
     css,
     /\.notification-dialog \.dialog-shell,\s*\n\s*\.settings-dialog \.dialog-shell \{[\s\S]*height:\s*100%;[\s\S]*max-height:\s*none;/,
   );
+});
+
+
+test("league workflow writes notifications to the shared root before Web Push", () => {
+  const workflow = fs.readFileSync(".github/workflows/league.yml", "utf8");
+  const notifications = fs.readFileSync("backend/shared/web-notifications.mjs", "utf8");
+  const leagueNotify = fs.readFileSync("backend/league/web-notify.mjs", "utf8");
+
+  assert.match(
+    workflow,
+    /Record league web notifications[\s\S]*BALLERWATCH_WEB_STATE_ROOT:\s*\.\.[\s\S]*node \.\.\/backend\/league\/web-notify\.mjs/,
+  );
+  assert.match(notifications, /rootDir = "\."/);
+  assert.match(notifications, /path\.resolve\(rootDir, file\)/);
+  assert.match(notifications, /path\.resolve\(rootDir, "\.runtime"\)/);
+  assert.match(leagueNotify, /loadWebNotificationChannel\("league", \{ rootDir: webStateRoot\(\) \}\)/);
+  assert.match(leagueNotify, /deliveredTags\.has\(leagueReminderTag\(key\)\)/);
 });

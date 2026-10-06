@@ -62,3 +62,4 @@ The source ledger on `main` is authoritative for the newest reviewed version. Th
 - **7.0.12** — Adds an original green cinematic BallerWatch launch animation plus optional low-volume synthesized ambient music that starts only after an allowed user interaction and remembers the device setting.
 - **7.0.13** — Simplifies Music to a speaker icon in Settings, removes the duplicate Settings scrollbar, and moves Ask BallerWatch into an always-available floating bot dialog.
 - **7.0.14** — Keeps Settings and Notifications inside a symmetric iPhone-safe vertical frame below the top system/header area, with matching top and bottom insets.
+- **7.0.15** — Fixes the league one-hour reminder handoff so reminders recorded inside the league workflow reach the shared notification board/Web Push sender, and self-repairs recorded-but-undelivered reminders while the match is still upcoming.

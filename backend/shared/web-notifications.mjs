@@ -19,14 +19,14 @@ function clean(value, max) {
   return String(value || "").trim().replace(/\s+/g, " ").slice(0, max);
 }
 
-export function boardPath(channel) {
+export function boardPath(channel, { rootDir = "." } = {}) {
   const file = CHANNEL_PATHS[channel];
   if (!file) throw new Error(`Unknown web notification channel: ${channel}`);
-  return file;
+  return path.resolve(rootDir, file);
 }
 
-export function loadWebNotificationChannel(channel) {
-  const file = boardPath(channel);
+export function loadWebNotificationChannel(channel, { rootDir = "." } = {}) {
+  const file = boardPath(channel, { rootDir });
   try {
     const encrypted = JSON.parse(fs.readFileSync(file, "utf8"));
     const value = decryptState(encrypted);
@@ -38,9 +38,13 @@ export function loadWebNotificationChannel(channel) {
   }
 }
 
-export function appendWebNotification(channel, entry, { now = new Date() } = {}) {
-  const file = boardPath(channel);
-  const current = loadWebNotificationChannel(channel);
+export function appendWebNotification(
+  channel,
+  entry,
+  { now = new Date(), rootDir = "." } = {},
+) {
+  const file = boardPath(channel, { rootDir });
+  const current = loadWebNotificationChannel(channel, { rootDir });
   const createdAt = String(entry?.createdAt || now.toISOString());
   const nextEntry = {
     id: clean(entry?.id, 120) || crypto.randomUUID(),
@@ -72,9 +76,11 @@ export function appendWebNotification(channel, entry, { now = new Date() } = {})
     file,
     JSON.stringify(encryptState({ version: 1, entries }), null, 2) + "\n",
   );
-  fs.mkdirSync(".runtime", { recursive: true });
+  const pendingDir = path.resolve(rootDir, ".runtime");
+  const pendingPath = path.join(pendingDir, "web-push-pending");
+  fs.mkdirSync(pendingDir, { recursive: true });
   fs.writeFileSync(
-    ".runtime/web-push-pending",
+    pendingPath,
     JSON.stringify({ channel, id: nextEntry.id, createdAt: nextEntry.createdAt }) + "\n",
   );
   return nextEntry;
