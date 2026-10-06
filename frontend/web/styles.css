@@ -4483,3 +4483,37 @@ body:has(.chat-dialog[open]) {
     width: 100%;
   }
 }
+
+
+/* v7.0.14 iPhone-safe symmetric modal frame */
+@media (max-width: 560px) {
+  :root {
+    --iphone-modal-frame-inset: max(
+      0.85rem,
+      calc(env(safe-area-inset-top) + 0.7rem),
+      calc(env(safe-area-inset-bottom) + 0.7rem)
+    );
+  }
+
+  .notification-dialog,
+  .settings-dialog {
+    position: fixed;
+    top: var(--iphone-modal-frame-inset);
+    right: auto;
+    bottom: var(--iphone-modal-frame-inset);
+    left: 50%;
+    width: calc(100vw - 0.75rem);
+    max-width: calc(100vw - 0.75rem);
+    height: auto;
+    max-height: none;
+    margin: 0;
+    transform: translateX(-50%);
+  }
+
+  .notification-dialog .dialog-shell,
+  .settings-dialog .dialog-shell {
+    box-sizing: border-box;
+    height: 100%;
+    max-height: none;
+  }
+}

@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.0.13",
+  "currentVersion": "7.0.14",
   "releases": [
+    {
+      "version": "7.0.14",
+      "date": "2026-10-05",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Symmetric iPhone-safe popup frame",
+      "webAnnouncement": "Settings and Notifications now stay fully below the iPhone top system area with matching top and bottom spacing.",
+      "changes": [
+        "Anchored both Settings and Notifications to a shared iPhone-safe vertical inset instead of vertically centering across the full screen.",
+        "Uses the larger of the top and bottom safe-area requirements for both edges so the popup frame is visually symmetric.",
+        "Keeps each popup's existing inner scrolling while constraining the outer window between the balanced safe-area boundaries."
+      ]
+    },
     {
       "version": "7.0.13",
       "date": "2026-10-05",
