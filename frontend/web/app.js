@@ -881,11 +881,11 @@ async function openRsvpRoster() {
     );
     if (requestId !== rsvpRosterRequestId || !els.rsvpRosterDialog.open) return;
 
-    const confirmedEntries = Array.isArray(payload?.roster?.players)
-      ? payload.roster.players
+    const confirmedEntries = Array.isArray(payload?.roster?.["players"])
+      ? payload.roster["players"]
       : [];
-    const queuedEntries = Array.isArray(payload?.roster?.waitlist)
-      ? payload.roster.waitlist
+    const queuedEntries = Array.isArray(payload?.roster?.["waitlist"])
+      ? payload.roster["waitlist"]
       : [];
     const confirmedSpots = confirmedEntries.reduce(
       (sum, entry) => sum + Math.max(1, Number(entry?.participantCount || 1)),
