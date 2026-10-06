@@ -4600,7 +4600,7 @@ body:has(.chat-dialog[open]) {
   font-size: 0.7rem;
   font-variant-numeric: tabular-nums;
 }
-.rsvp-roster-name { font-weight: 650; }
+.rsvp-roster-name { font-weight: 600; }
 .rsvp-roster-guest {
   margin-left: 0.45rem;
   color: rgba(148, 163, 184, 0.64);
