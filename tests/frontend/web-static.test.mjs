@@ -1277,7 +1277,14 @@ test("music is an icon-only opt-in control and remains gesture-safe", () => {
   assert.match(app, /setAttribute\(\s*"aria-label",[\s\S]*Turn music off[\s\S]*Turn music on/);
   assert.match(app, /document\.addEventListener\("pointerdown", startMusicFromGesture/);
   assert.match(app, /musicToggle\?\.addEventListener\("click"/);
+  assert.match(app, /function playStadiumKick/);
+  assert.match(app, /function playStadiumClap/);
+  assert.match(app, /function playStadiumBrass/);
+  assert.match(app, /const stadiumHook = \[/);
+  assert.match(app, /createBuffer\(1, frameCount, context\.sampleRate\)/);
+  assert.match(app, /Stadium music is playing quietly/);
   assert.doesNotMatch(html, /<audio|autoplay/i);
+  assert.doesNotMatch(app, /https?:\/\/|\.mp3|\.wav|\.ogg/i);
 });
 
 
