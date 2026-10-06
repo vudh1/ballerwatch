@@ -14,6 +14,10 @@ A signed-in user can change:
 
 There is no in-app pairing-code recovery path. First-time bootstrap or forgotten-password recovery is administrator-controlled through **Reset web user password** with a temporary `BALLERWATCH_RECOVERY_PASSWORD` Actions secret.
 
+## Pickup RSVP roster
+
+For RSVP-enabled pickup matches, the capacity pill is an interactive control that opens the signed-in RSVP roster. On touch devices, including the installed iPhone PWA, match-card swipe navigation excludes links, buttons, ARIA buttons, and form controls so a normal tap on the capacity pill is not consumed by the swipe gesture.
+
 ## Q&A and feedback
 
 Read-only Q&A is served through the Worker. Successful answers receive a short-lived feedback token scoped to that exact question/answer. Marking an answer wrong does not grant Settings access.
