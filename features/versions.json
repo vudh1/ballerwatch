@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.0.15",
+  "currentVersion": "7.0.16",
   "releases": [
+    {
+      "version": "7.0.16",
+      "date": "2026-10-06",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Pickup RSVP roster popup",
+      "webAnnouncement": "Tap the pickup capacity pill to see the signed-in RSVP roster in order, including guest counts and the waitlist.",
+      "changes": [
+        "Makes the pickup RSVP capacity area keyboard- and tap-accessible and opens a compact roster dialog that closes when tapping outside it.",
+        "Adds a signed-in-only RSVP roster endpoint so player names remain excluded from the public calendar payload.",
+        "Tracks a private stable RSVP observation order across pickup refreshes and preserves waitlist order; existing pre-upgrade confirmed voters receive a stable migration order, while new votes are ordered as BallerWatch first observes them.",
+        "Shows guest counts beside each voter and a separate waitlist section when present."
+      ]
+    },
     {
       "version": "7.0.15",
       "date": "2026-10-05",
