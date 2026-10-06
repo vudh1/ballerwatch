@@ -11,10 +11,10 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="BallerWatch">
   <title>BallerWatch</title>
-  <link rel="manifest" href="./manifest.webmanifest?v=7.0.15">
-  <link rel="icon" href="./icon.svg?v=7.0.15" type="image/svg+xml">
-  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=7.0.15">
-  <link rel="stylesheet" href="./styles.css?v=7.0.15">
+  <link rel="manifest" href="./manifest.webmanifest?v=7.0.16">
+  <link rel="icon" href="./icon.svg?v=7.0.16" type="image/svg+xml">
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=7.0.16">
+  <link rel="stylesheet" href="./styles.css?v=7.0.16">
 </head>
 <body>
   <div class="launch-intro" id="launch-intro" aria-hidden="true" hidden>
@@ -34,7 +34,7 @@
   <main class="shell">
     <header class="hero">
       <div class="brand-lockup">
-        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=7.0.15" alt=""></div>
+        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=7.0.16" alt=""></div>
         <div>
           <p class="eyebrow">SOCCER AT A GLANCE</p>
           <h1>BallerWatch</h1>
@@ -103,7 +103,8 @@
           <p class="next-game-meta" id="next-game-meta"></p>
           <p class="next-game-location muted" id="next-game-location"></p>
           <div class="next-game-weather" id="next-game-weather" hidden></div>
-          <div class="next-game-capacity" id="next-game-capacity" hidden>
+          <div class="next-game-capacity" id="next-game-capacity" role="button" tabindex="0"
+            aria-haspopup="dialog" aria-expanded="false" aria-label="View pickup RSVP roster" hidden>
             <div class="next-game-capacity-row">
               <span class="next-game-capacity-label" id="next-game-capacity-label"></span>
               <span class="next-game-capacity-spots" id="next-game-capacity-spots"></span>
@@ -212,6 +213,36 @@
         <p class="answer-feedback-status" id="answer-feedback-status" hidden></p>
       </div>
       <p class="hint chat-dialog-hint">Type <strong>/</strong> for commands. Double-click an answer, or press and hold it on touch, to mark or unmark it as wrong.</p>
+    </div>
+  </dialog>
+
+  <dialog id="rsvp-roster-dialog" class="rsvp-roster-dialog">
+    <div class="dialog-shell rsvp-roster-shell">
+      <div class="section-heading rsvp-roster-heading">
+        <div>
+          <p class="eyebrow">PICKUP RSVP</p>
+          <h2 id="rsvp-roster-title">RSVP roster</h2>
+        </div>
+        <button class="icon-button" id="close-rsvp-roster" type="button"
+          aria-label="Close RSVP roster">×</button>
+      </div>
+      <p class="rsvp-roster-summary" id="rsvp-roster-summary">Loading RSVP names…</p>
+      <section class="rsvp-roster-group" id="rsvp-roster-confirmed">
+        <div class="rsvp-roster-group-heading">
+          <strong>Confirmed</strong>
+          <span id="rsvp-roster-confirmed-count"></span>
+        </div>
+        <ol class="rsvp-roster-list" id="rsvp-roster-confirmed-list"></ol>
+      </section>
+      <section class="rsvp-roster-group" id="rsvp-roster-waitlist" hidden>
+        <div class="rsvp-roster-group-heading">
+          <strong>Waitlist</strong>
+          <span id="rsvp-roster-waitlist-count"></span>
+        </div>
+        <ol class="rsvp-roster-list" id="rsvp-roster-waitlist-list"></ol>
+      </section>
+      <button class="secondary rsvp-roster-sign-in" id="rsvp-roster-sign-in"
+        type="button" hidden>Sign in</button>
     </div>
   </dialog>
 
@@ -472,6 +503,6 @@
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=7.0.15"></script>
+  <script type="module" src="./app.js?v=7.0.16"></script>
 </body>
 </html>

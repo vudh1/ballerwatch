@@ -2120,6 +2120,48 @@ export function pickupUserRsvpView(snapshot, userRsvpName = "") {
   return { confirmedDates, waitlistedDates };
 }
 
+function rosterOrderValue(entry, fallbackIndex) {
+  const voteOrder = Number(entry?.voteOrder);
+  if (Number.isFinite(voteOrder) && voteOrder > 0) return voteOrder;
+  const firstSeen = Date.parse(String(entry?.firstSeenAt || ""));
+  if (Number.isFinite(firstSeen)) return 1_000_000_000 + firstSeen;
+  return 8_000_000_000_000_000 + fallbackIndex;
+}
+
+function cleanPrivateRosterList(entries = []) {
+  return (Array.isArray(entries) ? entries : [])
+    .map((entry, index) => {
+      const participantCount = Number(entry?.participantCount || 1);
+      return {
+        name: cleanText(entry?.name, 120),
+        participantCount:
+          Number.isFinite(participantCount)
+            ? Math.max(1, Math.min(5, participantCount))
+            : 1,
+        _order: rosterOrderValue(entry, index),
+      };
+    })
+    .filter((entry) => entry.name)
+    .sort((left, right) =>
+      left._order - right._order ||
+      left.name.localeCompare(right.name),
+    )
+    .map(({ _order, ...entry }) => entry);
+}
+
+export function pickupRsvpRosterView(snapshot, date) {
+  const safeDate = cleanText(date, 20);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(safeDate)) {
+    throw new Error("Invalid pickup date.");
+  }
+  const event = snapshot?.pickupPrivate?.events?.[safeDate] || {};
+  return {
+    date: safeDate,
+    players: cleanPrivateRosterList(event.players),
+    waitlist: cleanPrivateRosterList(event.waitlist),
+  };
+}
+
 function freePickupGameBlock(game) {
   const lines=["⚽ Pickup"];
   const start=clock(game.startTime);
@@ -3599,6 +3641,34 @@ export default {
           request,
           { ok: false, error: "Unable to load pickup RSVP status right now." },
           { status: 503 },
+        );
+      }
+    }
+
+    if (request.method === "GET" && userRoute(url.pathname, "rsvp-roster")) {
+      const account = await resolveOwnerCapability(env, bearerToken(request)).catch(() => null);
+      if (!account) {
+        return webJson(request, { ok: false, error: "User sign-in is required." }, { status: 401 });
+      }
+      try {
+        return webJson(request, {
+          ok: true,
+          roster: pickupRsvpRosterView(
+            await loadSnapshot(env),
+            url.searchParams.get("date") || "",
+          ),
+        });
+      } catch (error) {
+        const message = cleanText(error?.message, 160);
+        const status = /Invalid pickup date/.test(message) ? 400 : 503;
+        if (status === 503) console.error("User pickup RSVP roster load failed", error);
+        return webJson(
+          request,
+          {
+            ok: false,
+            error: status === 400 ? message : "Unable to load the RSVP roster right now.",
+          },
+          { status },
         );
       }
     }

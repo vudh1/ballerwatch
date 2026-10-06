@@ -177,6 +177,72 @@ function safePlayer(player) {
   };
 }
 
+function normalizePlayerName(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function orderedPrivateRsvpLists(tally, previousEvent = {}, observedAt = new Date().toISOString()) {
+  const previousEntries = [
+    ...(Array.isArray(previousEvent?.players) ? previousEvent.players : []),
+    ...(Array.isArray(previousEvent?.waitlist) ? previousEvent.waitlist : []),
+  ];
+
+  const previousByName = new Map();
+  let maxOrder = 0;
+  previousEntries.forEach((entry, index) => {
+    const name = normalizePlayerName(entry?.name);
+    if (!name || previousByName.has(name)) return;
+    const storedOrder = Number(entry?.voteOrder);
+    const voteOrder = Number.isFinite(storedOrder) && storedOrder > 0
+      ? storedOrder
+      : index + 1;
+    maxOrder = Math.max(maxOrder, voteOrder);
+    previousByName.set(name, {
+      firstSeenAt: String(entry?.firstSeenAt || "").trim(),
+      voteOrder,
+    });
+  });
+
+  const decorate = (items) => (Array.isArray(items) ? items : [])
+    .map((source) => {
+      const player = safePlayer(source);
+      const sourceTime = [
+        source?.submittedAt,
+        source?.createdAt,
+        source?.votedAt,
+      ].map((value) => String(value || "").trim()).find(Boolean);
+      return { player, sourceTime };
+    })
+    .filter(({ player }) => player.name)
+    .map(({ player, sourceTime }) => {
+      const key = normalizePlayerName(player.name);
+      const previous = previousByName.get(key);
+      if (previous) {
+        return {
+          ...player,
+          firstSeenAt: sourceTime || previous.firstSeenAt || observedAt,
+          voteOrder: previous.voteOrder,
+        };
+      }
+      maxOrder += 1;
+      const value = {
+        ...player,
+        firstSeenAt: sourceTime || observedAt,
+        voteOrder: maxOrder,
+      };
+      previousByName.set(key, {
+        firstSeenAt: value.firstSeenAt,
+        voteOrder: value.voteOrder,
+      });
+      return value;
+    });
+
+  return {
+    players: decorate(tally?.players),
+    waitlist: decorate(tally?.waitlist),
+  };
+}
+
 async function main() {
   const previousFeedState = readEncryptedState(FEED_STATE_PATH);
   const previousPrivateState = readEncryptedState(PRIVATE_STATE_PATH);
@@ -207,12 +273,12 @@ async function main() {
 
     const tally = tallyResult.tally || {};
     const detail = detailByDate.get(date) || {};
-    const players = (Array.isArray(tally.players) ? tally.players : [])
-      .map(safePlayer)
-      .filter((player) => player.name);
-    const waitlist = (Array.isArray(tally.waitlist) ? tally.waitlist : [])
-      .map(safePlayer)
-      .filter((player) => player.name);
+    const previousEvent = previousPrivateState?.events?.[date] || {};
+    const observedAt = new Date().toISOString();
+    const {
+      players,
+      waitlist,
+    } = orderedPrivateRsvpLists(tally, previousEvent, observedAt);
 
     const publicEvent = {
       ok: true,
