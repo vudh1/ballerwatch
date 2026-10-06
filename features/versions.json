@@ -1,7 +1,19 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.0.17",
+  "currentVersion": "7.0.18",
   "releases": [
+    {
+      "version": "7.0.18",
+      "date": "2026-10-06",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Notification modal layer repair",
+      "webAnnouncement": "Opening and returning from notification details now keeps Inbox in the proper modal layer instead of dropping it behind the main cards.",
+      "changes": [
+        "Reopens Inbox with showModal after closing a notification detail so it remains in the browser top layer above dashboard cards.",
+        "Routes native dialog cancel/back behavior through the same modal return path and adds regression coverage that rejects non-modal Inbox reopening."
+      ]
+    },
     {
       "version": "7.0.17",
       "date": "2026-10-06",

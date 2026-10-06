@@ -1407,7 +1407,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=7.0.17", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=7.0.18", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -1726,9 +1726,9 @@ function openNotification(item) {
 }
 
 function closeNotificationReader() {
-  els.notificationReader.close();
+  if (els.notificationReader.open) els.notificationReader.close();
   renderBoard(currentBoardEntries);
-  els.notificationDialog.show();
+  if (!els.notificationDialog.open) els.notificationDialog.showModal();
 }
 
 function setNotificationFilter(filter) {
@@ -3640,6 +3640,10 @@ els.deleteAllNotifications.addEventListener("click", deleteAllNotifications);
 els.markAllNotificationsRead?.addEventListener("click", markAllNotificationsRead);
 els.closeNotifications.addEventListener("click", () => els.notificationDialog.close());
 els.closeNotificationReader.addEventListener("click", closeNotificationReader);
+els.notificationReader.addEventListener("cancel", (event) => {
+  event.preventDefault();
+  closeNotificationReader();
+});
 els.refresh.addEventListener("click", () => {
   void Promise.all([loadBoard(), loadNotificationProfile({ migrateLocal: false })]);
 });
