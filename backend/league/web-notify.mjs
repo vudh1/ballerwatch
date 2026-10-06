@@ -12,7 +12,10 @@ import {
   absoluteMinutesUntilStart,
   matchStartReminderDue,
 } from "../shared/match-reminders.mjs";
-import { appendWebNotification } from "../shared/web-notifications.mjs";
+import {
+  appendWebNotification,
+  loadWebNotificationChannel,
+} from "../shared/web-notifications.mjs";
 import {
   applyLeagueMatchOverride,
   matchHidden,
@@ -23,6 +26,9 @@ const TZ = "America/Los_Angeles";
 const UPDATE = "notification-update.json";
 const SCHEDULE = "schedule.json";
 const REMINDER_STATE = "state/notify.json";
+const WEB_STATE_ROOT = String(
+  process.env.BALLERWATCH_WEB_STATE_ROOT || ".",
+).trim() || ".";
 
 export function formatTime(value) {
   if (!value) return "time not published";
@@ -105,9 +111,23 @@ function scheduleMatches(settings = {}) {
   }
 }
 
+function leagueReminderTag(key) {
+  return `rats-start-${String(key || "").slice(0, 80)}`;
+}
+
 export function recordLeagueStartReminders({ now = new Date() } = {}) {
   const state = loadReminderState();
-  const sent = new Set(Array.isArray(state.matchHourKeys) ? state.matchHourKeys : []);
+  const board = loadWebNotificationChannel("league", { rootDir: WEB_STATE_ROOT });
+  const deliveredTags = new Set(
+    (Array.isArray(board?.entries) ? board.entries : [])
+      .map((entry) => String(entry?.tag || ""))
+      .filter(Boolean),
+  );
+  const sent = new Set(
+    (Array.isArray(state.matchHourKeys) ? state.matchHourKeys : [])
+      .map(String)
+      .filter((key) => deliveredTags.has(leagueReminderTag(key))),
+  );
   const settings = loadUserSettings();
   const matches = scheduleMatches(settings);
   const due = matches.filter((match) =>
@@ -138,8 +158,8 @@ export function recordLeagueStartReminders({ now = new Date() } = {}) {
   appendWebNotification("league", {
     title: due.length === 1 ? "Match starts in 1 hour" : "Matches start in 1 hour",
     body: lines.join("\n"),
-    tag: `rats-start-${String(due[0].key).slice(0, 80)}`,
-  });
+    tag: leagueReminderTag(due[0].key),
+  }, { now, rootDir: WEB_STATE_ROOT });
 
   for (const match of due) sent.add(String(match.key));
   const futureKeys = new Set(
@@ -167,7 +187,7 @@ export function notifyWeb({ now = new Date() } = {}) {
           title: "RATS schedule updated",
           body,
           tag: `rats-${updates[0]?.match?.date || "schedule"}`,
-        });
+        }, { now, rootDir: WEB_STATE_ROOT });
         console.log(`Web notification recorded for ${updates.length} schedule update(s).`);
         recorded = true;
       }
