@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.0.11",
+  "currentVersion": "7.0.12",
   "releases": [
+    {
+      "version": "7.0.12",
+      "date": "2026-10-05",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Cinematic launch and optional music",
+      "webAnnouncement": "BallerWatch now opens with a short green cinematic wordmark reveal and can play an optional original ambient soundtrack.",
+      "changes": [
+        "Added an original BallerWatch green launch animation that runs once per fresh site/app session and automatically clears after about two seconds.",
+        "Respects reduced-motion preferences by skipping the launch animation entirely.",
+        "Added an optional local-device Music control in Settings with a quiet synthesized ambient loop and short BallerWatch audio mark.",
+        "Persists the music preference locally and starts audio only after a browser-allowed user interaction, including iPhone Home Screen apps."
+      ]
+    },
     {
       "version": "7.0.11",
       "date": "2026-10-05",

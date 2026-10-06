@@ -12,19 +12,19 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
 
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   assert.match(html, /manifest\.webmanifest/);
-  assert.match(html, /apple-touch-icon\.png\?v=7\.0\.11/);
+  assert.match(html, /apple-touch-icon\.png\?v=7\.0\.12/);
   assert.match(html, /class="brand-icon"/);
-  assert.match(html, /icon\.svg\?v=7\.0\.11/);
+  assert.match(html, /icon\.svg\?v=7\.0\.12/);
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=7\.0\.11/);
-  assert.match(html, /app\.js\?v=7\.0\.11/);
+  assert.match(html, /styles\.css\?v=7\.0\.12/);
+  assert.match(html, /app\.js\?v=7\.0\.12/);
 
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v7-0-11-shell/);
+  assert.match(sw, /ballerwatch-v7-0-12-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -92,7 +92,7 @@ test("promotion watches Worker and Pages then refreshes the open PWA", () => {
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=7\.0\.11/);
+  assert.match(app, /sw\.js\?v=7\.0\.12/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -688,7 +688,7 @@ test("footer contains no secondary messaging shortcut", () => {
 });
 
 
-test("BallerWatch 7.0.11 uses the top-right bell and gear without bottom app tabs", () => {
+test("BallerWatch 7.0.12 uses the top-right bell and gear without bottom app tabs", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   assert.match(html, /id="settings-button"/);
@@ -712,7 +712,7 @@ test("page uses a soccer-pitch backdrop with readable translucent cards", () => 
   assert.match(icon, /A soccer pitch with a soccer ball/);
   assert.match(icon, /<circle cx="256" cy="256" r="54"\/>/);
   assert.match(icon, /translate\(347 344\)/);
-  assert.match(manifest, /icon\.svg\?v=7\.0\.11/);
+  assert.match(manifest, /icon\.svg\?v=7\.0\.12/);
   assert.match(css, /\.card,[\s\S]*\.footer-install \{[\s\S]*rgba\(6, 18, 22, 0\.57\)/);
   assert.match(css, /\.spotlight-card \{[\s\S]*rgba\(4, 16, 22, 0\.72\)/);
   assert.match(css, /backdrop-filter:\s*blur\(24px\) saturate\(135%\)/);
@@ -1217,4 +1217,47 @@ test("safe feedback review tooling never reads raw private chat or request text"
   assert.match(workflow, /workflow_dispatch:/);
   assert.match(workflow, /ref: runtime-state/);
   assert.match(workflow, /TRACKER_STATE_KEY: \$\{\{ secrets\.TRACKER_STATE_KEY \}\}/);
+});
+
+
+test("cinematic launch is original, session-scoped, and reduced-motion safe", () => {
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
+
+  assert.match(html, /id="launch-intro"/);
+  assert.match(html, /class="launch-intro-word-main">BallerWatch<\/span>/);
+  assert.match(html, /launch-intro-beam-a/);
+  assert.match(app, /INTRO_SESSION_KEY = "ballerwatch-intro-seen-v1"/);
+  assert.match(app, /LAUNCH_INTRO_VISIBLE_MS = 2_250/);
+  assert.match(app, /function playLaunchIntro/);
+  assert.match(app, /sessionStorage\.getItem\(INTRO_SESSION_KEY\)/);
+  assert.match(app, /sessionStorage\.setItem\(INTRO_SESSION_KEY, "1"\)/);
+  assert.match(app, /prefers-reduced-motion: reduce/);
+  assert.match(css, /@keyframes ballerwatch-intro-word/);
+  assert.match(css, /@keyframes ballerwatch-intro-shine/);
+  assert.match(css, /\.launch-intro\.is-active \{[\s\S]*pointer-events:\s*auto/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.launch-intro \{[\s\S]*display:\s*none !important/);
+  assert.doesNotMatch([html, app, css].join("\n"), /Netflix/i);
+});
+
+test("music is opt-in, local-device persisted, and starts from a browser-allowed gesture", () => {
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+
+  assert.match(html, /id="music-toggle"/);
+  assert.match(html, /id="music-status"/);
+  assert.match(html, /Original BallerWatch ambient soundtrack/);
+  assert.match(app, /MUSIC_ENABLED_KEY = "ballerwatch-music-enabled-v1"/);
+  assert.match(app, /localStorage\.getItem\(MUSIC_ENABLED_KEY\)/);
+  assert.match(app, /localStorage\.setItem\(MUSIC_ENABLED_KEY, enabled \? "1" : "0"\)/);
+  assert.match(app, /window\.AudioContext \|\| window\.webkitAudioContext/);
+  assert.match(app, /createOscillator\(\)/);
+  assert.match(app, /function playBallerWatchAudioMark/);
+  assert.match(app, /function playAmbientPhrase/);
+  assert.match(app, /document\.addEventListener\("pointerdown", startMusicFromGesture/);
+  assert.match(app, /document\.addEventListener\("keydown", startMusicFromGesture/);
+  assert.match(app, /musicToggle\?\.addEventListener\("click"/);
+  assert.match(app, /Music is on\. It will start after your next tap\./);
+  assert.doesNotMatch(html, /<audio|autoplay/i);
 });

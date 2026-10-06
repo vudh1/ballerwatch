@@ -59,3 +59,4 @@ The source ledger on `main` is authoritative for the newest reviewed version. Th
 - **7.0.9** — Makes match freshness time-only and as subtle as weather freshness, removes the match-footer separator, returns selected/swiped matches to Next Game after 6 seconds of inactivity, and adds short interaction vibration on browsers that expose the Vibration API.
 - **7.0.10** — Removes the separator above the weather/calendar freshness footer and adds a privacy-safe maintainer audit for sanitized review signals and feature-request category counts.
 - **7.0.11** — Fixes review-identified Q&A routing for pickup-specific date details, mixed weekly schedule questions, empty weekdays, and richer Today pickup status.
+- **7.0.12** — Adds an original green cinematic BallerWatch launch animation plus optional low-volume synthesized ambient music that starts only after an allowed user interaction and remembers the device setting.
