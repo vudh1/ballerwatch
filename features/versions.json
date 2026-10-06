@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.0.12",
+  "currentVersion": "7.0.13",
   "releases": [
+    {
+      "version": "7.0.13",
+      "date": "2026-10-05",
+      "type": "patch",
+      "source": "user-screenshot",
+      "title": "Floating chat and cleaner settings",
+      "webAnnouncement": "BallerWatch moves chat into a floating bot button and simplifies Settings with a one-icon music toggle and a single scrollbar.",
+      "changes": [
+        "Replaced the full Music settings section with a compact speaker icon beside the Settings close button, while preserving the local opt-in music preference.",
+        "Removed the duplicate right-side Settings scrollbar by making the inner settings shell the only vertical scroll container and locking the page behind the open modal.",
+        "Moved Ask BallerWatch out of the main dashboard into a floating bottom-left bot button that opens the same chat and autocomplete experience on demand."
+      ]
+    },
     {
       "version": "7.0.12",
       "date": "2026-10-05",

@@ -31,6 +31,9 @@ const els = {
   launchIntro: document.querySelector("#launch-intro"),
   musicToggle: document.querySelector("#music-toggle"),
   musicStatus: document.querySelector("#music-status"),
+  chatLauncher: document.querySelector("#chat-launcher"),
+  chatDialog: document.querySelector("#chat-dialog"),
+  closeChat: document.querySelector("#close-chat"),
   system: document.querySelector("#system-status"),
   systemLine: document.querySelector(".system-line"),
   version: document.querySelector("#version"),
@@ -509,10 +512,16 @@ function renderMusicControl(message = "") {
   if (!els.musicToggle || !els.musicStatus) return;
   const enabled = musicEnabled();
   const supported = Boolean(audioContextConstructor());
+  const active = enabled && supported;
+
   els.musicToggle.disabled = !supported;
-  els.musicToggle.classList.toggle("is-on", enabled && supported);
-  els.musicToggle.setAttribute("aria-pressed", String(enabled && supported));
-  els.musicToggle.textContent = enabled && supported ? "On" : "Off";
+  els.musicToggle.classList.toggle("is-on", active);
+  els.musicToggle.setAttribute("aria-pressed", String(active));
+  els.musicToggle.setAttribute(
+    "aria-label",
+    supported ? (active ? "Turn music off" : "Turn music on") : "Music is unavailable",
+  );
+  els.musicToggle.title = supported ? (active ? "Music on" : "Music off") : "Music unavailable";
 
   if (!supported) {
     els.musicStatus.textContent = "Music is not supported by this browser.";
@@ -992,7 +1001,20 @@ async function promoteProductionRelease() {
   }
 }
 
+function openChat() {
+  if (els.settingsDialog.open) els.settingsDialog.close();
+  if (els.notificationDialog.open) els.notificationDialog.close();
+  if (els.notificationReader.open) els.notificationReader.close();
+  if (!els.chatDialog.open) els.chatDialog.showModal();
+  window.requestAnimationFrame(() => els.question?.focus({ preventScroll: true }));
+}
+
+function closeChat() {
+  if (els.chatDialog.open) els.chatDialog.close();
+}
+
 async function openSettings(options = {}) {
+  closeChat();
   if (els.notificationDialog.open) els.notificationDialog.close();
   if (els.notificationReader.open) els.notificationReader.close();
   const pendingAction =
@@ -1243,7 +1265,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=7.0.12", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=7.0.13", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -3065,6 +3087,7 @@ async function loadBoard() {
 }
 
 function openNotifications() {
+  closeChat();
   if (els.settingsDialog.open) els.settingsDialog.close();
   if (!els.notificationDialog.open) els.notificationDialog.showModal();
   void Promise.all([loadBoard(), loadNotificationProfile()]);
@@ -3430,6 +3453,11 @@ async function saveNotificationPreferencesFromUi() {
   await persistNotificationProfile({ channels }, { refreshPush: true });
 }
 
+els.chatLauncher?.addEventListener("click", openChat);
+els.closeChat?.addEventListener("click", closeChat);
+els.chatDialog?.addEventListener("click", (event) => {
+  if (event.target === els.chatDialog) closeChat();
+});
 els.notificationBell.addEventListener("click", openNotifications);
 els.settingsButton.addEventListener("click", openSettings);
 els.musicToggle?.addEventListener("click", () => void toggleMusic());
