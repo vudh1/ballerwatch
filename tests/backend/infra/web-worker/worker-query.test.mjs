@@ -10,6 +10,7 @@ import {
   issueOwnerToken,
   nextGame,
   normalizeOwnerPassword,
+  pickupRsvpRosterView,
   resolveDate,
   resolveScheduleDate,
   resolveScheduleRange,
@@ -87,6 +88,30 @@ test("dated league detail questions route locally and return targeted facts", ()
 test("natural pickup-specific date questions stay pickup-scoped", () => {
   assert.equal(directIntent("am i in for Thursday pickup?"), "pickup_status");
   assert.equal(directIntent("how many spots are left Thursday?"), "pickup_status");
+});
+
+test("private RSVP roster is ordered without exposing private ordering metadata", () => {
+  const data = snapshot();
+  data.pickupPrivate.events["2099-10-08"].players = [
+    { name: "Later Player", participantCount: 2, voteOrder: 9, firstSeenAt: "2099-10-01T12:10:00Z" },
+    { name: "First Player", participantCount: 1, voteOrder: 3, firstSeenAt: "2099-10-01T12:00:00Z" },
+  ];
+  data.pickupPrivate.events["2099-10-08"].waitlist = [
+    { name: "Waiting Two", participantCount: 1, voteOrder: 11 },
+    { name: "Waiting One", participantCount: 1, voteOrder: 10 },
+  ];
+
+  const roster = pickupRsvpRosterView(data, "2099-10-08");
+  assert.deepEqual(roster.players, [
+    { name: "First Player", participantCount: 1 },
+    { name: "Later Player", participantCount: 2 },
+  ]);
+  assert.deepEqual(roster.waitlist, [
+    { name: "Waiting One", participantCount: 1 },
+    { name: "Waiting Two", participantCount: 1 },
+  ]);
+  assert.equal("voteOrder" in roster.players[0], false);
+  assert.equal("firstSeenAt" in roster.players[0], false);
 });
 
 test("pickup-specific dated detail does not mix in league facts", () => {
