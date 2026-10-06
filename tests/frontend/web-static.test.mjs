@@ -152,6 +152,22 @@ test("match spotlight shows a subtle source freshness line", () => {
   assert.match(worker, /sourceUpdatedAt:/);
 });
 
+test("desktop match-type action keeps priority over the final carousel edge rule", () => {
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
+  const priorityBlock = css.split(
+    "/* v7.0.25 preserve match-type action priority over desktop carousel edge */",
+  )[1] || "";
+
+  assert.match(
+    priorityBlock,
+    /@media \(hover: hover\) and \(pointer: fine\)[\s\S]*\.spotlight-edge-next \{[\s\S]*top:\s*5\.75rem;/,
+  );
+  assert.ok(
+    css.lastIndexOf("/* v7.0.25 preserve match-type action priority over desktop carousel edge */")
+      > css.lastIndexOf(".spotlight-edge-control {\n    top: 0;"),
+  );
+});
+
 test("pickup match card uses a clear non-pill action hierarchy", () => {
   const css = fs.readFileSync("frontend/web/styles.css", "utf8");
   const hierarchy = css.split("/* v7.0.24 clearer match-card action hierarchy */")[1] || "";
