@@ -26,9 +26,9 @@ const TZ = "America/Los_Angeles";
 const UPDATE = "notification-update.json";
 const SCHEDULE = "schedule.json";
 const REMINDER_STATE = "state/notify.json";
-const WEB_STATE_ROOT = String(
-  process.env.BALLERWATCH_WEB_STATE_ROOT || ".",
-).trim() || ".";
+function webStateRoot() {
+  return String(process.env.BALLERWATCH_WEB_STATE_ROOT || ".").trim() || ".";
+}
 
 export function formatTime(value) {
   if (!value) return "time not published";
@@ -117,7 +117,7 @@ function leagueReminderTag(key) {
 
 export function recordLeagueStartReminders({ now = new Date() } = {}) {
   const state = loadReminderState();
-  const board = loadWebNotificationChannel("league", { rootDir: WEB_STATE_ROOT });
+  const board = loadWebNotificationChannel("league", { rootDir: webStateRoot() });
   const deliveredTags = new Set(
     (Array.isArray(board?.entries) ? board.entries : [])
       .map((entry) => String(entry?.tag || ""))
@@ -159,7 +159,7 @@ export function recordLeagueStartReminders({ now = new Date() } = {}) {
     title: due.length === 1 ? "Match starts in 1 hour" : "Matches start in 1 hour",
     body: lines.join("\n"),
     tag: leagueReminderTag(due[0].key),
-  }, { now, rootDir: WEB_STATE_ROOT });
+  }, { now, rootDir: webStateRoot() });
 
   for (const match of due) sent.add(String(match.key));
   const futureKeys = new Set(
@@ -187,7 +187,7 @@ export function notifyWeb({ now = new Date() } = {}) {
           title: "RATS schedule updated",
           body,
           tag: `rats-${updates[0]?.match?.date || "schedule"}`,
-        }, { now, rootDir: WEB_STATE_ROOT });
+        }, { now, rootDir: webStateRoot() });
         console.log(`Web notification recorded for ${updates.length} schedule update(s).`);
         recorded = true;
       }
