@@ -71,3 +71,4 @@ The source ledger on `main` is authoritative for the newest reviewed version. Th
 - **7.0.21** — Fixes installed-iPhone taps on the pickup capacity pill so the RSVP roster opens instead of the match-card swipe handler suppressing the tap.
 - **7.0.22** — Gives the desktop Pickup/League pill pointer priority over the overlapping right-edge carousel navigation zone.
 - **7.0.23** — Clears the lingering green capacity-pill focus ring after pointer/touch roster use while preserving keyboard focus behavior.
+- **7.0.24** — Simplifies pickup match cards by turning weather into lightweight information, RSVP into a distinct rounded-rectangle action, and Directions/Share into quieter secondary controls.
