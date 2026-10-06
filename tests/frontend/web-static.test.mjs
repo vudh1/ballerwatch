@@ -12,19 +12,19 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
 
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   assert.match(html, /manifest\.webmanifest/);
-  assert.match(html, /apple-touch-icon\.png\?v=7\.0\.12/);
+  assert.match(html, /apple-touch-icon\.png\?v=7\.0\.13/);
   assert.match(html, /class="brand-icon"/);
-  assert.match(html, /icon\.svg\?v=7\.0\.12/);
+  assert.match(html, /icon\.svg\?v=7\.0\.13/);
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=7\.0\.12/);
-  assert.match(html, /app\.js\?v=7\.0\.12/);
+  assert.match(html, /styles\.css\?v=7\.0\.13/);
+  assert.match(html, /app\.js\?v=7\.0\.13/);
 
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v7-0-12-shell/);
+  assert.match(sw, /ballerwatch-v7-0-13-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -92,7 +92,7 @@ test("promotion watches Worker and Pages then refreshes the open PWA", () => {
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=7\.0\.12/);
+  assert.match(app, /sw\.js\?v=7\.0\.13/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -543,22 +543,26 @@ test("calendar refresh preserves an explicitly selected future game", () => {
 });
 
 
-test("autocomplete floats above the Ask card without resizing the input row", () => {
+test("Ask BallerWatch is available from a floating bot dialog with autocomplete", () => {
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const css = fs.readFileSync("frontend/web/styles.css", "utf8");
 
-  assert.match(css, /\/\* v5\.6 autocomplete overlay \*\//);
-  assert.match(css, /\.ask-card \{[\s\S]*overflow:\s*visible;/);
-  assert.match(css, /\.ask-card form \{[\s\S]*z-index:\s*10;/);
+  assert.match(html, /id="chat-launcher"/);
+  assert.match(html, /id="chat-dialog"/);
+  assert.match(html, /id="close-chat"/);
+  assert.match(html, /<h2>Ask BallerWatch<\/h2>/);
+  assert.match(html, /id="question-form"/);
+  assert.doesNotMatch(html, /<section class="card ask-card">/);
+  assert.match(app, /function openChat/);
+  assert.match(app, /chatDialog\.showModal\(\)/);
+  assert.match(app, /chatLauncher\?\.addEventListener\("click", openChat\)/);
+  assert.match(app, /event\.target === els\.chatDialog/);
+  assert.match(css, /\.chat-launcher \{[\s\S]*position:\s*fixed;[\s\S]*left:/);
+  assert.match(css, /\.chat-dialog \{[\s\S]*overflow:\s*hidden;/);
+  assert.match(css, /\.chat-dialog-shell \{[\s\S]*overflow-y:\s*auto;/);
   assert.match(css, /\.question-input-wrap \{[\s\S]*position:\s*relative;/);
-  const overlay = css.slice(css.indexOf("/* v5.6 autocomplete overlay */"));
-  assert.match(overlay, /\.question-suggestions \{/);
-  assert.match(overlay, /position:\s*absolute;/);
-  assert.match(overlay, /top:\s*calc\(100% \+ 0\.45rem\);/);
-  assert.match(overlay, /z-index:\s*80;/);
-  assert.match(css, /max-height:\s*min\(18rem, 42vh\)/);
-  assert.match(css, /overflow-y:\s*auto;/);
-  assert.match(css, /overscroll-behavior:\s*contain;/);
-  assert.match(css, /\.ask-card \.question-row > button \{[\s\S]*align-self:\s*center;/);
+  assert.match(css, /\.question-suggestions \{[\s\S]*position:\s*absolute;/);
 });
 
 test("weather refresh is immediate only for schedule-relevant changes", () => {
@@ -688,7 +692,7 @@ test("footer contains no secondary messaging shortcut", () => {
 });
 
 
-test("BallerWatch 7.0.12 uses the top-right bell and gear without bottom app tabs", () => {
+test("BallerWatch 7.0.13 uses the top-right bell and gear without bottom app tabs", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   assert.match(html, /id="settings-button"/);
@@ -712,7 +716,7 @@ test("page uses a soccer-pitch backdrop with readable translucent cards", () => 
   assert.match(icon, /A soccer pitch with a soccer ball/);
   assert.match(icon, /<circle cx="256" cy="256" r="54"\/>/);
   assert.match(icon, /translate\(347 344\)/);
-  assert.match(manifest, /icon\.svg\?v=7\.0\.12/);
+  assert.match(manifest, /icon\.svg\?v=7\.0\.13/);
   assert.match(css, /\.card,[\s\S]*\.footer-install \{[\s\S]*rgba\(6, 18, 22, 0\.57\)/);
   assert.match(css, /\.spotlight-card \{[\s\S]*rgba\(4, 16, 22, 0\.72\)/);
   assert.match(css, /backdrop-filter:\s*blur\(24px\) saturate\(135%\)/);
@@ -837,6 +841,7 @@ test("v5.5 dashboard matches the iPhone-first demo direction", () => {
 
   assert.match(html, /Pickup \+ RATS monitor/);
   assert.match(html, /<h2 id="calendar-title">14-Day Calendar<\/h2>/);
+  assert.match(html, /id="chat-launcher"/);
   assert.match(html, /<h2>Ask BallerWatch<\/h2>/);
   assert.match(html, /id="next-game-capacity"/);
   assert.match(app, /capacityPercent/);
@@ -847,7 +852,7 @@ test("v5.5 dashboard matches the iPhone-first demo direction", () => {
   assert.match(css, /\.next-game-capacity-track/);
   assert.match(css, /\.calendar-day\[aria-selected="true"\]/);
   assert.match(css, /\.notification-dialog \{[\s\S]*position:\s*fixed;/);
-  assert.match(css, /\.ask-card h2::before/);
+  assert.match(css, /\.chat-launcher \{[\s\S]*position:\s*fixed;/);
 });
 
 test("installed iPhone mode adds a blurred status-area separation layer", () => {
@@ -1241,23 +1246,34 @@ test("cinematic launch is original, session-scoped, and reduced-motion safe", ()
   assert.doesNotMatch([html, app, css].join("\n"), /Netflix/i);
 });
 
-test("music is opt-in, local-device persisted, and starts from a browser-allowed gesture", () => {
+test("music is an icon-only opt-in control and remains gesture-safe", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
 
-  assert.match(html, /id="music-toggle"/);
-  assert.match(html, /id="music-status"/);
-  assert.match(html, /Original BallerWatch ambient soundtrack/);
+  assert.match(html, /class="icon-button music-icon-toggle" id="music-toggle"/);
+  assert.match(html, /class="music-speaker"/);
+  assert.match(html, /class="music-wave music-wave-one"/);
+  assert.match(html, /class="music-slash"/);
+  assert.match(html, /id="music-status" aria-live="polite"/);
+  assert.doesNotMatch(html, /<h3[^>]*>Experience<\/h3>|Original BallerWatch ambient soundtrack/);
+  assert.match(css, /\.music-icon-toggle\.is-on \.music-wave \{[\s\S]*display:\s*block/);
+  assert.match(css, /\.music-icon-toggle\.is-on \.music-slash \{[\s\S]*display:\s*none/);
   assert.match(app, /MUSIC_ENABLED_KEY = "ballerwatch-music-enabled-v1"/);
   assert.match(app, /localStorage\.getItem\(MUSIC_ENABLED_KEY\)/);
-  assert.match(app, /localStorage\.setItem\(MUSIC_ENABLED_KEY, enabled \? "1" : "0"\)/);
-  assert.match(app, /window\.AudioContext \|\| window\.webkitAudioContext/);
-  assert.match(app, /createOscillator\(\)/);
-  assert.match(app, /function playBallerWatchAudioMark/);
-  assert.match(app, /function playAmbientPhrase/);
+  assert.match(app, /setAttribute\("aria-label",[\s\S]*Turn music off[\s\S]*Turn music on/);
   assert.match(app, /document\.addEventListener\("pointerdown", startMusicFromGesture/);
-  assert.match(app, /document\.addEventListener\("keydown", startMusicFromGesture/);
   assert.match(app, /musicToggle\?\.addEventListener\("click"/);
-  assert.match(app, /Music is on\. It will start after your next tap\./);
   assert.doesNotMatch(html, /<audio|autoplay/i);
+});
+
+
+test("settings modal has one visible vertical scroll container", () => {
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
+
+  assert.match(html, /id="settings-dialog" class="settings-dialog"/);
+  assert.match(css, /\.settings-dialog \{[\s\S]*padding:\s*0;[\s\S]*overflow:\s*hidden;/);
+  assert.match(css, /\.settings-dialog \.dialog-shell \{[\s\S]*overflow-x:\s*hidden;[\s\S]*overflow-y:\s*auto;/);
+  assert.match(css, /html:has\(\.settings-dialog\[open\]\)[\s\S]*overflow:\s*hidden;/);
 });
