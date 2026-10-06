@@ -37,6 +37,7 @@ BallerWatch 7 turns the PWA into a more complete account-backed app experience:
 - **Account-aware Web Push:** each device subscription can follow its signed-in account's notification categories without exposing account data in push payloads.
 - **Cleaner PWA architecture:** transport/session handling and notification persistence live in focused frontend modules instead of the main view controller.
 - **App navigation:** Inbox and Settings stay one tap away through the top-right bell and gear, without a persistent bottom tab bar.
+- **Launch experience:** the cinematic intro owns the first browser paint on a fresh session, preventing the dashboard from flashing underneath it before the animation starts.
 
 Signed-out use still works: local read/delete state and anonymous Web Push remain available, and local notification state is migrated into the account after a successful sign-in.
 
