@@ -60,3 +60,4 @@ The source ledger on `main` is authoritative for the newest reviewed version. Th
 - **7.0.10** — Removes the separator above the weather/calendar freshness footer and adds a privacy-safe maintainer audit for sanitized review signals and feature-request category counts.
 - **7.0.11** — Fixes review-identified Q&A routing for pickup-specific date details, mixed weekly schedule questions, empty weekdays, and richer Today pickup status.
 - **7.0.12** — Adds an original green cinematic BallerWatch launch animation plus optional low-volume synthesized ambient music that starts only after an allowed user interaction and remembers the device setting.
+- **7.0.13** — Simplifies Music to a speaker icon in Settings, removes the duplicate Settings scrollbar, and moves Ask BallerWatch into an always-available floating bot dialog.
