@@ -188,7 +188,7 @@ test("question box supports slash commands and autosuggestions", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   assert.match(html, /id="question-suggestions"/);
   assert.match(html, /aria-autocomplete="list"/);
-  assert.match(html, /\/ commands|type <strong>\/<\/strong> for commands/);
+  assert.match(html, /\/ commands|[Tt]ype <strong>\/<\/strong> for commands/);
   assert.match(app, /COMMAND_SUGGESTIONS/);
   assert.match(app, /BASE_QUESTION_COMPLETIONS/);
   assert.match(app, /ArrowDown/);
@@ -1261,7 +1261,7 @@ test("music is an icon-only opt-in control and remains gesture-safe", () => {
   assert.match(css, /\.music-icon-toggle\.is-on \.music-slash \{[\s\S]*display:\s*none/);
   assert.match(app, /MUSIC_ENABLED_KEY = "ballerwatch-music-enabled-v1"/);
   assert.match(app, /localStorage\.getItem\(MUSIC_ENABLED_KEY\)/);
-  assert.match(app, /setAttribute\("aria-label",[\s\S]*Turn music off[\s\S]*Turn music on/);
+  assert.match(app, /setAttribute\(\s*"aria-label",[\s\S]*Turn music off[\s\S]*Turn music on/);
   assert.match(app, /document\.addEventListener\("pointerdown", startMusicFromGesture/);
   assert.match(app, /musicToggle\?\.addEventListener\("click"/);
   assert.doesNotMatch(html, /<audio|autoplay/i);
