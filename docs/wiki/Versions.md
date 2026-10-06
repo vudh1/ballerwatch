@@ -73,3 +73,4 @@ The source ledger on `main` is authoritative for the newest reviewed version. Th
 - **7.0.23** — Clears the lingering green capacity-pill focus ring after pointer/touch roster use while preserving keyboard focus behavior.
 - **7.0.24** — Simplifies pickup match cards by turning weather into lightweight information, RSVP into a distinct rounded-rectangle action, and Directions/Share into quieter secondary controls.
 - **7.0.25** — Moves RSVP into a full app-width capacity roster sheet and repairs desktop Pickup/League Edit/Delete priority over the right-edge carousel affordance.
+- **7.0.26** — Restores the desktop right waterfall to the full visual card edge while keeping its clickable hit area below the Pickup/League action zone.
