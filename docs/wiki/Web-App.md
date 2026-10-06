@@ -18,6 +18,8 @@ There is no in-app pairing-code recovery path. First-time bootstrap or forgotten
 
 For RSVP-enabled pickup matches, the capacity pill is an interactive control that opens the signed-in RSVP roster. On touch devices, including the installed iPhone PWA, match-card swipe navigation excludes links, buttons, ARIA buttons, and form controls so a normal tap on the capacity pill is not consumed by the swipe gesture.
 
+On desktop pointer devices, the right-edge carousel navigation reserves the top-right match-type area for the Pickup/League pill. Hovering or clicking the pill therefore takes priority over moving to the next match.
+
 ## Q&A and feedback
 
 Read-only Q&A is served through the Worker. Successful answers receive a short-lived feedback token scoped to that exact question/answer. Marking an answer wrong does not grant Settings access.
