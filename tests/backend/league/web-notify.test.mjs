@@ -108,3 +108,55 @@ test("one-hour league reminder is emitted once per match", (t) => {
   assert.equal(fs.existsSync(".runtime/web-push-pending"), true);
   assert.doesNotMatch(fs.readFileSync("state/notify.json", "utf8"), /hour-reminder/);
 });
+
+
+test("league reminder uses shared root and repairs a recorded-but-undelivered reminder", (ctx) => {
+  const originalCwd = process.cwd();
+  const previousKey = process.env.TRACKER_STATE_KEY;
+  const previousRoot = process.env.BALLERWATCH_WEB_STATE_ROOT;
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "ballerwatch-league-root-reminder-"));
+  const leagueDir = path.join(root, "league");
+  fs.mkdirSync(leagueDir, { recursive: true });
+  process.chdir(leagueDir);
+  process.env.TRACKER_STATE_KEY = "synthetic-league-root-reminder-key";
+  process.env.BALLERWATCH_WEB_STATE_ROOT = "..";
+  ctx.after(() => {
+    process.chdir(originalCwd);
+    if (previousKey === undefined) delete process.env.TRACKER_STATE_KEY;
+    else process.env.TRACKER_STATE_KEY = previousKey;
+    if (previousRoot === undefined) delete process.env.BALLERWATCH_WEB_STATE_ROOT;
+    else process.env.BALLERWATCH_WEB_STATE_ROOT = previousRoot;
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  fs.writeFileSync("schedule.json", JSON.stringify({
+    teams: [{
+      name: "Team Alpha",
+      matches: [{
+        key: "v2:root-hour-reminder",
+        team: "Team Alpha",
+        opponent: "Team Beta",
+        start: "2026-10-05T20:00:00-07:00",
+        location: "League Field",
+        jerseyColor: "Black",
+      }],
+    }],
+  }));
+
+  const now = new Date("2026-10-05T19:05:00-07:00");
+  assert.equal(recordLeagueStartReminders({ now }), true);
+  assert.equal(fs.existsSync(path.join(root, "state/web-board-league.json")), true);
+  assert.equal(fs.existsSync(path.join(root, ".runtime/web-push-pending")), true);
+  assert.equal(fs.existsSync("state/web-board-league.json"), false);
+
+  // Reproduce tonight's old failure: reminder state was marked sent,
+  // but the shared board/pending handoff never reached the repo root.
+  fs.rmSync(path.join(root, "state/web-board-league.json"), { force: true });
+  fs.rmSync(path.join(root, ".runtime/web-push-pending"), { force: true });
+
+  assert.equal(recordLeagueStartReminders({ now }), true);
+  const repaired = loadWebNotificationChannel("league", { rootDir: ".." });
+  assert.equal(repaired.entries.length, 1);
+  assert.equal(repaired.entries[0].tag, "rats-start-v2:root-hour-reminder");
+  assert.equal(fs.existsSync(path.join(root, ".runtime/web-push-pending")), true);
+});
