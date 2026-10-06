@@ -12,19 +12,19 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
 
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   assert.match(html, /manifest\.webmanifest/);
-  assert.match(html, /apple-touch-icon\.png\?v=7\.0\.25/);
+  assert.match(html, /apple-touch-icon\.png\?v=7\.0\.26/);
   assert.match(html, /class="brand-icon"/);
-  assert.match(html, /icon\.svg\?v=7\.0\.25/);
+  assert.match(html, /icon\.svg\?v=7\.0\.26/);
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=7\.0\.25/);
-  assert.match(html, /app\.js\?v=7\.0\.25/);
+  assert.match(html, /styles\.css\?v=7\.0\.26/);
+  assert.match(html, /app\.js\?v=7\.0\.26/);
 
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v7-0-25-shell/);
+  assert.match(sw, /ballerwatch-v7-0-26-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -93,7 +93,7 @@ test("promotion watches Worker and Pages then refreshes the open PWA", () => {
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=7\.0\.25/);
+  assert.match(app, /sw\.js\?v=7\.0\.26/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -152,6 +152,26 @@ test("match spotlight shows a subtle source freshness line", () => {
   assert.match(css, /\.match-update-credit \{[\s\S]*color:\s*#64748b;[\s\S]*font-size:\s*var\(--type-caption\)/);
   assert.match(worker, /pickup\/state\/source-health\.json/);
   assert.match(worker, /sourceUpdatedAt:/);
+});
+
+test("right waterfall stays visually full-height while its hit area avoids match actions", () => {
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
+  const waterfall = css.split(
+    "/* v7.0.26 full-height right waterfall with a reserved action hit zone */",
+  )[1] || "";
+
+  assert.match(
+    waterfall,
+    /\.spotlight-edge-next \{[\s\S]*top:\s*5\.75rem;[\s\S]*overflow:\s*visible;/,
+  );
+  assert.match(
+    waterfall,
+    /\.spotlight-edge-next::before \{[\s\S]*top:\s*-5\.75rem;[\s\S]*bottom:\s*0;[\s\S]*pointer-events:\s*none;/,
+  );
+  assert.ok(
+    css.lastIndexOf("/* v7.0.26 full-height right waterfall with a reserved action hit zone */")
+      > css.lastIndexOf("/* v7.0.25 preserve match-type action priority over desktop carousel edge */"),
+  );
 });
 
 test("desktop match-type action keeps priority over the final carousel edge rule", () => {
@@ -743,7 +763,7 @@ test("footer contains no secondary messaging shortcut", () => {
 });
 
 
-test("BallerWatch 7.0.25 uses the top-right bell and gear without bottom app tabs", () => {
+test("BallerWatch 7.0.26 uses the top-right bell and gear without bottom app tabs", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   assert.match(html, /id="settings-button"/);
@@ -767,7 +787,7 @@ test("page uses a soccer-pitch backdrop with readable translucent cards", () => 
   assert.match(icon, /A soccer pitch with a soccer ball/);
   assert.match(icon, /<circle cx="256" cy="256" r="54"\/>/);
   assert.match(icon, /translate\(347 344\)/);
-  assert.match(manifest, /icon\.svg\?v=7\.0\.25/);
+  assert.match(manifest, /icon\.svg\?v=7\.0\.26/);
   assert.match(css, /\.card,[\s\S]*\.footer-install \{[\s\S]*rgba\(6, 18, 22, 0\.57\)/);
   assert.match(css, /\.spotlight-card \{[\s\S]*rgba\(4, 16, 22, 0\.72\)/);
   assert.match(css, /backdrop-filter:\s*blur\(24px\) saturate\(135%\)/);
@@ -1291,7 +1311,7 @@ test("cinematic launch owns first paint, stays session-scoped, and is reduced-mo
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
 
   assert.match(html, /<html lang="en" class="launch-intro-pending">/);
-  assert.match(html, /<script src="\.\/launch-prepaint\.js\?v=7\.0\.25"><\/script>[\s\S]*<link rel="stylesheet"/);
+  assert.match(html, /<script src="\.\/launch-prepaint\.js\?v=7\.0\.26"><\/script>[\s\S]*<link rel="stylesheet"/);
   assert.match(html, /id="launch-intro" aria-hidden="true">/);
   assert.doesNotMatch(html, /id="launch-intro"[^>]*\shidden/);
   assert.match(html, /class="launch-intro-word-main">BallerWatch<\/span>/);
@@ -1312,7 +1332,7 @@ test("cinematic launch owns first paint, stays session-scoped, and is reduced-mo
   assert.match(css, /@keyframes ballerwatch-intro-shine/);
   assert.match(css, /\.launch-intro\.is-active \{[\s\S]*pointer-events:\s*auto/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.launch-intro \{[\s\S]*display:\s*none !important/);
-  assert.match(sw, /\.\/launch-prepaint\.js\?v=7\.0\.25/);
+  assert.match(sw, /\.\/launch-prepaint\.js\?v=7\.0\.26/);
   assert.doesNotMatch([html, gate, app, css].join("\n"), /Netflix/i);
 });
 

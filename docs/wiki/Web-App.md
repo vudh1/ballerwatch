@@ -24,6 +24,8 @@ For RSVP-enabled pickup matches, the capacity area opens a full app-width roster
 
 On desktop pointer devices, the final right-edge carousel hit area starts below the full Pickup/League Edit/Delete trigger zone. Hovering or clicking that match-type action therefore takes priority over moving to the next match.
 
+The visual waterfall is independent from that hit area: its blur/glow still spans the full right edge of the match card. Only the interactive next-match hit target is shortened, so the card edge looks continuous without covering the match-type action.
+
 When the RSVP roster is opened by mouse or touch, closing it clears the temporary capacity-pill focus state so the green focus outline does not linger. Keyboard-opened rosters retain focus for accessibility.
 
 ## Q&A and feedback
