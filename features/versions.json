@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.0.24",
+  "currentVersion": "7.0.25",
   "releases": [
+    {
+      "version": "7.0.25",
+      "date": "2026-10-06",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Unified pickup RSVP sheet and match-action priority",
+      "webAnnouncement": "Pickup capacity now opens a full app-width RSVP sheet with the RSVP action inside, and the Pickup/League action reliably stays above desktop carousel navigation.",
+      "changes": [
+        "Moves the standalone pickup RSVP button off the match card and into the capacity roster sheet, making capacity the single entry point for roster details and RSVP.",
+        "Expands the RSVP roster to the full app content width with a larger scrollable list and a sticky RSVP action at the bottom.",
+        "Keeps the RSVP action neutral until confirmed and preserves the green confirmed state inside the roster sheet.",
+        "Fixes the final desktop carousel CSS override so the full Pickup/League Edit/Delete trigger retains pointer priority over the right-edge carousel affordance.",
+        "Adds regression coverage for the final carousel priority rule, full-width roster layout, and moved RSVP action."
+      ]
+    },
     {
       "version": "7.0.24",
       "date": "2026-10-06",
