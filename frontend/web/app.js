@@ -915,7 +915,7 @@ async function openRsvpRoster() {
       renderRsvpRosterList(els.rsvpRosterWaitlistList, queuedEntries);
     }
 
-    if (!players.length && !waitlist.length) {
+    if (!confirmedEntries.length && !queuedEntries.length) {
       els.rsvpRosterSummary.textContent = "No RSVP names are available yet.";
     }
   } catch (error) {
@@ -1407,7 +1407,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=7.0.18", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=7.0.19", {
     scope: "./",
     updateViaCache: "none",
   });
