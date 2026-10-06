@@ -1506,7 +1506,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=7.0.20", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=7.0.21", {
     scope: "./",
     updateViaCache: "none",
   });
