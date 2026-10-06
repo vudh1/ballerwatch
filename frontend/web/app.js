@@ -126,7 +126,7 @@ const els = {
   rsvpRosterConfirmed: document.querySelector("#rsvp-roster-confirmed"),
   rsvpRosterConfirmedCount: document.querySelector("#rsvp-roster-confirmed-count"),
   rsvpRosterConfirmedList: document.querySelector("#rsvp-roster-confirmed-list"),
-  rsvpRosterWaitlist: document.querySelector("#rsvp-roster-waitlist"),
+  rsvpRosterQueue: document.querySelector("#rsvp-roster-waitlist"),
   rsvpRosterWaitlistCount: document.querySelector("#rsvp-roster-waitlist-count"),
   rsvpRosterWaitlistList: document.querySelector("#rsvp-roster-waitlist-list"),
   rsvpRosterSignIn: document.querySelector("#rsvp-roster-sign-in"),
@@ -841,7 +841,7 @@ function renderRsvpRosterList(container, entries) {
 function showRsvpRosterSignIn() {
   els.rsvpRosterSummary.textContent = "Sign in to view RSVP names.";
   els.rsvpRosterConfirmed.hidden = true;
-  els.rsvpRosterWaitlist.hidden = true;
+  els.rsvpRosterQueue.hidden = true;
   els.rsvpRosterSignIn.hidden = false;
 }
 
@@ -856,7 +856,7 @@ async function openRsvpRoster() {
   els.rsvpRosterTitle.textContent = `${dateLabel} RSVPs`;
   els.rsvpRosterSummary.textContent = "Loading RSVP names…";
   els.rsvpRosterConfirmed.hidden = false;
-  els.rsvpRosterWaitlist.hidden = true;
+  els.rsvpRosterQueue.hidden = true;
   els.rsvpRosterSignIn.hidden = true;
   els.rsvpRosterConfirmedCount.textContent = "";
   els.rsvpRosterWaitlistCount.textContent = "";
@@ -881,9 +881,13 @@ async function openRsvpRoster() {
     );
     if (requestId !== rsvpRosterRequestId || !els.rsvpRosterDialog.open) return;
 
-    const players = Array.isArray(payload?.roster?.players) ? payload.roster.players : [];
-    const waitlist = Array.isArray(payload?.roster?.waitlist) ? payload.roster.waitlist : [];
-    const confirmedSpots = players.reduce(
+    const confirmedEntries = Array.isArray(payload?.roster?.players)
+      ? payload.roster.players
+      : [];
+    const queuedEntries = Array.isArray(payload?.roster?.waitlist)
+      ? payload.roster.waitlist
+      : [];
+    const confirmedSpots = confirmedEntries.reduce(
       (sum, entry) => sum + Math.max(1, Number(entry?.participantCount || 1)),
       0,
     );
@@ -895,14 +899,14 @@ async function openRsvpRoster() {
     els.rsvpRosterSummary.textContent = `${capacityText} · RSVP order`;
     els.rsvpRosterConfirmed.hidden = false;
     els.rsvpRosterConfirmedCount.textContent =
-      `${players.length} player${players.length === 1 ? "" : "s"}`;
-    renderRsvpRosterList(els.rsvpRosterConfirmedList, players);
+      `${confirmedEntries.length} player${confirmedEntries.length === 1 ? "" : "s"}`;
+    renderRsvpRosterList(els.rsvpRosterConfirmedList, confirmedEntries);
 
-    els.rsvpRosterWaitlist.hidden = waitlist.length === 0;
-    if (waitlist.length) {
+    els.rsvpRosterQueue.hidden = queuedEntries.length === 0;
+    if (queuedEntries.length) {
       els.rsvpRosterWaitlistCount.textContent =
-        `${waitlist.length} waiting`;
-      renderRsvpRosterList(els.rsvpRosterWaitlistList, waitlist);
+        `${queuedEntries.length} waiting`;
+      renderRsvpRosterList(els.rsvpRosterWaitlistList, queuedEntries);
     }
 
     if (!players.length && !waitlist.length) {
@@ -916,7 +920,7 @@ async function openRsvpRoster() {
     } else {
       els.rsvpRosterSummary.textContent = error.message;
       els.rsvpRosterConfirmed.hidden = true;
-      els.rsvpRosterWaitlist.hidden = true;
+      els.rsvpRosterQueue.hidden = true;
     }
   }
 }
