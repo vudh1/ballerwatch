@@ -16,13 +16,13 @@ There is no in-app pairing-code recovery path. First-time bootstrap or forgotten
 
 ## Match-card action hierarchy
 
-Pickup match cards deliberately avoid using the same capsule treatment for every element. The Pickup/League type remains a compact tag, weather is shown as lightweight informational text, RSVP uses a stronger rounded-rectangle action shape, and Directions/Share are quieter secondary controls. RSVP remains neutral until authenticated confirmation is known; only a confirmed RSVP uses the green success treatment and check mark.
+Pickup match cards deliberately avoid using the same capsule treatment for every element. The Pickup/League type remains a compact tag, weather is shown as lightweight informational text, the capacity area is the single entry point for roster/RSVP, and Directions/Share are quieter secondary controls. The RSVP action lives inside the roster sheet, stays neutral until authenticated confirmation is known, and uses the green success treatment with a check only when confirmed.
 
 ## Pickup RSVP roster
 
-For RSVP-enabled pickup matches, the capacity pill is an interactive control that opens the signed-in RSVP roster. On touch devices, including the installed iPhone PWA, match-card swipe navigation excludes links, buttons, ARIA buttons, and form controls so a normal tap on the capacity pill is not consumed by the swipe gesture.
+For RSVP-enabled pickup matches, the capacity area opens a full app-width roster sheet. The sheet shows the signed-in RSVP roster and keeps the external RSVP action in a sticky footer, so the match card does not need a separate RSVP button. On touch devices, including the installed iPhone PWA, match-card swipe navigation excludes links, buttons, ARIA buttons, and form controls so a normal tap on capacity is not consumed by the swipe gesture.
 
-On desktop pointer devices, the right-edge carousel navigation reserves the top-right match-type area for the Pickup/League pill. Hovering or clicking the pill therefore takes priority over moving to the next match.
+On desktop pointer devices, the final right-edge carousel hit area starts below the full Pickup/League Edit/Delete trigger zone. Hovering or clicking that match-type action therefore takes priority over moving to the next match.
 
 When the RSVP roster is opened by mouse or touch, closing it clears the temporary capacity-pill focus state so the green focus outline does not linger. Keyboard-opened rosters retain focus for accessibility.
 
