@@ -11,11 +11,11 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="BallerWatch">
   <title>BallerWatch</title>
-  <link rel="manifest" href="./manifest.webmanifest?v=7.0.24">
-  <link rel="icon" href="./icon.svg?v=7.0.24" type="image/svg+xml">
-  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=7.0.24">
-  <script src="./launch-prepaint.js?v=7.0.24"></script>
-  <link rel="stylesheet" href="./styles.css?v=7.0.24">
+  <link rel="manifest" href="./manifest.webmanifest?v=7.0.25">
+  <link rel="icon" href="./icon.svg?v=7.0.25" type="image/svg+xml">
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=7.0.25">
+  <script src="./launch-prepaint.js?v=7.0.25"></script>
+  <link rel="stylesheet" href="./styles.css?v=7.0.25">
 </head>
 <body>
   <div class="launch-intro" id="launch-intro" aria-hidden="true">
@@ -35,7 +35,7 @@
   <main class="shell">
     <header class="hero">
       <div class="brand-lockup">
-        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=7.0.24" alt=""></div>
+        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=7.0.25" alt=""></div>
         <div>
           <p class="eyebrow">SOCCER AT A GLANCE</p>
           <h1>BallerWatch</h1>
@@ -105,7 +105,7 @@
           <p class="next-game-location muted" id="next-game-location"></p>
           <div class="next-game-weather" id="next-game-weather" hidden></div>
           <div class="next-game-capacity" id="next-game-capacity" role="button" tabindex="0"
-            aria-haspopup="dialog" aria-expanded="false" aria-label="View pickup RSVP roster" hidden>
+            aria-haspopup="dialog" aria-expanded="false" aria-label="View pickup RSVP roster and RSVP" hidden>
             <div class="next-game-capacity-row">
               <span class="next-game-capacity-label" id="next-game-capacity-label"></span>
               <span class="next-game-capacity-spots" id="next-game-capacity-spots"></span>
@@ -114,8 +114,6 @@
               <span class="next-game-capacity-fill" id="next-game-capacity-fill"></span>
             </div>
           </div>
-          <a class="button-link pickup-rsvp-link next-game-rsvp-pill" id="next-game-rsvp"
-            target="_blank" rel="noopener" hidden>RSVP</a>
           <div class="button-row next-game-actions" id="next-game-actions" hidden>
             <a class="button-link" id="next-game-directions" target="_blank" rel="noopener">Directions</a>
             <button class="secondary" id="next-game-share" type="button">Share</button>
@@ -242,8 +240,12 @@
         </div>
         <ol class="rsvp-roster-list" id="rsvp-roster-waitlist-list"></ol>
       </section>
-      <button class="secondary rsvp-roster-sign-in" id="rsvp-roster-sign-in"
-        type="button" hidden>Sign in</button>
+      <div class="rsvp-roster-actions">
+        <a class="button-link pickup-rsvp-link rsvp-roster-rsvp" id="rsvp-roster-rsvp"
+          target="_blank" rel="noopener" hidden>RSVP</a>
+        <button class="secondary rsvp-roster-sign-in" id="rsvp-roster-sign-in"
+          type="button" hidden>Sign in to view names</button>
+      </div>
     </div>
   </dialog>
 
@@ -504,6 +506,6 @@
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=7.0.24"></script>
+  <script type="module" src="./app.js?v=7.0.25"></script>
 </body>
 </html>

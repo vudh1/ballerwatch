@@ -129,10 +129,10 @@ const els = {
   rsvpRosterQueue: document.querySelector("#rsvp-roster-waitlist"),
   rsvpRosterWaitlistCount: document.querySelector("#rsvp-roster-waitlist-count"),
   rsvpRosterWaitlistList: document.querySelector("#rsvp-roster-waitlist-list"),
+  rsvpRosterRsvp: document.querySelector("#rsvp-roster-rsvp"),
   rsvpRosterSignIn: document.querySelector("#rsvp-roster-sign-in"),
   nextGameWeather: document.querySelector("#next-game-weather"),
   nextGameActions: document.querySelector("#next-game-actions"),
-  nextGameRsvp: document.querySelector("#next-game-rsvp"),
   nextGameDirections: document.querySelector("#next-game-directions"),
   nextGameShare: document.querySelector("#next-game-share"),
   nextGameHint: document.querySelector("#next-game-hint"),
@@ -968,6 +968,7 @@ async function openRsvpRoster() {
   els.rsvpRosterWaitlistCount.textContent = "";
   els.rsvpRosterConfirmedList.replaceChildren();
   els.rsvpRosterWaitlistList.replaceChildren();
+  applyRsvpAction(els.rsvpRosterRsvp, spotlightModel(game, "SELECTED GAME"));
   els.nextGameCapacity.setAttribute("aria-expanded", "true");
 
   if (!els.rsvpRosterDialog.open) els.rsvpRosterDialog.showModal();
@@ -1507,7 +1508,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=7.0.24", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=7.0.25", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -2063,6 +2064,29 @@ function spotlightModel(game, label = "NEXT GAME") {
   };
 }
 
+function applyRsvpAction(link, model) {
+  if (!link) return;
+  if (model.rsvp) {
+    link.href = model.rsvp;
+    link.hidden = false;
+    link.classList.toggle("is-confirmed", model.rsvpConfirmed);
+    link.classList.toggle("is-waitlisted", model.rsvpWaitlisted);
+    link.textContent = model.rsvpConfirmed ? "RSVP'd" : "RSVP";
+    link.setAttribute(
+      "aria-label",
+      model.rsvpConfirmed
+        ? "RSVP confirmed — open pickup RSVP site"
+        : "Open pickup RSVP site",
+    );
+    return;
+  }
+
+  link.removeAttribute("href");
+  link.classList.remove("is-confirmed", "is-waitlisted");
+  link.textContent = "RSVP";
+  link.hidden = true;
+}
+
 function applySpotlightModel(targets, game, label = "NEXT GAME") {
   const model = spotlightModel(game, label);
   targets.label.textContent = model.label;
@@ -2081,25 +2105,6 @@ function applySpotlightModel(targets, game, label = "NEXT GAME") {
   targets.actions.hidden = model.actionsHidden;
   if (targets.menuTrigger) targets.menuTrigger.hidden = !game?.id;
   targets.hint.textContent = "";
-
-  if (model.rsvp) {
-    targets.rsvp.href = model.rsvp;
-    targets.rsvp.hidden = false;
-    targets.rsvp.classList.toggle("is-confirmed", model.rsvpConfirmed);
-    targets.rsvp.classList.toggle("is-waitlisted", model.rsvpWaitlisted);
-    targets.rsvp.textContent = model.rsvpConfirmed ? "RSVP'd" : "RSVP";
-    targets.rsvp.setAttribute(
-      "aria-label",
-      model.rsvpConfirmed
-        ? "RSVP confirmed — open pickup RSVP site"
-        : "Open pickup RSVP site",
-    );
-  } else {
-    targets.rsvp.removeAttribute("href");
-    targets.rsvp.classList.remove("is-confirmed", "is-waitlisted");
-    targets.rsvp.textContent = "RSVP";
-    targets.rsvp.hidden = true;
-  }
 
   if (model.directions) {
     targets.directions.href = model.directions;
@@ -2125,7 +2130,6 @@ function currentSpotlightTargets() {
     weather: els.nextGameWeather,
     updated: els.nextGameUpdated,
     actions: els.nextGameActions,
-    rsvp: els.nextGameRsvp,
     directions: els.nextGameDirections,
     hint: els.nextGameHint,
   };
@@ -2183,7 +2187,6 @@ function buildSpotlightTrainCard(game) {
       weather: role("next-game-weather"),
       updated: role("next-game-updated"),
       actions: role("next-game-actions"),
-      rsvp: role("next-game-rsvp"),
       directions: role("next-game-directions"),
       hint: role("next-game-hint"),
     },

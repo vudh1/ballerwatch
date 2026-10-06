@@ -4739,3 +4739,76 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
   }
 }
 
+/* v7.0.25 preserve match-type action priority over desktop carousel edge */
+@media (hover: hover) and (pointer: fine) {
+  .spotlight-edge-next {
+    top: 5.75rem;
+  }
+}
+
+/* v7.0.25 full-width RSVP roster sheet */
+.spotlight-content {
+  grid-template-areas:
+    "heading heading"
+    "meta meta"
+    "location weather"
+    "capacity capacity"
+    "actions actions"
+    "hint hint";
+}
+
+.rsvp-roster-dialog {
+  width: min(var(--app-surface-width), calc(100vw - 2rem));
+  max-width: min(var(--app-surface-width), calc(100vw - 2rem));
+  max-height: min(82dvh, 48rem);
+  border-radius: 28px;
+}
+
+.rsvp-roster-shell {
+  max-height: min(82dvh, 48rem);
+  padding: 1.15rem 1.25rem 0;
+}
+
+.rsvp-roster-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: grid;
+  gap: 0.55rem;
+  margin: 0.65rem -1.25rem 0;
+  padding: 0.85rem 1.25rem max(1rem, env(safe-area-inset-bottom));
+  border-top: 1px solid rgba(226, 232, 240, 0.09);
+  background:
+    linear-gradient(180deg, rgba(6, 18, 22, 0.82), rgba(6, 18, 22, 0.98) 36%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
+}
+
+.rsvp-roster-rsvp,
+.rsvp-roster-sign-in {
+  width: 100%;
+  min-height: 3rem;
+  border-radius: 14px;
+}
+
+@media (max-width: 560px) {
+  .rsvp-roster-dialog {
+    width: calc(100vw - 0.75rem);
+    max-width: calc(100vw - 0.75rem);
+    max-height: min(78dvh, 42rem);
+    border-radius: 24px;
+  }
+
+  .rsvp-roster-shell {
+    max-height: min(78dvh, 42rem);
+    padding: 1rem 1rem 0;
+  }
+
+  .rsvp-roster-actions {
+    margin-right: -1rem;
+    margin-left: -1rem;
+    padding-right: 1rem;
+    padding-left: 1rem;
+  }
+}
+
