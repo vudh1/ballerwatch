@@ -833,6 +833,11 @@ test("match spotlight swipe uses connected neighboring cards like a carousel tra
   assert.match(css, /\.spotlight-edge-control span \{[\s\S]*background:\s*transparent;/);
   assert.match(css, /\.spotlight-edge-control:not\(:disabled\):hover::before/);
   assert.match(css, /\.spotlight-edge-control:not\(:disabled\):hover span/);
+  assert.match(
+    css,
+    /\.spotlight-edge-next \{[\s\S]*top:\s*4\.6rem;[\s\S]*right:\s*0;/,
+  );
+  assert.match(css, /\.match-card-menu-wrap \{[\s\S]*position:\s*relative;/);
 });
 
 
