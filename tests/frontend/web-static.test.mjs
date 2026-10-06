@@ -1314,18 +1314,11 @@ test("iPhone Settings and Notifications share a symmetric safe vertical frame", 
 test("notification reader returns to Inbox as a real modal layer", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
 
-  assert.match(
-    app,
-    /function closeNotificationReader\\(\\) \\{[\\s\\S]*notificationReader\\.open[\\s\\S]*notificationReader\\.close\\(\\)[\\s\\S]*notificationDialog\\.showModal\\(\\)/,
-  );
-  assert.doesNotMatch(
-    app,
-    /function closeNotificationReader\\(\\) \\{[\\s\\S]*notificationDialog\\.show\\(\\)/,
-  );
-  assert.match(
-    app,
-    /notificationReader\\.addEventListener\\("cancel",[\\s\\S]*preventDefault\\(\\)[\\s\\S]*closeNotificationReader\\(\\)/,
-  );
+  assert.ok(app.includes("if (els.notificationReader.open) els.notificationReader.close();"));
+  assert.ok(app.includes("if (!els.notificationDialog.open) els.notificationDialog.showModal();"));
+  assert.ok(!app.includes("els.notificationDialog.show();"));
+  assert.ok(app.includes('els.notificationReader.addEventListener("cancel", (event) => {'));
+  assert.ok(app.includes("event.preventDefault();\n  closeNotificationReader();"));
 });
 
 test("league workflow writes notifications to the shared root before Web Push", () => {
