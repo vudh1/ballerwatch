@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.0.19",
+  "currentVersion": "7.0.20",
   "releases": [
+    {
+      "version": "7.0.20",
+      "date": "2026-10-06",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Original stadium football anthem",
+      "webAnnouncement": "BallerWatch music now has an original stadium-football sound with drums, claps, brass-style stabs, bass, and a celebratory hook.",
+      "changes": [
+        "Replaces the quiet ambient chord loop with an original four-bar stadium-style football anthem synthesized entirely with the browser Web Audio API.",
+        "Adds synthesized kick percussion, hand-clap texture, brass-like chord stabs, bass support, and an original melodic hook without shipping or streaming third-party audio.",
+        "Keeps the existing local music on/off preference and browser gesture-safe playback behavior, including installed iPhone use."
+      ]
+    },
     {
       "version": "7.0.19",
       "date": "2026-10-06",
