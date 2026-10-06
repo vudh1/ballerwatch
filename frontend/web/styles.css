@@ -4812,3 +4812,17 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
   }
 }
 
+/* v7.0.26 full-height right waterfall with a reserved action hit zone */
+@media (hover: hover) and (pointer: fine) {
+  .spotlight-edge-next {
+    top: 5.75rem;
+    overflow: visible;
+  }
+
+  .spotlight-edge-next::before {
+    top: -5.75rem;
+    bottom: 0;
+    pointer-events: none;
+  }
+}
+
