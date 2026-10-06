@@ -20,6 +20,8 @@ For RSVP-enabled pickup matches, the capacity pill is an interactive control tha
 
 On desktop pointer devices, the right-edge carousel navigation reserves the top-right match-type area for the Pickup/League pill. Hovering or clicking the pill therefore takes priority over moving to the next match.
 
+When the RSVP roster is opened by mouse or touch, closing it clears the temporary capacity-pill focus state so the green focus outline does not linger. Keyboard-opened rosters retain focus for accessibility.
+
 ## Q&A and feedback
 
 Read-only Q&A is served through the Worker. Successful answers receive a short-lived feedback token scoped to that exact question/answer. Marking an answer wrong does not grant Settings access.

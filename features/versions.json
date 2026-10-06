@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.0.22",
+  "currentVersion": "7.0.23",
   "releases": [
+    {
+      "version": "7.0.23",
+      "date": "2026-10-06",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "RSVP capacity focus cleanup",
+      "webAnnouncement": "Closing the RSVP roster no longer leaves a green focus border around the capacity pill after mouse or touch use.",
+      "changes": [
+        "Tracks whether the RSVP roster was opened by pointer input and clears the capacity pill focus after the dialog closes.",
+        "Preserves keyboard focus when the roster was opened with Enter or Space so keyboard navigation remains accessible.",
+        "Adds regression coverage for pointer-versus-keyboard focus behavior."
+      ]
+    },
     {
       "version": "7.0.22",
       "date": "2026-10-06",

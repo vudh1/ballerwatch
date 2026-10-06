@@ -192,6 +192,7 @@ let ambientMusicTimer = null;
 let ambientPhraseIndex = 0;
 let musicGestureArmed = false;
 let rsvpRosterRequestId = 0;
+let rsvpRosterOpenedByPointer = false;
 
 const OWNER_TOKEN_KEY = SESSION_TOKEN_KEY;
 const OWNER_USERNAME_KEY = SESSION_USERNAME_KEY;
@@ -1506,7 +1507,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=7.0.22", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=7.0.23", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -3721,10 +3722,14 @@ els.userList.addEventListener("click", (event) => {
 });
 els.ownerDisconnect.addEventListener("click", disconnectOwnerDevice);
 els.ownerRevoke.addEventListener("click", revokeOwnerDevices);
-els.nextGameCapacity.addEventListener("click", () => void openRsvpRoster());
+els.nextGameCapacity.addEventListener("click", () => {
+  rsvpRosterOpenedByPointer = true;
+  void openRsvpRoster();
+});
 els.nextGameCapacity.addEventListener("keydown", (event) => {
   if (event.key !== "Enter" && event.key !== " ") return;
   event.preventDefault();
+  rsvpRosterOpenedByPointer = false;
   void openRsvpRoster();
 });
 els.closeRsvpRoster.addEventListener("click", closeRsvpRoster);
@@ -3733,6 +3738,10 @@ els.rsvpRosterDialog.addEventListener("click", (event) => {
 });
 els.rsvpRosterDialog.addEventListener("close", () => {
   els.nextGameCapacity.setAttribute("aria-expanded", "false");
+  if (rsvpRosterOpenedByPointer) {
+    window.requestAnimationFrame(() => els.nextGameCapacity.blur());
+  }
+  rsvpRosterOpenedByPointer = false;
 });
 els.rsvpRosterSignIn.addEventListener("click", async () => {
   closeRsvpRoster();
