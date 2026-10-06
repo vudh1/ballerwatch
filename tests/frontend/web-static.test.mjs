@@ -154,6 +154,26 @@ test("match spotlight shows a subtle source freshness line", () => {
   assert.match(worker, /sourceUpdatedAt:/);
 });
 
+test("right waterfall stays visually full-height while its hit area avoids match actions", () => {
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
+  const waterfall = css.split(
+    "/* v7.0.26 full-height right waterfall with a reserved action hit zone */",
+  )[1] || "";
+
+  assert.match(
+    waterfall,
+    /\.spotlight-edge-next \{[\s\S]*top:\s*5\.75rem;[\s\S]*overflow:\s*visible;/,
+  );
+  assert.match(
+    waterfall,
+    /\.spotlight-edge-next::before \{[\s\S]*top:\s*-5\.75rem;[\s\S]*bottom:\s*0;[\s\S]*pointer-events:\s*none;/,
+  );
+  assert.ok(
+    css.lastIndexOf("/* v7.0.26 full-height right waterfall with a reserved action hit zone */")
+      > css.lastIndexOf("/* v7.0.25 preserve match-type action priority over desktop carousel edge */"),
+  );
+});
+
 test("desktop match-type action keeps priority over the final carousel edge rule", () => {
   const css = fs.readFileSync("frontend/web/styles.css", "utf8");
   const priorityBlock = css.split(
