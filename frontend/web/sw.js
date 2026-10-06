@@ -2,6 +2,7 @@ const CACHE = "ballerwatch-v7-0-16-shell";
 const SHELL = [
   "./",
   "./index.html",
+  "./launch-prepaint.js?v=7.0.16",
   "./styles.css?v=7.0.16",
   "./app.js?v=7.0.16",
   "./lib/client.js",
