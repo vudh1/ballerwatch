@@ -1506,7 +1506,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=7.0.20", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=7.0.21", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -2534,6 +2534,12 @@ function installSpotlightEdgeWaterfall() {
   }
 }
 
+function isSpotlightInteractiveTarget(target) {
+  return Boolean(target?.closest?.(
+    "a, button, dialog, [role=button], input, select, textarea, label",
+  ));
+}
+
 function installSpotlightSwipe() {
   let touchStartX = null;
   let touchStartY = null;
@@ -2682,7 +2688,7 @@ function installSpotlightSwipe() {
   els.spotlightNext.addEventListener("click", () => activateEdgeStep(1));
 
   els.nextGameCard.addEventListener("touchstart", (event) => {
-    if (settling || event.target.closest?.("a, button, dialog")) {
+    if (settling || isSpotlightInteractiveTarget(event.target)) {
       resetGesture();
       return;
     }
@@ -2694,7 +2700,7 @@ function installSpotlightSwipe() {
   }, { passive: true });
 
   els.nextGameCard.addEventListener("touchmove", (event) => {
-    if (event.target.closest?.("a, button, dialog")) {
+    if (isSpotlightInteractiveTarget(event.target)) {
       resetGesture();
       return;
     }
@@ -2735,7 +2741,7 @@ function installSpotlightSwipe() {
   }, { passive: false });
 
   els.nextGameCard.addEventListener("touchend", (event) => {
-    if (event.target.closest?.("a, button, dialog")) {
+    if (isSpotlightInteractiveTarget(event.target)) {
       resetGesture();
       return;
     }

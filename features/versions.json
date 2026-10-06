@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.0.20",
+  "currentVersion": "7.0.21",
   "releases": [
+    {
+      "version": "7.0.21",
+      "date": "2026-10-06",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "iPhone RSVP capacity tap repair",
+      "webAnnouncement": "The pickup capacity pill now opens the RSVP roster reliably in the installed iPhone app.",
+      "changes": [
+        "Treats ARIA button controls, including the pickup capacity pill, as interactive targets that the match-card swipe gesture must not consume.",
+        "Prevents iOS touchend handling from suppressing the capacity pill click while preserving horizontal swipe navigation elsewhere on the match card.",
+        "Adds regression coverage for touchstart, touchmove, and touchend handling on ARIA controls."
+      ]
+    },
     {
       "version": "7.0.20",
       "date": "2026-10-06",

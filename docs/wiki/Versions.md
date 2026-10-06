@@ -68,3 +68,4 @@ The source ledger on `main` is authoritative for the newest reviewed version. Th
 - **7.0.18** — Keeps Inbox in the browser modal top layer when returning from a notification detail, preventing it from falling behind dashboard cards.
 - **7.0.19** — Fixes the pickup RSVP roster empty-state check so signed-in roster viewing no longer throws `players is not defined`.
 - **7.0.20** — Replaces the ambient music loop with an original self-contained stadium-football anthem synthesized in Web Audio, with no third-party audio assets.
+- **7.0.21** — Fixes installed-iPhone taps on the pickup capacity pill so the RSVP roster opens instead of the match-card swipe handler suppressing the tap.
