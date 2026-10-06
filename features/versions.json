@@ -5,7 +5,7 @@
     {
       "version": "7.0.12",
       "date": "2026-10-05",
-      "type": "minor-visual",
+      "type": "patch",
       "source": "user-requested",
       "title": "Cinematic launch and optional music",
       "webAnnouncement": "BallerWatch now opens with a short green cinematic wordmark reveal and can play an optional original ambient soundtrack.",
