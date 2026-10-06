@@ -3941,6 +3941,12 @@ body::after {
   display: none;
 }
 
+html.launch-intro-pending .launch-intro {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
 .launch-intro {
   position: fixed;
   z-index: 10000;
