@@ -4629,3 +4629,113 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .next-game-capacity[role="button"] { transition: none; }
 }
+
+/* v7.0.24 clearer match-card action hierarchy */
+.spotlight-card .match-card-menu-trigger.status-dot {
+  min-height: 1.95rem;
+  padding: 0.38rem 0.66rem;
+  border-radius: 12px;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.next-game-weather {
+  max-width: 9.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: rgba(226, 232, 240, 0.82);
+  background: transparent;
+  box-shadow: none;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: right;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.next-game-rsvp-pill {
+  min-height: 3rem;
+  padding: 0.58rem 0.85rem;
+  border-radius: 14px;
+  font-size: 0.86rem;
+  font-weight: 800;
+  letter-spacing: 0.015em;
+}
+
+.pickup-rsvp-link {
+  color: #f8fafc;
+  border-color: rgba(226, 232, 240, 0.26) !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.035)),
+    rgba(51, 65, 85, 0.34) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 8px 20px rgba(0, 0, 0, 0.14);
+}
+
+.pickup-rsvp-link.is-confirmed {
+  color: #f0fdf4;
+  border-color: rgba(134, 239, 172, 0.52) !important;
+  background:
+    linear-gradient(145deg, rgba(34, 197, 94, 0.92), rgba(22, 163, 74, 0.84)),
+    rgba(21, 128, 61, 0.88) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(220, 252, 231, 0.32),
+    0 9px 24px rgba(22, 163, 74, 0.18);
+}
+
+.next-game-actions {
+  gap: 0.6rem;
+  margin-top: 1.05rem;
+}
+
+.next-game-actions .button-link,
+.next-game-actions button {
+  min-height: 2.8rem;
+  padding: 0.58rem 0.72rem;
+  border: 1px solid rgba(226, 232, 240, 0.10);
+  border-radius: 12px;
+  color: rgba(241, 245, 249, 0.88);
+  background: rgba(51, 65, 85, 0.16);
+  box-shadow: none;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.next-game-actions .button-link:hover,
+.next-game-actions button:hover {
+  border-color: rgba(226, 232, 240, 0.18);
+  background: rgba(71, 85, 105, 0.24);
+}
+
+@media (max-width: 560px) {
+  .spotlight-card .match-card-menu-trigger.status-dot {
+    min-height: 1.85rem;
+    padding: 0.34rem 0.58rem;
+    font-size: 0.64rem;
+  }
+
+  .next-game-weather {
+    max-width: 7.8rem;
+    padding: 0;
+    font-size: 0.64rem;
+  }
+
+  .next-game-rsvp-pill {
+    min-height: 2.8rem;
+    padding: 0.52rem 0.68rem;
+  }
+
+  .next-game-actions {
+    gap: 0.5rem;
+  }
+
+  .next-game-actions .button-link,
+  .next-game-actions button {
+    min-height: 2.7rem;
+    padding-inline: 0.55rem;
+  }
+}
+

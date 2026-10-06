@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.0.23",
+  "currentVersion": "7.0.24",
   "releases": [
+    {
+      "version": "7.0.24",
+      "date": "2026-10-06",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Cleaner pickup match action hierarchy",
+      "webAnnouncement": "Pickup match cards now use fewer capsule shapes: weather is lightweight information, RSVP is a distinct primary-shaped control, and Directions/Share are quieter secondary actions.",
+      "changes": [
+        "Turns the weather display from a glass capsule into compact right-aligned informational text.",
+        "Changes RSVP from a capsule into a stronger rounded-rectangle control while keeping it neutral until the user is confirmed; confirmed RSVP remains green with a check.",
+        "Reduces Directions and Share to smaller, flatter rounded-rectangle secondary controls and makes the Pickup/League tag more compact.",
+        "Adds frontend regression coverage for the new match-card visual hierarchy on desktop and iPhone-sized layouts."
+      ]
+    },
     {
       "version": "7.0.23",
       "date": "2026-10-06",
