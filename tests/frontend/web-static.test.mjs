@@ -804,7 +804,8 @@ test("match spotlight swipe uses connected neighboring cards like a carousel tra
     /button\.setAttribute\("aria-selected", String\(button\.dataset\.date === date\)\)/,
   );
   assert.match(app, /renderCalendarGamePicker\(games, game\.id \|\| ""\)/);
-  assert.match(app, /event\.target\.closest\?\.\("a, button, dialog"\)/);
+  assert.match(app, /function isSpotlightInteractiveTarget/);
+  assert.match(app, /isSpotlightInteractiveTarget\(event\.target\)/);
   assert.match(css, /\/\* v5\.3\.3 connected-card carousel swipe \*\//);
   assert.match(css, /\.spotlight-carousel \{[\s\S]*overflow:\s*hidden;/);
   assert.match(css, /--spotlight-train-gap:\s*0px/);
@@ -1164,7 +1165,8 @@ test("match type pill opens a touch-safe Edit/Delete action sheet and freshness 
   assert.doesNotMatch(html, /match-card-menu-glyph/);
   assert.match(app, /nextGameMenu\.showModal\(\)/);
   assert.match(app, /event\.target === els\.nextGameMenu/);
-  assert.match(app, /closest\?\.\("a, button, dialog"\)/);
+  assert.match(app, /function isSpotlightInteractiveTarget/);
+  assert.match(app, /\[role=button\]/);
   assert.match(app, /type: game\.kind === "league" \? "League" : "Pickup"/);
   assert.match(css, /\.match-card-action-dialog \{/);
   assert.match(css, /"location weather"[\s\S]*"capacity rsvp"/);
