@@ -12,19 +12,19 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
 
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   assert.match(html, /manifest\.webmanifest/);
-  assert.match(html, /apple-touch-icon\.png\?v=7\.0\.13/);
+  assert.match(html, /apple-touch-icon\.png\?v=7\.0\.14/);
   assert.match(html, /class="brand-icon"/);
-  assert.match(html, /icon\.svg\?v=7\.0\.13/);
+  assert.match(html, /icon\.svg\?v=7\.0\.14/);
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=7\.0\.13/);
-  assert.match(html, /app\.js\?v=7\.0\.13/);
+  assert.match(html, /styles\.css\?v=7\.0\.14/);
+  assert.match(html, /app\.js\?v=7\.0\.14/);
 
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v7-0-13-shell/);
+  assert.match(sw, /ballerwatch-v7-0-14-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -92,7 +92,7 @@ test("promotion watches Worker and Pages then refreshes the open PWA", () => {
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=7\.0\.13/);
+  assert.match(app, /sw\.js\?v=7\.0\.14/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -692,7 +692,7 @@ test("footer contains no secondary messaging shortcut", () => {
 });
 
 
-test("BallerWatch 7.0.13 uses the top-right bell and gear without bottom app tabs", () => {
+test("BallerWatch 7.0.14 uses the top-right bell and gear without bottom app tabs", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   assert.match(html, /id="settings-button"/);
@@ -716,7 +716,7 @@ test("page uses a soccer-pitch backdrop with readable translucent cards", () => 
   assert.match(icon, /A soccer pitch with a soccer ball/);
   assert.match(icon, /<circle cx="256" cy="256" r="54"\/>/);
   assert.match(icon, /translate\(347 344\)/);
-  assert.match(manifest, /icon\.svg\?v=7\.0\.13/);
+  assert.match(manifest, /icon\.svg\?v=7\.0\.14/);
   assert.match(css, /\.card,[\s\S]*\.footer-install \{[\s\S]*rgba\(6, 18, 22, 0\.57\)/);
   assert.match(css, /\.spotlight-card \{[\s\S]*rgba\(4, 16, 22, 0\.72\)/);
   assert.match(css, /backdrop-filter:\s*blur\(24px\) saturate\(135%\)/);
@@ -1276,4 +1276,23 @@ test("settings modal has one visible vertical scroll container", () => {
   assert.match(css, /\.settings-dialog \{[\s\S]*padding:\s*0;[\s\S]*overflow:\s*hidden;/);
   assert.match(css, /\.settings-dialog \.dialog-shell \{[\s\S]*overflow-x:\s*hidden;[\s\S]*overflow-y:\s*auto;/);
   assert.match(css, /html:has\(\.settings-dialog\[open\]\)[\s\S]*overflow:\s*hidden;/);
+});
+
+
+test("iPhone Settings and Notifications share a symmetric safe vertical frame", () => {
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
+
+  assert.match(css, /--iphone-modal-frame-inset:\s*max\([\s\S]*safe-area-inset-top[\s\S]*safe-area-inset-bottom/);
+  assert.match(
+    css,
+    /\.notification-dialog,\s*\n\s*\.settings-dialog \{[\s\S]*top:\s*var\(--iphone-modal-frame-inset\);[\s\S]*bottom:\s*var\(--iphone-modal-frame-inset\);/,
+  );
+  assert.match(
+    css,
+    /\.notification-dialog,\s*\n\s*\.settings-dialog \{[\s\S]*transform:\s*translateX\(-50%\);/,
+  );
+  assert.match(
+    css,
+    /\.notification-dialog \.dialog-shell,\s*\n\s*\.settings-dialog \.dialog-shell \{[\s\S]*height:\s*100%;[\s\S]*max-height:\s*none;/,
+  );
 });
