@@ -1384,6 +1384,24 @@ test("iPhone spotlight swipe preserves taps on ARIA button controls", () => {
   assert.match(app, /nextGameCapacity\.addEventListener\("click",[\s\S]*openRsvpRoster/);
 });
 
+test("closing a pointer-opened RSVP roster clears the lingering capacity focus ring", () => {
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+
+  assert.match(app, /let rsvpRosterOpenedByPointer = false/);
+  assert.match(
+    app,
+    /nextGameCapacity\.addEventListener\("click",[\s\S]*rsvpRosterOpenedByPointer = true[\s\S]*openRsvpRoster/,
+  );
+  assert.match(
+    app,
+    /nextGameCapacity\.addEventListener\("keydown",[\s\S]*rsvpRosterOpenedByPointer = false[\s\S]*openRsvpRoster/,
+  );
+  assert.match(
+    app,
+    /rsvpRosterDialog\.addEventListener\("close",[\s\S]*requestAnimationFrame\(\(\) => els\.nextGameCapacity\.blur\(\)\)[\s\S]*rsvpRosterOpenedByPointer = false/,
+  );
+});
+
 test("pickup capacity opens a compact signed-in RSVP roster without public name leakage", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
