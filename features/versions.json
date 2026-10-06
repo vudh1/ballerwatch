@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.0.25",
+  "currentVersion": "7.0.26",
   "releases": [
+    {
+      "version": "7.0.26",
+      "date": "2026-10-06",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Full-height desktop waterfall edge",
+      "webAnnouncement": "The desktop right-side carousel waterfall now spans the full match-card edge visually while keeping the Pickup/League action area click-safe.",
+      "changes": [
+        "Keeps the right carousel hit area below the Pickup/League Edit/Delete control so the match action retains pointer priority.",
+        "Extends the non-interactive waterfall visual layer back to the full card height, removing the shortened-edge appearance.",
+        "Adds regression coverage that separates the visual waterfall extent from the clickable carousel hit zone."
+      ]
+    },
     {
       "version": "7.0.25",
       "date": "2026-10-06",
