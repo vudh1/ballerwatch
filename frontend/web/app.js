@@ -803,6 +803,124 @@ async function loadRsvpStatus() {
   }
 }
 
+function closeRsvpRoster() {
+  rsvpRosterRequestId += 1;
+  if (els.rsvpRosterDialog?.open) els.rsvpRosterDialog.close();
+  els.nextGameCapacity?.setAttribute("aria-expanded", "false");
+}
+
+function rosterGuestText(entry) {
+  const count = Math.max(1, Number(entry?.participantCount || 1));
+  const guests = count - 1;
+  if (guests <= 0) return "";
+  return `+${guests} guest${guests === 1 ? "" : "s"}`;
+}
+
+function renderRsvpRosterList(container, entries) {
+  container.replaceChildren();
+  (Array.isArray(entries) ? entries : []).forEach((entry) => {
+    const item = document.createElement("li");
+    item.className = "rsvp-roster-person";
+
+    const name = document.createElement("span");
+    name.className = "rsvp-roster-name";
+    name.textContent = String(entry?.name || "").trim() || "Unknown";
+
+    const guest = rosterGuestText(entry);
+    item.append(name);
+    if (guest) {
+      const detail = document.createElement("span");
+      detail.className = "rsvp-roster-guest";
+      detail.textContent = guest;
+      item.append(detail);
+    }
+    container.append(item);
+  });
+}
+
+function showRsvpRosterSignIn() {
+  els.rsvpRosterSummary.textContent = "Sign in to view RSVP names.";
+  els.rsvpRosterConfirmed.hidden = true;
+  els.rsvpRosterWaitlist.hidden = true;
+  els.rsvpRosterSignIn.hidden = false;
+}
+
+async function openRsvpRoster() {
+  const game = currentNextGame ? { ...currentNextGame } : null;
+  if (game?.kind !== "pickup" || game.reserved == null) return;
+
+  const requestId = ++rsvpRosterRequestId;
+  const sourceDate = String(game.sourceDate || game.date || "");
+  const dateLabel = game.dateLabel || game.title || "Pickup";
+
+  els.rsvpRosterTitle.textContent = `${dateLabel} RSVPs`;
+  els.rsvpRosterSummary.textContent = "Loading RSVP names…";
+  els.rsvpRosterConfirmed.hidden = false;
+  els.rsvpRosterWaitlist.hidden = true;
+  els.rsvpRosterSignIn.hidden = true;
+  els.rsvpRosterConfirmedCount.textContent = "";
+  els.rsvpRosterWaitlistCount.textContent = "";
+  els.rsvpRosterConfirmedList.replaceChildren();
+  els.rsvpRosterWaitlistList.replaceChildren();
+  els.nextGameCapacity.setAttribute("aria-expanded", "true");
+
+  if (!els.rsvpRosterDialog.open) els.rsvpRosterDialog.showModal();
+
+  if (!ownerToken()) {
+    showRsvpRosterSignIn();
+    return;
+  }
+
+  try {
+    const payload = await api(
+      `/web/user/rsvp-roster?date=${encodeURIComponent(sourceDate)}`,
+      {
+        headers: ownerHeaders(),
+        retryNetwork: true,
+      },
+    );
+    if (requestId !== rsvpRosterRequestId || !els.rsvpRosterDialog.open) return;
+
+    const players = Array.isArray(payload?.roster?.players) ? payload.roster.players : [];
+    const waitlist = Array.isArray(payload?.roster?.waitlist) ? payload.roster.waitlist : [];
+    const confirmedSpots = players.reduce(
+      (sum, entry) => sum + Math.max(1, Number(entry?.participantCount || 1)),
+      0,
+    );
+    const capacity = Number(game.capacity);
+    const capacityText = Number.isFinite(capacity) && capacity > 0
+      ? `${confirmedSpots} / ${capacity} spots reserved`
+      : `${confirmedSpots} spot${confirmedSpots === 1 ? "" : "s"} reserved`;
+
+    els.rsvpRosterSummary.textContent = `${capacityText} · RSVP order`;
+    els.rsvpRosterConfirmed.hidden = false;
+    els.rsvpRosterConfirmedCount.textContent =
+      `${players.length} player${players.length === 1 ? "" : "s"}`;
+    renderRsvpRosterList(els.rsvpRosterConfirmedList, players);
+
+    els.rsvpRosterWaitlist.hidden = waitlist.length === 0;
+    if (waitlist.length) {
+      els.rsvpRosterWaitlistCount.textContent =
+        `${waitlist.length} waiting`;
+      renderRsvpRosterList(els.rsvpRosterWaitlistList, waitlist);
+    }
+
+    if (!players.length && !waitlist.length) {
+      els.rsvpRosterSummary.textContent = "No RSVP names are available yet.";
+    }
+  } catch (error) {
+    if (requestId !== rsvpRosterRequestId || !els.rsvpRosterDialog.open) return;
+    if (error.status === 401) {
+      clearSession();
+      showRsvpRosterSignIn();
+    } else {
+      els.rsvpRosterSummary.textContent = error.message;
+      els.rsvpRosterConfirmed.hidden = true;
+      els.rsvpRosterWaitlist.hidden = true;
+    }
+  }
+}
+
 function showLoginSettings(message = "") {
   currentUserSettings = null;
   els.settingsLoginView.hidden = false;
