@@ -172,7 +172,7 @@ test("desktop match-type action keeps priority over the final carousel edge rule
 
 test("pickup match card uses a clear non-pill action hierarchy", () => {
   const css = fs.readFileSync("frontend/web/styles.css", "utf8");
-  const hierarchy = css.split("/* v7.0.25 clearer match-card action hierarchy */")[1] || "";
+  const hierarchy = css.split("/* v7.0.24 clearer match-card action hierarchy */")[1] || "";
 
   assert.match(
     hierarchy,
