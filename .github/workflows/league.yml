@@ -86,6 +86,7 @@ jobs:
         if: steps.gate.outputs.should_run == 'true'
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          BALLERWATCH_WEB_STATE_ROOT: ..
         run: node ../backend/league/web-notify.mjs
 
       - name: Seal league runtime state
