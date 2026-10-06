@@ -152,6 +152,36 @@ test("match spotlight shows a subtle source freshness line", () => {
   assert.match(worker, /sourceUpdatedAt:/);
 });
 
+test("pickup match card uses a clear non-pill action hierarchy", () => {
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
+  const hierarchy = css.split("/* v7.0.24 clearer match-card action hierarchy */")[1] || "";
+
+  assert.match(
+    hierarchy,
+    /\.match-card-menu-trigger\.status-dot \{[\s\S]*border-radius:\s*12px;[\s\S]*font-size:\s*0\.68rem;/,
+  );
+  assert.match(
+    hierarchy,
+    /\.next-game-weather \{[\s\S]*padding:\s*0;[\s\S]*border:\s*0;[\s\S]*border-radius:\s*0;[\s\S]*background:\s*transparent;[\s\S]*box-shadow:\s*none;/,
+  );
+  assert.match(
+    hierarchy,
+    /\.next-game-rsvp-pill \{[\s\S]*min-height:\s*3rem;[\s\S]*border-radius:\s*14px;[\s\S]*font-weight:\s*800;/,
+  );
+  assert.match(
+    hierarchy,
+    /\.pickup-rsvp-link \{[\s\S]*rgba\(51, 65, 85, 0\.34\)[\s\S]*!important;/,
+  );
+  assert.match(
+    hierarchy,
+    /\.pickup-rsvp-link\.is-confirmed \{[\s\S]*rgba\(34, 197, 94, 0\.92\)[\s\S]*!important;/,
+  );
+  assert.match(
+    hierarchy,
+    /\.next-game-actions \.button-link,[\s\S]*\.next-game-actions button \{[\s\S]*min-height:\s*2\.8rem;[\s\S]*border-radius:\s*12px;[\s\S]*box-shadow:\s*none;/,
+  );
+});
+
 test("pickup RSVP button is neutral until authenticated confirmation is known", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const css = fs.readFileSync("frontend/web/styles.css", "utf8");
