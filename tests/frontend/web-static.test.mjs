@@ -170,14 +170,14 @@ test("right waterfall stays visually full-height while its hit area avoids match
   );
   assert.ok(
     css.lastIndexOf("/* v7.0.26 full-height right waterfall with a reserved action hit zone */")
-      > css.lastIndexOf("/* v7.0.26 preserve match-type action priority over desktop carousel edge */"),
+      > css.lastIndexOf("/* v7.0.25 preserve match-type action priority over desktop carousel edge */"),
   );
 });
 
 test("desktop match-type action keeps priority over the final carousel edge rule", () => {
   const css = fs.readFileSync("frontend/web/styles.css", "utf8");
   const priorityBlock = css.split(
-    "/* v7.0.26 preserve match-type action priority over desktop carousel edge */",
+    "/* v7.0.25 preserve match-type action priority over desktop carousel edge */",
   )[1] || "";
 
   assert.match(
@@ -185,7 +185,7 @@ test("desktop match-type action keeps priority over the final carousel edge rule
     /@media \(hover: hover\) and \(pointer: fine\)[\s\S]*\.spotlight-edge-next \{[\s\S]*top:\s*5\.75rem;/,
   );
   assert.ok(
-    css.lastIndexOf("/* v7.0.26 preserve match-type action priority over desktop carousel edge */")
+    css.lastIndexOf("/* v7.0.25 preserve match-type action priority over desktop carousel edge */")
       > css.lastIndexOf(".spotlight-edge-control {\n    top: 0;"),
   );
 });
@@ -1495,7 +1495,7 @@ test("pickup capacity opens a full-width signed-in RSVP roster without public na
   assert.match(app, /Sign in to view RSVP names/);
   assert.match(app, /a, button, \[tabindex\]/);
 
-  const rosterSheet = css.split("/* v7.0.26 full-width RSVP roster sheet */")[1] || "";
+  const rosterSheet = css.split("/* v7.0.25 full-width RSVP roster sheet */")[1] || "";
   assert.match(
     rosterSheet,
     /\.rsvp-roster-dialog \{[\s\S]*width:\s*min\(var\(--app-surface-width\), calc\(100vw - 2rem\)\)/,
