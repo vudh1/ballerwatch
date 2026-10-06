@@ -1132,6 +1132,7 @@ async function promoteProductionRelease() {
 }
 
 function openChat() {
+  closeRsvpRoster();
   if (els.settingsDialog.open) els.settingsDialog.close();
   if (els.notificationDialog.open) els.notificationDialog.close();
   if (els.notificationReader.open) els.notificationReader.close();
@@ -1144,6 +1145,7 @@ function closeChat() {
 }
 
 async function openSettings(options = {}) {
+  closeRsvpRoster();
   closeChat();
   if (els.notificationDialog.open) els.notificationDialog.close();
   if (els.notificationReader.open) els.notificationReader.close();
@@ -3217,6 +3219,7 @@ async function loadBoard() {
 }
 
 function openNotifications() {
+  closeRsvpRoster();
   closeChat();
   if (els.settingsDialog.open) els.settingsDialog.close();
   if (!els.notificationDialog.open) els.notificationDialog.showModal();
@@ -3603,6 +3606,24 @@ els.userList.addEventListener("click", (event) => {
 });
 els.ownerDisconnect.addEventListener("click", disconnectOwnerDevice);
 els.ownerRevoke.addEventListener("click", revokeOwnerDevices);
+els.nextGameCapacity.addEventListener("click", () => void openRsvpRoster());
+els.nextGameCapacity.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  event.preventDefault();
+  void openRsvpRoster();
+});
+els.closeRsvpRoster.addEventListener("click", closeRsvpRoster);
+els.rsvpRosterDialog.addEventListener("click", (event) => {
+  if (event.target === els.rsvpRosterDialog) closeRsvpRoster();
+});
+els.rsvpRosterDialog.addEventListener("close", () => {
+  els.nextGameCapacity.setAttribute("aria-expanded", "false");
+});
+els.rsvpRosterSignIn.addEventListener("click", async () => {
+  closeRsvpRoster();
+  await openSettings();
+  showLoginSettings("Sign in to view pickup RSVP names.");
+});
 els.nextGameShare.addEventListener("click", shareNextGame);
 els.testNotification.addEventListener("click", scheduleTestNotification);
 els.deleteAllNotifications.addEventListener("click", deleteAllNotifications);
