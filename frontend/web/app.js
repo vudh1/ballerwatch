@@ -206,7 +206,7 @@ const INTRO_SESSION_KEY = "ballerwatch-intro-seen-v1";
 const MUSIC_ENABLED_KEY = "ballerwatch-music-enabled-v1";
 const LAUNCH_INTRO_VISIBLE_MS = 2_250;
 const LAUNCH_INTRO_FADE_MS = 420;
-const AMBIENT_PHRASE_MS = 7_200;
+const AMBIENT_PHRASE_MS = 6_400;
 
 const COMMAND_SUGGESTIONS = [
   { value: "/today", label: "/today", description: "Today's games" },
@@ -554,25 +554,91 @@ function renderMusicControl(message = "") {
   }
 }
 
-function playAmbientVoice(frequency, startTime, duration, level, type = "sine") {
+function playAmbientVoice(
+  frequency,
+  startTime,
+  duration,
+  level,
+  type = "sine",
+  attackSeconds = 0.16,
+) {
   const context = ambientAudioContext;
   if (!context || !ambientMasterGain || context.state === "closed") return;
 
   const oscillator = context.createOscillator();
   const gain = context.createGain();
+  const attack = Math.min(Math.max(0.01, attackSeconds), Math.max(0.01, duration * 0.45));
   oscillator.type = type;
   oscillator.frequency.setValueAtTime(frequency, startTime);
   gain.gain.setValueAtTime(0.0001, startTime);
-  gain.gain.exponentialRampToValueAtTime(level, startTime + 0.16);
+  gain.gain.exponentialRampToValueAtTime(level, startTime + attack);
   gain.gain.exponentialRampToValueAtTime(
     Math.max(0.0001, level * 0.48),
-    startTime + Math.max(0.22, duration * 0.58),
+    startTime + Math.max(attack + 0.05, duration * 0.58),
   );
   gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
   oscillator.connect(gain);
   gain.connect(ambientMasterGain);
   oscillator.start(startTime);
   oscillator.stop(startTime + duration + 0.04);
+}
+
+function playStadiumKick(startTime, level = 0.038) {
+  const context = ambientAudioContext;
+  if (!context || !ambientMasterGain || context.state === "closed") return;
+
+  const oscillator = context.createOscillator();
+  const gain = context.createGain();
+  oscillator.type = "sine";
+  oscillator.frequency.setValueAtTime(145, startTime);
+  oscillator.frequency.exponentialRampToValueAtTime(52, startTime + 0.18);
+  gain.gain.setValueAtTime(level, startTime);
+  gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.24);
+  oscillator.connect(gain);
+  gain.connect(ambientMasterGain);
+  oscillator.start(startTime);
+  oscillator.stop(startTime + 0.26);
+}
+
+function playStadiumClap(startTime, level = 0.012) {
+  const context = ambientAudioContext;
+  if (!context || !ambientMasterGain || context.state === "closed") return;
+
+  const duration = 0.11;
+  const frameCount = Math.max(1, Math.floor(context.sampleRate * duration));
+  const buffer = context.createBuffer(1, frameCount, context.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let index = 0; index < data.length; index += 1) {
+    const envelope = 1 - index / data.length;
+    data[index] = (Math.random() * 2 - 1) * envelope;
+  }
+
+  const source = context.createBufferSource();
+  const filter = context.createBiquadFilter();
+  const gain = context.createGain();
+  source.buffer = buffer;
+  filter.type = "bandpass";
+  filter.frequency.setValueAtTime(1_650, startTime);
+  filter.Q.setValueAtTime(0.8, startTime);
+  gain.gain.setValueAtTime(level, startTime);
+  gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+  source.connect(filter);
+  filter.connect(gain);
+  gain.connect(ambientMasterGain);
+  source.start(startTime);
+}
+
+function playStadiumBrass(chord, startTime, level = 0.011) {
+  chord.forEach((frequency, index) => {
+    playAmbientVoice(
+      frequency * 2,
+      startTime + index * 0.018,
+      0.34,
+      index === 0 ? level * 1.15 : level,
+      index === 1 ? "sawtooth" : "square",
+      0.025,
+    );
+  });
 }
 
 function playBallerWatchAudioMark() {
@@ -586,25 +652,58 @@ function playBallerWatchAudioMark() {
 
 function playAmbientPhrase() {
   if (!musicEnabled() || ambientAudioContext?.state !== "running") return;
-  const progressions = [
-    [130.81, 196.0, 261.63],
-    [146.83, 220.0, 293.66],
-    [110.0, 164.81, 220.0],
-    [123.47, 185.0, 246.94],
-  ];
-  const chord = progressions[ambientPhraseIndex % progressions.length];
-  ambientPhraseIndex += 1;
+
   const start = ambientAudioContext.currentTime + 0.04;
-  chord.forEach((frequency, index) => {
+  const beatSeconds = 0.4;
+  const barSeconds = beatSeconds * 4;
+  const chords = [
+    [146.83, 185.0, 220.0],
+    [123.47, 146.83, 185.0],
+    [98.0, 123.47, 146.83],
+    [110.0, 138.59, 164.81],
+  ];
+  const stadiumHook = [
+    [0.0, 587.33],
+    [0.4, 739.99],
+    [0.8, 880.0],
+    [1.2, 739.99],
+    [2.0, 659.25],
+    [2.4, 587.33],
+    [3.2, 440.0],
+    [3.6, 587.33],
+    [4.0, 659.25],
+    [4.4, 739.99],
+    [5.2, 659.25],
+    [5.6, 587.33],
+  ];
+
+  for (let beat = 0; beat < 16; beat += 1) {
+    const beatStart = start + beat * beatSeconds;
+    playStadiumKick(beatStart, beat % 4 === 0 ? 0.045 : 0.032);
+    if (beat % 4 === 1 || beat % 4 === 3) {
+      playStadiumClap(beatStart + 0.015, 0.012);
+    }
+  }
+
+  chords.forEach((chord, barIndex) => {
+    const barStart = start + barIndex * barSeconds;
+    playAmbientVoice(chord[0] / 2, barStart, barSeconds * 0.92, 0.014, "triangle", 0.08);
+    playStadiumBrass(chord, barStart + 0.02);
+    playStadiumBrass(chord, barStart + beatSeconds * 2, 0.0085);
+  });
+
+  const hookShift = ambientPhraseIndex % 2 === 0 ? 1 : 2 ** (2 / 12);
+  ambientPhraseIndex += 1;
+  stadiumHook.forEach(([offset, frequency], index) => {
     playAmbientVoice(
-      frequency,
-      start + index * 0.08,
-      4.8,
-      index === 0 ? 0.012 : 0.009,
-      index === 1 ? "triangle" : "sine",
+      frequency * hookShift,
+      start + offset,
+      index % 4 === 2 ? 0.38 : 0.27,
+      index % 4 === 0 ? 0.0105 : 0.008,
+      index % 3 === 0 ? "square" : "triangle",
+      0.018,
     );
   });
-  playAmbientVoice(chord[2] * 2, start + 2.9, 1.4, 0.005, "sine");
 }
 
 function stopAmbientScheduler() {
@@ -653,7 +752,7 @@ async function startAmbientMusic({ audioMark = false } = {}) {
 
   if (audioMark) playBallerWatchAudioMark();
   scheduleAmbientMusic();
-  renderMusicControl("Music is playing quietly.");
+  renderMusicControl("Stadium music is playing quietly.");
   return true;
 }
 
