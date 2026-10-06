@@ -204,16 +204,19 @@ function orderedPrivateRsvpLists(tally, previousEvent = {}, observedAt = new Dat
   });
 
   const decorate = (items) => (Array.isArray(items) ? items : [])
-    .map(safePlayer)
-    .filter((player) => player.name)
-    .map((player) => {
+    .map((source) => {
+      const player = safePlayer(source);
+      const sourceTime = [
+        source?.submittedAt,
+        source?.createdAt,
+        source?.votedAt,
+      ].map((value) => String(value || "").trim()).find(Boolean);
+      return { player, sourceTime };
+    })
+    .filter(({ player }) => player.name)
+    .map(({ player, sourceTime }) => {
       const key = normalizePlayerName(player.name);
       const previous = previousByName.get(key);
-      const sourceTime = [
-        player?.submittedAt,
-        player?.createdAt,
-        player?.votedAt,
-      ].map((value) => String(value || "").trim()).find(Boolean);
       if (previous) {
         return {
           ...player,
