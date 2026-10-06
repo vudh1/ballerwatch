@@ -2125,16 +2125,22 @@ function rosterOrderValue(entry, fallbackIndex) {
   if (Number.isFinite(voteOrder) && voteOrder > 0) return voteOrder;
   const firstSeen = Date.parse(String(entry?.firstSeenAt || ""));
   if (Number.isFinite(firstSeen)) return 1_000_000_000 + firstSeen;
-  return 9_000_000_000 + fallbackIndex;
+  return 8_000_000_000_000_000 + fallbackIndex;
 }
 
 function cleanPrivateRosterList(entries = []) {
   return (Array.isArray(entries) ? entries : [])
-    .map((entry, index) => ({
-      name: cleanText(entry?.name, 120),
-      participantCount: Math.max(1, Math.min(5, Number(entry?.participantCount || 1))),
-      _order: rosterOrderValue(entry, index),
-    }))
+    .map((entry, index) => {
+      const participantCount = Number(entry?.participantCount || 1);
+      return {
+        name: cleanText(entry?.name, 120),
+        participantCount:
+          Number.isFinite(participantCount)
+            ? Math.max(1, Math.min(5, participantCount))
+            : 1,
+        _order: rosterOrderValue(entry, index),
+      };
+    })
     .filter((entry) => entry.name)
     .sort((left, right) =>
       left._order - right._order ||
