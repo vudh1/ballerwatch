@@ -5,6 +5,7 @@
  *
  * Updated v5.8.0: uses user-facing authentication terminology, supports /web/user routes,
  * and reads/writes every runtime-state document as a complete encrypted envelope.
+ * Updated v7.1.0: serves deterministic all-season RATS history Q&A from encrypted runtime state.
  */
 import {
   fetchPickupSnapshot,
