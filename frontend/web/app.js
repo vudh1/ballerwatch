@@ -232,6 +232,8 @@ const BASE_QUESTION_COMPLETIONS = [
   "What games are this week?",
   "What games are next week?",
   "What league teams are you monitoring?",
+  "What is the RATS record for a team?",
+  "Have two RATS teams played each other before?",
   "What version is BallerWatch?",
   ...WEEKDAYS.flatMap((day) => [
     `What game is on ${day}?`,
@@ -3587,7 +3589,19 @@ els.form.addEventListener("submit", async (event) => {
       headers: ownerHeaders(),
       body: JSON.stringify({
         question,
-        context: { lastDate: sessionStorage.getItem("ballerwatch-last-date") || "" },
+        context: {
+          lastDate: sessionStorage.getItem("ballerwatch-last-date") || "",
+          lastHistoryTeams: (() => {
+            try {
+              const value = JSON.parse(
+                sessionStorage.getItem("ballerwatch-last-rats-teams") || "[]",
+              );
+              return Array.isArray(value) ? value.slice(0, 2) : [];
+            } catch {
+              return [];
+            }
+          })(),
+        },
       }),
     });
     els.answer.textContent = payload.reply;
@@ -3604,7 +3618,13 @@ els.form.addEventListener("submit", async (event) => {
     els.answer.classList.remove("answer-feedback-pending", "answer-feedback-sent");
     els.answerFeedbackStatus.hidden = true;
     els.answerFeedbackStatus.textContent = "";
-      if (payload.lastDate) sessionStorage.setItem("ballerwatch-last-date", payload.lastDate);
+    if (payload.lastDate) sessionStorage.setItem("ballerwatch-last-date", payload.lastDate);
+    if (Array.isArray(payload.historyTeams) && payload.historyTeams.length) {
+      sessionStorage.setItem(
+        "ballerwatch-last-rats-teams",
+        JSON.stringify(payload.historyTeams.slice(0, 2)),
+      );
+    }
   } catch (error) {
     lastAnswerExchange = null;
     feedbackSubmitted = false;
