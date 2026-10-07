@@ -19,6 +19,7 @@ export function historyIntentLabel(intent) {
     next_game: "next-game",
     today_games: "today schedule",
     league_teams: "league-team",
+    rats_history: "RATS-history",
     feature_request: "feature-request",
   };
   return labels[value] || "web Q&A";
