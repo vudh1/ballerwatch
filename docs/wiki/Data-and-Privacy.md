@@ -6,7 +6,7 @@ Every canonical file on `runtime-state` is a complete hardened AES-GCM envelope.
 
 Canonical user settings live in encrypted `state/user.json`. The 6.0 deployment migrates the previous encrypted user-state filename into this path and compacts the old filename away.
 
-Other encrypted state includes pickup/league snapshots, monitored teams, Calendar reconciliation, weather/geocoding cache, watchdog state, Web Push VAPID/subscriptions, notification-board state, retained Q&A/review signals, and feature-request state.
+Other encrypted state includes pickup/league snapshots, the public-results RATS history index, monitored teams, Calendar reconciliation, weather/geocoding cache, watchdog state, Web Push VAPID/subscriptions, notification-board state, retained Q&A/review signals, and feature-request state.
 
 ## Q&A retention
 
