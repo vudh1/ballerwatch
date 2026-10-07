@@ -9,6 +9,12 @@ import {
   normalizeHistoryAggregate,
 } from "../../../backend/league/history.mjs";
 
+test("default RATS history discovery starts at 1990 for broad archive coverage", () => {
+  const ids = historySeasonIds(new Date("1991-06-01T12:00:00Z"));
+  assert.equal(ids[0], "winter-1990");
+  assert.equal(ids.at(-1), "fall-1992");
+});
+
 test("RATS history discovery scans every seasonal slug across the configured year range", () => {
   const ids = historySeasonIds(new Date("2026-10-07T12:00:00Z"), 2025);
   assert.deepEqual(ids.slice(0, 4), [
