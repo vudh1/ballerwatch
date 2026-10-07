@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.0.26",
+  "currentVersion": "7.1.0",
   "releases": [
+    {
+      "version": "7.1.0",
+      "date": "2026-10-07",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "All-season RATS history for Ask BallerWatch",
+      "webAnnouncement": "Ask BallerWatch can now answer RATS team records, season history, and head-to-head questions from indexed public results across every discoverable season.",
+      "changes": [
+        "Adds a deterministic RATS history knowledge layer covering every public team and scored match found while scanning seasonal RATS aggregates back through the broad historical archive.",
+        "Supports questions such as a team's all-time or season-specific record, whether two teams have played before, head-to-head results, recent meetings, and which indexed seasons a team appeared in.",
+        "Refreshes the public-results history index at most once per day from the normal league workflow and persists it as encrypted runtime state rather than readable repository data.",
+        "Keeps history answers deterministic and source-backed instead of asking the AI fallback to infer results, with bounded team-name matching and conversational follow-up context.",
+        "Adds regression coverage for season discovery, score normalization, records, head-to-head calculations, Worker loading, privacy boundaries, and bot routing."
+      ]
+    },
     {
       "version": "7.0.26",
       "date": "2026-10-06",
