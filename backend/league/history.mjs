@@ -6,6 +6,7 @@
  * Added in v7.1.0.
  */
 import fs from "node:fs";
+import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
   API,
@@ -145,7 +146,7 @@ function readEncryptedHistory(file = HISTORY_FILE) {
 }
 
 function writeEncryptedHistory(history, file = HISTORY_FILE) {
-  fs.mkdirSync("league/state", { recursive: true });
+  fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, JSON.stringify(encryptState(history), null, 2) + "\n");
 }
 
