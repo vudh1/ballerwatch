@@ -21,7 +21,9 @@ test("tolerates small meaningful typos", () => {
   assert.equal(classifyIndexedIntent("show pickup availabilty"), "pickup_status");
 });
 
-test("routes league and release questions", () => {
+test("routes league history, monitored-team, and release questions", () => {
+  assert.equal(classifyIndexedIntent("what is Team Alpha's historical record?"), "rats_history");
+  assert.equal(classifyIndexedIntent("have Team Alpha and Team Beta played before?"), "rats_history");
   assert.equal(classifyIndexedIntent("which league teams are monitored?"), "league_teams");
   assert.equal(classifyIndexedIntent("what is the current release version?"), "version");
 });
