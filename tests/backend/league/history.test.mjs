@@ -1,13 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
 import {
   HISTORY_REFRESH_MS,
   historyRefreshDue,
   historySeasonIds,
   normalizeHistoryAggregate,
+  refreshRatsHistory,
 } from "../../../backend/league/history.mjs";
+import { decryptState } from "../../../backend/shared/state-crypto.mjs";
 
 test("default RATS history discovery starts at 1990 for broad archive coverage", () => {
   const ids = historySeasonIds(new Date("1991-06-01T12:00:00Z"));
@@ -93,6 +97,53 @@ test("RATS history ignores empty unpublished season aggregates", () => {
     normalizeHistoryAggregate("winter-2000", {teams: [], events: []}),
     null,
   );
+});
+
+test("RATS history builder stores discovered public results only as encrypted runtime state", async (t) => {
+  const oldKey = process.env.TRACKER_STATE_KEY;
+  process.env.TRACKER_STATE_KEY = "synthetic-rats-history-test-key";
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ballerwatch-rats-history-"));
+  const file = path.join(dir, "history.json");
+
+  t.after(() => {
+    if (oldKey == null) delete process.env.TRACKER_STATE_KEY;
+    else process.env.TRACKER_STATE_KEY = oldKey;
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  const history = await refreshRatsHistory({
+    now: new Date("2026-10-07T12:00:00Z"),
+    startYear: 2026,
+    file,
+    force: true,
+    callFn: async (_action, { season }) => {
+      if (season !== "fall-2026") throw new Error("not published");
+      return {
+        teams: [
+          {name: "Team Alpha", day: "Thursday", gender: "Men's", division: "1"},
+          {name: "Team Beta", day: "Thursday", gender: "Men's", division: "1"},
+        ],
+        events: [{
+          id: "match-1",
+          start_date: "2026-10-01",
+          start_time: "20:30:00",
+          home_team_name: "Team Alpha",
+          away_team_name: "Team Beta",
+          home_score: 2,
+          away_score: 1,
+        }],
+      };
+    },
+  });
+
+  assert.equal(history.coverage.seasonCount, 1);
+  assert.equal(history.coverage.completedMatchCount, 1);
+
+  const raw = fs.readFileSync(file, "utf8");
+  assert.doesNotMatch(raw, /Team Alpha|Team Beta|fall-2026/);
+  const decrypted = decryptState(JSON.parse(raw));
+  assert.equal(decrypted.seasons[0].seasonId, "fall-2026");
+  assert.equal(decrypted.seasons[0].matches[0].homeScore, 2);
 });
 
 test("league workflow refreshes the encrypted historical index without notifications", () => {
