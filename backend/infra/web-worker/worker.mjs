@@ -710,6 +710,22 @@ async function githubFile(env, path, ref = PRODUCTION_REF) {
   return JSON.parse(text);
 }
 
+async function githubRawJsonFile(env, path, ref = "runtime-state") {
+  const response = await fetch(
+    `https://api.github.com/repos/${REPO}/contents/${path}?ref=${encodeURIComponent(ref)}`,
+    {
+      headers: {
+        accept: "application/vnd.github.raw+json",
+        authorization: `Bearer ${githubContentsToken(env)}`,
+        "user-agent": "ballerwatch-cloudflare-history",
+        "x-github-api-version": "2022-11-28",
+      },
+    },
+  );
+  if (!response.ok) throw new Error(`GitHub raw state fetch failed: ${path} HTTP ${response.status}`);
+  return response.json();
+}
+
 function base64Text(value) {
   const bytes = new TextEncoder().encode(String(value));
   let binary = "";
@@ -1581,7 +1597,8 @@ async function runtimeFilePut(env, path, raw) {
   if (!env.BALLERWATCH_STATE) throw new Error("Runtime KV is unavailable.");
   if (!RUNTIME_FILE_PATHS.has(path)) throw new Error("Runtime-state path is not allowed.");
   const text = String(raw || "");
-  if (!text || text.length > 500_000) throw new Error("Invalid runtime-state payload.");
+  const maxLength = path === "league/state/history.json" ? 10_000_000 : 500_000;
+  if (!text || text.length > maxLength) throw new Error("Invalid runtime-state payload.");
   await env.BALLERWATCH_STATE.put(runtimeKey(path), text);
   await syncDerivedRuntimeFile(env, path, text);
 }
@@ -1698,7 +1715,7 @@ async function loadRatsHistory(env) {
   }
 
   return cachedJson("rats-history-v1", 600, async () => {
-    const encrypted = await githubFile(env, "league/state/history.json", "runtime-state");
+    const encrypted = await githubRawJsonFile(env, "league/state/history.json", "runtime-state");
     const history = await decryptState(encrypted, env);
     if (!history || !Array.isArray(history.seasons)) {
       throw new Error("RATS history index is unavailable.");
