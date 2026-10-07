@@ -381,6 +381,16 @@ test("chat history fallback keeps answer intent when AI compaction is unavailabl
   assert.match(worker, /intent: entry\.intent/);
 });
 
+test("Ask BallerWatch keeps RATS history follow-up context", () => {
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+
+  assert.match(app, /What is the RATS record for a team\?/);
+  assert.match(app, /Have two RATS teams played each other before\?/);
+  assert.match(app, /ballerwatch-last-rats-teams/);
+  assert.match(app, /lastHistoryTeams:/);
+  assert.match(app, /payload\.historyTeams/);
+});
+
 test("question autocomplete predicts full sentences from typed prefixes", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   assert.match(app, /BASE_QUESTION_COMPLETIONS/);
