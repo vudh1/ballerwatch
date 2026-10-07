@@ -17,7 +17,7 @@ import {
 import { decryptState, encryptState } from "../shared/state-crypto.mjs";
 
 export const HISTORY_FILE = "league/state/history.json";
-export const HISTORY_START_YEAR = 2000;
+export const HISTORY_START_YEAR = 1990;
 export const HISTORY_REFRESH_MS = 24 * 60 * 60 * 1000;
 const SEASONS = ["winter", "spring", "summer", "fall"];
 const HISTORY_CONCURRENCY = 8;
