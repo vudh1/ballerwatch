@@ -28,6 +28,14 @@ The visual waterfall is independent from that hit area: its blur/glow still span
 
 When the RSVP roster is opened by mouse or touch, closing it clears the temporary capacity-pill focus state so the green focus outline does not linger. Keyboard-opened rosters retain focus for accessibility.
 
+## RATS historical Q&A
+
+Ask BallerWatch can answer deterministic questions about public Seattle RATS history, including a team's all-time record, a record in a named season, whether two teams have met before, head-to-head summaries with recent scored meetings, and which indexed seasons a team appeared in.
+
+The historical index is built from the same public RATS seasonal aggregate source used by the league watcher. BallerWatch scans the broad seasonal archive, indexes every public team and event it can discover, counts only games with published numeric scores when calculating records, and refreshes the encrypted archive at most once per day. Historical answers do not rely on the AI fallback to guess scores or results.
+
+The bot keeps up to two matched historical team names in session context so a follow-up such as “what is their record?” can continue the previous history question without storing that conversational context as durable public data.
+
 ## Q&A and feedback
 
 Read-only Q&A is served through the Worker. Successful answers receive a short-lived feedback token scoped to that exact question/answer. Marking an answer wrong does not grant Settings access.
