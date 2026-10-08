@@ -12,81 +12,59 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 4
     steps:
-      - name: Probe public RATS history schemas
+      - name: Probe historical RATS season availability
         shell: bash
         run: |
           node <<'NODE'
           const api = "https://service.rats.team.op-dev.io/";
-          async function call(action, body) {
-            const response = await fetch(api + action, {
-              method: "POST",
-              headers: {
-                "content-type": "application/json",
-                "user-agent": "ballerwatch-history-probe/1.0",
-              },
-              body: JSON.stringify(body),
-              signal: AbortSignal.timeout(8_000),
-            });
-            const text = await response.text();
-            let value = null;
-            try { value = JSON.parse(text); } catch {}
-            return { status: response.status, value, text: text.slice(0, 180) };
-          }
-          function keys(value) {
-            return value && typeof value === "object" && !Array.isArray(value)
-              ? Object.keys(value).sort()
-              : [];
-          }
-          for (const season of ["fall-2026", "summer-2026", "spring-2026", "fall-2025", "spring-2025", "fall-2024", "spring-2024"]) {
+          const seasons = [
+            "fall-2026","fall-2025","fall-2024","fall-2023","fall-2022",
+            "fall-2021","fall-2020","fall-2019","fall-2018","fall-2017",
+            "fall-2016","fall-2015","fall-2014","fall-2013","fall-2012",
+          ];
+
+          async function call(season) {
+            const started = Date.now();
             try {
-              const out = await call("get-aggregate", { season });
-              const teams = Array.isArray(out.value?.teams) ? out.value.teams : [];
-              const events = Array.isArray(out.value?.events) ? out.value.events : [];
-              const teamKeys = keys(teams[0]);
-              const eventKeys = keys(events[0]);
-              const recordKeys = teamKeys.filter((key) =>
-                /win|loss|draw|tie|point|goal|record|stand/i.test(key));
+              const response = await fetch(api + "get-aggregate", {
+                method: "POST",
+                headers: {
+                  "content-type": "application/json",
+                  "user-agent": "ballerwatch-history-probe/1.0",
+                },
+                body: JSON.stringify({ season }),
+                signal: AbortSignal.timeout(12_000),
+              });
+              const value = await response.json().catch(() => null);
+              const events = Array.isArray(value?.events) ? value.events : [];
               const scored = events.filter((event) =>
-                event?.score !== null && event?.score !== undefined && event?.score !== "");
-              const scoreTypes = {};
-              for (const event of scored) {
-                const type = Array.isArray(event.score) ? "array" : typeof event.score;
-                scoreTypes[type] = (scoreTypes[type] || 0) + 1;
-              }
-              console.log(JSON.stringify({
-                action: "get-aggregate",
+                typeof event?.score === "string" && /^\s*\d+\s*-\s*\d+\s*$/.test(event.score));
+              return {
                 season,
-                status: out.status,
-                topKeys: keys(out.value),
-                teamCount: teams.length,
+                status: response.status,
+                ms: Date.now() - started,
+                teamCount: Array.isArray(value?.teams) ? value.teams.length : 0,
                 eventCount: events.length,
-                teamKeys,
-                eventKeys,
-                recordKeys,
                 scoredCount: scored.length,
-                scoreTypes,
-                scoreSample: scored.length ? scored[0].score : null,
-              }));
+              };
             } catch (error) {
-              console.log(JSON.stringify({action:"get-aggregate",season,error:String(error?.message||error)}));
+              return {
+                season,
+                status: "timeout/error",
+                ms: Date.now() - started,
+                error: String(error?.name || error),
+              };
             }
           }
-          for (const action of ["get-standings", "get-seasons", "list-seasons", "get-season", "get-results", "get-games"]) {
-            try {
-              const out = await call(action, { season: "fall-2026" });
-              console.log(JSON.stringify({
-                action,
-                status: out.status,
-                topKeys: keys(out.value),
-                isArray: Array.isArray(out.value),
-                length: Array.isArray(out.value) ? out.value.length : null,
-                sampleKeys: Array.isArray(out.value) ? keys(out.value[0]) : [],
-                errorPreview: out.status >= 400 ? out.text : "",
-              }));
-            } catch (error) {
-              console.log(JSON.stringify({action,error:String(error?.message||error)}));
+
+          let cursor = 0;
+          async function worker() {
+            while (cursor < seasons.length) {
+              const index = cursor++;
+              console.log(JSON.stringify(await call(seasons[index])));
             }
           }
+          await Promise.all([worker(), worker()]);
           NODE
