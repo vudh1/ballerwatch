@@ -7,14 +7,15 @@
       "date": "2026-10-08",
       "type": "patch",
       "source": "user-reported",
-      "title": "RATS archive coverage, team aliases, and venue sharing",
-      "webAnnouncement": "RATS history now starts at Summer 2023; the bot recognizes singular and plural club names, match pills reveal Edit on hover, and sharing uses venue-specific Google Maps links.",
+      "title": "RATS scores, archive coverage, and smarter match interactions",
+      "webAnnouncement": "RATS history starts Summer 2023; the bot understands singular/plural clubs, pickup/league pills reveal Edit on hover, venue sharing uses more precise Maps links, and newly reported monitored-team scores trigger League notifications.",
       "changes": [
         "Corrected the RATS archive start date to Summer 2023, removing nonexistent Winter and Spring 2023 from the coverage count.",
         "Migrates stored archive metadata from 14/16 to 14/14 without dropping scored matches.",
         "Matches singular/plural team-name variants such as Tuesday Marmot(s) and Crow(s) FC.",
         "Adds a desktop Edit hover cue to pickup/league pills.",
-        "Uses venue-specific Google Maps place URLs, existing place IDs, or coordinates when sharing a game."
+        "Uses venue-specific Google Maps place URLs, existing place IDs, or coordinates when sharing a game.",
+        "Notifies League subscribers when a monitored team's completed RATS score is published or corrected; de-duplicates a game reported for both monitored sides."
       ]
     },
     {
