@@ -6,6 +6,7 @@ import path from "node:path";
 
 import {
   HISTORY_REFRESH_MS,
+  HISTORY_SCHEMA_VERSION,
   historyRefreshDue,
   historySeasonIds,
   normalizeHistoryAggregate,
@@ -36,11 +37,18 @@ test("RATS history discovery scans every seasonal slug across the configured yea
   assert.equal(ids.length, 12);
 });
 
-test("RATS history refresh is daily and treats missing timestamps as stale", () => {
+test("RATS history refresh is daily and migrates broken older schemas immediately", () => {
   const now = new Date("2026-10-07T12:00:00Z");
   assert.equal(historyRefreshDue(null, now), true);
   assert.equal(
-    historyRefreshDue({updatedAt: "2026-10-07T00:01:00Z"}, now),
+    historyRefreshDue({schemaVersion: 1, updatedAt: "2026-10-07T00:01:00Z"}, now),
+    true,
+  );
+  assert.equal(
+    historyRefreshDue({
+      schemaVersion: HISTORY_SCHEMA_VERSION,
+      updatedAt: "2026-10-07T00:01:00Z",
+    }, now),
     false,
   );
   assert.equal(
@@ -65,8 +73,7 @@ test("RATS history normalizes every public team and scored event in an aggregate
         start_time: "20:30:00",
         home_team_name: "Team Alpha",
         away_team_name: "Team Beta",
-        home_score: "4",
-        away_score: 2,
+        score: "4-2",
       },
       {
         id: 43,
@@ -129,13 +136,13 @@ test("RATS history builder stores discovered public results only as encrypted ru
           start_time: "20:30:00",
           home_team_name: "Team Alpha",
           away_team_name: "Team Beta",
-          home_score: 2,
-          away_score: 1,
+          score: "2-1",
         }],
       };
     },
   });
 
+  assert.equal(history.schemaVersion, HISTORY_SCHEMA_VERSION);
   assert.equal(history.coverage.seasonCount, 1);
   assert.equal(history.coverage.completedMatchCount, 1);
 
