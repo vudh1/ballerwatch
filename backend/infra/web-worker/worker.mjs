@@ -2573,6 +2573,12 @@ function verifiedVenuePoint(value) {
 }
 
 export function webVenueCoordinates(weatherState, weatherById, game) {
+  // Prefer coordinates explicitly published with the RATS fixture, except after
+  // a user overrides the field. A renamed venue must not inherit stale GPS.
+  if (!game.overrideActive) {
+    const published = verifiedVenuePoint(game.venueCoordinates);
+    if (published) return published;
+  }
   const weatherGame = weatherById.get(game.id);
   const sameVenue = weatherGame &&
     cleanText(weatherGame.location, 200).toLowerCase() === cleanText(game.location, 200).toLowerCase() &&
@@ -2721,6 +2727,8 @@ export function webCalendarDetails(
       location: cleanText(game?.location, 200),
       address: "",
       mapsQuery: cleanText(game?.location, 220),
+      locationUrl: game?.manualOverride ? "" : cleanText(game?.locationUrl, 1200),
+      venueCoordinates: game?.manualOverride ? null : game?.venueCoordinates,
       reserved: null,
       capacity: null,
       jerseyColor: cleanText(game?.jerseyColor, 80),
@@ -2911,6 +2919,8 @@ export function webNextGameDetails(snapshot, now = new Date()) {
     location,
     address,
     mapsQuery: address || location,
+    locationUrl: game?.manualOverride ? "" : cleanText(game?.locationUrl, 1200),
+    coordinates: game?.manualOverride ? null : verifiedVenuePoint(game?.venueCoordinates),
     sourceDate: cleanText(game?.sourceDate, 20),
     sourceStartTime: clock(game?.sourceStartTime),
     sourceEndTime: clock(game?.sourceEndTime),
