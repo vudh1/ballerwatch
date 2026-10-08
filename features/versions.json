@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.1.2",
+  "currentVersion": "7.1.3",
   "releases": [
+    {
+      "version": "7.1.3",
+      "date": "2026-10-08",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Smarter RATS historical team aliases",
+      "webAnnouncement": "Ask BallerWatch now recognizes common FC and club-name shorthand in historical record and head-to-head questions, without needing the exact published team spelling.",
+      "changes": [
+        "Recognizes shortened club names such as Seattle Bros and Techies Try Hard when published as Seattle Bros FC and Techies Try Hard FC.",
+        "Unifies conventional FC/SC/Football Club/Soccer Club naming variants when calculating historical records and head-to-head results.",
+        "Adds regression tests covering shortened team-name questions and cross-season team-name variations.",
+        "Preserves explicit partial-history warnings for upstream-unavailable 2023 archives."
+      ]
+    },
     {
       "version": "7.1.2",
       "date": "2026-10-08",
