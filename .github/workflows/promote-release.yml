@@ -167,78 +167,48 @@ jobs:
             echo "::warning::Branch cleanup skipped: production and main differ."
             exit 0
           fi
-
-          # A branch is safe to remove only if its head still equals the exact
-          # head reviewed and merged in a PR. Divergent/new work is retained.
-          gh api --paginate "/repos/$repo/pulls?state=closed&per_page=100" |
-            jq -r '.[] | select(.merged_at != null) | [.head.ref, .head.sha, (.head.repo.full_name // "")] | @tsv'             > /tmp/ballerwatch-merged-pr-branches.tsv
+          gh api --paginate "/repos/$repo/pulls?state=closed&per_page=100" | jq -r '.[] | select(.merged_at != null) | [.head.ref, .head.sha, (.head.repo.full_name // "")] | join("|")' > /tmp/ballerwatch-merged-refs.txt
           removed=0
           skipped=0
-          while IFS=
-        if: steps.candidate.outputs.eligible != 'true'
-        env:
-          REASON: ${{ steps.candidate.outputs.reason }}
-        run: |
-          {
-            echo "### No production promotion"
-            echo
-            echo "$REASON"
-          } >> "$GITHUB_STEP_SUMMARY"
-\t' read -r ref pr_sha head_repo; do
+          while IFS='|' read -r ref pr_sha head_repo; do
             case "$ref" in main|production|runtime-state|"") continue ;; esac
             if [ "$head_repo" != "$repo" ]; then continue; fi
             live_sha="$(gh api "/repos/$repo/git/ref/heads/$ref" --jq '.object.sha' 2>/dev/null || true)"
             if [ -z "$live_sha" ]; then continue; fi
             if [ "$live_sha" != "$pr_sha" ]; then
-              echo "Preserving changed branch $ref (different from merged PR head)."
+              echo "Preserving changed branch: $ref"
               skipped=$((skipped + 1))
               continue
             fi
             if gh api --method DELETE "/repos/$repo/git/refs/heads/$ref" >/dev/null; then
-              echo "Removed merged PR branch: $ref"
+              echo "Deleted merged PR branch: $ref"
               removed=$((removed + 1))
             else
-              echo "::warning::Could not remove merged branch $ref."
+              echo "::warning::Could not delete merged PR branch: $ref"
               skipped=$((skipped + 1))
             fi
-          done < /tmp/ballerwatch-merged-pr-branches.tsv
-
-          # These two branches were superseded by the merged RATS history repair
-          # (#105 and #106), and are deleted only at the exact audited heads.
-          if [ "$(gh api "/repos/$repo/pulls/105" --jq .merged)" = "true" ] &&
-             [ "$(gh api "/repos/$repo/pulls/106" --jq .merged)" = "true" ]; then
-            while IFS=
-        if: steps.candidate.outputs.eligible != 'true'
-        env:
-          REASON: ${{ steps.candidate.outputs.reason }}
-        run: |
-          {
-            echo "### No production promotion"
-            echo
-            echo "$REASON"
-          } >> "$GITHUB_STEP_SUMMARY"
-\t' read -r ref safe_sha; do
+          done < /tmp/ballerwatch-merged-refs.txt
+          if [ "$(gh api "/repos/$repo/pulls/105" --jq '.merged')" = "true" ] && [ "$(gh api "/repos/$repo/pulls/106" --jq '.merged')" = "true" ]; then
+            for spec in "ops/rats-history-rebuild:c1d1e5ae813225696a6214f7262dab171bc00cb4" "release/7.1.1:085ce96689fdefbf3f967392c7ffde2a550fbbce"; do
+              ref="${spec%%:*}"
+              safe_sha="${spec#*:}"
               live_sha="$(gh api "/repos/$repo/git/ref/heads/$ref" --jq '.object.sha' 2>/dev/null || true)"
               if [ "$live_sha" = "$safe_sha" ]; then
                 if gh api --method DELETE "/repos/$repo/git/refs/heads/$ref" >/dev/null; then
-                  echo "Removed superseded branch: $ref"
+                  echo "Deleted superseded branch: $ref"
                   removed=$((removed + 1))
                 else
-                  echo "::warning::Could not remove superseded branch $ref."
+                  echo "::warning::Could not delete superseded branch: $ref"
                   skipped=$((skipped + 1))
                 fi
               fi
-            done <<'BRANCHES'
-          ops/rats-history-rebuild	c1d1e5ae813225696a6214f7262dab171bc00cb4
-          release/7.1.1	085ce96689fdefbf3f967392c7ffde2a550fbbce
-          BRANCHES
+            done
           fi
           {
-            echo "### Superseded branch cleanup"
-            echo
+            echo "### Completed branch cleanup"
             echo "- Deleted: $removed"
-            echo "- Preserved for review / failed: $skipped"
-            echo "- Preserved protected state branches: main, production, runtime-state."
+            echo "- Preserved/review needed: $skipped"
+            echo "- Protected: main, production, runtime-state"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Explain no-op promotion
