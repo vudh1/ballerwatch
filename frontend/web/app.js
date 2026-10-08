@@ -2001,9 +2001,8 @@ function gpsFromMapsUrl(value) {
 function venueShareDetails(game) {
   const sourceUrl = trustedPublishedVenueUrl(game?.locationUrl);
   const sourcePoint = gpsFromMapsUrl(sourceUrl);
-  const point = game?.weatherApproximate === true
-    ? sourcePoint
-    : sourcePoint || venueGpsPoint(game?.coordinates);
+  // The Worker only exposes field-specific GPS, never its weather-only fallback.
+  const point = sourcePoint || venueGpsPoint(game?.coordinates);
   if (point) {
     const gps = point.latitude.toFixed(6) + "," + point.longitude.toFixed(6);
     return { url: "https://www.google.com/maps?q=" + gps, gps, source: "gps" };
