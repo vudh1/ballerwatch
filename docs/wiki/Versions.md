@@ -79,4 +79,4 @@ The source ledger on `main` is authoritative for the newest reviewed version. Th
 
 - **7.1.4** — Matches FC/SC club-name shorthand in RATS records and head-to-head queries while retaining partial archive-coverage warnings.
 
-- **7.1.4** — RATS history starts Summer 2023; singular/plural team aliases; match-type Edit hover cue; field-specific Google Maps share links.
+- **7.1.4** — RATS history starts Summer 2023; singular/plural team aliases; match-type Edit hover cue; field-specific Google Maps share links; newly reported or corrected scores for monitored RATS teams appear in League notifications.
