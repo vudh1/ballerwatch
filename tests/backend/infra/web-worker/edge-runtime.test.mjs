@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { cleanName, fingerprint } from "../../../../backend/infra/web-worker/edge-runtime.mjs";
+import { cleanName, eventScore, fingerprint } from "../../../../backend/infra/web-worker/edge-runtime.mjs";
 
 test("cleanName normalizes whitespace without changing words", () => {
   assert.equal(cleanName("  Third   Touch FC  "), "Third Touch FC");
@@ -16,4 +16,9 @@ test("fingerprint changes when source data changes", async () => {
   const a=await fingerprint({reserved:14,capacity:16});
   const b=await fingerprint({reserved:15,capacity:16});
   assert.notEqual(a,b);
+});
+
+test("edge RATS parser preserves string aggregate scores", () => {
+  assert.equal(eventScore({score: "5-2"}, "home"), 5);
+  assert.equal(eventScore({score: "5-2"}, "away"), 2);
 });
