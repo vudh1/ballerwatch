@@ -63,6 +63,29 @@ jobs:
               console.log(JSON.stringify({action:"get-aggregate",season,error:String(error?.message||error)}));
             }
           }
+          for (const season of ["fall-2026", "fall-2024"]) {
+            try {
+              const out = await call("get-aggregate", { season });
+              const events = Array.isArray(out.value?.events) ? out.value.events : [];
+              const scored = events.filter((event) =>
+                event?.score !== null && event?.score !== undefined && event?.score !== "");
+              const types = {};
+              for (const event of scored) {
+                const type = Array.isArray(event.score) ? "array" : typeof event.score;
+                types[type] = (types[type] || 0) + 1;
+              }
+              console.log(JSON.stringify({
+                action: "score-shape",
+                season,
+                eventCount: events.length,
+                scoredCount: scored.length,
+                scoreTypes: types,
+                sample: scored.length ? scored[0].score : null,
+              }));
+            } catch (error) {
+              console.log(JSON.stringify({action:"score-shape",season,error:String(error?.message||error)}));
+            }
+          }
           for (const action of ["get-standings", "get-seasons", "list-seasons", "get-season", "get-results", "get-games"]) {
             try {
               const out = await call(action, { season: "fall-2026" });
