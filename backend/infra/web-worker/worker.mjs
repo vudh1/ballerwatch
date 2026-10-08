@@ -2868,6 +2868,8 @@ export function webNextGameDetails(snapshot, now = new Date()) {
     date: next.date,
     dateLabel: formatDate(next.date),
     title: `${team} vs ${opponent}`,
+    team,
+    opponent,
     startTime,
     endTime,
     time,
@@ -2944,11 +2946,18 @@ async function webAnswer(env, question, context = {}) {
     .map((name) => cleanText(name, 120))
     .filter(Boolean)
     .slice(0, 2);
+  const currentLeagueTeam = cleanText(context?.currentLeagueTeam, 120);
+  const historyContextTeams = [
+    ...lastHistoryTeams,
+    ...(currentLeagueTeam ? [currentLeagueTeam] : []),
+  ].filter((name, index, values) =>
+    values.findIndex((value) => value.toLowerCase() === name.toLowerCase()) === index
+  ).slice(0, 2);
 
   if (preliminaryIntent === "rats_history") {
     try {
       const history = await loadRatsHistory(env);
-      const result = answerRatsHistoryQuestion(text, history, lastHistoryTeams);
+      const result = answerRatsHistoryQuestion(text, history, historyContextTeams);
       return {
         ok: true,
         reply: result.reply,
