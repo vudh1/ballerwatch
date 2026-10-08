@@ -27,6 +27,7 @@ jobs:
                 "user-agent": "ballerwatch-history-probe/1.0",
               },
               body: JSON.stringify(body),
+              signal: AbortSignal.timeout(8_000),
             });
             const text = await response.text();
             let value = null;
