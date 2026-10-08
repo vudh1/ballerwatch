@@ -6,6 +6,7 @@ import path from "node:path";
 
 import {
   HISTORY_REFRESH_MS,
+  HISTORY_RETRY_MS,
   historyRefreshDue,
   historySeasonIds,
   normalizeHistoryAggregate,
@@ -13,13 +14,14 @@ import {
 } from "../../../backend/league/history.mjs";
 import { decryptState } from "../../../backend/shared/state-crypto.mjs";
 
-test("default RATS history discovery starts at 1990 for broad archive coverage", () => {
-  const ids = historySeasonIds(new Date("1991-06-01T12:00:00Z"));
-  assert.equal(ids[0], "winter-1990");
-  assert.equal(ids.at(-1), "fall-1992");
+test("default RATS history discovery uses the source-supported archive window", () => {
+  const ids = historySeasonIds(new Date("2026-10-07T12:00:00Z"));
+  assert.equal(ids[0], "winter-2023");
+  assert.equal(ids.at(-1), "fall-2026");
+  assert.equal(ids.length, 16);
 });
 
-test("RATS history discovery scans every seasonal slug across the configured year range", () => {
+test("RATS history discovery scans every seasonal slug through the current year", () => {
   const ids = historySeasonIds(new Date("2026-10-07T12:00:00Z"), 2025);
   assert.deepEqual(ids.slice(0, 4), [
     "winter-2025",
@@ -28,26 +30,62 @@ test("RATS history discovery scans every seasonal slug across the configured yea
     "fall-2025",
   ]);
   assert.deepEqual(ids.slice(-4), [
-    "winter-2027",
-    "spring-2027",
-    "summer-2027",
-    "fall-2027",
+    "winter-2026",
+    "spring-2026",
+    "summer-2026",
+    "fall-2026",
   ]);
-  assert.equal(ids.length, 12);
+  assert.equal(ids.length, 8);
 });
 
-test("RATS history refresh is daily and treats missing timestamps as stale", () => {
+test("RATS history refresh repairs legacy and zero-score archives immediately", () => {
   const now = new Date("2026-10-07T12:00:00Z");
   assert.equal(historyRefreshDue(null, now), true);
   assert.equal(
-    historyRefreshDue({updatedAt: "2026-10-07T00:01:00Z"}, now),
-    false,
+    historyRefreshDue({
+      schemaVersion: 1,
+      updatedAt: now.toISOString(),
+      coverage: {completedMatchCount: 10, complete: true},
+    }, now),
+    true,
   );
   assert.equal(
-    historyRefreshDue(
-      {updatedAt: new Date(now.getTime() - HISTORY_REFRESH_MS - 1).toISOString()},
-      now,
-    ),
+    historyRefreshDue({
+      schemaVersion: 2,
+      updatedAt: now.toISOString(),
+      coverage: {completedMatchCount: 0, complete: true},
+    }, now),
+    true,
+  );
+});
+
+test("complete RATS history refreshes daily while partial coverage retries sooner", () => {
+  const now = new Date("2026-10-07T12:00:00Z");
+  const complete = {
+    schemaVersion: 2,
+    updatedAt: "2026-10-07T00:01:00Z",
+    coverage: {completedMatchCount: 100, complete: true},
+  };
+  assert.equal(historyRefreshDue(complete, now), false);
+  assert.equal(
+    historyRefreshDue({
+      ...complete,
+      updatedAt: new Date(now.getTime() - HISTORY_REFRESH_MS - 1).toISOString(),
+    }, now),
+    true,
+  );
+
+  const partial = {
+    schemaVersion: 2,
+    updatedAt: new Date(now.getTime() - HISTORY_RETRY_MS + 1).toISOString(),
+    coverage: {completedMatchCount: 100, complete: false},
+  };
+  assert.equal(historyRefreshDue(partial, now), false);
+  assert.equal(
+    historyRefreshDue({
+      ...partial,
+      updatedAt: new Date(now.getTime() - HISTORY_RETRY_MS - 1).toISOString(),
+    }, now),
     true,
   );
 });
@@ -65,8 +103,7 @@ test("RATS history normalizes every public team and scored event in an aggregate
         start_time: "20:30:00",
         home_team_name: "Team Alpha",
         away_team_name: "Team Beta",
-        home_score: "4",
-        away_score: 2,
+        score: "4-2",
       },
       {
         id: 43,
@@ -94,7 +131,7 @@ test("RATS history normalizes every public team and scored event in an aggregate
 
 test("RATS history ignores empty unpublished season aggregates", () => {
   assert.equal(
-    normalizeHistoryAggregate("winter-2000", {teams: [], events: []}),
+    normalizeHistoryAggregate("winter-2023", {teams: [], events: []}),
     null,
   );
 });
@@ -136,8 +173,12 @@ test("RATS history builder stores discovered public results only as encrypted ru
     },
   });
 
+  assert.equal(history.schemaVersion, 2);
   assert.equal(history.coverage.seasonCount, 1);
   assert.equal(history.coverage.completedMatchCount, 1);
+  assert.equal(history.coverage.complete, false);
+  assert.equal(history.coverage.requestedSeasonCount, 4);
+  assert.equal(history.coverage.failedSeasonCount, 3);
 
   const raw = fs.readFileSync(file, "utf8");
   assert.doesNotMatch(raw, /Team Alpha|Team Beta|fall-2026/);
