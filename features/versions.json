@@ -1,7 +1,23 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.1.5",
+  "currentVersion": "7.1.6",
   "releases": [
+    {
+      "version": "7.1.6",
+      "date": "2026-10-08",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "RATS venue links and reliable match sharing",
+      "webAnnouncement": "Sharing a match now uses the original RATS field map link when available, otherwise an actual field GPS pin or the same Google Maps lookup as Directions. Share no longer fails just because GPS was unavailable.",
+      "changes": [
+        "Preserves publicly provided RATS field map and venue URLs, optional venue coordinates, and trusted links included in RATS notes.",
+        "Exposes verified RATS field location links through the calendar and next-game endpoint; overrides invalidate stale source coordinates and links.",
+        "Prioritizes published venue map links and actual GPS over field-name guesses.",
+        "Reuses the Directions Google Maps lookup as a functional Share fallback when exact GPS is unavailable, rather than blocking with a missing-coordinates error.",
+        "Distinguishes shared GPS coordinates, original venue links and field lookup links in the Share success message.",
+        "Adds regression tests for valid and unsafe links, published coordinates, overridden fields and Share behavior."
+      ]
+    },
     {
       "version": "7.1.5",
       "date": "2026-10-08",
