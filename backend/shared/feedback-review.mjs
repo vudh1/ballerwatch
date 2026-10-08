@@ -47,7 +47,7 @@ export function feedbackQuestionShape(question) {
   if (/\b(?:time|when|start|kickoff|kick off)\b/.test(lower)) add("time");
   if (/\b(?:where|field|location|address|venue)\b/.test(lower)) add("venue");
   if (/\b(?:weather|rain|temperature|forecast)\b/.test(lower)) add("weather");
-  if (/\b(?:head[ -]?to[ -]?head|h2h|played before|met before|previous meetings?)\b/.test(lower)) {
+  if (/\b(?:head[ -]?to[ -]?head|h2h|previous meetings?)\b/.test(lower) ||\n      /\b(?:played|met)\b[^?!.]{0,80}\bbefore\b/.test(lower)) {
     add("head-to-head");
   }
   if (/\b(?:record|wins?|losses?|draws?|ties?)\b/.test(lower)) add("team record");
