@@ -13,6 +13,7 @@ import {
   SOURCE,
   call,
   eventScore,
+  isTransientSourceError,
   seasonLabel,
 } from "./watcher.mjs";
 import { decryptState, encryptState } from "../shared/state-crypto.mjs";
@@ -45,9 +46,10 @@ export function historySeasonIds(
   startYear = HISTORY_START_YEAR,
 ) {
   const endYear = now.getUTCFullYear() + 1;
+  const firstYear = Math.max(1990, Number(startYear) || HISTORY_START_YEAR);
   const ids = [];
-  for (let year = Math.max(1990, Number(startYear) || HISTORY_START_YEAR); year <= endYear; year += 1) {
-    for (const season of SEASONS) ids.push(`${season}-${year}`);
+  for (let year = endYear; year >= firstYear; year -= 1) {
+    for (const season of [...SEASONS].reverse()) ids.push(`${season}-${year}`);
   }
   return ids;
 }
@@ -221,6 +223,7 @@ export async function refreshRatsHistory({
   );
   const seasonIds = historySeasonIds(now, startYear);
   let successfulFetches = 0;
+  let unresolvedTransientFailures = 0;
 
   const scanned = await mapWithConcurrency(
     seasonIds,
@@ -231,14 +234,23 @@ export async function refreshRatsHistory({
         const normalized = normalizeHistoryAggregate(seasonId, aggregate);
         successfulFetches += 1;
         return normalized || previousBySeason.get(seasonId) || null;
-      } catch {
-        return previousBySeason.get(seasonId) || null;
+      } catch (error) {
+        const previousSeason = previousBySeason.get(seasonId) || null;
+        if (!previousSeason && isTransientSourceError(error)) {
+          unresolvedTransientFailures += 1;
+        }
+        return previousSeason;
       }
     },
   );
 
   if (!successfulFetches) {
     throw new Error("RATS historical refresh could not read any public season aggregate");
+  }
+  if (unresolvedTransientFailures) {
+    throw new Error(
+      `RATS historical refresh left ${unresolvedTransientFailures} season request(s) unresolved; retained the previous archive.`,
+    );
   }
 
   const seasons = scanned
