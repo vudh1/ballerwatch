@@ -816,3 +816,45 @@ test("web calendar omits encrypted soft-deleted pickup, league, and free-pickup 
   assert.equal(calendar.games.some((game) => game.id === "league:v2:delete-me"), false);
   assert.equal(calendar.games.some((game) => game.id === "free:2099-10-10"), false);
 });
+
+test("calendar shares verified venue GPS from geocoded weather, never city-wide weather fallback", () => {
+  const baseMatch = {
+    key: "v2:gps-fixture", date: "2099-10-06", start: "2099-10-06T19:00:00-07:00",
+    end: "2099-10-06T21:00:00-07:00", team: "Team Alpha", opponent: "Team Beta",
+    location: "Synthetic Soccer Field",
+  };
+  const snapshot = { pickup: { dates: [], events: {} }, pickupPrivate: { events: {} },
+    league: { teams: [{ name: "Team Alpha", matches: [baseMatch] }] } };
+  const gps = { latitude: 47.612345, longitude: -122.324567 };
+  const weatherState = {
+    games: [{ id: "league:v2:gps-fixture", location: "Synthetic Soccer Field",
+      address: "", coordinates: gps, weatherApproximate: false }],
+  };
+  const current = webCalendarDetails(snapshot, weatherState, 14, "2099-10-01");
+  assert.deepEqual(current.games.find(game => game.id === "league:v2:gps-fixture").coordinates, gps);
+
+  const fallback = webCalendarDetails(snapshot, {games:[{
+    ...weatherState.games[0], weatherApproximate: true,
+    coordinates: {latitude:47.6062, longitude:-122.3321},
+  }]}, 14, "2099-10-01");
+  assert.equal(fallback.games.find(game => game.id === "league:v2:gps-fixture").coordinates, null);
+
+  const changed = structuredClone(snapshot);
+  changed.league.teams[0].matches[0].location = "Different Field";
+  const stale = webCalendarDetails(changed, weatherState, 14, "2099-10-01");
+  assert.equal(stale.games.find(game => game.id === "league:v2:gps-fixture").coordinates, null);
+});
+
+test("future league matches reuse cached GPS for the exact venue beyond weather horizon", () => {
+  const snapshot = { pickup: { dates: [], events: {} }, pickupPrivate: { events: {} },
+    league: {teams:[{name:"Team Alpha", matches:[{
+      key:"v2:far-gps", date:"2099-11-20",
+      start:"2099-11-20T19:00:00-08:00", end:"2099-11-20T21:00:00-08:00",
+      team:"Team Alpha", opponent:"Team Beta", location:"Synthetic Soccer Field"
+    }]}]}};
+  const cached = {latitude:47.612345,longitude:-122.324567};
+  const state = {locations:{"synthetic soccer field, seattle, wa, usa":cached}};
+  const calendar = webCalendarDetails(snapshot,state,14,"2099-10-01");
+  assert.deepEqual(calendar.games.find(game => game.id === "league:v2:far-gps").coordinates,cached);
+  assert.equal(calendar.games.find(game => game.id === "league:v2:far-gps").weatherApproximate,false);
+});

@@ -12,14 +12,14 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
 
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   assert.match(html, /manifest\.webmanifest/);
-  assert.match(html, /apple-touch-icon\.png\?v=7\.1\.4/);
+  assert.match(html, /apple-touch-icon\.png\?v=7\.1\.5/);
   assert.match(html, /class="brand-icon"/);
-  assert.match(html, /icon\.svg\?v=7\.1\.4/);
+  assert.match(html, /icon\.svg\?v=7\.1\.5/);
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=7\.1\.4/);
-  assert.match(html, /app\.js\?v=7\.1\.4/);
+  assert.match(html, /styles\.css\?v=7\.1\.5/);
+  assert.match(html, /app\.js\?v=7\.1\.5/);
 
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
@@ -93,7 +93,7 @@ test("promotion watches Worker and Pages then refreshes the open PWA", () => {
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=7\.1\.4/);
+  assert.match(app, /sw\.js\?v=7\.1\.5/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -639,7 +639,7 @@ test("Ask BallerWatch is available from a floating bot dialog with autocomplete"
   assert.match(app, /chatDialog\.showModal\(\)/);
   assert.match(app, /chatLauncher\?\.addEventListener\("click", openChat\)/);
   assert.match(app, /event\.target === els\.chatDialog/);
-  assert.match(css, /\.chat-launcher \{[\s\S]*position:\s*fixed;[\s\S]*left:/);
+  assert.match(css, /\.chat-launcher \{[\s\S]*position:\s*fixed;[\s\S]*right:/);
   assert.match(css, /\.chat-dialog \{[\s\S]*overflow:\s*hidden;/);
   assert.match(css, /\.chat-dialog-shell \{[\s\S]*overflow-y:\s*auto;/);
   assert.match(css, /\.question-input-wrap \{[\s\S]*position:\s*relative;/);
@@ -773,7 +773,7 @@ test("footer contains no secondary messaging shortcut", () => {
 });
 
 
-test("BallerWatch 7.1.4 uses the top-right bell and gear without bottom app tabs", () => {
+test("BallerWatch 7.1.5 uses the top-right bell and gear without bottom app tabs", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   assert.match(html, /id="settings-button"/);
@@ -797,7 +797,7 @@ test("page uses a soccer-pitch backdrop with readable translucent cards", () => 
   assert.match(icon, /A soccer pitch with a soccer ball/);
   assert.match(icon, /<circle cx="256" cy="256" r="54"\/>/);
   assert.match(icon, /translate\(347 344\)/);
-  assert.match(manifest, /icon\.svg\?v=7\.1\.4/);
+  assert.match(manifest, /icon\.svg\?v=7\.1\.5/);
   assert.match(css, /\.card,[\s\S]*\.footer-install \{[\s\S]*rgba\(6, 18, 22, 0\.57\)/);
   assert.match(css, /\.spotlight-card \{[\s\S]*rgba\(4, 16, 22, 0\.72\)/);
   assert.match(css, /backdrop-filter:\s*blur\(24px\) saturate\(135%\)/);
@@ -1321,7 +1321,7 @@ test("cinematic launch owns first paint, stays session-scoped, and is reduced-mo
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
 
   assert.match(html, /<html lang="en" class="launch-intro-pending">/);
-  assert.match(html, /<script src="\.\/launch-prepaint\.js\?v=7\.1\.4"><\/script>[\s\S]*<link rel="stylesheet"/);
+  assert.match(html, /<script src="\.\/launch-prepaint\.js\?v=7\.1\.5"><\/script>[\s\S]*<link rel="stylesheet"/);
   assert.match(html, /id="launch-intro" aria-hidden="true">/);
   assert.doesNotMatch(html, /id="launch-intro"[^>]*\shidden/);
   assert.match(html, /class="launch-intro-word-main">BallerWatch<\/span>/);
@@ -1342,7 +1342,7 @@ test("cinematic launch owns first paint, stays session-scoped, and is reduced-mo
   assert.match(css, /@keyframes ballerwatch-intro-shine/);
   assert.match(css, /\.launch-intro\.is-active \{[\s\S]*pointer-events:\s*auto/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.launch-intro \{[\s\S]*display:\s*none !important/);
-  assert.match(sw, /\.\/launch-prepaint\.js\?v=7\.1\.4/);
+  assert.match(sw, /\.\/launch-prepaint\.js\?v=7\.1\.5/);
   assert.doesNotMatch([html, gate, app, css].join("\n"), /Netflix/i);
 });
 
@@ -1527,4 +1527,19 @@ test("pickup capacity opens a full-width signed-in RSVP roster without public na
   assert.match(pickupUpdate, /previousPrivateState\?\.events\?\.\[date\]/);
   assert.match(pickupUpdate, /firstSeenAt:/);
   assert.match(pickupUpdate, /voteOrder:/);
+});
+
+test("share creates Google Maps GPS pins and does not silently share venue-name searches", () => {
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
+  assert.ok(app.includes("www.google.com/maps?q="));
+  assert.ok(app.includes("latitude.toFixed(6)"));
+  assert.ok(app.includes("longitude.toFixed(6)"));
+  assert.ok(app.includes("GPS coordinates for this field are not available yet"));
+  assert.ok(app.includes("if (!maps)"));
+  assert.ok(worker.includes("webVenueCoordinates(weatherState, weatherById, game)"));
+  assert.ok(worker.includes("weatherGame.weatherApproximate !== true"));
+  assert.ok(css.includes("right: max(1rem, env(safe-area-inset-right))"));
+  assert.ok(css.includes("right: max(0.75rem, env(safe-area-inset-right))"));
 });
