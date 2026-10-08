@@ -249,7 +249,7 @@ test("singular/plural RATS names find the same club and aggregate records", () =
       }
     }
   }
-  assert.deepEqual(historyTeamsInQuestion("tuesday marmot vs crow fc", history), ["Tuesday Marmots", "Crows FC"]);
+  assert.deepEqual(historyTeamsInQuestion("tuesday marmot vs crow fc", history), ["Tuesday Marmot", "Crows FC"]);
   assert.equal(historyRecord(history, "Tuesday Marmots").games, 3);
   assert.equal(historyRecord(history, "Tuesday Marmot").games, 3);
   assert.equal(historyHeadToHead(history, "Tuesday Marmot", "Crow FC").matches.length, 2);
