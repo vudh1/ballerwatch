@@ -388,6 +388,8 @@ test("Ask BallerWatch keeps RATS history follow-up context", () => {
   assert.match(app, /Have two RATS teams played each other before\?/);
   assert.match(app, /ballerwatch-last-rats-teams/);
   assert.match(app, /lastHistoryTeams:/);
+  assert.match(app, /currentLeagueTeam:/);
+  assert.match(app, /currentNextGame\?\.kind === "league"/);
   assert.match(app, /payload\.historyTeams/);
 });
 
