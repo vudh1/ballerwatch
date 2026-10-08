@@ -50,8 +50,8 @@ jobs:
             fi
           done < /tmp/ballerwatch-merged-refs.txt
 
-          if [ "$(gh api "/repos/$repo/pulls/105" --jq '.merged')" = "true" ] && [ "$(gh api "/repos/$repo/pulls/106" --jq '.merged')" = "true" ]; then
-            for spec in "ops/rats-history-rebuild:c1d1e5ae813225696a6214f7262dab171bc00cb4" "release/7.1.1:085ce96689fdefbf3f967392c7ffde2a550fbbce"; do
+          if [ "$(gh api "/repos/$repo/pulls/105" --jq '.merged')" = "true" ] && [ "$(gh api "/repos/$repo/pulls/106" --jq '.merged')" = "true" ] && [ "$(gh api "/repos/$repo/pulls/92" --jq '.merged')" = "true" ]; then
+            for spec in "ops/rats-history-rebuild:c1d1e5ae813225696a6214f7262dab171bc00cb4" "release/7.1.1:085ce96689fdefbf3f967392c7ffde2a550fbbce" "feat/7.0.16-rsvp-roster-popup:2f77a88733b6a2af39dee34810c0856e92103b5f"; do
               ref="${spec%%:*}"
               expected="${spec#*:}"
               actual="$(gh api "/repos/$repo/git/ref/heads/$ref" --jq '.object.sha' 2>/dev/null || true)"
