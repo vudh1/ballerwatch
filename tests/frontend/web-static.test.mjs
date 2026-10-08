@@ -639,7 +639,7 @@ test("Ask BallerWatch is available from a floating bot dialog with autocomplete"
   assert.match(app, /chatDialog\.showModal\(\)/);
   assert.match(app, /chatLauncher\?\.addEventListener\("click", openChat\)/);
   assert.match(app, /event\.target === els\.chatDialog/);
-  assert.match(css, /\.chat-launcher \{[\s\S]*position:\s*fixed;[\s\S]*left:/);
+  assert.match(css, /\.chat-launcher \{[\s\S]*position:\s*fixed;[\s\S]*right:/);
   assert.match(css, /\.chat-dialog \{[\s\S]*overflow:\s*hidden;/);
   assert.match(css, /\.chat-dialog-shell \{[\s\S]*overflow-y:\s*auto;/);
   assert.match(css, /\.question-input-wrap \{[\s\S]*position:\s*relative;/);
@@ -1527,4 +1527,18 @@ test("pickup capacity opens a full-width signed-in RSVP roster without public na
   assert.match(pickupUpdate, /previousPrivateState\?\.events\?\.\[date\]/);
   assert.match(pickupUpdate, /firstSeenAt:/);
   assert.match(pickupUpdate, /voteOrder:/);
+});
+
+test("share creates Google Maps GPS pins and does not silently share venue-name searches", () => {
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
+  assert.match(app, /www\\.google\\.com\\/maps\\?q=/);
+  assert.match(app, /latitude\\.toFixed\\(6\\).*longitude\\.toFixed\\(6\\)/);
+  assert.match(app, /GPS coordinates for this field are not available yet/);
+  assert.match(app, /if \\(!maps\\)/);
+  assert.match(worker, /webVenueCoordinates\\(weatherState, weatherById, game\\)/);
+  assert.match(worker, /weatherGame\\.weatherApproximate !== true/);
+  assert.match(css, /\\.chat-launcher \\{[\\s\\S]*right: max\\(1rem, env\\(safe-area-inset-right\\)\\)/);
+  assert.match(css, /\\.chat-launcher \\{[\\s\\S]*right: max\\(0\\.75rem, env\\(safe-area-inset-right\\)\\)/);
 });
