@@ -21,6 +21,7 @@ function safeReview(value) {
     generatedAt: String(value?.generatedAt || ""),
     signals: signals.slice(-100).map((signal) => ({
       kind: String(signal?.kind || "").slice(0, 40),
+      intent: String(signal?.intent || "").slice(0, 60),
       summary: String(signal?.summary || "").slice(0, 220),
       reason: String(signal?.reason || "").slice(0, 220),
     })),
@@ -37,7 +38,16 @@ function safeRequests(value) {
 const root = process.argv[2] || "runtime";
 const review = safeReview(loadEncrypted(path.join(root, "state/chat-review.json")));
 const requests = safeRequests(loadEncrypted(path.join(root, "requests/unknown.json")));
-const output = { review, requests };
+const reviewByIntent = Object.entries(
+  review.signals.reduce((counts, signal) => {
+    const key = signal.intent || "unknown";
+    counts[key] = (counts[key] || 0) + 1;
+    return counts;
+  }, {}),
+)
+  .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+  .map(([intent, count]) => ({ intent, count }));
+const output = { review, reviewByIntent, requests };
 
 console.log(`SAFE_ENGINEERING_REVIEW=${JSON.stringify(output)}`);
 
@@ -51,6 +61,11 @@ if (summaryPath) {
       ? review.signals.map((signal) =>
           `- **${signal.kind || "unknown"}** — ${signal.summary || "No summary"}${signal.reason ? ` — ${signal.reason}` : ""}`
         ).join("\n")
+      : "- No active review signals.",
+    "",
+    "## Review signals by intent",
+    reviewByIntent.length
+      ? reviewByIntent.map((item) => `- **${item.intent}**: ${item.count}`).join("\n")
       : "- No active review signals.",
     "",
     "## Feature request categories",
