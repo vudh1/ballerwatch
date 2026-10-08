@@ -20,8 +20,9 @@ import { decryptState, encryptState } from "../shared/state-crypto.mjs";
 export const HISTORY_FILE = "league/state/history.json";
 export const HISTORY_START_YEAR = 1990;
 export const HISTORY_REFRESH_MS = 24 * 60 * 60 * 1000;
+export const HISTORY_SCHEMA_VERSION = 2;
 const SEASONS = ["winter", "spring", "summer", "fall"];
-const HISTORY_CONCURRENCY = 8;
+const HISTORY_CONCURRENCY = 2;
 
 function cleanText(value) {
   return String(value ?? "").trim().replace(/\s+/g, " ");
@@ -56,6 +57,7 @@ export function historyRefreshDue(
   now = new Date(),
   maxAgeMs = HISTORY_REFRESH_MS,
 ) {
+  if (Number(history?.schemaVersion || 0) !== HISTORY_SCHEMA_VERSION) return true;
   const updated = Date.parse(String(history?.updatedAt || ""));
   return !Number.isFinite(updated) || now.getTime() - updated >= maxAgeMs;
 }
@@ -175,8 +177,8 @@ function coverageFor(seasons) {
 
 async function defaultHistoryCall(action, params) {
   return call(action, params, {
-    maxAttempts: 1,
-    timeoutMs: 10_000,
+    maxAttempts: 3,
+    timeoutMs: 15_000,
   });
 }
 
@@ -247,7 +249,7 @@ export async function refreshRatsHistory({
   }
 
   const history = {
-    schemaVersion: 1,
+    schemaVersion: HISTORY_SCHEMA_VERSION,
     sourceUrl: SOURCE,
     sourceApi: API,
     scanStartYear: startYear,
@@ -258,7 +260,8 @@ export async function refreshRatsHistory({
   };
   writeEncryptedHistory(history, file);
   console.log(
-    `Refreshed RATS history: ${history.coverage.seasonCount} seasons, ` +
+    `Refreshed RATS history: ${history.coverage.seasonCount} seasons ` +
+    `(${history.coverage.firstSeason || "unknown"} through ${history.coverage.lastSeason || "unknown"}), ` +
     `${history.coverage.teamCount} teams, ${history.coverage.completedMatchCount} scored matches.`,
   );
   return history;
