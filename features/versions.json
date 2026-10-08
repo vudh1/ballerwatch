@@ -17,7 +17,8 @@
         "Uses venue-specific Google Maps place URLs, existing place IDs, or coordinates when sharing a game.",
         "Notifies League subscribers when a monitored team's completed RATS score is published or corrected; de-duplicates a game reported for both monitored sides.",
         "Closes superseded historical-score PR and safely prunes unchanged merged-feature and temporary branches after the verified production release, preserving encrypted runtime-state.",
-        "Keeps production and main in sync before one-time merged-branch cleanup, and refuses to discard any newer branch work."
+        "Keeps production and main in sync before one-time merged-branch cleanup, and refuses to discard any newer branch work.",
+        "Verified team-name alias tests preserve the question's exact matched display name while aggregating plural/singular records."
       ]
     },
     {
