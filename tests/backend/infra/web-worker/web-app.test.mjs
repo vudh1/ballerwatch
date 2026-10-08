@@ -858,3 +858,28 @@ test("future league matches reuse cached GPS for the exact venue beyond weather 
   assert.deepEqual(calendar.games.find(game => game.id === "league:v2:far-gps").coordinates,cached);
   assert.equal(calendar.games.find(game => game.id === "league:v2:far-gps").weatherApproximate,false);
 });
+
+test("RATS-published map destination and GPS appear on calendar but not stale overridden field", () => {
+  const baseMatch = {
+    key: "v2:rats-maps", date: "2099-10-06",
+    start: "2099-10-06T19:00:00-07:00", end: "2099-10-06T21:00:00-07:00",
+    team: "Team Alpha", opponent: "Team Beta", location: "RATS Field",
+    locationUrl: "https://www.google.com/maps/place/RATS+Field/@47.62,-122.33,17z",
+    venueCoordinates: { latitude: 47.62, longitude: -122.33 },
+  };
+  const snapshot = {pickup:{dates:[],events:{}},pickupPrivate:{events:{}},
+    league:{teams:[{name:"Team Alpha",matches:[baseMatch]}]}};
+  const source = webCalendarDetails(snapshot, {}, 14, "2099-10-01");
+  const game = source.games.find(item=>item.id==="league:v2:rats-maps");
+  assert.equal(game.locationUrl, baseMatch.locationUrl);
+  assert.deepEqual(game.coordinates, baseMatch.venueCoordinates);
+  const changed = structuredClone(snapshot);
+  changed.settings={matchOverrides:{"league:v2:rats-maps":{
+    id:"league:v2:rats-maps",kind:"league",location:"Replacement Field",date:"2099-10-06",
+  }}};
+  const edited = webCalendarDetails(changed, {}, 14, "2099-10-01");
+  const overridden=edited.games.find(item=>item.id==="league:v2:rats-maps");
+  assert.equal(overridden.location, "Replacement Field");
+  assert.equal(overridden.locationUrl, "");
+  assert.equal(overridden.coordinates, null);
+});
