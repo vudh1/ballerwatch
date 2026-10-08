@@ -11,8 +11,16 @@ import {
 
 function historyFixture() {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     updatedAt: "2026-10-07T00:00:00Z",
+    coverage: {
+      firstSeason: "fall-2024",
+      lastSeason: "spring-2025",
+      seasonCount: 2,
+      teamCount: 3,
+      matchCount: 4,
+      completedMatchCount: 3,
+    },
     seasons: [
       {
         seasonId: "fall-2024",
@@ -100,7 +108,7 @@ test("bot answers all-time record and previous-meeting questions deterministical
     "what is the record of Team Alpha?",
     historyFixture(),
   );
-  assert.match(record.reply, /Team Alpha — all available RATS seasons/);
+  assert.match(record.reply, /Team Alpha — 2 indexed RATS seasons \(Fall 2024 through Spring 2025\)/);
   assert.match(record.reply, /1-1-1 \(W-D-L\)/);
 
   const h2h = answerRatsHistoryQuestion(
