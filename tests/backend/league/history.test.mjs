@@ -14,25 +14,25 @@ import {
 } from "../../../backend/league/history.mjs";
 import { decryptState } from "../../../backend/shared/state-crypto.mjs";
 
-test("default RATS history discovery starts at 1990 for broad archive coverage", () => {
+test("default RATS history discovery covers the broad archive newest-first", () => {
   const ids = historySeasonIds(new Date("1991-06-01T12:00:00Z"));
-  assert.equal(ids[0], "winter-1990");
-  assert.equal(ids.at(-1), "fall-1992");
+  assert.equal(ids[0], "fall-1992");
+  assert.equal(ids.at(-1), "winter-1990");
 });
 
 test("RATS history discovery scans every seasonal slug across the configured year range", () => {
   const ids = historySeasonIds(new Date("2026-10-07T12:00:00Z"), 2025);
   assert.deepEqual(ids.slice(0, 4), [
-    "winter-2025",
-    "spring-2025",
-    "summer-2025",
-    "fall-2025",
+    "fall-2027",
+    "summer-2027",
+    "spring-2027",
+    "winter-2027",
   ]);
   assert.deepEqual(ids.slice(-4), [
-    "winter-2027",
-    "spring-2027",
-    "summer-2027",
-    "fall-2027",
+    "fall-2025",
+    "summer-2025",
+    "spring-2025",
+    "winter-2025",
   ]);
   assert.equal(ids.length, 12);
 });
