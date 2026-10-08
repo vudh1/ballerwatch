@@ -2919,6 +2919,8 @@ export function webNextGameDetails(snapshot, now = new Date()) {
     location,
     address,
     mapsQuery: address || location,
+    locationUrl: game?.manualOverride ? "" : cleanText(game?.locationUrl, 1200),
+    coordinates: game?.manualOverride ? null : verifiedVenuePoint(game?.venueCoordinates),
     sourceDate: cleanText(game?.sourceDate, 20),
     sourceStartTime: clock(game?.sourceStartTime),
     sourceEndTime: clock(game?.sourceEndTime),
