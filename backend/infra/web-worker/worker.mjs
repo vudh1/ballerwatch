@@ -2949,6 +2949,14 @@ async function webAnswer(env, question, context = {}) {
     try {
       const history = await loadRatsHistory(env);
       const result = answerRatsHistoryQuestion(text, history, lastHistoryTeams);
+      if (result.ready === false) {
+        return {
+          ok: false,
+          error: result.reply,
+          intent: "rats_history",
+          historyTeams: result.teams,
+        };
+      }
       return {
         ok: true,
         reply: result.reply,
