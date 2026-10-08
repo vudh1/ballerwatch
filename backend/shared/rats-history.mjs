@@ -19,9 +19,38 @@ export function normalizeHistoryTeamName(value) {
 
 // Only strip conventional club suffixes. Arbitrary fuzzy equality is unsafe for stats.
 export function historyTeamKey(value) {
-  return normalizeHistoryTeamName(value)
+  const core = normalizeHistoryTeamName(value)
     .replace(/(?: (?:football|soccer) club| fc| sc)+$/g, "")
     .trim();
+  const parts = core.split(" ");
+  const last = parts.at(-1) || "";
+  // Singular/plural variants of the final club-name word are equivalent,
+  // but don't strip s from short words or natural -ss endings.
+  if (last.length >= 4 && last.endsWith("s") && !last.endsWith("ss")) {
+    parts[parts.length - 1] = last.endsWith("ies") && last.length > 4
+      ? last.slice(0, -3) + "y"
+      : last.slice(0, -1);
+  }
+  return parts.join(" ");
+}
+
+function historyQuestionAliases(name) {
+  const original = normalizeHistoryTeamName(name);
+  const withoutClubSuffix = original.replace(/(?: (?:football|soccer) club| fc| sc)+$/g, "").trim();
+  const aliases = new Set([original, withoutClubSuffix, historyTeamKey(name)]);
+  const base = historyTeamKey(name);
+  const words = base.split(" ");
+  const last = words.at(-1) || "";
+  if (last.length >= 3) {
+    words[words.length - 1] = last.endsWith("y")
+      ? last.slice(0, -1) + "ies" : last + "s";
+    aliases.add(words.join(" "));
+    if (original.endsWith(" fc")) aliases.add(words.join(" ") + " fc");
+    if (original.endsWith(" sc")) aliases.add(words.join(" ") + " sc");
+  }
+  if (original.endsWith(" fc")) aliases.add(base + " fc");
+  if (original.endsWith(" sc")) aliases.add(base + " sc");
+  return aliases;
 }
 
 function seasonSortKey(seasonId) {
@@ -74,7 +103,7 @@ export function historyTeamsInQuestion(question, history, contextTeams = []) {
   // aliases only when no longer exact name covers that text.
   const candidates = [];
   for (const item of items) {
-    for (const needle of new Set([item.exact, item.alias])) {
+    for (const needle of historyQuestionAliases(item.name)) {
       if (!needle || needle.split(" ").length < 2 && needle !== item.exact) continue;
       const padded = ` ${needle} `;
       let at = input.indexOf(padded);
