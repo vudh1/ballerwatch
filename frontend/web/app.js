@@ -1955,18 +1955,67 @@ function googleMapsUrl(query) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
+function trustedPublishedVenueUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw || raw.length > 1200) return "";
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:" || url.username || url.password) return "";
+    const host = url.hostname.toLowerCase();
+    const maps = (host === "google.com" || host.endsWith(".google.com")) &&
+      (url.pathname.startsWith("/maps") || host.startsWith("maps."));
+    const shortMaps = host === "maps.app.goo.gl";
+    const rats = host === "seattlerats.org" || host === "www.seattlerats.org";
+    return maps || shortMaps || rats ? url.href : "";
+  } catch {
+    return "";
+  }
+}
+
+function venueGpsPoint(value) {
+  if (!value) return null;
+  const latitude = Number(value.latitude);
+  const longitude = Number(value.longitude);
+  return Number.isFinite(latitude) && Number.isFinite(longitude) &&
+    Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180 &&
+    !(latitude === 0 && longitude === 0)
+    ? { latitude, longitude } : null;
+}
+
+function gpsFromMapsUrl(value) {
+  const url = trustedPublishedVenueUrl(value);
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    const query = parsed.searchParams.get("q") || parsed.searchParams.get("query") || "";
+    const text = query.match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
+    if (text) return venueGpsPoint({ latitude: text[1], longitude: text[2] });
+    const at = parsed.pathname.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+    if (at) return venueGpsPoint({ latitude: at[1], longitude: at[2] });
+    const exact = parsed.pathname.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+    if (exact) return venueGpsPoint({ latitude: exact[1], longitude: exact[2] });
+  } catch {}
+  return null;
+}
+
+function venueShareDetails(game) {
+  const sourceUrl = trustedPublishedVenueUrl(game?.locationUrl);
+  const sourcePoint = gpsFromMapsUrl(sourceUrl);
+  const point = game?.weatherApproximate === true
+    ? sourcePoint
+    : sourcePoint || venueGpsPoint(game?.coordinates);
+  if (point) {
+    const gps = point.latitude.toFixed(6) + "," + point.longitude.toFixed(6);
+    return { url: "https://www.google.com/maps?q=" + gps, gps, source: "gps" };
+  }
+  if (sourceUrl) return { url: sourceUrl, gps: "", source: "rats" };
+  const query = [game?.location, game?.address].filter(Boolean).join(", ") ||
+    String(game?.mapsQuery || "").trim();
+  return { url: googleMapsUrl(query), gps: "", source: "lookup" };
+}
+
 function shareVenueMapsUrl(game) {
-  // Calendar responses contain actual venue geocoding, never the approximate
-  // Seattle-wide coordinates used only as a weather forecast fallback.
-  const point = game?.coordinates;
-  if (!point || game?.weatherApproximate === true) return "";
-  const latitude = Number(point.latitude);
-  const longitude = Number(point.longitude);
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude) ||
-      Math.abs(latitude) > 90 || Math.abs(longitude) > 180 ||
-      (latitude === 0 && longitude === 0)) return "";
-  // Coordinate-based Google Maps pin, not a venue-name search result.
-  return `https://www.google.com/maps?q=${latitude.toFixed(6)},${longitude.toFixed(6)}`;
+  return venueShareDetails(game).url;
 }
 
 function weatherGlyph(code) {
@@ -3280,15 +3329,15 @@ async function resetMatchOverride() {
 
 async function shareNextGame() {
   if (!currentNextGame) return;
-  const maps = shareVenueMapsUrl(currentNextGame);
+  const { url: maps, gps, source } = venueShareDetails(currentNextGame);
   if (!maps) {
-    els.nextGameHint.textContent = "GPS coordinates for this field are not available yet. Try Directions for a venue lookup.";
+    els.nextGameHint.textContent = "No field location is published for this game.";
     return;
   }
   const text = [
     currentNextGame.shareText || currentNextGame.title || "BallerWatch game",
-    `📍 GPS: ${maps.split("q=")[1]}`,
-  ].join("\n");
+    gps ? "📍 GPS: " + gps : "",
+  ].filter(Boolean).join("\n");
 
   try {
     if (navigator.share) {
@@ -3297,12 +3346,12 @@ async function shareNextGame() {
         text,
         ...(maps ? { url: maps } : {}),
       });
-      els.nextGameHint.textContent = "Shared.";
+      els.nextGameHint.textContent = source === "lookup" ? "Shared field lookup in Google Maps." : "Shared field location.";
       return;
     }
 
     await navigator.clipboard.writeText([text, maps].filter(Boolean).join("\n"));
-    els.nextGameHint.textContent = "Game details copied.";
+    els.nextGameHint.textContent = source === "lookup" ? "Google Maps field lookup copied." : "Field location copied.";
   } catch (error) {
     if (error?.name !== "AbortError") {
       els.nextGameHint.textContent = "Unable to share from this device.";
