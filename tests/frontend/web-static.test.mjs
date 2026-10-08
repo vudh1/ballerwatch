@@ -747,7 +747,7 @@ test("next-game sharing uses the generic device share sheet", () => {
   assert.match(html, /id="next-game-share" type="button">Share<\/button>/);
   assert.match(app, /navigator\.share/);
   assert.match(app, /title: "BallerWatch game"/);
-  assert.match(app, /Game details copied/);
+  assert.match(app, /Field location copied/);
   assert.doesNotMatch(app, /Choose Tesla in the share sheet/);
   assert.doesNotMatch(app, /https:\/\/ts\.la\/app/);
 });
@@ -1550,8 +1550,8 @@ test("share prefers published RATS map links or verified GPS and falls back to D
 test("worker retains RATS source links and respects venue overrides for GPS", () => {
   const watcher = fs.readFileSync("backend/league/watcher.mjs", "utf8");
   const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
-  assert.match(watcher, /locationUrl: publishedVenueUrl\\(event\\)/);
-  assert.match(watcher, /venueCoordinates: publishedVenueCoordinates\\(event\\)/);
-  assert.match(worker, /locationUrl: game\\?\\.manualOverride \\? ""/);
-  assert.match(worker, /venueCoordinates: game\\?\\.manualOverride \\? null/);
+  assert.ok(watcher.includes("locationUrl: publishedVenueUrl(event)"));
+  assert.ok(watcher.includes("venueCoordinates: publishedVenueCoordinates(event)"));
+  assert.ok(worker.includes("locationUrl: game?.manualOverride ? \"\""));
+  assert.ok(worker.includes("venueCoordinates: game?.manualOverride ? null"));
 });
