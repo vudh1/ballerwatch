@@ -2001,13 +2001,19 @@ function gpsFromMapsUrl(value) {
 function venueShareDetails(game) {
   const sourceUrl = trustedPublishedVenueUrl(game?.locationUrl);
   const sourcePoint = gpsFromMapsUrl(sourceUrl);
+  if (sourcePoint) {
+    const gps = sourcePoint.latitude.toFixed(6) + "," + sourcePoint.longitude.toFixed(6);
+    return { url: "https://www.google.com/maps?q=" + gps, gps, source: "gps" };
+  }
+  // A RATS-provided Maps/place URL is preferable to approximating a point
+  // through a third-party field-name geocoder.
+  if (sourceUrl) return { url: sourceUrl, gps: "", source: "rats" };
   // The Worker only exposes field-specific GPS, never its weather-only fallback.
-  const point = sourcePoint || venueGpsPoint(game?.coordinates);
+  const point = venueGpsPoint(game?.coordinates);
   if (point) {
     const gps = point.latitude.toFixed(6) + "," + point.longitude.toFixed(6);
     return { url: "https://www.google.com/maps?q=" + gps, gps, source: "gps" };
   }
-  if (sourceUrl) return { url: sourceUrl, gps: "", source: "rats" };
   const query = [game?.location, game?.address].filter(Boolean).join(", ") ||
     String(game?.mapsQuery || "").trim();
   return { url: googleMapsUrl(query), gps: "", source: "lookup" };
