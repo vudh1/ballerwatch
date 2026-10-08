@@ -30,7 +30,7 @@ function seasonLabel(seasonId) {
 }
 
 export function historySeasonFromQuestion(question) {
-  const match = String(question || "").match(/\b(winter|spring|summer|fall)[\s-]+(20\d{2})\b/i);
+  const match = String(question || "").match(/\b(winter|spring|summer|fall)[\s-]+((?:19|20)\d{2})\b/i);
   return match ? `${match[1].toLowerCase()}-${match[2]}` : "";
 }
 
@@ -199,6 +199,19 @@ function formatRecord(record) {
   return `${record.wins}-${record.draws}-${record.losses} (W-D-L)`;
 }
 
+function historyCoverageLabel(history) {
+  const count = Number(history?.coverage?.seasonCount || 0);
+  const first = String(history?.coverage?.firstSeason || "");
+  const last = String(history?.coverage?.lastSeason || "");
+  if (count > 0 && first && last) {
+    const range = first === last
+      ? seasonLabel(first)
+      : `${seasonLabel(first)} through ${seasonLabel(last)}`;
+    return `${count} indexed RATS season${count === 1 ? "" : "s"} (${range})`;
+  }
+  return "indexed RATS history";
+}
+
 function formatMatch(match) {
   const date = String(match?.date || "");
   return `${match.season} · ${date}: ${match.homeTeam} ${match.homeScore}–${match.awayScore} ${match.awayTeam}`;
@@ -245,12 +258,12 @@ export function answerRatsHistoryQuestion(question, history, contextTeams = []) 
     };
   }
 
-  const scope = seasonId ? seasonLabel(seasonId) : "all available RATS seasons";
+  const scope = seasonId ? seasonLabel(seasonId) : historyCoverageLabel(history);
   if (teams.length >= 2) {
     const h2h = historyHeadToHead(history, teams[0], teams[1], seasonId);
     if (!h2h.matches.length) {
       return {
-        reply: `I found no scored meeting between ${teams[0]} and ${teams[1]} in ${scope}.`,
+        reply: `I found no completed scored meeting between ${teams[0]} and ${teams[1]} in ${scope}.`,
         teams: teams.slice(0, 2),
       };
     }
@@ -280,7 +293,7 @@ export function answerRatsHistoryQuestion(question, history, contextTeams = []) 
   const record = historyRecord(history, team, seasonId);
   if (!record.games) {
     return {
-      reply: `I found ${team} in the RATS history index, but no completed scored matches in ${scope}.`,
+      reply: `I found ${team} in the RATS history index, but no completed scored matches in ${scope}. The archive may still contain unscored or future events.`,
       teams: [team],
     };
   }
