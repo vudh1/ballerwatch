@@ -66,11 +66,48 @@ jobs:
           const allTeamKeys = [...new Set(teams.flatMap((item) => Object.keys(item || {})))].sort();
           const allEventKeys = [...new Set(events.flatMap((item) => Object.keys(item || {})))].sort();
           const statPattern = /win|loss|draw|tie|point|goal|score|played|record|standing/i;
+          const scoreKinds = {};
+          const scoreShapes = new Set();
+          for (const event of events) {
+            const value = event?.score;
+            const kind = Array.isArray(value) ? "array" : value === null ? "null" : typeof value;
+            scoreKinds[kind] = (scoreKinds[kind] || 0) + 1;
+            if (value === null || value === undefined || value === "") continue;
+            if (typeof value === "string" || typeof value === "number") {
+              scoreShapes.add(String(value).replace(/\d/g, "#").slice(0, 80));
+            } else if (value && typeof value === "object") {
+              scoreShapes.add("object:" + Object.keys(value).sort().join(","));
+            }
+          }
+          console.log("RATS_TOP_KEYS=" + JSON.stringify(Object.keys(data || {}).sort()));
           console.log("RATS_TEAM_KEYS=" + JSON.stringify(allTeamKeys));
           console.log("RATS_TEAM_STAT_KEYS=" + JSON.stringify(allTeamKeys.filter((key) => statPattern.test(key))));
           console.log("RATS_EVENT_KEYS=" + JSON.stringify(allEventKeys));
           console.log("RATS_EVENT_STAT_KEYS=" + JSON.stringify(allEventKeys.filter((key) => statPattern.test(key))));
+          console.log("RATS_SCORE_KINDS=" + JSON.stringify(scoreKinds));
+          console.log("RATS_SCORE_SHAPES=" + JSON.stringify([...scoreShapes].slice(0, 20)));
           console.log("RATS_COUNTS=" + JSON.stringify({teams: teams.length, events: events.length}));
+
+          const published = [];
+          for (const year of [2024, 2025, 2026, 2027]) {
+            for (const name of ["winter", "spring", "summer", "fall"]) {
+              const candidate = `${name}-${year}`;
+              try {
+                const seasonResponse = await fetch(endpoint, {
+                  method: "POST",
+                  headers: {"content-type":"application/json","user-agent":"ballerwatch-schema-review/1.0"},
+                  body: JSON.stringify({season:candidate}),
+                  signal: AbortSignal.timeout(10000),
+                });
+                if (!seasonResponse.ok) continue;
+                const seasonData = await seasonResponse.json();
+                const teamCount = Array.isArray(seasonData?.teams) ? seasonData.teams.length : 0;
+                const eventCount = Array.isArray(seasonData?.events) ? seasonData.events.length : 0;
+                if (teamCount || eventCount) published.push({season:candidate,teamCount,eventCount});
+              } catch {}
+            }
+          }
+          console.log("RATS_PUBLISHED_SEASON_PROBES=" + JSON.stringify(published));
           NODE
 
       - name: Run JavaScript unit tests
