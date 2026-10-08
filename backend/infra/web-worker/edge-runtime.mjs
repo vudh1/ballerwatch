@@ -3,6 +3,8 @@
  *
  * Documentation baseline: v2.3.0. Runtime/private data must never be committed to Git.
  */
+import { ratsEventScore } from "../../shared/rats-score.mjs";
+
 const RATS_API = "https://service.rats.team.op-dev.io/";
 const TIME_ZONE = "America/Los_Angeles";
 const HEADERS = ["Event Type","Start Date","Start Time","End Date","End Time","Timezone ID","Home or Away","Opponent/Event Title","Location Name","Shirt Color","Opponent Shirt Color","Allow RSVPs","Send Reminders","Notes/Comments"];
@@ -67,14 +69,7 @@ async function discoverSeason(teams, preferred="") {
 }
 
 function eventScore(event, side) {
-  for(const key of [`${side}_score`,`${side}Score`,`${side}_goals`,`${side}Goals`,`score_${side}`,`goals_${side}`]) {
-    if(event?.[key] !== undefined && event[key] !== null && event[key] !== "") return event[key];
-  }
-  const nested=event?.score;
-  if(nested && typeof nested==="object") {
-    for(const key of [side,`${side}_score`,`${side}Score`]) if(nested[key]!==undefined && nested[key]!==null && nested[key]!=="") return nested[key];
-  }
-  return null;
+  return ratsEventScore(event, side);
 }
 
 function normalizeLeague(teams, season, aggregate, exportsByTeam) {
