@@ -21,13 +21,13 @@ jobs:
         run: |
           set -euo pipefail
           repo="$GITHUB_REPOSITORY"
-          tag_sha="$(gh api "/repos/$repo/git/ref/tags/v7.1.4" --jq '.object.sha')"
+          tag_sha="$(gh api "/repos/$repo/git/ref/tags/v7.1.5" --jq '.object.sha')"
           live_sha="$(gh api "/repos/$repo/git/ref/heads/production" --jq '.object.sha')"
           if [ "$tag_sha" != "$live_sha" ]; then
-            echo "::error::Refusing cleanup: production does not match release v7.1.4."
+            echo "::error::Refusing cleanup: production does not match release v7.1.5."
             exit 1
           fi
-          cutoff="$(gh api "/repos/$repo/releases/tags/v7.1.4" --jq '.published_at')"
+          cutoff="$(gh api "/repos/$repo/releases/tags/v7.1.5" --jq '.published_at')"
           gh api --paginate "/repos/$repo/pulls?state=closed&per_page=100" | jq -r --arg cutoff "$cutoff" '.[] | select(.merged_at != null and .merged_at <= $cutoff) | [.head.ref, .head.sha, (.head.repo.full_name // "")] | join("|")' > /tmp/ballerwatch-merged-refs.txt
           removed=0
           skipped=0
@@ -67,7 +67,7 @@ jobs:
             done
           fi
           {
-            echo "### Branch cleanup for v7.1.4"
+            echo "### Branch cleanup for v7.1.5"
             echo "- Removed: $removed"
             echo "- Skipped: $skipped"
             echo "- Preserved: main, production, runtime-state"
