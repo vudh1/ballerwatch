@@ -192,3 +192,45 @@ test("unknown historical teams fail closed with bounded suggestions", () => {
   assert.match(answer.reply, /couldn't match a RATS team name/i);
   assert.deepEqual(answer.teams, []);
 });
+
+test("shortened FC club names resolve and aggregate scores across variants", () => {
+  const history = historyFixture();
+  history.seasons[0].teams[0].name = "Seattle Bros FC";
+  history.seasons[1].teams[0].name = "Seattle Bros";
+  for (const match of history.seasons[0].matches) {
+    if (match.homeTeam === "Team Alpha") match.homeTeam = "Seattle Bros FC";
+    if (match.awayTeam === "Team Alpha") match.awayTeam = "Seattle Bros FC";
+  }
+  for (const match of history.seasons[1].matches) {
+    if (match.homeTeam === "Team Alpha") match.homeTeam = "Seattle Bros";
+    if (match.awayTeam === "Team Alpha") match.awayTeam = "Seattle Bros";
+  }
+  assert.deepEqual(historyTeamsInQuestion("Seattle Bros record?", history), ["Seattle Bros"]);
+  assert.deepEqual(historyTeamsInQuestion("Seattle Bros FC record?", history), ["Seattle Bros FC"]);
+  const result = answerRatsHistoryQuestion("Seattle Bros record?", history);
+  assert.match(result.reply, /1-1-1 \(W-D-L\)/);
+  assert.equal(historyRecord(history,"Seattle Bros FC").games,3);
+});
+
+test("techies try hard shorthand and full name work for H2H", () => {
+  const history = historyFixture();
+  for (const season of history.seasons) {
+    for (const team of season.teams) {
+      if (team.name === "Team Alpha") team.name = "Techies Try Hard FC";
+      if (team.name === "Team Beta") team.name = "Seattle Bros FC";
+    }
+    for (const match of season.matches) {
+      if (match.homeTeam === "Team Alpha") match.homeTeam = "Techies Try Hard FC";
+      if (match.awayTeam === "Team Alpha") match.awayTeam = "Techies Try Hard FC";
+      if (match.homeTeam === "Team Beta") match.homeTeam = "Seattle Bros FC";
+      if (match.awayTeam === "Team Beta") match.awayTeam = "Seattle Bros FC";
+    }
+  }
+  assert.deepEqual(
+    historyTeamsInQuestion("has techies try hard played seattle bros before?",history),
+    ["Techies Try Hard FC","Seattle Bros FC"]
+  );
+  const answer = answerRatsHistoryQuestion("has techies try hard played seattle bros before?",history);
+  assert.match(answer.reply,/2 meetings/);
+  assert.equal(historyHeadToHead(history,"Techies Try Hard","Seattle Bros").matches.length,2);
+});

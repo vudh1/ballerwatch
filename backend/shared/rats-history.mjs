@@ -17,6 +17,13 @@ export function normalizeHistoryTeamName(value) {
     .replace(/\s+/g, " ");
 }
 
+// Only strip conventional club suffixes. Arbitrary fuzzy equality is unsafe for stats.
+export function historyTeamKey(value) {
+  return normalizeHistoryTeamName(value)
+    .replace(/(?: (?:football|soccer) club| fc| sc)+$/g, "")
+    .trim();
+}
+
 function seasonSortKey(seasonId) {
   const match = String(seasonId || "").match(/^(winter|spring|summer|fall)-(\d{4})$/i);
   if (!match) return Number.MAX_SAFE_INTEGER;
@@ -58,31 +65,48 @@ function normalizedQuestion(question) {
 }
 
 export function historyTeamsInQuestion(question, history, contextTeams = []) {
-  const names = historyTeamNames(history)
-    .map((name) => ({ name, normalized: normalizeHistoryTeamName(name) }))
-    .filter((item) => item.normalized)
-    .sort((a, b) => b.normalized.length - a.normalized.length);
-
+  const names = historyTeamNames(history);
   const input = normalizedQuestion(question);
-  const matched = [];
-  const matchedNormalized = new Set();
-  for (const item of names) {
-    if (!input.includes(` ${item.normalized} `)) continue;
-    if ([...matchedNormalized].some((value) =>
-      value.includes(item.normalized) || item.normalized.includes(value))) {
-      continue;
+  const items = names.map(name => ({
+    name, exact: normalizeHistoryTeamName(name), alias: historyTeamKey(name),
+  }));
+  // Prefer the longest official name at a given position; then accept club-suffix
+  // aliases only when no longer exact name covers that text.
+  const candidates = [];
+  for (const item of items) {
+    for (const needle of new Set([item.exact, item.alias])) {
+      if (!needle || needle.split(" ").length < 2 && needle !== item.exact) continue;
+      const padded = ` ${needle} `;
+      let at = input.indexOf(padded);
+      while (at >= 0) {
+        candidates.push({ ...item, at, length: needle.length, exactMatch: needle === item.exact });
+        at = input.indexOf(padded, at + 1);
+      }
     }
-    matched.push(item.name);
-    matchedNormalized.add(item.normalized);
   }
+  candidates.sort((a,b) =>
+    Number(b.exactMatch) - Number(a.exactMatch) ||
+    b.length - a.length || a.at - b.at || a.name.localeCompare(b.name));
+  const matched = [];
+  const spans = [];
+  const identities = new Set();
+  for (const candidate of candidates) {
+    if (spans.some(span => candidate.at < span.end && candidate.at + candidate.length > span.start)) continue;
+    if (identities.has(candidate.alias)) continue;
+    const official = items
+      .filter(item => item.alias === candidate.alias)
+      .sort((a,b) => b.exact.length - a.exact.length || a.name.localeCompare(b.name))[0];
+    matched.push({ name: candidate.exactMatch ? candidate.name : official.name, at: candidate.at });
+    identities.add(candidate.alias);
+    spans.push({start: candidate.at, end: candidate.at + candidate.length});
+  }
+  if (matched.length) return matched.sort((a,b) => a.at - b.at).slice(0,2).map(x => x.name);
 
-  if (matched.length) return matched.slice(0, 2);
-
-  const available = new Map(names.map((item) => [item.normalized, item.name]));
+  const available = new Map(items.map(item => [item.exact,item.name]));
   return (Array.isArray(contextTeams) ? contextTeams : [])
-    .map((name) => available.get(normalizeHistoryTeamName(name)))
-    .filter(Boolean)
-    .slice(0, 2);
+    .map(name => available.get(normalizeHistoryTeamName(name)) ||
+      items.find(item => item.alias === historyTeamKey(name))?.name)
+    .filter(Boolean).slice(0,2);
 }
 
 function seasonMatches(history, seasonId = "") {
@@ -118,9 +142,9 @@ export function completedHistoryMatches(history, seasonId = "") {
 }
 
 function teamSide(match, teamName) {
-  const target = normalizeHistoryTeamName(teamName);
-  if (normalizeHistoryTeamName(match?.homeTeam) === target) return "home";
-  if (normalizeHistoryTeamName(match?.awayTeam) === target) return "away";
+  const target = historyTeamKey(teamName);
+  if (historyTeamKey(match?.homeTeam) === target) return "home";
+  if (historyTeamKey(match?.awayTeam) === target) return "away";
   return "";
 }
 
@@ -155,12 +179,12 @@ export function historyRecord(history, teamName, seasonId = "") {
 }
 
 export function historyHeadToHead(history, teamA, teamB, seasonId = "") {
-  const a = normalizeHistoryTeamName(teamA);
-  const b = normalizeHistoryTeamName(teamB);
+  const a = historyTeamKey(teamA);
+  const b = historyTeamKey(teamB);
   const matches = completedHistoryMatches(history, seasonId)
     .filter((match) => {
-      const home = normalizeHistoryTeamName(match.homeTeam);
-      const away = normalizeHistoryTeamName(match.awayTeam);
+      const home = historyTeamKey(match.homeTeam);
+      const away = historyTeamKey(match.awayTeam);
       return (home === a && away === b) || (home === b && away === a);
     })
     .sort((left, right) =>
@@ -182,14 +206,14 @@ export function historyHeadToHead(history, teamA, teamB, seasonId = "") {
 }
 
 function teamSeasonLabels(history, teamName) {
-  const target = normalizeHistoryTeamName(teamName);
+  const target = historyTeamKey(teamName);
   const labels = [];
   for (const season of seasonMatches(history)) {
     const appears = (season?.teams || []).some((team) =>
-      normalizeHistoryTeamName(team?.name) === target) ||
+      historyTeamKey(team?.name) === target) ||
       (season?.matches || []).some((match) =>
-        normalizeHistoryTeamName(match?.homeTeam) === target ||
-        normalizeHistoryTeamName(match?.awayTeam) === target);
+        historyTeamKey(match?.homeTeam) === target ||
+        historyTeamKey(match?.awayTeam) === target);
     if (appears) labels.push(season.label || seasonLabel(season.seasonId));
   }
   return labels;
