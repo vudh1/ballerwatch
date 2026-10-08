@@ -15,13 +15,19 @@ jobs:
     timeout-minutes: 6
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
-      - name: Build repaired history index from public source
+      - name: Advance repaired history crawler against public source
         env:
           TRACKER_STATE_KEY: synthetic-rats-history-smoke-key
-          RATS_HISTORY_FORCE: "true"
           RATS_HISTORY_START_YEAR: "2023"
-        run: node backend/league/history.mjs
-      - name: Verify scored archive coverage without exposing team data
+        shell: bash
+        run: |
+          set -euo pipefail
+          RATS_HISTORY_FORCE=true node backend/league/history.mjs
+          for pass in 2 3; do
+            sleep 3
+            node backend/league/history.mjs
+          done
+      - name: Verify scored incremental archive without exposing team data
         env:
           TRACKER_STATE_KEY: synthetic-rats-history-smoke-key
         run: |
@@ -42,8 +48,11 @@ jobs:
             teamCount: coverage.teamCount,
             matchCount: coverage.matchCount,
             completedMatchCount: coverage.completedMatchCount,
+            pendingSeasonCount: value?.scan?.pendingSeasonIds?.length || 0,
+            unresolvedSeasonCount: value?.scan?.unresolvedSeasonIds?.length || 0,
           }));
-          if (value?.schemaVersion !== 2) process.exit(1);
-          if (!(coverage.seasonCount > 2)) process.exit(1);
+          if (value?.schemaVersion !== 3) process.exit(1);
           if (!(coverage.completedMatchCount > 0)) process.exit(1);
+          if (!(coverage.checkedSeasonCount > 0)) process.exit(1);
+          if (!(coverage.seasonCount > 0)) process.exit(1);
           NODE
