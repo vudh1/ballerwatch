@@ -75,6 +75,8 @@ The source ledger on `main` is authoritative for the newest reviewed version. Th
 - **7.0.25** — Moves RSVP into a full app-width capacity roster sheet and repairs desktop Pickup/League Edit/Delete priority over the right-edge carousel affordance.
 - **7.0.26** — Restores the desktop right waterfall to the full visual card edge while keeping its clickable hit area below the Pickup/League action zone.
 - **7.1.0** — Adds deterministic all-season RATS history to Ask BallerWatch, including team records, season-specific records, prior meetings, head-to-head summaries, and team season history from encrypted indexed public results.
-- **7.1.1** — Repairs RATS record ingestion by parsing the source's score strings, crawling historical seasons incrementally with retries, labeling partial coverage, and improving scheduled privacy-safe answer-review diagnostics.\n- **7.1.3** — Fixes multi-megabyte encrypted RATS history restoration so archive progress and retry state persist across league runs, with explicit diagnostics for source-unavailable seasons.
+- **7.1.1** — Repairs RATS record ingestion by parsing the source's score strings, crawling historical seasons incrementally with retries, labeling partial coverage, and improving scheduled privacy-safe answer-review diagnostics.\n- **7.1.4** — Fixes multi-megabyte encrypted RATS history restoration so archive progress and retry state persist across league runs, with explicit diagnostics for source-unavailable seasons.
 
-- **7.1.3** — Matches FC/SC club-name shorthand in RATS records and head-to-head queries while retaining partial archive-coverage warnings.
+- **7.1.4** — Matches FC/SC club-name shorthand in RATS records and head-to-head queries while retaining partial archive-coverage warnings.
+
+- **7.1.4** — RATS history starts Summer 2023; singular/plural team aliases; match-type Edit hover cue; field-specific Google Maps share links.
