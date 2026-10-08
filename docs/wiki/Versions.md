@@ -75,3 +75,4 @@ The source ledger on `main` is authoritative for the newest reviewed version. Th
 - **7.0.25** — Moves RSVP into a full app-width capacity roster sheet and repairs desktop Pickup/League Edit/Delete priority over the right-edge carousel affordance.
 - **7.0.26** — Restores the desktop right waterfall to the full visual card edge while keeping its clickable hit area below the Pickup/League action zone.
 - **7.1.0** — Adds deterministic all-season RATS history to Ask BallerWatch, including team records, season-specific records, prior meetings, head-to-head summaries, and team season history from encrypted indexed public results.
+- **7.1.1** — Repairs RATS record ingestion by parsing the source's score strings, crawling historical seasons incrementally with retries, labeling partial coverage, and improving scheduled privacy-safe answer-review diagnostics.

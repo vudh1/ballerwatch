@@ -12,6 +12,7 @@ import {
   canRetainPreviousSchedule,
   discoverLatestSeason,
   edgeSignalAggregate,
+  eventScore,
   isTransientSourceError,
   normalize,
   validPreviousSchedule,
@@ -204,6 +205,14 @@ test("source mismatches and malformed schemas fail closed", () => {
   const duplicate = fixtures();
   duplicate.aggregate.events.push(structuredClone(duplicate.aggregate.events[0]));
   assert.throws(() => normalized(duplicate), /game count mismatch|duplicate match identities/i);
+});
+
+test("RATS aggregate score strings map to home and away numeric scores", () => {
+  const event = { score: " 4-0 " };
+  assert.equal(eventScore(event, "home"), 4);
+  assert.equal(eventScore(event, "away"), 0);
+  assert.equal(eventScore({ score: "2–3" }, "home"), 2);
+  assert.equal(eventScore({ score: "2–3" }, "away"), 3);
 });
 
 test("metadata changes fingerprint but score-only changes do not", () => {

@@ -5,7 +5,9 @@ import os from "node:os";
 import path from "node:path";
 
 import {
+  HISTORY_BATCH_SIZE,
   HISTORY_REFRESH_MS,
+  HISTORY_RETRY_MS,
   historyRefreshDue,
   historySeasonIds,
   normalizeHistoryAggregate,
@@ -13,41 +15,88 @@ import {
 } from "../../../backend/league/history.mjs";
 import { decryptState } from "../../../backend/shared/state-crypto.mjs";
 
-test("default RATS history discovery starts at 1990 for broad archive coverage", () => {
-  const ids = historySeasonIds(new Date("1991-06-01T12:00:00Z"));
-  assert.equal(ids[0], "winter-1990");
-  assert.equal(ids.at(-1), "fall-1992");
-});
-
-test("RATS history discovery scans every seasonal slug across the configured year range", () => {
-  const ids = historySeasonIds(new Date("2026-10-07T12:00:00Z"), 2025);
+test("default RATS history discovery uses the source-supported archive window recent-first", () => {
+  const ids = historySeasonIds(new Date("2026-10-07T12:00:00Z"));
   assert.deepEqual(ids.slice(0, 4), [
-    "winter-2025",
-    "spring-2025",
-    "summer-2025",
-    "fall-2025",
+    "fall-2026",
+    "summer-2026",
+    "spring-2026",
+    "winter-2026",
   ]);
   assert.deepEqual(ids.slice(-4), [
-    "winter-2027",
-    "spring-2027",
-    "summer-2027",
-    "fall-2027",
+    "fall-2023",
+    "summer-2023",
+    "spring-2023",
+    "winter-2023",
   ]);
-  assert.equal(ids.length, 12);
+  assert.equal(ids.length, 16);
 });
 
-test("RATS history refresh is daily and treats missing timestamps as stale", () => {
+test("RATS history discovery scans every seasonal slug through the current year", () => {
+  const ids = historySeasonIds(new Date("2026-10-07T12:00:00Z"), 2025);
+  assert.deepEqual(ids.slice(0, 4), [
+    "fall-2026",
+    "summer-2026",
+    "spring-2026",
+    "winter-2026",
+  ]);
+  assert.deepEqual(ids.slice(-4), [
+    "fall-2025",
+    "summer-2025",
+    "spring-2025",
+    "winter-2025",
+  ]);
+  assert.equal(ids.length, 8);
+});
+
+test("RATS history refresh repairs legacy and zero-score archives immediately", () => {
   const now = new Date("2026-10-07T12:00:00Z");
   assert.equal(historyRefreshDue(null, now), true);
   assert.equal(
-    historyRefreshDue({updatedAt: "2026-10-07T00:01:00Z"}, now),
-    false,
+    historyRefreshDue({
+      schemaVersion: 1,
+      updatedAt: now.toISOString(),
+      coverage: {completedMatchCount: 10, complete: true},
+    }, now),
+    true,
   );
   assert.equal(
-    historyRefreshDue(
-      {updatedAt: new Date(now.getTime() - HISTORY_REFRESH_MS - 1).toISOString()},
-      now,
-    ),
+    historyRefreshDue({
+      schemaVersion: 3,
+      updatedAt: now.toISOString(),
+      coverage: {completedMatchCount: 0, complete: true},
+    }, now),
+    true,
+  );
+});
+
+test("complete RATS history refreshes daily while partial coverage retries sooner", () => {
+  const now = new Date("2026-10-07T12:00:00Z");
+  const complete = {
+    schemaVersion: 3,
+    updatedAt: "2026-10-07T00:01:00Z",
+    coverage: {completedMatchCount: 100, complete: true},
+  };
+  assert.equal(historyRefreshDue(complete, now), false);
+  assert.equal(
+    historyRefreshDue({
+      ...complete,
+      updatedAt: new Date(now.getTime() - HISTORY_REFRESH_MS - 1).toISOString(),
+    }, now),
+    true,
+  );
+
+  const partial = {
+    schemaVersion: 3,
+    updatedAt: new Date(now.getTime() - HISTORY_RETRY_MS + 1).toISOString(),
+    coverage: {completedMatchCount: 100, complete: false},
+  };
+  assert.equal(historyRefreshDue(partial, now), false);
+  assert.equal(
+    historyRefreshDue({
+      ...partial,
+      updatedAt: new Date(now.getTime() - HISTORY_RETRY_MS - 1).toISOString(),
+    }, now),
     true,
   );
 });
@@ -65,8 +114,7 @@ test("RATS history normalizes every public team and scored event in an aggregate
         start_time: "20:30:00",
         home_team_name: "Team Alpha",
         away_team_name: "Team Beta",
-        home_score: "4",
-        away_score: 2,
+        score: "4-2",
       },
       {
         id: 43,
@@ -94,7 +142,7 @@ test("RATS history normalizes every public team and scored event in an aggregate
 
 test("RATS history ignores empty unpublished season aggregates", () => {
   assert.equal(
-    normalizeHistoryAggregate("winter-2000", {teams: [], events: []}),
+    normalizeHistoryAggregate("winter-2023", {teams: [], events: []}),
     null,
   );
 });
@@ -129,21 +177,82 @@ test("RATS history builder stores discovered public results only as encrypted ru
           start_time: "20:30:00",
           home_team_name: "Team Alpha",
           away_team_name: "Team Beta",
-          home_score: 2,
-          away_score: 1,
+          score: "2-1",
         }],
       };
     },
   });
 
+  assert.equal(history.schemaVersion, 3);
   assert.equal(history.coverage.seasonCount, 1);
   assert.equal(history.coverage.completedMatchCount, 1);
+  assert.equal(history.coverage.complete, false);
+  assert.equal(history.coverage.requestedSeasonCount, 4);
+  assert.equal(history.coverage.checkedSeasonCount, 1);
+  assert.equal(history.coverage.failedSeasonCount, 3);
+  assert.deepEqual(history.scan.checkedSeasonIds, ["fall-2026"]);
+  assert.equal(history.scan.pendingSeasonIds.length, 3);
+  assert.equal(HISTORY_BATCH_SIZE, 4);
 
   const raw = fs.readFileSync(file, "utf8");
   assert.doesNotMatch(raw, /Team Alpha|Team Beta|fall-2026/);
   const decrypted = decryptState(JSON.parse(raw));
   assert.equal(decrypted.seasons[0].seasonId, "fall-2026");
   assert.equal(decrypted.seasons[0].matches[0].homeScore, 2);
+});
+
+test("RATS history crawler advances pending seasons across runs without bursting", async (t) => {
+  const oldKey = process.env.TRACKER_STATE_KEY;
+  process.env.TRACKER_STATE_KEY = "synthetic-rats-history-crawler-key";
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ballerwatch-rats-crawler-"));
+  const file = path.join(dir, "history.json");
+  const calls = [];
+
+  t.after(() => {
+    if (oldKey == null) delete process.env.TRACKER_STATE_KEY;
+    else process.env.TRACKER_STATE_KEY = oldKey;
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  const callFn = async (_action, { season }) => {
+    calls.push(season);
+    return {
+      teams: [
+        {name: "Team Alpha", day: "Thursday", gender: "Men's", division: "1"},
+        {name: "Team Beta", day: "Thursday", gender: "Men's", division: "1"},
+      ],
+      events: [{
+        id: season,
+        start_date: `${season.endsWith("2026") ? "2026" : "2025"}-10-01`,
+        start_time: "20:30:00",
+        home_team_name: "Team Alpha",
+        away_team_name: "Team Beta",
+        score: "3-2",
+      }],
+    };
+  };
+
+  const first = await refreshRatsHistory({
+    now: new Date("2026-10-07T12:00:00Z"),
+    startYear: 2025,
+    file,
+    force: true,
+    callFn,
+  });
+  assert.equal(calls.length, 4);
+  assert.equal(first.coverage.seasonCount, 4);
+  assert.equal(first.scan.pendingSeasonIds.length, 4);
+
+  const second = await refreshRatsHistory({
+    now: new Date("2026-10-07T12:05:00Z"),
+    startYear: 2025,
+    file,
+    callFn,
+  });
+  assert.equal(calls.length, 8);
+  assert.equal(second.coverage.seasonCount, 8);
+  assert.equal(second.scan.pendingSeasonIds.length, 0);
+  assert.equal(second.coverage.complete, true);
 });
 
 test("league workflow refreshes the encrypted historical index without notifications", () => {

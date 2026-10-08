@@ -130,6 +130,10 @@ export function eventScore(event, side) {
   }
 
   const nested = event.score;
+  if (typeof nested === "string") {
+    const match = nested.match(/^\s*(\d+)\s*[-–—:]\s*(\d+)\s*$/);
+    if (match) return Number(match[side === "home" ? 1 : 2]);
+  }
   if (nested && typeof nested === "object" && !Array.isArray(nested)) {
     for (const key of [side, `${side}_score`, `${side}Score`]) {
       if (key in nested && nested[key] !== null && nested[key] !== "") return nested[key];

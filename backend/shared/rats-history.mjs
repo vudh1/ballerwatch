@@ -203,6 +203,30 @@ function formatMatch(match) {
   const date = String(match?.date || "");
   return `${match.season} · ${date}: ${match.homeTeam} ${match.homeScore}–${match.awayScore} ${match.awayTeam}`;
 }
+function historyCoverageScope(history) {
+  const coverage = history?.coverage || {};
+  const first = coverage.firstSeason ? seasonLabel(coverage.firstSeason) : "";
+  const last = coverage.lastSeason ? seasonLabel(coverage.lastSeason) : "";
+  const range = first && last ? `${first}–${last}` : "";
+  if (coverage.complete === false) {
+    const indexed = Number(coverage.seasonCount || history?.seasons?.length || 0);
+    const requested = Number(coverage.requestedSeasonCount || 0);
+    const count = requested ? `${indexed}/${requested} seasons` : `${indexed} seasons`;
+    return {
+      label: `indexed RATS history (partial${range ? `, ${range}` : ""})`,
+      warning: `History index is still rebuilding: ${count} currently available. This is not an all-time record yet.`,
+    };
+  }
+  return {
+    label: range ? `all discoverable RATS seasons (${range})` : "all discoverable RATS seasons",
+    warning: "",
+  };
+}
+
+function hasAnyScoredHistory(history) {
+  if (Number(history?.coverage?.completedMatchCount || 0) > 0) return true;
+  return completedHistoryMatches(history).length > 0;
+}
 
 function suggestions(question, history) {
   const inputTokens = new Set(normalizeHistoryTeamName(question).split(" ").filter((token) => token.length >= 3));
@@ -223,6 +247,15 @@ export function answerRatsHistoryQuestion(question, history, contextTeams = []) 
     return {
       reply: "RATS historical results are not available yet.",
       teams: [],
+      ready: false,
+    };
+  }
+
+  if (!hasAnyScoredHistory(history)) {
+    return {
+      reply: "RATS historical scores are rebuilding right now. Try again after the next league refresh.",
+      teams: [],
+      ready: false,
     };
   }
 
@@ -231,6 +264,7 @@ export function answerRatsHistoryQuestion(question, history, contextTeams = []) 
     return {
       reply: `I don't have ${seasonLabel(seasonId)} in the RATS history index.`,
       teams: [],
+      ready: true,
     };
   }
 
@@ -242,26 +276,35 @@ export function answerRatsHistoryQuestion(question, history, contextTeams = []) 
         ? `I couldn't match a RATS team name exactly. Possible teams:\n${near.map((name) => `• ${name}`).join("\n")}`
         : "I couldn't match a RATS team name in the historical index.",
       teams: [],
+      ready: true,
     };
   }
 
-  const scope = seasonId ? seasonLabel(seasonId) : "all available RATS seasons";
+  const coverageScope = historyCoverageScope(history);
+  const scope = seasonId ? seasonLabel(seasonId) : coverageScope.label;
+  const coverageWarning = seasonId ? "" : coverageScope.warning;
   if (teams.length >= 2) {
     const h2h = historyHeadToHead(history, teams[0], teams[1], seasonId);
     if (!h2h.matches.length) {
       return {
-        reply: `I found no scored meeting between ${teams[0]} and ${teams[1]} in ${scope}.`,
+        reply: [
+          ...(coverageWarning ? [coverageWarning] : []),
+          `I found no scored meeting between ${teams[0]} and ${teams[1]} in ${scope}.`,
+        ].join("\n"),
         teams: teams.slice(0, 2),
+        ready: true,
       };
     }
     const recent = h2h.matches.slice(-5).reverse();
     return {
       reply: [
+        ...(coverageWarning ? [coverageWarning] : []),
         `${teams[0]} vs ${teams[1]} — ${scope}`,
         `${h2h.matches.length} meeting${h2h.matches.length === 1 ? "" : "s"} · ${teams[0]} ${h2h.winsA}W · ${h2h.draws}D · ${teams[1]} ${h2h.winsB}W`,
         ...recent.map((match) => `• ${formatMatch(match)}`),
       ].join("\n"),
       teams: teams.slice(0, 2),
+      ready: true,
     };
   }
 
@@ -270,27 +313,37 @@ export function answerRatsHistoryQuestion(question, history, contextTeams = []) 
   if (/\b(which|what) seasons?\b|\bseason history\b/.test(lower)) {
     const labels = teamSeasonLabels(history, team);
     return {
-      reply: labels.length
-        ? `${team} appears in ${labels.length} indexed RATS season${labels.length === 1 ? "" : "s"}:\n${labels.map((label) => `• ${label}`).join("\n")}`
-        : `I found no indexed RATS seasons for ${team}.`,
+      reply: [
+        ...(coverageWarning ? [coverageWarning] : []),
+        labels.length
+          ? `${team} appears in ${labels.length} indexed RATS season${labels.length === 1 ? "" : "s"}:\n${labels.map((label) => `• ${label}`).join("\n")}`
+          : `I found no indexed RATS seasons for ${team}.`,
+      ].join("\n"),
       teams: [team],
+      ready: true,
     };
   }
 
   const record = historyRecord(history, team, seasonId);
   if (!record.games) {
     return {
-      reply: `I found ${team} in the RATS history index, but no completed scored matches in ${scope}.`,
+      reply: [
+        ...(coverageWarning ? [coverageWarning] : []),
+        `I found ${team} in the RATS history index, but no completed scored matches in ${scope}.`,
+      ].join("\n"),
       teams: [team],
+      ready: true,
     };
   }
   const seasonCount = seasonId ? 1 : record.seasons.length;
   return {
     reply: [
+      ...(coverageWarning ? [coverageWarning] : []),
       `${team} — ${scope}`,
       `Record: ${formatRecord(record)} across ${record.games} scored match${record.games === 1 ? "" : "es"}`,
       `Goals: ${record.goalsFor} for, ${record.goalsAgainst} against · ${seasonCount} season${seasonCount === 1 ? "" : "s"} with scored results`,
     ].join("\n"),
     teams: [team],
+    ready: true,
   };
 }

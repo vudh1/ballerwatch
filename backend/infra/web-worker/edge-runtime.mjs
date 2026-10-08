@@ -66,11 +66,15 @@ async function discoverSeason(teams, preferred="") {
   throw new Error("No recent RATS season contains all configured teams");
 }
 
-function eventScore(event, side) {
+export function eventScore(event, side) {
   for(const key of [`${side}_score`,`${side}Score`,`${side}_goals`,`${side}Goals`,`score_${side}`,`goals_${side}`]) {
     if(event?.[key] !== undefined && event[key] !== null && event[key] !== "") return event[key];
   }
   const nested=event?.score;
+  if(typeof nested==="string") {
+    const match=nested.match(/^\s*(\d+)\s*[-–—:]\s*(\d+)\s*$/);
+    if(match) return Number(match[side==="home"?1:2]);
+  }
   if(nested && typeof nested==="object") {
     for(const key of [side,`${side}_score`,`${side}Score`]) if(nested[key]!==undefined && nested[key]!==null && nested[key]!=="") return nested[key];
   }

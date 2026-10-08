@@ -44,9 +44,22 @@ export function feedbackQuestionShape(question) {
   }
   if (/\b(?:jersey|kit|uniform|color|colour|wear)\b/.test(lower)) add("jersey");
   if (/\b(?:who|opponent|versus|vs\.?|playing against|play against)\b/.test(lower)) add("opponent");
-  if (/\b(?:time|when|start|kickoff|kick off)\b/.test(lower)) add("time");
+  const timingText = lower.replace(/\ball[- ]time\b/g, "");
+  if (/\b(?:time|when|start|kickoff|kick off)\b/.test(timingText)) add("time");
   if (/\b(?:where|field|location|address|venue)\b/.test(lower)) add("venue");
   if (/\b(?:weather|rain|temperature|forecast)\b/.test(lower)) add("weather");
+  if (/\b(?:record|wins?|losses?|draws?|all[- ]time|historical|history)\b/.test(lower)) {
+    add("historical record");
+  }
+  if (
+    /\b(?:head[ -]?to[ -]?head|h2h|previous meetings?)\b/.test(lower) ||
+    /\b(?:played|met)\b[^?!.]{0,80}\bbefore\b/.test(lower)
+  ) {
+    add("head-to-head");
+  }
+  if (/\b(?:winter|spring|summer|fall)\s+20\d{2}\b/.test(lower)) {
+    add("historical season");
+  }
 
   return facets.slice(0, 4).join(" + ") || "general question";
 }
@@ -56,7 +69,8 @@ export function negativeFeedbackProjection(event = {}) {
     kind: "negative_feedback",
     summary:
       `A ${historyIntentLabel(event.intent)} answer about ${feedbackQuestionShape(event.question)} was explicitly marked wrong.`,
-    reason:
-      "Deterministic privacy-safe feedback fingerprint; no user text is copied into the review projection.",
+    reason: String(event?.intent || "") === "rats_history"
+      ? "Check RATS archive coverage, score parsing, season discovery, and team matching; no user text is copied into the review projection."
+      : "Deterministic privacy-safe feedback fingerprint; no user text is copied into the review projection.",
   };
 }
