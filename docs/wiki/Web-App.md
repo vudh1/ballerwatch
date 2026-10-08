@@ -32,9 +32,13 @@ When the RSVP roster is opened by mouse or touch, closing it clears the temporar
 
 Ask BallerWatch can answer deterministic questions about public Seattle RATS history, including a team's all-time record, a record in a named season, whether two teams have met before, head-to-head summaries with recent scored meetings, and which indexed seasons a team appeared in.
 
-The historical index is built from the same public RATS seasonal aggregate source used by the league watcher. BallerWatch scans the broad seasonal archive, indexes every public team and event it can discover, counts only games with published numeric scores when calculating records, and refreshes the encrypted archive at most once per day. Historical answers do not rely on the AI fallback to guess scores or results.
+The historical index is built from the same public RATS seasonal aggregate source used by the league watcher. The source publishes completed results in a compact score field such as `3-1`; BallerWatch parses that field deterministically, counts only completed scored games when calculating records, and keeps future/unscored events out of W-D-L totals.
 
-The bot keeps up to two matched historical team names in session context so a follow-up such as “what is their record?” can continue the previous history question without storing that conversational context as durable public data.
+Archive discovery runs newest-first with low concurrency and bounded retries. A new archive is not accepted when an unresolved transient season request could make the result incomplete, and a history-refresh failure is isolated from the current league schedule workflow. Answers state the actual indexed-season coverage rather than implying the source contains seasons that were not successfully indexed.
+
+The bot keeps up to two matched historical team names in session context, and the currently displayed League match supplies its team as an additional context hint. A follow-up such as “what is their record?” or “what is this team’s record?” can therefore continue naturally without storing that conversational context as durable public data.
+
+Wrong-answer review remains privacy-minimized. RATS-history feedback is categorized into record, head-to-head, or season-history shapes, with safe failure categories for team-name matching, missing scored-result coverage, or history availability; team names, scores, dates, and exact question text are not copied into the engineering projection.
 
 ## Q&A and feedback
 
