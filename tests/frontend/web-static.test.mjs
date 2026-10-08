@@ -1529,17 +1529,29 @@ test("pickup capacity opens a full-width signed-in RSVP roster without public na
   assert.match(pickupUpdate, /voteOrder:/);
 });
 
-test("share creates Google Maps GPS pins and does not silently share venue-name searches", () => {
+test("share prefers published RATS map links or verified GPS and falls back to Directions lookup", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
   const css = fs.readFileSync("frontend/web/styles.css", "utf8");
   assert.ok(app.includes("www.google.com/maps?q="));
   assert.ok(app.includes("latitude.toFixed(6)"));
   assert.ok(app.includes("longitude.toFixed(6)"));
-  assert.ok(app.includes("GPS coordinates for this field are not available yet"));
+  assert.ok(app.includes("trustedPublishedVenueUrl"));
+  assert.ok(app.includes("gpsFromMapsUrl"));
+  assert.ok(app.includes("Shared field lookup in Google Maps."));
+  assert.ok(app.includes("return { url: googleMapsUrl(query), gps: \"\""));
   assert.ok(app.includes("if (!maps)"));
   assert.ok(worker.includes("webVenueCoordinates(weatherState, weatherById, game)"));
   assert.ok(worker.includes("weatherGame.weatherApproximate !== true"));
   assert.ok(css.includes("right: max(1rem, env(safe-area-inset-right))"));
   assert.ok(css.includes("right: max(0.75rem, env(safe-area-inset-right))"));
+});
+
+test("worker retains RATS source links and respects venue overrides for GPS", () => {
+  const watcher = fs.readFileSync("backend/league/watcher.mjs", "utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
+  assert.match(watcher, /locationUrl: publishedVenueUrl\\(event\\)/);
+  assert.match(watcher, /venueCoordinates: publishedVenueCoordinates\\(event\\)/);
+  assert.match(worker, /locationUrl: game\\?\\.manualOverride \\? ""/);
+  assert.match(worker, /venueCoordinates: game\\?\\.manualOverride \\? null/);
 });
