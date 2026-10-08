@@ -1,0 +1,74 @@
+name: One-time merged branch cleanup
+
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/cleanup-merged-branches.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Prune only unchanged merged and verified superseded branches
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          repo="$GITHUB_REPOSITORY"
+          tag_sha="$(gh api "/repos/$repo/git/ref/tags/v7.1.4" --jq '.object.sha')"
+          live_sha="$(gh api "/repos/$repo/git/ref/heads/production" --jq '.object.sha')"
+          if [ "$tag_sha" != "$live_sha" ]; then
+            echo "::error::Refusing cleanup: production does not match release v7.1.4."
+            exit 1
+          fi
+          cutoff="$(gh api "/repos/$repo/releases/tags/v7.1.4" --jq '.published_at')"
+          gh api --paginate "/repos/$repo/pulls?state=closed&per_page=100" | jq -r --arg cutoff "$cutoff" '.[] | select(.merged_at != null and .merged_at <= $cutoff) | [.head.ref, .head.sha, (.head.repo.full_name // "")] | join("|")' > /tmp/ballerwatch-merged-refs.txt
+          removed=0
+          skipped=0
+          while IFS='|' read -r ref merged_sha head_repo; do
+            case "$ref" in main|production|runtime-state|"") continue ;; esac
+            if [ "$head_repo" != "$repo" ]; then continue; fi
+            actual="$(gh api "/repos/$repo/git/ref/heads/$ref" --jq '.object.sha' 2>/dev/null || true)"
+            if [ -z "$actual" ]; then continue; fi
+            if [ "$actual" != "$merged_sha" ]; then
+              echo "Preserving changed branch: $ref"
+              skipped=$((skipped + 1))
+              continue
+            fi
+            if gh api --method DELETE "/repos/$repo/git/refs/heads/$ref" >/dev/null; then
+              echo "Deleted merged PR branch: $ref"
+              removed=$((removed + 1))
+            else
+              echo "::warning::Unable to delete branch: $ref"
+              skipped=$((skipped + 1))
+            fi
+          done < /tmp/ballerwatch-merged-refs.txt
+
+          if [ "$(gh api "/repos/$repo/pulls/105" --jq '.merged')" = "true" ] && [ "$(gh api "/repos/$repo/pulls/106" --jq '.merged')" = "true" ]; then
+            for spec in "ops/rats-history-rebuild:c1d1e5ae813225696a6214f7262dab171bc00cb4" "release/7.1.1:085ce96689fdefbf3f967392c7ffde2a550fbbce"; do
+              ref="${spec%%:*}"
+              expected="${spec#*:}"
+              actual="$(gh api "/repos/$repo/git/ref/heads/$ref" --jq '.object.sha' 2>/dev/null || true)"
+              if [ "$actual" = "$expected" ]; then
+                if gh api --method DELETE "/repos/$repo/git/refs/heads/$ref" >/dev/null; then
+                  echo "Deleted superseded RATS branch: $ref"
+                  removed=$((removed + 1))
+                else
+                  echo "::warning::Unable to delete superseded branch: $ref"
+                  skipped=$((skipped + 1))
+                fi
+              fi
+            done
+          fi
+          {
+            echo "### Branch cleanup for v7.1.4"
+            echo "- Removed: $removed"
+            echo "- Skipped: $skipped"
+            echo "- Preserved: main, production, runtime-state"
+          } >> "$GITHUB_STEP_SUMMARY"
