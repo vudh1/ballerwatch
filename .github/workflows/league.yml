@@ -19,7 +19,7 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 6
     defaults:
       run:
         working-directory: league
@@ -65,6 +65,13 @@ jobs:
       - name: Fetch and validate league schedules
         if: steps.gate.outputs.should_run == 'true'
         run: /usr/bin/time -f 'leagueWatcherSeconds=%e' node ../backend/league/watcher.mjs
+
+      - name: Refresh RATS historical index when stale
+        if: steps.gate.outputs.should_run == 'true'
+        working-directory: .
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: node backend/league/history.mjs
 
       - name: Compare with applied Calendar snapshot
         if: steps.gate.outputs.should_run == 'true'

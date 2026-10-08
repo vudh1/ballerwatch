@@ -191,6 +191,20 @@ test("web next-game details remain public-safe and prefer the earliest future ga
 });
 
 
+test("RATS history uses raw GitHub reads and a larger encrypted runtime allowance", () => {
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
+
+  assert.match(worker, /application\/vnd\.github\.raw\+json/);
+  assert.match(
+    worker,
+    /path === "league\/state\/history\.json" \? 10_000_000 : 500_000/,
+  );
+  assert.match(
+    worker,
+    /githubRawJsonFile\(env, "league\/state\/history\.json", "runtime-state"\)/,
+  );
+});
+
 test("web slash commands map to read-only intents", () => {
   assert.equal(directIntent("/today"), "today_games");
   assert.equal(directIntent("/next"), "next_game");

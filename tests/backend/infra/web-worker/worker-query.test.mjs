@@ -85,6 +85,18 @@ test("dated league detail questions route locally and return targeted facts", ()
   assert.match(dateGameAnswer(snapshot(), "2099-10-05", "what time?"), /7:00 PM/);
 });
 
+test("RATS record and head-to-head questions route to historical data", () => {
+  assert.equal(directIntent("what is the record of Team Alpha?"), "rats_history");
+  assert.equal(
+    directIntent("has Team Alpha played Team Beta before?"),
+    "rats_history",
+  );
+  assert.equal(
+    directIntent("Team Alpha head-to-head with Team Beta"),
+    "rats_history",
+  );
+});
+
 test("natural pickup-specific date questions stay pickup-scoped", () => {
   assert.equal(directIntent("am i in for Thursday pickup?"), "pickup_status");
   assert.equal(directIntent("how many spots are left Thursday?"), "pickup_status");

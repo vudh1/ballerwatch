@@ -2,6 +2,7 @@
  * Canonical runtime-file scopes shared by GitHub workflows and the BallerWatch web Worker.
  *
  * Documentation baseline: v2.4.0. Keeping this list in one module prevents state-path drift.
+ * Updated v7.1.0: includes the encrypted all-season RATS historical-results index.
  */
 
 export const RUNTIME_SCOPES = Object.freeze({
@@ -32,6 +33,7 @@ export const RUNTIME_SCOPES = Object.freeze({
     "league/state/teams.json",
     "league/state/schedule.json",
     "league/state/today.json",
+    "league/state/history.json",
     "league/state/calendar-snapshot.json",
     "league/state/edge-signal.json",
     "league/state/notify.json",

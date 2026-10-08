@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, Calendar sync, and quick answers into one installable app.
 
-**Current source version: 7.0.26**
+**Current source version: 7.1.0**
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
 
@@ -17,7 +17,7 @@ BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS leag
 - Choose account-level notification categories and keep the unread count synchronized to the installed app badge on supported devices.
 - Get allowed Web Push reminders and real schedule-change notifications.
 - Open **Inbox** and **Settings** from the top-right notification bell and gear.
-- Ask read-only questions such as `/next`, `What time is Thursday?`, or `What games are next week?`.
+- Ask read-only questions such as `/next`, `What time is Thursday?`, `What is Team X’s RATS record?`, or `Have Team A and Team B played before?`.
 - Sign in with separate user accounts and revocable sessions.
 - For administrators: manage users, monitored RATS teams, reversible match overrides/deletes, and app promotion.
 - Keep real RATS schedule changes synchronized to Google Calendar.
@@ -40,6 +40,7 @@ BallerWatch 7 turns the PWA into a more complete account-backed app experience:
 - **Notification layering:** Notification details return to Inbox as a true modal, keeping the notification surface above the dashboard until it is actually closed.
 - **Launch experience:** the cinematic intro owns the first browser paint on a fresh session, preventing the dashboard from flashing underneath it before the animation starts.
 - **Original stadium music:** the optional music toggle now drives a self-contained Web Audio football anthem with percussion, claps, brass-like stabs, bass, and an original celebratory hook; no third-party audio files are bundled.
+- **RATS history:** Ask BallerWatch uses a deterministic encrypted index of public RATS season results to answer team records, season history, and head-to-head questions across discoverable seasons.
 
 Signed-out use still works: local read/delete state and anonymous Web Push remain available, and local notification state is migrated into the account after a successful sign-in.
 

@@ -66,6 +66,18 @@ const INTENT_INDEX = Object.freeze([
     ],
   },
   {
+    intent: "rats_history",
+    phrases: [
+      "team record", "what is the record", "all time record", "head to head", "head-to-head",
+      "h2h", "played before", "met before", "previous meetings", "historical record",
+      "rats history", "season history", "how many times have they played",
+    ],
+    tags: [
+      "record", "history", "historical", "played", "before", "meeting", "meetings",
+      "head", "h2h", "wins", "losses", "draws", "beat", "beaten", "season",
+    ],
+  },
+  {
     intent: "league_teams",
     phrases: ["league teams", "teams monitored", "which teams", "what teams", "teams are you watching"],
     tags: ["league", "team", "teams", "monitor", "monitored", "watching"],

@@ -35,6 +35,8 @@ Workers KV and Cloudflare Cron Triggers are intentionally disabled.
 
 The source tree is organized as `frontend/` and `backend/`. Runtime-state document names intentionally retain stable paths such as `pickup/state/feed.json` and `league/state/schedule.json`. This keeps encrypted storage compatibility independent from source-code organization.
 
+RATS historical Q&A uses `league/state/history.json`, a complete encrypted runtime-state document built from public seasonal RATS aggregates. The normal league workflow refreshes it only when stale; the Worker reads the encrypted index separately from the live schedule snapshot so dashboard hydration is not coupled to the potentially larger history archive.
+
 ## Authentication
 
 The PWA uses username/password sign-in. First-time bootstrap or forgotten-password recovery is performed by a repository administrator through **Reset web user password** and the temporary `BALLERWATCH_RECOVERY_PASSWORD` secret.
