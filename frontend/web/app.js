@@ -3601,6 +3601,8 @@ els.form.addEventListener("submit", async (event) => {
               return [];
             }
           })(),
+          currentLeagueTeam:
+            currentNextGame?.kind === "league" ? String(currentNextGame.team || "") : "",
         },
       }),
     });
