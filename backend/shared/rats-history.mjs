@@ -24,14 +24,6 @@ export function historyTeamKey(value) {
     .trim();
 }
 
-function teamIdentity(value, history) {
-  const exact = normalizeHistoryTeamName(value);
-  const base = historyTeamKey(value);
-  const aliases = historyTeamNames(history).filter(name => historyTeamKey(name) === base);
-  // If distinct names coexist, treat the suffix-only variants as one club.
-  return aliases.length ? base : exact;
-}
-
 function seasonSortKey(seasonId) {
   const match = String(seasonId || "").match(/^(winter|spring|summer|fall)-(\d{4})$/i);
   if (!match) return Number.MAX_SAFE_INTEGER;
@@ -246,7 +238,7 @@ function historyCoverageScope(history) {
     const count = requested ? `${indexed}/${requested} seasons` : `${indexed} seasons`;
     return {
       label: `indexed RATS history (partial${range ? `, ${range}` : ""})`,
-      warning: `RATS history coverage is incomplete: ${count} currently available. This is not an all-time record yet.`,
+      warning: `History index is still rebuilding: ${count} currently available. This is not an all-time record yet.`,
     };
   }
   return {
@@ -305,7 +297,7 @@ export function answerRatsHistoryQuestion(question, history, contextTeams = []) 
     const near = suggestions(question, history);
     return {
       reply: near.length
-        ? `I couldn't confidently identify the RATS team. Possible teams:\n${near.map((name) => `• ${name}`).join("\n")}`
+        ? `I couldn't match a RATS team name exactly. Possible teams:\n${near.map((name) => `• ${name}`).join("\n")}`
         : "I couldn't match a RATS team name in the historical index.",
       teams: [],
       ready: true,
