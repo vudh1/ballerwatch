@@ -291,6 +291,69 @@ function quoteLikePython(value) {
     .replace(/'/g, "%27");
 }
 
+// RATS fields may carry a published venue/navigation link in addition to the
+// exported Location Name. Keep only recognized public map/RATS URLs.
+export function validPublishedVenueUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw || raw.length > 1200) return "";
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:" || url.username || url.password) return "";
+    const host = url.hostname.toLowerCase();
+    const google = /^([a-z0-9-]+\\.)?google\\.[a-z.]+$/.test(host) &&
+      (url.pathname.startsWith("/maps") || host.startsWith("maps."));
+    const shortMap = host === "maps.app.goo.gl" || host === "goo.gl" && url.pathname.startsWith("/maps");
+    const rats = host === "seattlerats.org" || host === "www.seattlerats.org";
+    return google || shortMap || rats ? url.href : "";
+  } catch {
+    return "";
+  }
+}
+
+export function publishedVenueUrl(event = {}) {
+  const venue = event?.venue && typeof event.venue === "object" ? event.venue : {};
+  const fields = [
+    event.location_url, event.locationUrl, event.location_link, event.locationLink,
+    event.maps_url, event.mapsUrl, event.map_url, event.mapUrl,
+    event.google_maps_url, event.googleMapsUrl,
+    event.venue_url, event.venueUrl, event.directions_url, event.directionsUrl,
+    venue.url, venue.maps_url, venue.google_maps_url, venue.map_url,
+  ];
+  for (const value of fields) {
+    const url = validPublishedVenueUrl(value);
+    if (url) return url;
+  }
+  for (const text of [event.location, event.notes]) {
+    const urls = String(text || "").match(/https:\/\/[^\s<>"']+/g) || [];
+    for (const raw of urls) {
+      const url = validPublishedVenueUrl(raw.replace(/[),.;]+$/, ""));
+      if (url) return url;
+    }
+  }
+  return "";
+}
+
+export function publishedVenueCoordinates(event = {}) {
+  const venue = event?.venue && typeof event.venue === "object" ? event.venue : {};
+  const pairs = [
+    [event.latitude, event.longitude],
+    [event.lat, event.lng],
+    [event.lat, event.lon],
+    [event.location_latitude, event.location_longitude],
+    [venue.latitude, venue.longitude],
+    [venue.lat, venue.lng],
+    [venue.lat, venue.lon],
+  ];
+  for (const [lat, lon] of pairs) {
+    if (lat == null || lon == null || lat === "" || lon === "") continue;
+    const latitude = Number(lat), longitude = Number(lon);
+    if (Number.isFinite(latitude) && Number.isFinite(longitude) &&
+        Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180 &&
+        !(latitude === 0 && longitude === 0)) return { latitude, longitude };
+  }
+  return null;
+}
+
 export function normalize(
   seasonId,
   aggregate,
@@ -442,6 +505,8 @@ export function normalize(
         endEstimated: !publishedEnd,
         timezone: TZ,
         location: event.location || null,
+        locationUrl: publishedVenueUrl(event),
+        venueCoordinates: publishedVenueCoordinates(event),
         fieldNotes: event.notes || null,
         jerseyColor: ownColor || null,
         opponentJerseyColor: otherColor || null,
@@ -450,9 +515,9 @@ export function normalize(
         division,
         season: seasonLabel(seasonId),
         sourceUrl: SOURCE,
-        mapUrl: event.location
+        mapUrl: publishedVenueUrl(event) || (event.location
           ? "https://maps.google.com/?q=" + quoteLikePython(event.location)
-          : null,
+          : null),
         eventType: row["Event Type"],
       };
       game.calendarFingerprint = calendarFingerprint(game);
