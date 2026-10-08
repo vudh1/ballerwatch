@@ -6,6 +6,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import {
   auditRuntimeStateBranch,
+  RUNTIME_GIT_MAX_BUFFER_BYTES,
   pullRuntimeState,
   purgeRuntimeState,
   pushRuntimeState,
@@ -74,6 +75,51 @@ test("purged branch boots clean without restoring encrypted stale backup or call
   );
 });
 
+
+
+test("runtime-state pulls encrypted history files larger than the default child-process buffer", async t => {
+  const cwd = process.cwd();
+  const env = process.env;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ballerwatch-runtime-large-history-"));
+  t.after(() => {
+    process.chdir(cwd);
+    process.env = env;
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+  process.env = { ...env, TRACKER_STATE_KEY: "synthetic-large-history-key" };
+
+  const git = (args, at = dir) =>
+    execFileSync("git", args, { cwd: at, stdio: "pipe", maxBuffer: RUNTIME_GIT_MAX_BUFFER_BYTES });
+  git(["init", "--bare", "remote.git"]);
+  git(["clone", "remote.git", "work"]);
+  process.chdir(path.join(dir, "work"));
+  const run = args => git(args, process.cwd());
+  run(["config", "user.name", "Fixture"]);
+  run(["config", "user.email", "fixture@example.invalid"]);
+  run(["checkout", "-b", "runtime-state"]);
+
+  const marker = "x".repeat(2 * 1024 * 1024);
+  fs.mkdirSync("league/state", { recursive: true });
+  fs.writeFileSync(
+    "league/state/history.json",
+    JSON.stringify(encryptState({
+      schemaVersion: 3,
+      coverage: { seasonCount: 14, completedMatchCount: 16713 },
+      marker,
+    })) + "\n",
+  );
+  run(["add", "."]);
+  run(["commit", "-m", "large encrypted history fixture"]);
+  run(["push", "origin", "runtime-state"]);
+  fs.rmSync("league/state/history.json");
+
+  assert.equal(await pullRuntimeState("league"), 1);
+  const stored = JSON.parse(fs.readFileSync("league/state/history.json", "utf8"));
+  const history = decryptState(stored);
+  assert.equal(history.coverage.seasonCount, 14);
+  assert.equal(history.coverage.completedMatchCount, 16713);
+  assert.equal(history.marker.length, marker.length);
+});
 
 test("legacy runtime files migrate to complete encrypted envelopes before push", async t => {
   const cwd = process.cwd();

@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.1.1",
+  "currentVersion": "7.1.2",
   "releases": [
+    {
+      "version": "7.1.2",
+      "date": "2026-10-08",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Finish persistent RATS historical score rebuild",
+      "webAnnouncement": "RATS historical scores now persist and resume correctly across league runs, with source-unavailable seasons tracked explicitly instead of restarting the archive build.",
+      "changes": [
+        "Raises the Git runtime read buffer so the multi-megabyte encrypted RATS history index can be restored from runtime-state instead of being mistaken for a missing file.",
+        "Preserves incremental scan progress and retry counters across league runs, preventing the historical crawler from rebuilding the same recent seasons on every watcher cycle.",
+        "Adds privacy-safe season-level diagnostics and separates pending seasons from retry-exhausted unresolved seasons so upstream archive failures are visible without exposing private runtime data.",
+        "Adds regression coverage that restores and decrypts an encrypted history file larger than the default child-process buffer."
+      ]
+    },
     {
       "version": "7.1.1",
       "date": "2026-10-08",

@@ -20,10 +20,13 @@ import {
 } from "./state-crypto.mjs";
 
 const STATE_BRANCH = String(process.env.BALLERWATCH_STATE_BRANCH || "runtime-state").trim();
+export const RUNTIME_GIT_MAX_BUFFER_BYTES = 32 * 1024 * 1024;
+
 function git(args, options = {}) {
   return execFileSync("git", args, {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
+    maxBuffer: RUNTIME_GIT_MAX_BUFFER_BYTES,
     ...options,
   });
 }
