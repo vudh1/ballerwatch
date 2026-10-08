@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.1.0",
+  "currentVersion": "7.1.1",
   "releases": [
+    {
+      "version": "7.1.1",
+      "date": "2026-10-08",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Repair RATS historical records and review diagnostics",
+      "webAnnouncement": "Ask BallerWatch now parses published RATS score strings correctly, rebuilds history incrementally without overloading the source, and avoids presenting partial archives as all-time records.",
+      "changes": [
+        "Parses the RATS aggregate `score` field (for example `4-0`) into home/away scores so record and head-to-head calculations use real published results.",
+        "Replaces the burst all-years crawler with a bounded incremental archive scan over the source-supported recent history window, preserving progress across league runs and retrying transient timeouts/502s.",
+        "Marks incomplete history coverage as partial and explicitly warns that a rebuilding index is not an all-time record; zero-score archives fail closed instead of returning misleading records.",
+        "Improves privacy-safe answer-review summaries so RATS failures are categorized as historical-record, head-to-head, or historical-season issues and groups review signals by intent.",
+        "Schedules the safe engineering review every six hours so newly rejected bot answers surface without requiring a source-code change."
+      ]
+    },
     {
       "version": "7.1.0",
       "date": "2026-10-07",
