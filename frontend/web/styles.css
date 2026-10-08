@@ -4331,7 +4331,7 @@ body:has(.chat-dialog[open]) {
 .chat-launcher {
   position: fixed;
   z-index: 80;
-  left: max(1rem, env(safe-area-inset-left));
+  right: max(1rem, env(safe-area-inset-right));
   bottom: max(1rem, calc(env(safe-area-inset-bottom) + 0.65rem));
   width: 3.45rem;
   height: 3.45rem;
@@ -4464,7 +4464,7 @@ body:has(.chat-dialog[open]) {
   }
 
   .chat-launcher {
-    left: max(0.75rem, env(safe-area-inset-left));
+    right: max(0.75rem, env(safe-area-inset-right));
     bottom: max(0.75rem, calc(env(safe-area-inset-bottom) + 0.5rem));
     width: 3.15rem;
     height: 3.15rem;
