@@ -1956,27 +1956,17 @@ function googleMapsUrl(query) {
 }
 
 function shareVenueMapsUrl(game) {
-  const provided = String(game?.googleMapsUrl || game?.mapsUrl || "").trim();
-  if (/^https:\/\/(?:www\.)?(?:google\.[a-z.]+\/maps\/|maps\.app\.goo\.gl\/)/i.test(provided)) {
-    return provided;
-  }
-  const placeId = String(game?.googlePlaceId || game?.placeId || "").trim();
-  const query = [game?.location, game?.address].filter(Boolean).join(", ") ||
-    String(game?.mapsQuery || "").trim();
-  if (placeId && query) {
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}&query_place_id=${encodeURIComponent(placeId)}`;
-  }
-  const latitude = Number(game?.latitude ?? game?.lat);
-  const longitude = Number(game?.longitude ?? game?.lon ?? game?.lng);
-  if (game?.latitude != null && game?.longitude != null &&
-      Number.isFinite(latitude) && Number.isFinite(longitude)) {
-    return `https://www.google.com/maps?q=${latitude},${longitude}`;
-  }
-  // Google's canonical place URL requires a real Places ID. Do not invent one.
-  // A place/address path is a more useful field-specific share fallback.
-  return query
-    ? `https://www.google.com/maps/place/${encodeURIComponent(query)}/`
-    : "";
+  // Calendar responses contain actual venue geocoding, never the approximate
+  // Seattle-wide coordinates used only as a weather forecast fallback.
+  const point = game?.coordinates;
+  if (!point || game?.weatherApproximate === true) return "";
+  const latitude = Number(point.latitude);
+  const longitude = Number(point.longitude);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude) ||
+      Math.abs(latitude) > 90 || Math.abs(longitude) > 180 ||
+      (latitude === 0 && longitude === 0)) return "";
+  // Coordinate-based Google Maps pin, not a venue-name search result.
+  return `https://www.google.com/maps?q=${latitude.toFixed(6)},${longitude.toFixed(6)}`;
 }
 
 function weatherGlyph(code) {
@@ -2085,7 +2075,7 @@ function spotlightModel(game, label = "NEXT GAME") {
     rsvp: game.kind === "pickup" ? String(game.rsvpUrl || "") : "",
     rsvpConfirmed: game.kind === "pickup" && confirmedRsvpDates.has(game.date),
     rsvpWaitlisted: game.kind === "pickup" && waitlistedRsvpDates.has(game.date),
-    directions: googleMapsUrl(game.mapsQuery),
+    directions: shareVenueMapsUrl(game) || googleMapsUrl(game.mapsQuery),
     actionsHidden: false,
   };
 }
@@ -3291,7 +3281,14 @@ async function resetMatchOverride() {
 async function shareNextGame() {
   if (!currentNextGame) return;
   const maps = shareVenueMapsUrl(currentNextGame);
-  const text = currentNextGame.shareText || currentNextGame.title || "BallerWatch game";
+  if (!maps) {
+    els.nextGameHint.textContent = "GPS coordinates for this field are not available yet. Try Directions for a venue lookup.";
+    return;
+  }
+  const text = [
+    currentNextGame.shareText || currentNextGame.title || "BallerWatch game",
+    `📍 GPS: ${maps.split("q=")[1]}`,
+  ].join("\n");
 
   try {
     if (navigator.share) {
