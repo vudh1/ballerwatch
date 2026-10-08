@@ -18,10 +18,11 @@ import {
 import { decryptState, encryptState } from "../shared/state-crypto.mjs";
 
 export const HISTORY_FILE = "league/state/history.json";
-export const HISTORY_START_YEAR = 1990;
+export const HISTORY_START_YEAR = 2023;
 export const HISTORY_REFRESH_MS = 24 * 60 * 60 * 1000;
+export const HISTORY_RETRY_MS = 30 * 60 * 1000;
 const SEASONS = ["winter", "spring", "summer", "fall"];
-const HISTORY_CONCURRENCY = 8;
+const HISTORY_CONCURRENCY = 2;
 
 function cleanText(value) {
   return String(value ?? "").trim().replace(/\s+/g, " ");
@@ -43,9 +44,13 @@ export function historySeasonIds(
   now = new Date(),
   startYear = HISTORY_START_YEAR,
 ) {
-  const endYear = now.getUTCFullYear() + 1;
+  const endYear = now.getUTCFullYear();
   const ids = [];
-  for (let year = Math.max(1990, Number(startYear) || HISTORY_START_YEAR); year <= endYear; year += 1) {
+  for (
+    let year = Math.max(HISTORY_START_YEAR, Number(startYear) || HISTORY_START_YEAR);
+    year <= endYear;
+    year += 1
+  ) {
     for (const season of SEASONS) ids.push(`${season}-${year}`);
   }
   return ids;
@@ -56,8 +61,16 @@ export function historyRefreshDue(
   now = new Date(),
   maxAgeMs = HISTORY_REFRESH_MS,
 ) {
+  if (!history || Number(history?.schemaVersion || 0) < 2) return true;
+  if (Number(history?.coverage?.completedMatchCount || 0) <= 0) return true;
+
   const updated = Date.parse(String(history?.updatedAt || ""));
-  return !Number.isFinite(updated) || now.getTime() - updated >= maxAgeMs;
+  if (!Number.isFinite(updated)) return true;
+
+  const interval = history?.coverage?.complete === false
+    ? Math.min(maxAgeMs, HISTORY_RETRY_MS)
+    : maxAgeMs;
+  return now.getTime() - updated >= interval;
 }
 
 function teamDivision(team) {
@@ -150,7 +163,10 @@ function writeEncryptedHistory(history, file = HISTORY_FILE) {
   fs.writeFileSync(file, JSON.stringify(encryptState(history), null, 2) + "\n");
 }
 
-function coverageFor(seasons) {
+function coverageFor(
+  seasons,
+  { requestedSeasonCount = seasons.length, failedSeasonIds = [] } = {},
+) {
   const teams = new Set();
   let matchCount = 0;
   let completedMatchCount = 0;
@@ -164,6 +180,11 @@ function coverageFor(seasons) {
     }
   }
   return {
+    complete: failedSeasonIds.length === 0,
+    requestedSeasonCount,
+    checkedSeasonCount: Math.max(0, requestedSeasonCount - failedSeasonIds.length),
+    failedSeasonCount: failedSeasonIds.length,
+    unresolvedSeasonIds: [...failedSeasonIds].sort(),
     firstSeason: seasons[0]?.seasonId || "",
     lastSeason: seasons.at(-1)?.seasonId || "",
     seasonCount: seasons.length,
@@ -175,8 +196,8 @@ function coverageFor(seasons) {
 
 async function defaultHistoryCall(action, params) {
   return call(action, params, {
-    maxAttempts: 1,
-    timeoutMs: 10_000,
+    maxAttempts: 2,
+    timeoutMs: 15_000,
   });
 }
 
@@ -219,6 +240,7 @@ export async function refreshRatsHistory({
   );
   const seasonIds = historySeasonIds(now, startYear);
   let successfulFetches = 0;
+  const failedSeasonIds = [];
 
   const scanned = await mapWithConcurrency(
     seasonIds,
@@ -230,12 +252,17 @@ export async function refreshRatsHistory({
         successfulFetches += 1;
         return normalized || previousBySeason.get(seasonId) || null;
       } catch {
+        failedSeasonIds.push(seasonId);
         return previousBySeason.get(seasonId) || null;
       }
     },
   );
 
   if (!successfulFetches) {
+    if (previous?.seasons?.length) {
+      console.log("::warning::RATS history refresh failed; retained prior encrypted archive.");
+      return previous;
+    }
     throw new Error("RATS historical refresh could not read any public season aggregate");
   }
 
@@ -247,19 +274,23 @@ export async function refreshRatsHistory({
   }
 
   const history = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     sourceUrl: SOURCE,
     sourceApi: API,
     scanStartYear: startYear,
-    scanEndYear: now.getUTCFullYear() + 1,
+    scanEndYear: now.getUTCFullYear(),
     updatedAt: now.toISOString(),
-    coverage: coverageFor(seasons),
+    coverage: coverageFor(seasons, {
+      requestedSeasonCount: seasonIds.length,
+      failedSeasonIds,
+    }),
     seasons,
   };
   writeEncryptedHistory(history, file);
   console.log(
     `Refreshed RATS history: ${history.coverage.seasonCount} seasons, ` +
-    `${history.coverage.teamCount} teams, ${history.coverage.completedMatchCount} scored matches.`,
+    `${history.coverage.teamCount} teams, ${history.coverage.completedMatchCount} scored matches, ` +
+    `${history.coverage.failedSeasonCount} unresolved seasons.`,
   );
   return history;
 }
