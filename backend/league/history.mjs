@@ -276,6 +276,35 @@ export async function refreshRatsHistory({
   } else {
     console.warn("::warning::RATS history resume state could not be read; starting a fresh scan.");
   }
+  // Upgrade pre-Summer-2023 archives without re-downloading already indexed games.
+  // These two seasons never existed in the RATS public archive.
+  const expectedIds = new Set(historySeasonIds(now, startYear));
+  if (!force && previous?.schemaVersion >= 3 &&
+      (previous?.scan?.unresolvedSeasonIds || []).some((id) => !expectedIds.has(id)) &&
+      (previous?.scan?.pendingSeasonIds || []).every((id) => expectedIds.has(id))) {
+    const scan = previous.scan;
+    const retainedSeasons = (previous.seasons || []).filter((season) => expectedIds.has(season.seasonId));
+    const unresolvedSeasonIds = (scan.unresolvedSeasonIds || []).filter((id) => expectedIds.has(id));
+    const pendingSeasonIds = (scan.pendingSeasonIds || []).filter((id) => expectedIds.has(id));
+    const checkedSeasonIds = (scan.checkedSeasonIds || []).filter((id) => expectedIds.has(id));
+    const failedSeasonIds = [...new Set([...pendingSeasonIds, ...unresolvedSeasonIds])];
+    const migrated = {
+      ...previous,
+      updatedAt: now.toISOString(),
+      scan: { ...scan, pendingSeasonIds, unresolvedSeasonIds, checkedSeasonIds,
+        attemptCounts: Object.fromEntries(
+          Object.entries(scan.attemptCounts || {}).filter(([id]) => expectedIds.has(id))) },
+      coverage: coverageFor(retainedSeasons, {
+        requestedSeasonCount: expectedIds.size,
+        checkedSeasonCount: checkedSeasonIds.length,
+        failedSeasonIds,
+      }),
+      seasons: retainedSeasons,
+    };
+    writeEncryptedHistory(migrated, file);
+    console.log(`RATS history coverage migrated: ${migrated.coverage.seasonCount}/${expectedIds.size} valid seasons.`);
+    return migrated;
+  }
   if (!force && previous && !historyRefreshDue(previous, now)) {
     console.log(
       `RATS history index is fresh (${previous?.coverage?.seasonCount || 0} seasons); skipped refresh.`,
