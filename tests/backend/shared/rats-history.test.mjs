@@ -208,7 +208,7 @@ test("shortened FC club names resolve and aggregate scores across variants", () 
   assert.deepEqual(historyTeamsInQuestion("Seattle Bros record?", history), ["Seattle Bros"]);
   assert.deepEqual(historyTeamsInQuestion("Seattle Bros FC record?", history), ["Seattle Bros FC"]);
   const result = answerRatsHistoryQuestion("Seattle Bros record?", history);
-  assert.match(result.reply, /1-1-1 \\(W-D-L\\)/);
+  assert.match(result.reply, /1-1-1 \(W-D-L\)/);
   assert.equal(historyRecord(history,"Seattle Bros FC").games,3);
 });
 
