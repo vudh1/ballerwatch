@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.1.0",
+  "currentVersion": "7.1.1",
   "releases": [
+    {
+      "version": "7.1.1",
+      "date": "2026-10-08",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Reliable RATS records and history review",
+      "webAnnouncement": "Ask BallerWatch now reads RATS score strings correctly, rebuilds a more complete historical archive, and gives clearer record/head-to-head review diagnostics.",
+      "changes": [
+        "Fixes historical records and head-to-head results by parsing the public RATS aggregate score field in its real compact string format, such as 3-1, instead of expecting separate home/away score fields.",
+        "Rebuilds the encrypted history archive with a new schema, newest-first season discovery, lower concurrency, bounded retries, and fail-closed protection against publishing a partial archive after unresolved transient source failures.",
+        "Keeps historical refresh isolated from the live league schedule so an archive rebuild problem cannot block current RATS schedule, Calendar, or notification processing.",
+        "Makes history answers state their actual indexed-season coverage and lets phrases such as 'this team' use the currently displayed league match as context.",
+        "Improves privacy-safe answer reviews by distinguishing team-record, head-to-head, season-history, team-name-matching, missing-score-coverage, and history-availability failures without exposing team names, scores, dates, or user text."
+      ]
+    },
     {
       "version": "7.1.0",
       "date": "2026-10-07",
