@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.1.4",
+  "currentVersion": "7.1.5",
   "releases": [
+    {
+      "version": "7.1.5",
+      "date": "2026-10-08",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Real GPS field sharing and right-hand bot launcher",
+      "webAnnouncement": "Share now sends the field’s real geocoded GPS pin as a Google Maps link, and Ask BallerWatch floats in the bottom-right. Fields without verified coordinates are clearly identified instead of sharing a misleading search link.",
+      "changes": [
+        "Moves the floating Ask BallerWatch button to the bottom-right, respecting the iPhone safe area.",
+        "Exposes geocoded venue latitude/longitude from the existing encrypted weather cache to the calendar app.",
+        "Shares Google Maps links with actual GPS coordinates, not a field-name search; includes coordinates in the share text.",
+        "Never substitutes the Seattle-wide forecast fallback for an actual soccer field’s GPS pin.",
+        "Uses cached venue GPS for distant league matches when available and adds tests for changed fields and missing coordinates."
+      ]
+    },
     {
       "version": "7.1.4",
       "date": "2026-10-08",
