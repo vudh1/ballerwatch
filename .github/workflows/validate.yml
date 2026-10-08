@@ -47,6 +47,32 @@ jobs:
             node --check "$file"
           done < <(find . \( -name '*.mjs' -o -name '*.js' \) -not -path './node_modules/*' -print0)
 
+      - name: Inspect public RATS aggregate schema
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const endpoint = "https://service.rats.team.op-dev.io/get-aggregate";
+          const season = "fall-2026";
+          const response = await fetch(endpoint, {
+            method: "POST",
+            headers: {"content-type":"application/json","user-agent":"ballerwatch-schema-review/1.0"},
+            body: JSON.stringify({season}),
+            signal: AbortSignal.timeout(15000),
+          });
+          if (!response.ok) throw new Error(`RATS schema probe HTTP ${response.status}`);
+          const data = await response.json();
+          const teams = Array.isArray(data?.teams) ? data.teams : [];
+          const events = Array.isArray(data?.events) ? data.events : [];
+          const allTeamKeys = [...new Set(teams.flatMap((item) => Object.keys(item || {})))].sort();
+          const allEventKeys = [...new Set(events.flatMap((item) => Object.keys(item || {})))].sort();
+          const statPattern = /win|loss|draw|tie|point|goal|score|played|record|standing/i;
+          console.log("RATS_TEAM_KEYS=" + JSON.stringify(allTeamKeys));
+          console.log("RATS_TEAM_STAT_KEYS=" + JSON.stringify(allTeamKeys.filter((key) => statPattern.test(key))));
+          console.log("RATS_EVENT_KEYS=" + JSON.stringify(allEventKeys));
+          console.log("RATS_EVENT_STAT_KEYS=" + JSON.stringify(allEventKeys.filter((key) => statPattern.test(key))));
+          console.log("RATS_COUNTS=" + JSON.stringify({teams: teams.length, events: events.length}));
+          NODE
+
       - name: Run JavaScript unit tests
         shell: bash
         run: |
