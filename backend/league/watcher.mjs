@@ -300,7 +300,7 @@ export function validPublishedVenueUrl(value) {
     const url = new URL(raw);
     if (url.protocol !== "https:" || url.username || url.password) return "";
     const host = url.hostname.toLowerCase();
-    const google = /^([a-z0-9-]+\\.)?google\\.[a-z.]+$/.test(host) &&
+    const google = (host === "google.com" || host.endsWith(".google.com")) &&
       (url.pathname.startsWith("/maps") || host.startsWith("maps."));
     const shortMap = host === "maps.app.goo.gl" || host === "goo.gl" && url.pathname.startsWith("/maps");
     const rats = host === "seattlerats.org" || host === "www.seattlerats.org";
