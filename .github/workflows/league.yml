@@ -68,6 +68,7 @@ jobs:
 
       - name: Refresh RATS historical index when stale
         if: steps.gate.outputs.should_run == 'true'
+        continue-on-error: true
         working-directory: .
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
