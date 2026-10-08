@@ -32,13 +32,15 @@ When the RSVP roster is opened by mouse or touch, closing it clears the temporar
 
 Ask BallerWatch can answer deterministic questions about public Seattle RATS history, including a team's all-time record, a record in a named season, whether two teams have met before, head-to-head summaries with recent scored meetings, and which indexed seasons a team appeared in.
 
-The historical index is built from the same public RATS seasonal aggregate source used by the league watcher. BallerWatch scans the broad seasonal archive, indexes every public team and event it can discover, counts only games with published numeric scores when calculating records, and refreshes the encrypted archive at most once per day. Historical answers do not rely on the AI fallback to guess scores or results.
+The historical index is built from the same public RATS seasonal aggregate source used by the league watcher. Published scores arrive as compact strings such as `4-0`; BallerWatch parses those into home/away results before calculating records. Archive discovery runs in small persistent batches across normal league refreshes so transient source timeouts or 502s do not collapse the whole index. While coverage is incomplete, the bot labels the result as partial and never presents it as an all-time record.
 
 The bot keeps up to two matched historical team names in session context so a follow-up such as “what is their record?” can continue the previous history question without storing that conversational context as durable public data.
 
 ## Q&A and feedback
 
 Read-only Q&A is served through the Worker. Successful answers receive a short-lived feedback token scoped to that exact question/answer. Marking an answer wrong does not grant Settings access.
+
+Privacy-safe engineering review now distinguishes RATS historical-record, head-to-head, and season-history failures without copying team names or raw questions into the review projection. The safe summary workflow runs on a six-hour cadence.
 
 ## Web Push
 
