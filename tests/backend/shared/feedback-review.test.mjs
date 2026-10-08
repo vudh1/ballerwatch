@@ -39,5 +39,5 @@ test("RATS answer reviews classify missing scored-result coverage", () => {
   });
 
   assert.match(review.summary, /missing scored-result coverage/);
-  assert.doesNotMatch(review.reason, /user text|team names|scores|dates|identifiers/i);
+  assert.doesNotMatch(JSON.stringify(review), /Team Alpha|3-1|2026-10-01/);
 });
