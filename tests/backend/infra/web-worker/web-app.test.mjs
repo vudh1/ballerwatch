@@ -831,18 +831,18 @@ test("calendar shares verified venue GPS from geocoded weather, never city-wide 
       address: "", coordinates: gps, weatherApproximate: false }],
   };
   const current = webCalendarDetails(snapshot, weatherState, 14, "2099-10-01");
-  assert.deepEqual(current.games[0].coordinates, gps);
+  assert.deepEqual(current.games.find(game => game.id === "league:v2:gps-fixture").coordinates, gps);
 
   const fallback = webCalendarDetails(snapshot, {games:[{
     ...weatherState.games[0], weatherApproximate: true,
     coordinates: {latitude:47.6062, longitude:-122.3321},
   }]}, 14, "2099-10-01");
-  assert.equal(fallback.games[0].coordinates, null);
+  assert.equal(fallback.games.find(game => game.id === "league:v2:gps-fixture").coordinates, null);
 
   const changed = structuredClone(snapshot);
   changed.league.teams[0].matches[0].location = "Different Field";
   const stale = webCalendarDetails(changed, weatherState, 14, "2099-10-01");
-  assert.equal(stale.games[0].coordinates, null);
+  assert.equal(stale.games.find(game => game.id === "league:v2:gps-fixture").coordinates, null);
 });
 
 test("future league matches reuse cached GPS for the exact venue beyond weather horizon", () => {
@@ -855,6 +855,6 @@ test("future league matches reuse cached GPS for the exact venue beyond weather 
   const cached = {latitude:47.612345,longitude:-122.324567};
   const state = {locations:{"synthetic soccer field, seattle, wa, usa":cached}};
   const calendar = webCalendarDetails(snapshot,state,14,"2099-10-01");
-  assert.deepEqual(calendar.games[0].coordinates,cached);
-  assert.equal(calendar.games[0].weatherApproximate,false);
+  assert.deepEqual(calendar.games.find(game => game.id === "league:v2:far-gps").coordinates,cached);
+  assert.equal(calendar.games.find(game => game.id === "league:v2:far-gps").weatherApproximate,false);
 });
