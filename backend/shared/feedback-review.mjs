@@ -44,7 +44,8 @@ export function feedbackQuestionShape(question) {
   }
   if (/\b(?:jersey|kit|uniform|color|colour|wear)\b/.test(lower)) add("jersey");
   if (/\b(?:who|opponent|versus|vs\.?|playing against|play against)\b/.test(lower)) add("opponent");
-  if (/\b(?:time|when|start|kickoff|kick off)\b/.test(lower)) add("time");
+  const timingText = lower.replace(/\ball[- ]time\b/g, "");
+  if (/\b(?:time|when|start|kickoff|kick off)\b/.test(timingText)) add("time");
   if (/\b(?:where|field|location|address|venue)\b/.test(lower)) add("venue");
   if (/\b(?:weather|rain|temperature|forecast)\b/.test(lower)) add("weather");
   if (/\b(?:record|wins?|losses?|draws?|all[- ]time|historical|history)\b/.test(lower)) {
