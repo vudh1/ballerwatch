@@ -51,7 +51,10 @@ export function feedbackQuestionShape(question) {
   if (/\b(?:record|wins?|losses?|draws?|all[- ]time|historical|history)\b/.test(lower)) {
     add("historical record");
   }
-  if (/\b(?:head[ -]?to[ -]?head|h2h|previous meetings?|played before|met before)\b/.test(lower)) {
+  if (
+    /\b(?:head[ -]?to[ -]?head|h2h|previous meetings?)\b/.test(lower) ||
+    /\b(?:played|met)\b[^?!.]{0,80}\bbefore\b/.test(lower)
+  ) {
     add("head-to-head");
   }
   if (/\b(?:winter|spring|summer|fall)\s+20\d{2}\b/.test(lower)) {
