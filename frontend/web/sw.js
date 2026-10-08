@@ -2,14 +2,14 @@ const CACHE = "ballerwatch-v7-1-1-shell";
 const SHELL = [
   "./",
   "./index.html",
-  "./launch-prepaint.js?v=7.1.5",
-  "./styles.css?v=7.1.5",
-  "./app.js?v=7.1.5",
+  "./launch-prepaint.js?v=7.1.6",
+  "./styles.css?v=7.1.6",
+  "./app.js?v=7.1.6",
   "./lib/client.js",
   "./lib/notification-state.js",
-  "./manifest.webmanifest?v=7.1.5",
-  "./icon.svg?v=7.1.5",
-  "./apple-touch-icon.png?v=7.1.5",
+  "./manifest.webmanifest?v=7.1.6",
+  "./icon.svg?v=7.1.6",
+  "./apple-touch-icon.png?v=7.1.6",
 ];
 const API = "https://ballerwatch-web.vudhone.workers.dev";
 const APP_URL = "https://vudh1.github.io/ballerwatch/";
