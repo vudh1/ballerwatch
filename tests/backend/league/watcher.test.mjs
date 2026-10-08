@@ -15,6 +15,9 @@ import {
   eventScore,
   isTransientSourceError,
   normalize,
+  publishedVenueUrl,
+  publishedVenueCoordinates,
+  validPublishedVenueUrl,
   validPreviousSchedule,
 } from "../../../backend/league/watcher.mjs";
 
@@ -288,4 +291,30 @@ test("only verified last-good schedules can mask transient outages", () => {
   assert.equal(canRetainPreviousSchedule(new HttpError(503), previous), true);
   assert.equal(canRetainPreviousSchedule(new Error("schema"), previous), false);
   assert.equal(canRetainPreviousSchedule(new HttpError(503), null), false);
+});
+
+test("RATS published field URLs and venue coordinates survive schedule normalization", () => {
+  const data = fixtures();
+  const event = data.aggregate.events[0];
+  event.location_url = "https://www.google.com/maps/place/Synthetic+Soccer+Field/@47.617,-122.322,17z";
+  event.venue = {latitude: 47.617, longitude: -122.322};
+  const game = normalized(data).teams[0].matches[0];
+  assert.equal(game.locationUrl, event.location_url);
+  assert.equal(game.mapUrl, event.location_url);
+  assert.deepEqual(game.venueCoordinates, {latitude: 47.617, longitude: -122.322});
+  assert.equal(publishedVenueUrl({location_link:"https://seattlerats.org/venue/soccer-field/"}),
+    "https://seattlerats.org/venue/soccer-field/");
+  assert.deepEqual(publishedVenueCoordinates({lat:"47.6",lon:"-122.3"}),
+    {latitude:47.6,longitude:-122.3});
+});
+
+test("RATS venue URL validation prevents arbitrary links and invalid coordinates", () => {
+  assert.equal(validPublishedVenueUrl("https://google.com.evil.example/maps/"), "");
+  assert.equal(validPublishedVenueUrl("https://maps.google.com.evil.example/?q=x"), "");
+  assert.equal(validPublishedVenueUrl("https://evil.example/venue/field"), "");
+  assert.equal(validPublishedVenueUrl("http://www.google.com/maps?q=47,-122"), "");
+  assert.equal(publishedVenueUrl({notes:"Directions https://maps.app.goo.gl/abc123"}),
+    "https://maps.app.goo.gl/abc123");
+  assert.equal(publishedVenueCoordinates({latitude:0,longitude:0}), null);
+  assert.equal(publishedVenueCoordinates({latitude:991,longitude:0}), null);
 });
