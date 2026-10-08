@@ -21,6 +21,7 @@ function safeReview(value) {
     generatedAt: String(value?.generatedAt || ""),
     signals: signals.slice(-100).map((signal) => ({
       kind: String(signal?.kind || "").slice(0, 40),
+      intent: String(signal?.intent || "").slice(0, 60),
       summary: String(signal?.summary || "").slice(0, 220),
       reason: String(signal?.reason || "").slice(0, 220),
     })),
@@ -49,7 +50,7 @@ if (summaryPath) {
     "## Review signals",
     review.signals.length
       ? review.signals.map((signal) =>
-          `- **${signal.kind || "unknown"}** — ${signal.summary || "No summary"}${signal.reason ? ` — ${signal.reason}` : ""}`
+          `- **${signal.kind || "unknown"}**${signal.intent ? ` (${signal.intent})` : ""} — ${signal.summary || "No summary"}${signal.reason ? ` — ${signal.reason}` : ""}`
         ).join("\n")
       : "- No active review signals.",
     "",
