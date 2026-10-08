@@ -238,6 +238,8 @@ test("league next-game details expose a two-hour time window from normalized end
   }, new Date("2099-10-10T13:00:00-07:00"));
 
   assert.equal(details.kind, "league");
+  assert.equal(details.team, "Team Alpha");
+  assert.equal(details.opponent, "Team Beta");
   assert.equal(details.time, "7:30 PM–9:30 PM");
   assert.equal(details.sourceUpdatedAt, "2099-10-01T13:45:00-07:00");
 });
