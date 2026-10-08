@@ -2560,6 +2560,39 @@ function webCalendarGameId(kind, value) {
   return `${kind}:${cleanText(value, 300)}`;
 }
 
+// Public venue GPS from the weather job's real venue geocoding cache.
+// Never expose the Seattle fallback: it describes the forecast, not a field.
+function verifiedVenuePoint(value) {
+  if (!value || typeof value !== "object") return null;
+  const latitude = Number(value.latitude);
+  const longitude = Number(value.longitude);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude) ||
+      Math.abs(latitude) > 90 || Math.abs(longitude) > 180 ||
+      (latitude === 0 && longitude === 0)) return null;
+  return { latitude, longitude };
+}
+
+export function webVenueCoordinates(weatherState, weatherById, game) {
+  const weatherGame = weatherById.get(game.id);
+  const sameVenue = weatherGame &&
+    cleanText(weatherGame.location, 200).toLowerCase() === cleanText(game.location, 200).toLowerCase() &&
+    cleanText(weatherGame.address, 200).toLowerCase() === cleanText(game.address, 200).toLowerCase();
+  if (sameVenue && weatherGame.weatherApproximate !== true) {
+    const point = verifiedVenuePoint(weatherGame.coordinates);
+    if (point) return point;
+  }
+
+  // Historic and future matches share the same public venue coordinates even
+  // if only near-term games have weather predictions.
+  const query = game.address || (game.kind === "free_pickup"
+    ? (game.mapsQuery || game.location)
+    : game.location ? `${game.location}, Seattle, WA, USA` : game.mapsQuery);
+  const key = cleanText(query, 260).toLowerCase();
+  const cached = weatherState?.locations?.[key];
+  if (cached && !cached.failedAt) return verifiedVenuePoint(cached);
+  return null;
+}
+
 export function webCalendarDetails(
   snapshot,
   weatherState = {},
@@ -2574,6 +2607,10 @@ export function webCalendarDetails(
       .map((game) => [cleanText(game?.id, 320), game]),
   );
   const games = [];
+  const addGps = (game) => {
+    const coordinates = webVenueCoordinates(weatherState, weatherById, game);
+    return { ...game, coordinates };
+  };
 
   for (const date of availableDates(safe)) {
     if (date < startDate || date > endDate) continue;
@@ -2585,7 +2622,7 @@ export function webCalendarDetails(
     ) continue;
     const id = facts.id || webCalendarGameId("pickup", facts.sourceDate || date);
     const sourceWeather = weatherById.get(id)?.weather || null;
-    games.push({
+    games.push(addGps({
       id,
       kind: "pickup",
       date,
@@ -2615,7 +2652,7 @@ export function webCalendarDetails(
       weather: sourceWeather,
       weatherApproximate: Boolean(weatherById.get(id)?.weatherApproximate),
       weatherStale: Boolean(weatherById.get(id)?.weatherStale),
-    });
+    }));
   }
 
   for (const game of freePickupMatches(safe, startDate)) {
@@ -2625,7 +2662,7 @@ export function webCalendarDetails(
     if (!date || date < startDate || !gameIsUpcoming(date, startTime, endTime, 120, now)) continue;
     const id = game.id;
     const sourceWeather = weatherById.get(id)?.weather || null;
-    games.push({
+    games.push(addGps({
       id,
       kind: "free_pickup",
       date,
@@ -2653,7 +2690,7 @@ export function webCalendarDetails(
       weather: sourceWeather,
       weatherApproximate: Boolean(weatherById.get(id)?.weatherApproximate),
       weatherStale: Boolean(weatherById.get(id)?.weatherStale),
-    });
+    }));
   }
 
   for (const game of leagueMatches(safe)) {
@@ -2670,7 +2707,7 @@ export function webCalendarDetails(
       [team, opponent, date, startTime].join("|");
     const id = game.overrideId || webCalendarGameId("league", key);
     const sourceWeather = weatherById.get(id)?.weather || null;
-    games.push({
+    games.push(addGps({
       id,
       kind: "league",
       date,
@@ -2699,7 +2736,7 @@ export function webCalendarDetails(
       weather: sourceWeather,
       weatherApproximate: Boolean(weatherById.get(id)?.weatherApproximate),
       weatherStale: Boolean(weatherById.get(id)?.weatherStale),
-    });
+    }));
   }
 
   games.sort((left, right) =>
