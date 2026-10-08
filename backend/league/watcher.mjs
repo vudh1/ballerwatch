@@ -317,7 +317,9 @@ export function publishedVenueUrl(event = {}) {
     event.maps_url, event.mapsUrl, event.map_url, event.mapUrl,
     event.google_maps_url, event.googleMapsUrl,
     event.venue_url, event.venueUrl, event.directions_url, event.directionsUrl,
-    venue.url, venue.maps_url, venue.google_maps_url, venue.map_url,
+    event.location_href, event.locationHref, event.venue_link, event.venueLink,
+    event.field_url, event.fieldUrl, event.field_map_url, event.fieldMapUrl,
+    venue.url, venue.maps_url, venue.google_maps_url, venue.map_url, venue.link,
   ];
   for (const value of fields) {
     const url = validPublishedVenueUrl(value);
