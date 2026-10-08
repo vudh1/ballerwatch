@@ -773,7 +773,7 @@ test("footer contains no secondary messaging shortcut", () => {
 });
 
 
-test("BallerWatch 7.1.1 uses the top-right bell and gear without bottom app tabs", () => {
+test("BallerWatch 7.1.2 uses the top-right bell and gear without bottom app tabs", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   assert.match(html, /id="settings-button"/);
