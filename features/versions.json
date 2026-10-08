@@ -14,7 +14,8 @@
         "Exposes geocoded venue latitude/longitude from the existing encrypted weather cache to the calendar app.",
         "Shares Google Maps links with actual GPS coordinates, not a field-name search; includes coordinates in the share text.",
         "Never substitutes the Seattle-wide forecast fallback for an actual soccer field’s GPS pin.",
-        "Uses cached venue GPS for distant league matches when available and adds tests for changed fields and missing coordinates."
+        "Uses cached venue GPS for distant league matches when available and adds tests for changed fields and missing coordinates.",
+        "GPS pins use venue geocoding already cached from OpenStreetMap; the share URL opens the coordinates in Google Maps without pretending to have a Google Place ID."
       ]
     },
     {
