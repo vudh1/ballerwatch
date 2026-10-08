@@ -15,6 +15,7 @@ import {
   TZ,
   zonedIso,
 } from "./rats-utils.mjs";
+import { ratsEventScore } from "../shared/rats-score.mjs";
 
 const SEASONS = ["winter", "spring", "summer", "fall"];
 export const SOURCE = "https://seattlerats.org/standings";
@@ -117,38 +118,7 @@ export function teamMatches(aggregate, teamName) {
 }
 
 export function eventScore(event, side) {
-  const explicit = [
-    `${side}_score`,
-    `${side}Score`,
-    `${side}_goals`,
-    `${side}Goals`,
-    `score_${side}`,
-    `goals_${side}`,
-  ];
-  for (const key of explicit) {
-    if (key in event && event[key] !== null && event[key] !== "") return event[key];
-  }
-
-  const nested = event.score;
-  if (nested && typeof nested === "object" && !Array.isArray(nested)) {
-    for (const key of [side, `${side}_score`, `${side}Score`]) {
-      if (key in nested && nested[key] !== null && nested[key] !== "") return nested[key];
-    }
-  }
-
-  for (const [key, value] of Object.entries(event)) {
-    const normalized = String(key).toLocaleLowerCase("en-US").replace(/[^a-z0-9]/g, "");
-    if (
-      normalized.includes(side) &&
-      (normalized.includes("score") || normalized.includes("goal")) &&
-      value !== null &&
-      value !== "" &&
-      ["string", "number"].includes(typeof value)
-    ) {
-      return value;
-    }
-  }
-  return null;
+  return ratsEventScore(event, side);
 }
 
 export function isTransientSourceError(error) {
