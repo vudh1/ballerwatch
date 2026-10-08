@@ -21,8 +21,9 @@ export const HISTORY_FILE = "league/state/history.json";
 export const HISTORY_START_YEAR = 2023;
 export const HISTORY_REFRESH_MS = 24 * 60 * 60 * 1000;
 export const HISTORY_RETRY_MS = 30 * 60 * 1000;
+export const HISTORY_BATCH_SIZE = 4;
+export const HISTORY_MAX_ATTEMPTS_PER_SEASON = 3;
 const SEASONS = ["winter", "spring", "summer", "fall"];
-const HISTORY_CONCURRENCY = 2;
 
 function cleanText(value) {
   return String(value ?? "").trim().replace(/\s+/g, " ");
@@ -45,13 +46,10 @@ export function historySeasonIds(
   startYear = HISTORY_START_YEAR,
 ) {
   const endYear = now.getUTCFullYear();
+  const floor = Math.max(HISTORY_START_YEAR, Number(startYear) || HISTORY_START_YEAR);
   const ids = [];
-  for (
-    let year = Math.max(HISTORY_START_YEAR, Number(startYear) || HISTORY_START_YEAR);
-    year <= endYear;
-    year += 1
-  ) {
-    for (const season of SEASONS) ids.push(`${season}-${year}`);
+  for (let year = endYear; year >= floor; year -= 1) {
+    for (const season of [...SEASONS].reverse()) ids.push(`${season}-${year}`);
   }
   return ids;
 }
@@ -61,7 +59,10 @@ export function historyRefreshDue(
   now = new Date(),
   maxAgeMs = HISTORY_REFRESH_MS,
 ) {
-  if (!history || Number(history?.schemaVersion || 0) < 2) return true;
+  if (!history || Number(history?.schemaVersion || 0) < 3) return true;
+  if (Array.isArray(history?.scan?.pendingSeasonIds) && history.scan.pendingSeasonIds.length) {
+    return true;
+  }
   if (Number(history?.coverage?.completedMatchCount || 0) <= 0) return true;
 
   const updated = Date.parse(String(history?.updatedAt || ""));
@@ -165,7 +166,11 @@ function writeEncryptedHistory(history, file = HISTORY_FILE) {
 
 function coverageFor(
   seasons,
-  { requestedSeasonCount = seasons.length, failedSeasonIds = [] } = {},
+  {
+    requestedSeasonCount = seasons.length,
+    checkedSeasonCount = seasons.length,
+    failedSeasonIds = [],
+  } = {},
 ) {
   const teams = new Set();
   let matchCount = 0;
@@ -182,7 +187,7 @@ function coverageFor(
   return {
     complete: failedSeasonIds.length === 0,
     requestedSeasonCount,
-    checkedSeasonCount: Math.max(0, requestedSeasonCount - failedSeasonIds.length),
+    checkedSeasonCount,
     failedSeasonCount: failedSeasonIds.length,
     unresolvedSeasonIds: [...failedSeasonIds].sort(),
     firstSeason: seasons[0]?.seasonId || "",
@@ -196,27 +201,57 @@ function coverageFor(
 
 async function defaultHistoryCall(action, params) {
   return call(action, params, {
-    maxAttempts: 2,
+    maxAttempts: 1,
     timeoutMs: 15_000,
   });
 }
 
-async function mapWithConcurrency(values, limit, mapper) {
-  const results = new Array(values.length);
-  let cursor = 0;
+function normalizedScanState(previous, seasonIds, { force = false } = {}) {
+  const previousScan = Number(previous?.schemaVersion || 0) >= 3 && previous?.scan
+    ? previous.scan
+    : null;
+  if (force || !previousScan) {
+    return {
+      pendingSeasonIds: [...seasonIds],
+      checkedSeasonIds: [],
+      unresolvedSeasonIds: [],
+      attemptCounts: {},
+    };
+  }
 
-  async function worker() {
-    while (cursor < values.length) {
-      const index = cursor;
-      cursor += 1;
-      results[index] = await mapper(values[index], index);
+  const allowed = new Set(seasonIds);
+  const checked = new Set(
+    (previousScan.checkedSeasonIds || []).filter((seasonId) => allowed.has(seasonId)),
+  );
+  const unresolved = new Set(
+    (previousScan.unresolvedSeasonIds || []).filter((seasonId) => allowed.has(seasonId)),
+  );
+  let pending = (previousScan.pendingSeasonIds || [])
+    .filter((seasonId) => allowed.has(seasonId));
+  const known = new Set([...checked, ...unresolved, ...pending]);
+  pending.push(...seasonIds.filter((seasonId) => !known.has(seasonId)));
+
+  if (!pending.length) {
+    if (previous?.coverage?.complete === false && unresolved.size) {
+      pending = [...unresolved];
+      unresolved.clear();
+    } else {
+      pending = [...seasonIds];
+      checked.clear();
+      unresolved.clear();
     }
   }
 
-  await Promise.all(
-    Array.from({ length: Math.min(limit, values.length) }, () => worker()),
-  );
-  return results;
+  const attemptCounts = {};
+  for (const [seasonId, count] of Object.entries(previousScan.attemptCounts || {})) {
+    if (allowed.has(seasonId)) attemptCounts[seasonId] = Number(count) || 0;
+  }
+  return {
+    pendingSeasonIds: pending,
+    checkedSeasonIds: [...checked],
+    unresolvedSeasonIds: [...unresolved],
+    attemptCounts,
+  };
 }
 
 export async function refreshRatsHistory({
@@ -239,53 +274,77 @@ export async function refreshRatsHistory({
       .map((season) => [season.seasonId, season]),
   );
   const seasonIds = historySeasonIds(now, startYear);
-  let successfulFetches = 0;
-  const failedSeasonIds = [];
-
-  const scanned = await mapWithConcurrency(
-    seasonIds,
-    HISTORY_CONCURRENCY,
-    async (seasonId) => {
-      try {
-        const aggregate = await callFn("get-aggregate", { season: seasonId });
-        const normalized = normalizeHistoryAggregate(seasonId, aggregate);
-        successfulFetches += 1;
-        return normalized || previousBySeason.get(seasonId) || null;
-      } catch {
-        failedSeasonIds.push(seasonId);
-        return previousBySeason.get(seasonId) || null;
-      }
-    },
+  const batchSize = Math.max(
+    1,
+    Math.min(
+      Number(process.env.RATS_HISTORY_BATCH_SIZE || HISTORY_BATCH_SIZE) || HISTORY_BATCH_SIZE,
+      seasonIds.length || 1,
+    ),
   );
+  const scan = normalizedScanState(previous, seasonIds, { force });
+  const pending = [...scan.pendingSeasonIds];
+  const checked = new Set(scan.checkedSeasonIds);
+  const unresolved = new Set(scan.unresolvedSeasonIds);
+  const attemptCounts = { ...scan.attemptCounts };
+  const seasonById = new Map(previousBySeason);
+  const batch = pending.splice(0, batchSize);
+  let successfulFetches = 0;
 
-  if (!successfulFetches) {
-    if (previous?.seasons?.length) {
-      console.log("::warning::RATS history refresh failed; retained prior encrypted archive.");
-      return previous;
+  for (const seasonId of batch) {
+    try {
+      const aggregate = await callFn("get-aggregate", { season: seasonId });
+      const normalized = normalizeHistoryAggregate(seasonId, aggregate);
+      successfulFetches += 1;
+      checked.add(seasonId);
+      unresolved.delete(seasonId);
+      delete attemptCounts[seasonId];
+      if (normalized) seasonById.set(seasonId, normalized);
+      else seasonById.delete(seasonId);
+    } catch {
+      const attempts = (Number(attemptCounts[seasonId]) || 0) + 1;
+      if (attempts >= HISTORY_MAX_ATTEMPTS_PER_SEASON) {
+        unresolved.add(seasonId);
+        delete attemptCounts[seasonId];
+      } else {
+        attemptCounts[seasonId] = attempts;
+        pending.push(seasonId);
+      }
     }
-    throw new Error("RATS historical refresh could not read any public season aggregate");
   }
 
-  const seasons = scanned
-    .filter(Boolean)
+  const allowedSeasons = new Set(seasonIds);
+  const seasons = [...seasonById.values()]
+    .filter((season) => allowedSeasons.has(season?.seasonId))
     .sort((a, b) => seasonOrder(a.seasonId) - seasonOrder(b.seasonId));
-  if (!seasons.length) {
-    throw new Error("RATS historical refresh found no published seasons");
-  }
 
+  const failedSeasonIds = [...new Set([...pending, ...unresolved])];
   const history = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     sourceUrl: SOURCE,
     sourceApi: API,
     scanStartYear: startYear,
     scanEndYear: now.getUTCFullYear(),
     updatedAt: now.toISOString(),
+    scan: {
+      pendingSeasonIds: pending,
+      checkedSeasonIds: [...checked].sort(),
+      unresolvedSeasonIds: [...unresolved].sort(),
+      attemptCounts,
+    },
     coverage: coverageFor(seasons, {
       requestedSeasonCount: seasonIds.length,
+      checkedSeasonCount: checked.size,
       failedSeasonIds,
     }),
     seasons,
   };
+
+  if (!successfulFetches && !seasons.length) {
+    writeEncryptedHistory(history, file);
+    console.log("::warning::RATS history scan has no usable season yet; continuing next run.");
+    return history;
+  }
+
   writeEncryptedHistory(history, file);
   console.log(
     `Refreshed RATS history: ${history.coverage.seasonCount} seasons, ` +
