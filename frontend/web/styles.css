@@ -4826,3 +4826,32 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
   }
 }
 
+
+/* Desktop affordance: the match-type pill becomes an Edit cue on hover/focus. */
+@media (hover: hover) and (pointer: fine) {
+  .match-card-menu-trigger:not([hidden]) { position: relative; }
+  .match-card-menu-trigger:not([hidden])::after {
+    content: "✎ Edit";
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    opacity: 0;
+    transform: translateY(2px);
+    transition: opacity 160ms ease, transform 160ms ease;
+    pointer-events: none;
+  }
+  .match-card-menu-trigger:not([hidden]) > span {
+    transition: opacity 160ms ease;
+  }
+  .match-card-menu-trigger:not([hidden]):is(:hover, :focus-visible) {
+    filter: brightness(1.15);
+  }
+  .match-card-menu-trigger:not([hidden]):is(:hover, :focus-visible) > span {
+    opacity: 0;
+  }
+  .match-card-menu-trigger:not([hidden]):is(:hover, :focus-visible)::after {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
