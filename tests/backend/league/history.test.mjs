@@ -158,6 +158,10 @@ test("league workflow refreshes the encrypted historical index without notificat
   const paths = fs.readFileSync("backend/shared/runtime-paths.mjs", "utf8");
 
   assert.match(workflow, /Refresh RATS historical index when stale/);
+  assert.match(
+    workflow,
+    /Refresh RATS historical index when stale[\s\S]*continue-on-error:\s*true/,
+  );
   assert.match(workflow, /node backend\/league\/history\.mjs/);
   assert.match(workflow, /TRACKER_STATE_KEY:/);
   assert.doesNotMatch(
