@@ -217,6 +217,6 @@ test("no score alert for missing scores or hidden matches", () => {
   }]), "");
   assert.equal(buildScoreText([{
     match: {team:"Team Alpha", opponent:"Team Beta", teamScore:1,opponentScore:0,
-      overrideId:"fixture-42"},
-  }], {hiddenMatches: {"fixture-42": true}}), "");
+      key:"v2:fixture-42"},
+  }], {hiddenMatches: {"league:v2:fixture-42": {label:"Hidden"}}}), "");
 });
