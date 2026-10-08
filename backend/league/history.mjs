@@ -262,6 +262,17 @@ export async function refreshRatsHistory({
   startYear = Number(process.env.RATS_HISTORY_START_YEAR || HISTORY_START_YEAR),
 } = {}) {
   const previous = readEncryptedHistory(file);
+  if (previous) {
+    console.log(
+      `RATS history resume: schema ${Number(previous.schemaVersion || 0)}, ` +
+      `${Number(previous?.coverage?.seasonCount || previous?.seasons?.length || 0)} seasons, ` +
+      `${previous?.scan?.pendingSeasonIds?.length || 0} pending, ` +
+      `${previous?.scan?.unresolvedSeasonIds?.length || 0} unresolved, ` +
+      `${Object.keys(previous?.scan?.attemptCounts || {}).length} retry counters.`,
+    );
+  } else {
+    console.warn("::warning::RATS history resume state could not be read; starting a fresh scan.");
+  }
   if (!force && previous && !historyRefreshDue(previous, now)) {
     console.log(
       `RATS history index is fresh (${previous?.coverage?.seasonCount || 0} seasons); skipped refresh.`,
@@ -300,8 +311,18 @@ export async function refreshRatsHistory({
       delete attemptCounts[seasonId];
       if (normalized) seasonById.set(seasonId, normalized);
       else seasonById.delete(seasonId);
-    } catch {
+    } catch (error) {
       const attempts = (Number(attemptCounts[seasonId]) || 0) + 1;
+      const status = Number(error?.status || error?.cause?.status || 0);
+      const detail = status
+        ? `HTTP ${status}`
+        : String(error?.code || error?.name || error?.message || "unknown error")
+          .replace(/\s+/g, " ")
+          .slice(0, 120);
+      console.warn(
+        `::warning::RATS history fetch failed for ${seasonId}: ${detail} ` +
+        `(attempt ${attempts}/${HISTORY_MAX_ATTEMPTS_PER_SEASON})`,
+      );
       if (attempts >= HISTORY_MAX_ATTEMPTS_PER_SEASON) {
         unresolved.add(seasonId);
         delete attemptCounts[seasonId];
@@ -349,7 +370,8 @@ export async function refreshRatsHistory({
   console.log(
     `Refreshed RATS history: ${history.coverage.seasonCount} seasons, ` +
     `${history.coverage.teamCount} teams, ${history.coverage.completedMatchCount} scored matches, ` +
-    `${history.coverage.failedSeasonCount} unresolved seasons.`,
+    `${history.scan.pendingSeasonIds.length} pending seasons, ` +
+    `${history.scan.unresolvedSeasonIds.length} unresolved seasons.`,
   );
   return history;
 }
