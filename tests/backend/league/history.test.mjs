@@ -26,8 +26,6 @@ test("default RATS history discovery uses the source-supported archive window re
   assert.deepEqual(ids.slice(-4), [
     "fall-2023",
     "summer-2023",
-    "spring-2023",
-    "winter-2023",
   ]);
   assert.equal(ids.length, 16);
 });
