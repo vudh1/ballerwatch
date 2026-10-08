@@ -47,16 +47,38 @@ export function feedbackQuestionShape(question) {
   if (/\b(?:time|when|start|kickoff|kick off)\b/.test(lower)) add("time");
   if (/\b(?:where|field|location|address|venue)\b/.test(lower)) add("venue");
   if (/\b(?:weather|rain|temperature|forecast)\b/.test(lower)) add("weather");
+  if (/\b(?:head[ -]?to[ -]?head|h2h|played before|met before|previous meetings?)\b/.test(lower)) {
+    add("head-to-head");
+  }
+  if (/\b(?:record|wins?|losses?|draws?|ties?)\b/.test(lower)) add("team record");
+  if (/\b(?:season history|which seasons?|what seasons?|winter|spring|summer|fall)\b/.test(lower)) {
+    add("season history");
+  }
 
   return facets.slice(0, 4).join(" + ") || "general question";
 }
 
+function historyFailureFacet(reply) {
+  const lower = clean(reply);
+  if (!lower) return "";
+  if (/couldn't match a rats team name/.test(lower)) return "team-name matching failure";
+  if (/no completed scored match|no completed scored meeting/.test(lower)) {
+    return "missing scored-result coverage";
+  }
+  if (/historical results are temporarily unavailable|history index refreshes/.test(lower)) {
+    return "history availability failure";
+  }
+  return "";
+}
+
 export function negativeFeedbackProjection(event = {}) {
+  const failure = historyFailureFacet(event.reply);
   return {
     kind: "negative_feedback",
-    summary:
-      `A ${historyIntentLabel(event.intent)} answer about ${feedbackQuestionShape(event.question)} was explicitly marked wrong.`,
+    summary: failure
+      ? `A ${historyIntentLabel(event.intent)} answer about ${feedbackQuestionShape(event.question)} was explicitly marked wrong after a ${failure}.`
+      : `A ${historyIntentLabel(event.intent)} answer about ${feedbackQuestionShape(event.question)} was explicitly marked wrong.`,
     reason:
-      "Deterministic privacy-safe feedback fingerprint; no user text is copied into the review projection.",
+      "Deterministic privacy-safe feedback fingerprint; no user text, team names, scores, dates, or identifiers are copied into the review projection.",
   };
 }
