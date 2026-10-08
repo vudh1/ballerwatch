@@ -49,7 +49,10 @@ export function historySeasonIds(
   const floor = Math.max(HISTORY_START_YEAR, Number(startYear) || HISTORY_START_YEAR);
   const ids = [];
   for (let year = endYear; year >= floor; year -= 1) {
-    for (const season of [...SEASONS].reverse()) ids.push(`${season}-${year}`);
+    for (const season of [...SEASONS].reverse()) {
+      if (year === HISTORY_START_YEAR && ["winter", "spring"].includes(season)) continue;
+      ids.push(`${season}-${year}`);
+    }
   }
   return ids;
 }
