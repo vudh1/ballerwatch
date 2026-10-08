@@ -6,6 +6,7 @@ import test from "node:test";
 
 import {
   buildWebText,
+  buildScoreText,
   formatTime,
   jerseyIcon,
   notifyWeb,
@@ -159,4 +160,63 @@ test("league reminder uses shared root and repairs a recorded-but-undelivered re
   assert.equal(repaired.entries.length, 1);
   assert.equal(repaired.entries[0].tag, "rats-start-v2:root-hour-reminder");
   assert.equal(fs.existsSync(path.join(root, ".runtime/web-push-pending")), true);
+});
+
+test("published monitored RATS scores produce push-ready notifications without repeats", (t) => {
+  const cwd = process.cwd();
+  const oldKey = process.env.TRACKER_STATE_KEY;
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "ballerwatch-score-push-"));
+  process.chdir(root);
+  process.env.TRACKER_STATE_KEY = "synthetic-score-push-key";
+  t.after(() => {
+    process.chdir(cwd);
+    if (oldKey === undefined) delete process.env.TRACKER_STATE_KEY;
+    else process.env.TRACKER_STATE_KEY = oldKey;
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+  const score = (own, opponent) => ({
+    match: {
+      key: "v2:score-42", sourceMatchId: "score-42", season: "Fall 2026",
+      team: "Tuesday Marmots", opponent: "Crows FC",
+      date: "2026-10-08", teamScore: own, opponentScore: opponent,
+    },
+    previousTeamScore: null, previousOpponentScore: null,
+  });
+  const mirrored = {
+    match: { ...score(1, 2).match, team: "Crows FC", opponent: "Tuesday Marmots",
+      teamScore: 2, opponentScore: 1 },
+    previousTeamScore: null, previousOpponentScore: null,
+  };
+  fs.writeFileSync("score-changes.json", JSON.stringify({updates:[score(1, 2), mirrored]}));
+  const now = new Date("2026-10-08T22:00:00Z");
+  assert.equal(notifyWeb({now}), true);
+  let board = loadWebNotificationChannel("league");
+  assert.equal(board.entries.length, 1);
+  assert.equal(board.entries[0].title, "RATS score reported");
+  assert.match(board.entries[0].body, /Tuesday Marmots 1–2 Crows FC/);
+  assert.match(board.entries[0].body, /Loss/);
+  assert.equal(fs.existsSync(".runtime/web-push-pending"), true);
+  fs.rmSync(".runtime/web-push-pending");
+  notifyWeb({now});
+  assert.equal(loadWebNotificationChannel("league").entries.length, 1);
+  assert.equal(fs.existsSync(".runtime/web-push-pending"), false);
+  const corrected = score(3, 2);
+  corrected.previousTeamScore = 1;
+  corrected.previousOpponentScore = 2;
+  fs.writeFileSync("score-changes.json", JSON.stringify({updates:[corrected]}));
+  notifyWeb({now: new Date(now.getTime() + 1000)});
+  board = loadWebNotificationChannel("league");
+  assert.equal(board.entries.length, 2);
+  assert.match(board.entries[1].body, /Score corrected: Tuesday Marmots 3–2 Crows FC/);
+  assert.equal(fs.existsSync(".runtime/web-push-pending"), true);
+});
+
+test("no score alert for missing scores or hidden matches", () => {
+  assert.equal(buildScoreText([{
+    match: {team:"Team Alpha", opponent:"Team Beta", teamScore:null,opponentScore:1},
+  }]), "");
+  assert.equal(buildScoreText([{
+    match: {team:"Team Alpha", opponent:"Team Beta", teamScore:1,opponentScore:0,
+      overrideId:"fixture-42"},
+  }], {hiddenMatches: {"fixture-42": true}}), "");
 });
