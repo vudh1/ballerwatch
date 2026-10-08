@@ -11,8 +11,16 @@ import {
 
 function historyFixture() {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     updatedAt: "2026-10-07T00:00:00Z",
+    coverage: {
+      complete: true,
+      requestedSeasonCount: 2,
+      seasonCount: 2,
+      completedMatchCount: 3,
+      firstSeason: "fall-2024",
+      lastSeason: "spring-2025",
+    },
     seasons: [
       {
         seasonId: "fall-2024",
@@ -100,7 +108,7 @@ test("bot answers all-time record and previous-meeting questions deterministical
     "what is the record of Team Alpha?",
     historyFixture(),
   );
-  assert.match(record.reply, /Team Alpha — all available RATS seasons/);
+  assert.match(record.reply, /Team Alpha — all discoverable RATS seasons \(Fall 2024–Spring 2025\)/);
   assert.match(record.reply, /1-1-1 \(W-D-L\)/);
 
   const h2h = answerRatsHistoryQuestion(
@@ -111,6 +119,45 @@ test("bot answers all-time record and previous-meeting questions deterministical
   assert.match(h2h.reply, /Team Alpha 1W/);
   assert.match(h2h.reply, /Team Beta 1W/);
   assert.match(h2h.reply, /Spring 2025/);
+});
+
+test("partial RATS history never presents an indexed record as all-time", () => {
+  const partial = historyFixture();
+  partial.coverage = {
+    ...partial.coverage,
+    complete: false,
+    requestedSeasonCount: 8,
+    seasonCount: 2,
+    failedSeasonCount: 6,
+  };
+  const answer = answerRatsHistoryQuestion(
+    "what is the all-time record of Team Alpha?",
+    partial,
+  );
+  assert.equal(answer.ready, true);
+  assert.match(answer.reply, /History index is still rebuilding/);
+  assert.match(answer.reply, /2\/8 seasons/);
+  assert.match(answer.reply, /partial/);
+  assert.doesNotMatch(answer.reply, /all-time record:/i);
+});
+
+test("zero-score RATS archives fail closed instead of returning a fake zero record", () => {
+  const broken = historyFixture();
+  broken.coverage.completedMatchCount = 0;
+  broken.seasons = broken.seasons.map((season) => ({
+    ...season,
+    matches: season.matches.map((match) => ({
+      ...match,
+      homeScore: null,
+      awayScore: null,
+    })),
+  }));
+  const answer = answerRatsHistoryQuestion(
+    "what is the record of Team Alpha?",
+    broken,
+  );
+  assert.equal(answer.ready, false);
+  assert.match(answer.reply, /historical scores are rebuilding/i);
 });
 
 test("bot preserves the last historical team for follow-up record questions", () => {
