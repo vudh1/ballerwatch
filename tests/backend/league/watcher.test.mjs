@@ -145,6 +145,14 @@ test("normalization preserves counts, colors, tracking keys, and Pacific time", 
   assert.equal(game.key, "v2:26c0505cec80b23df5c52d7e");
 });
 
+test("public compact RATS score strings populate normalized team scores", () => {
+  const data = fixtures();
+  data.aggregate.events[0].score = "3-2";
+  const game = normalized(data).teams[0].matches[0];
+  assert.equal(game.teamScore, 3);
+  assert.equal(game.opponentScore, 2);
+});
+
 test("published end time is preserved", () => {
   const data = fixtures();
   data.exportsByTeam["Team Alpha"][1][3] = "2026-10-05";
