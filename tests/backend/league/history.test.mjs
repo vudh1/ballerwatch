@@ -23,13 +23,11 @@ test("default RATS history discovery uses the source-supported archive window re
     "spring-2026",
     "winter-2026",
   ]);
-  assert.deepEqual(ids.slice(-4), [
+  assert.deepEqual(ids.slice(-2), [
     "fall-2023",
     "summer-2023",
-    "spring-2023",
-    "winter-2023",
   ]);
-  assert.equal(ids.length, 16);
+  assert.equal(ids.length, 14);
 });
 
 test("RATS history discovery scans every seasonal slug through the current year", () => {

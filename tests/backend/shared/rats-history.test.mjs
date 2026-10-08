@@ -234,3 +234,24 @@ test("techies try hard shorthand and full name work for H2H", () => {
   assert.match(answer.reply,/2 meetings/);
   assert.equal(historyHeadToHead(history,"Techies Try Hard","Seattle Bros").matches.length,2);
 });
+
+test("singular/plural RATS names find the same club and aggregate records", () => {
+  const history = historyFixture();
+  for (const season of history.seasons) {
+    for (const team of season.teams) {
+      if (team.name === "Team Alpha") team.name = season.seasonId === "fall-2024" ? "Tuesday Marmots" : "Tuesday Marmot";
+      if (team.name === "Team Beta") team.name = "Crows FC";
+    }
+    for (const match of season.matches) {
+      for (const side of ["homeTeam", "awayTeam"]) {
+        if (match[side] === "Team Alpha") match[side] = season.seasonId === "fall-2024" ? "Tuesday Marmots" : "Tuesday Marmot";
+        if (match[side] === "Team Beta") match[side] = "Crows FC";
+      }
+    }
+  }
+  assert.deepEqual(historyTeamsInQuestion("tuesday marmot vs crow fc", history), ["Tuesday Marmot", "Crows FC"]);
+  assert.equal(historyRecord(history, "Tuesday Marmots").games, 3);
+  assert.equal(historyRecord(history, "Tuesday Marmot").games, 3);
+  assert.equal(historyHeadToHead(history, "Tuesday Marmot", "Crow FC").matches.length, 2);
+  assert.match(answerRatsHistoryQuestion("tuesday marmot vs crow fc", history).reply, /2 meetings/);
+});

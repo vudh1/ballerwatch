@@ -24,6 +24,7 @@ import { loadUserSettings } from "../shared/user-state.mjs";
 
 const TZ = "America/Los_Angeles";
 const UPDATE = "notification-update.json";
+const SCORE_UPDATES = "score-changes.json";
 const SCHEDULE = "schedule.json";
 const REMINDER_STATE = "state/notify.json";
 function webStateRoot() {
@@ -72,6 +73,44 @@ export function buildWebText(updates, settings = {}) {
     lines.push(
       `${verb}: ${jerseyIcon(jersey)} ${match.team} vs ${match.opponent} — ` +
       `${formatTime(match.start)} — ${location} — jerseys ${jersey}/${opponentJersey}`,
+    );
+  }
+  return lines.join("\n");
+}
+
+
+function publishedScore(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric >= 0 ? numeric : null;
+}
+
+export function buildScoreText(updates, settings = {}) {
+  const lines = [];
+  const seen = new Set();
+  for (const item of updates) {
+    const match = applyLeagueMatchOverride(item?.match || {}, settings);
+    if (matchHidden(settings, match.overrideId)) continue;
+    const ownScore = publishedScore(match.teamScore);
+    const otherScore = publishedScore(match.opponentScore);
+    if (ownScore === null || otherScore === null || !match.team || !match.opponent) continue;
+
+    // Both monitored clubs may see the same fixture from opposite sides.
+    const identity = match.sourceMatchId
+      ? `${match.season || ""}:${match.sourceMatchId}`
+      : [match.season || "", match.date || "",
+        ...[match.team, match.opponent].map((name) => String(name).toLowerCase()).sort()].join("|");
+    if (seen.has(identity)) continue;
+    seen.add(identity);
+
+    const previousOwn = publishedScore(item.previousTeamScore);
+    const previousOther = publishedScore(item.previousOpponentScore);
+    const corrected = previousOwn !== null && previousOther !== null;
+    const outcome = ownScore > otherScore ? "Win" : ownScore < otherScore ? "Loss" : "Draw";
+    const date = match.date || (match.start ? formatTime(match.start) : "");
+    lines.push(
+      `${corrected ? "Score corrected" : "Final score"}: ${match.team} ${ownScore}–${otherScore} ${match.opponent} (${outcome})` +
+      (date ? ` — ${date}` : ""),
     );
   }
   return lines.join("\n");
@@ -191,6 +230,22 @@ export function notifyWeb({ now = new Date() } = {}) {
         console.log(`Web notification recorded for ${updates.length} schedule update(s).`);
         recorded = true;
       }
+    }
+  }
+
+  if (fs.existsSync(SCORE_UPDATES)) {
+    const data = JSON.parse(fs.readFileSync(SCORE_UPDATES, "utf8"));
+    const updates = Array.isArray(data.updates) ? data.updates : [];
+    const body = buildScoreText(updates, settings);
+    if (body) {
+      const completed = body.split("\n").length;
+      appendWebNotification("league", {
+        title: completed === 1 ? "RATS score reported" : "RATS scores reported",
+        body,
+        tag: "rats-scores",
+      }, { now, rootDir: webStateRoot() });
+      console.log(`Web notification recorded for ${completed} monitored score update(s).`);
+      recorded = true;
     }
   }
 

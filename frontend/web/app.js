@@ -1510,7 +1510,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=7.1.3", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=7.1.4", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -1953,6 +1953,30 @@ function renderBoard(entries) {
 function googleMapsUrl(query) {
   if (!query) return "";
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
+function shareVenueMapsUrl(game) {
+  const provided = String(game?.googleMapsUrl || game?.mapsUrl || "").trim();
+  if (/^https:\/\/(?:www\.)?(?:google\.[a-z.]+\/maps\/|maps\.app\.goo\.gl\/)/i.test(provided)) {
+    return provided;
+  }
+  const placeId = String(game?.googlePlaceId || game?.placeId || "").trim();
+  const query = [game?.location, game?.address].filter(Boolean).join(", ") ||
+    String(game?.mapsQuery || "").trim();
+  if (placeId && query) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}&query_place_id=${encodeURIComponent(placeId)}`;
+  }
+  const latitude = Number(game?.latitude ?? game?.lat);
+  const longitude = Number(game?.longitude ?? game?.lon ?? game?.lng);
+  if (game?.latitude != null && game?.longitude != null &&
+      Number.isFinite(latitude) && Number.isFinite(longitude)) {
+    return `https://www.google.com/maps?q=${latitude},${longitude}`;
+  }
+  // Google's canonical place URL requires a real Places ID. Do not invent one.
+  // A place/address path is a more useful field-specific share fallback.
+  return query
+    ? `https://www.google.com/maps/place/${encodeURIComponent(query)}/`
+    : "";
 }
 
 function weatherGlyph(code) {
@@ -3266,7 +3290,7 @@ async function resetMatchOverride() {
 
 async function shareNextGame() {
   if (!currentNextGame) return;
-  const maps = googleMapsUrl(currentNextGame.mapsQuery);
+  const maps = shareVenueMapsUrl(currentNextGame);
   const text = currentNextGame.shareText || currentNextGame.title || "BallerWatch game";
 
   try {
