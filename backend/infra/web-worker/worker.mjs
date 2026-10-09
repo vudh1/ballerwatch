@@ -6,6 +6,7 @@
  * Updated v5.8.0: uses user-facing authentication terminology, supports /web/user routes,
  * and reads/writes every runtime-state document as a complete encrypted envelope.
  * Updated v7.1.0: serves deterministic all-season RATS history Q&A from encrypted runtime state.
+ * Updated v8.0.0: grounded, multi-turn RATS fixture intelligence without a paid model dependency.
  */
 import {
   fetchPickupSnapshot,
@@ -20,6 +21,7 @@ import { aiProviders, requestAiJson } from "../../shared/ai-provider.mjs";
 import { publicRequestSummary } from "../../shared/feature-request-summary.mjs";
 import { historyIntentLabel, negativeFeedbackProjection } from "../../shared/feedback-review.mjs";
 import { classifyIndexedIntent } from "../../shared/intent-index.mjs";
+import { answerFixtureQuestion } from "../../shared/fixture-ai.mjs";
 import { answerRatsHistoryQuestion } from "../../shared/rats-history.mjs";
 import { matchVenue } from "../../shared/venue-directory.mjs";
 import {
@@ -3074,7 +3076,14 @@ async function webAnswer(env, question, context = {}) {
       ownerName: userRsvpName,
     };
   }
-  const safeContext = { lastDate: cleanText(context?.lastDate, 20) };
+  const safeContext = {
+    lastDate: cleanText(context?.lastDate, 20),
+    lastMatchKey: cleanText(context?.lastMatchKey, 120),
+  };
+  // Fixture-aware answers precede generic keyword routing. Every remembered
+  // key must resolve against the current, visibility-filtered source schedule.
+  const fixture = answerFixtureQuestion(text, leagueMatches(snapshot), safeContext, localDate());
+  if (fixture) return { ok: true, ...fixture, version: snapshot.version };
   const lower = text.toLowerCase();
   const hasExplicitDate =
     /\b(?:today|tomorrow|sunday|monday|tuesday|wednesday|thursday|friday|saturday|\d{1,2}\/\d{1,2}|20\d{2}-\d{1,2}-\d{1,2})\b/.test(lower);
@@ -3108,6 +3117,9 @@ async function webAnswer(env, question, context = {}) {
       "• what's my next game?",
       "• what's the all-time record for Team Name?",
       "• have Team A and Team B played before?",
+      "• when do we play PhoSaiGon?",
+      "• where is Supermokh FC vs PhoSaiGon?",
+      "• where is that match? (follow-up)",
       "• what league teams are you monitoring?",
       "• /version",
     ].join("\n");
