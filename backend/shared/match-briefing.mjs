@@ -26,6 +26,8 @@ export function weeklyMatchBriefing({ pickups = [], leagueGames = [], startDate,
       };
     }).sort((a,b) => a.date.localeCompare(b.date));
 
+  const leagueCount = leagueGames.filter(game => inRange(game?.date)).length;
+  const pickupCount = pickup.length;
   const league = leagueGames.filter(game => inRange(game?.date))
     .map(game => ({
       date:game.date, team:clean(game.team), opponent:clean(game.opponent),
@@ -38,12 +40,12 @@ export function weeklyMatchBriefing({ pickups = [], leagueGames = [], startDate,
     return { reply: [...lines, "No published pickup or monitored RATS match is scheduled in this window."].join("\n") };
   }
 
-  lines.push(`🏆 ${league.length} monitored league fixture${league.length === 1 ? "" : "s"}:`);
+  lines.push(`🏆 ${leagueCount} monitored league fixture${leagueCount === 1 ? "" : "s"}${leagueCount > league.length ? ` (first ${league.length} shown)` : ""}:`);
   lines.push(...(league.length ? league.map(game =>
     `• ${game.date} · ${game.team} vs ${game.opponent}${game.time ? ` · ${game.time}` : ""}${game.location ? ` · ${game.location}` : ""}${game.jersey ? ` · ${game.jersey} jersey` : ""}`)
     : ["• None published"]));
 
-  lines.push(`⚽ ${pickup.length} RSVP pickup date${pickup.length === 1 ? "" : "s"}:`);
+  lines.push(`⚽ ${pickupCount} RSVP pickup date${pickupCount === 1 ? "" : "s"}:`);
   lines.push(...(pickup.length ? pickup.map(game => {
     const status = game.capacity == null ? "capacity pending" :
       game.remaining === 0 ? "FULL" :
