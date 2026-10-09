@@ -15,7 +15,10 @@ test("pickup notifications use threshold/detail changes plus scheduled reminders
   assert.doesNotMatch(source, /capacityThresholdReached|after <= 3/);
   assert.match(source, /Pickup RSVP reminder/);
   assert.match(source, /Pickup starts in 1 hour/);
-  assert.match(source, /No public notification threshold or match-detail change/);
+  assert.match(source, /No primary match-detail change/);
+  assert.match(source, /matchDate: event\.date/);
+  assert.match(source, /eventForDate\(date, settings\)/);
+  assert.match(source, /settings\.mutedDates/);
   assert.doesNotMatch(source, /YOU ARE CONFIRMED|WAITLIST POSITION|person\.name/);
 });
 
