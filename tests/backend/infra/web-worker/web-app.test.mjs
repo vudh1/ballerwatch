@@ -925,3 +925,75 @@ test("verified venue-page Maps URL overrides page link for both navigation actio
   assert.equal(withCachedVenue({location:"Walt Hundley Playfield - Mod North"},directory).locationUrl,
     undefined);
 });
+
+
+test("new RSVP dates appear in match cards beyond the default 14-day calendar window", () => {
+  const snapshot = {
+    pickup: {
+      dates: [
+        {date:"2099-10-07"},
+        {date:"2099-10-29"},
+      ],
+      events: {
+        "2099-10-07": {
+          ok:true, reserved:6, capacity:16,
+          startTime:"20:00", endTime:"22:00",
+        },
+        "2099-10-29": {
+          ok:true, reserved:0, capacity:16,
+          startTime:"20:00", endTime:"22:00",
+        },
+      },
+    },
+    pickupPrivate: {
+      events: {
+        "2099-10-07": {fieldName:"Original Field", address:"Seattle WA"},
+        "2099-10-29": {fieldName:"New RSVP Field", address:"Seattle WA"},
+      },
+    },
+    league:{teams:[]},
+  };
+  const calendar = webCalendarDetails(
+    snapshot, {}, 14, "2099-10-01", new Date("2099-10-01T12:00:00-07:00"),
+  );
+  assert.equal(calendar.endDate,"2099-10-14", "14-day grid still opens with the normal window");
+  const pickup = calendar.games.filter(item => item.kind==="pickup");
+  assert.deepEqual(pickup.map(item => item.date), ["2099-10-07","2099-10-29"]);
+  assert.equal(pickup[1].location,"New RSVP Field");
+  assert.equal(pickup[1].rsvpUrl,"https://nhcuong95.github.io/rsvp/?date=2099-10-29");
+});
+
+test("new RSVP dates remain visible while venue details are pending", () => {
+  const snapshot = {
+    pickup: {
+      dates:[{date:"2099-10-29"}],
+      events:{
+        "2099-10-29": {
+          ok:true, reserved:0, capacity:null,
+          startTime:"", endTime:"",
+        },
+      },
+    },
+    pickupPrivate:{events:{"2099-10-29":{fieldName:"",address:""}}},
+    league:{teams:[]},
+  };
+  const calendar = webCalendarDetails(
+    snapshot, {}, 14, "2099-10-01", new Date("2099-10-01T12:00:00-07:00"),
+  );
+  const card = calendar.games.find(item => item.id==="pickup:2099-10-29");
+  assert.ok(card, "published date cannot be hidden solely for missing field details");
+  assert.equal(card.location,"");
+  assert.equal(card.mapsQuery,"");
+  assert.equal(card.capacity,null, "unknown capacity must not be shown as a full 0-slot match");
+  assert.equal(card.rsvpUrl,"https://nhcuong95.github.io/rsvp/?date=2099-10-29");
+  assert.equal(webNextGameDetails(snapshot,
+    new Date("2099-10-28T19:00:00-07:00")).capacity,null);
+  assert.deepEqual(
+    webCalendarDetails({...snapshot,settings:{hiddenMatches:{"pickup:2099-10-29":{
+      id:"pickup:2099-10-29", date:"2099-10-29", hiddenAt:"2099-10-01T12:00:00Z",
+    }}}}, {}, 14, "2099-10-01",new Date("2099-10-01T12:00:00-07:00"))
+      .games.filter(game => game.id==="pickup:2099-10-29"),
+    [],
+    "administrator-hidden dates remain hidden",
+  );
+});
