@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.1.0",
+  "currentVersion": "8.1.1",
   "releases": [
+    {
+      "version": "8.1.1",
+      "date": "2026-10-09",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Share only the venue Google Maps link",
+      "webAnnouncement": "The match Share button now sends only the Google Maps field link, without repeating the team names, kickoff time, or other match details.",
+      "changes": [
+        "Native iOS/Android share sheet receives just the resolved Google Maps URL; no fixture title, formatted summary, or GPS text is prepended.",
+        "Clipboard fallback copies exactly the same Maps URL and nothing else.",
+        "Retains RATS-published field links and verified GPS priority, with search lookup only as a last resort.",
+        "Refreshes the installed PWA shell cache and adds regression tests to prevent verbose shared messages."
+      ]
+    },
     {
       "version": "8.1.0",
       "date": "2026-10-09",
