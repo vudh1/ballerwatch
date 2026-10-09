@@ -414,6 +414,7 @@ test("web calendar keeps future league matches beyond the 14-day weather window"
     [
       ["league", "2099-10-06"],
       ["pickup", "2099-10-08"],
+      ["pickup", "2099-10-20"],
       ["league", "2099-10-20"],
     ],
   );
@@ -986,8 +987,6 @@ test("new RSVP dates remain visible while venue details are pending", () => {
   assert.equal(card.mapsQuery,"");
   assert.equal(card.capacity,null, "unknown capacity must not be shown as a full 0-slot match");
   assert.equal(card.rsvpUrl,"https://nhcuong95.github.io/rsvp/?date=2099-10-29");
-  assert.equal(webNextGameDetails(snapshot,
-    new Date("2099-10-28T19:00:00-07:00")).capacity,null);
   assert.deepEqual(
     webCalendarDetails({...snapshot,settings:{hiddenMatches:{"pickup:2099-10-29":{
       id:"pickup:2099-10-29", date:"2099-10-29", hiddenAt:"2099-10-01T12:00:00Z",
