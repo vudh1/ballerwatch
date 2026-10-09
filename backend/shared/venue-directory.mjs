@@ -95,11 +95,25 @@ export function appendVenueObservations(previous = {}, observations = []) {
     const norm = venueNameParts(incoming.name);
     const exact = venues.find(v => [v.name, ...v.aliases]
       .some(alias => venueNameParts(alias).key === norm.key));
-    if (exact) {
+    // Punctuation, "soccer/playfield" suffixes, and reordered qualifiers
+    // may differ while naming the identical fixture venue.
+    const equivalent = !exact && venues.find(v => {
+      const known = venueNameParts(v.name);
+      const sameBase = norm.core.length >= 7 && known.core === norm.core &&
+        known.qualifiers === norm.qualifiers;
+      const noConflictingUrl = !incoming.url || !v.url || incoming.url === v.url;
+      const noConflictingGps = !incoming.coordinates || !v.coordinates ||
+        (incoming.coordinates.latitude === v.coordinates.latitude &&
+          incoming.coordinates.longitude === v.coordinates.longitude);
+      return sameBase && noConflictingUrl && noConflictingGps;
+    });
+    if (exact || equivalent) {
+      const existing = exact || equivalent;
+      if (equivalent && existing.aliases.length < 12) existing.aliases.push(incoming.name);
       // A discovered verified destination is immutable. Empty entries can be
       // filled later when RATS starts publishing a real link/GPS.
-      if (!exact.url && incoming.url) { exact.url = incoming.url; enriched++; }
-      if (!exact.coordinates && incoming.coordinates) { exact.coordinates = incoming.coordinates; enriched++; }
+      if (!existing.url && incoming.url) { existing.url = incoming.url; enriched++; }
+      if (!existing.coordinates && incoming.coordinates) { existing.coordinates = incoming.coordinates; enriched++; }
       continue;
     }
     if (venues.length >= 2000) break;
