@@ -122,6 +122,14 @@ export function appendVenueObservations(previous = {}, observations = []) {
       if (!existing.url && incoming.url) { existing.url = incoming.url; enriched++; }
       if (!existing.coordinates && incoming.coordinates) { existing.coordinates = incoming.coordinates; enriched++; }
       if (!existing.mapUrl && incoming.mapUrl) { existing.mapUrl = incoming.mapUrl; enriched++; }
+      // Keep the original RATS venue-page link immutable, but allow a newly
+      // published direct Maps URL for that same exact field to enrich it.
+      if (!existing.mapUrl && existing.url && incoming.url &&
+        ["seattlerats.org", "www.seattlerats.org"].includes(new URL(existing.url).hostname) &&
+        !["seattlerats.org", "www.seattlerats.org"].includes(new URL(incoming.url).hostname)) {
+        existing.mapUrl = incoming.url;
+        enriched++;
+      }
       if (incoming.discoveryCheckedAt && incoming.discoveryCheckedAt !== existing.discoveryCheckedAt) {
         existing.discoveryCheckedAt = incoming.discoveryCheckedAt;
         checked++;
