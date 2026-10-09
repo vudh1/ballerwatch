@@ -81,6 +81,9 @@ function cleanEntry(entry) {
     aliases: [...new Set((Array.isArray(entry?.aliases) ? entry.aliases : [])
       .map(a => String(a || "").trim().slice(0, 150)).filter(Boolean))].slice(0, 12),
     url: validRatsVenueUrl(entry?.url),
+    mapUrl: (() => { const url = validRatsVenueUrl(entry?.mapUrl); return url && !/seattlerats\\.org/.test(new URL(url).hostname) ? url : ""; })(),
+    discoveryCheckedAt: /^\\d{4}-\\d{2}-\\d{2}T/.test(String(entry?.discoveryCheckedAt || "")) &&
+      Number.isFinite(Date.parse(entry.discoveryCheckedAt)) ? entry.discoveryCheckedAt : "",
     coordinates: validVenueCoordinates(entry?.coordinates),
   };
 }
@@ -88,7 +91,7 @@ function cleanEntry(entry) {
 export function appendVenueObservations(previous = {}, observations = []) {
   const venues = (Array.isArray(previous?.venues) ? previous.venues : [])
     .map(cleanEntry).filter(Boolean).slice(0, 2000);
-  let added = 0, enriched = 0;
+  let added = 0, enriched = 0, checked = 0;
   for (const item of observations) {
     const incoming = cleanEntry(item);
     if (!incoming) continue;
@@ -114,13 +117,18 @@ export function appendVenueObservations(previous = {}, observations = []) {
       // filled later when RATS starts publishing a real link/GPS.
       if (!existing.url && incoming.url) { existing.url = incoming.url; enriched++; }
       if (!existing.coordinates && incoming.coordinates) { existing.coordinates = incoming.coordinates; enriched++; }
+      if (!existing.mapUrl && incoming.mapUrl) { existing.mapUrl = incoming.mapUrl; enriched++; }
+      if (incoming.discoveryCheckedAt && incoming.discoveryCheckedAt !== existing.discoveryCheckedAt) {
+        existing.discoveryCheckedAt = incoming.discoveryCheckedAt;
+        checked++;
+      }
       continue;
     }
     if (venues.length >= 2000) break;
     venues.push(incoming);
     added++;
   }
-  return { directory: { schemaVersion: VENUE_DIRECTORY_SCHEMA, venues }, added, enriched };
+  return { directory: { schemaVersion: VENUE_DIRECTORY_SCHEMA, venues }, added, enriched, checked };
 }
 
 export function matchVenue(directory, requestedName) {
