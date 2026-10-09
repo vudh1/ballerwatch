@@ -21,6 +21,7 @@ import { publicRequestSummary } from "../../shared/feature-request-summary.mjs";
 import { historyIntentLabel, negativeFeedbackProjection } from "../../shared/feedback-review.mjs";
 import { classifyIndexedIntent } from "../../shared/intent-index.mjs";
 import { answerRatsHistoryQuestion } from "../../shared/rats-history.mjs";
+import { matchVenue } from "../../shared/venue-directory.mjs";
 import {
   applyFreePickupMatchOverride,
   applyLeagueMatchOverride,
@@ -1698,6 +1699,41 @@ async function loadGitHubSnapshot(env) {
   });
 }
 
+async function loadRatsVenues(env) {
+  if (env.BALLERWATCH_STATE) {
+    const cached = await kvJsonGet(env, "snapshot:rats-venues").catch(() => null);
+    if (cached && Array.isArray(cached.venues)) return cached;
+    const raw = await runtimeFileGet(env, "league/state/venues.json").catch(() => null);
+    if (raw) {
+      try {
+        const value = await decryptState(JSON.parse(raw), env);
+        if (value && Array.isArray(value.venues)) {
+          await kvJsonPut(env, "snapshot:rats-venues", value).catch(() => null);
+          return value;
+        }
+      } catch {}
+    }
+  }
+  return cachedJson("rats-venues-v1", 600, async () => {
+    const encrypted = await githubRawJsonFile(env, "league/state/venues.json", "runtime-state");
+    const directory = await decryptState(encrypted, env);
+    if (!directory || !Array.isArray(directory.venues)) return { schemaVersion: 1, venues: [] };
+    return directory;
+  }).catch(() => ({ schemaVersion: 1, venues: [] }));
+}
+
+export function withCachedVenue(game, directory) {
+  if (!game || !game.location) return game;
+  const venue = matchVenue(directory, game.location);
+  if (!venue) return game;
+  return {
+    ...game,
+    locationUrl: venue.url || game.locationUrl || "",
+    // A cached coordinate belongs to this matched venue, not a weather fallback.
+    ...(venue.coordinates ? { coordinates: venue.coordinates, venueCoordinates: venue.coordinates } : {}),
+  };
+}
+
 async function loadRatsHistory(env) {
   if (env.BALLERWATCH_STATE) {
     const cached = await kvJsonGet(env, "snapshot:rats-history").catch(() => null);
@@ -2605,6 +2641,7 @@ export function webCalendarDetails(
   days = 14,
   startDate = localDate(),
   now = new Date(),
+  venueDirectory = {},
 ) {
   const safe = webSafeSnapshot(snapshot);
   const endDate = addDays(startDate, Math.max(1, Number(days) || 14) - 1);
@@ -2614,8 +2651,9 @@ export function webCalendarDetails(
   );
   const games = [];
   const addGps = (game) => {
-    const coordinates = webVenueCoordinates(weatherState, weatherById, game);
-    return { ...game, coordinates };
+    const matched = withCachedVenue(game, venueDirectory);
+    const coordinates = matched.coordinates || webVenueCoordinates(weatherState, weatherById, matched);
+    return { ...matched, coordinates };
   };
 
   for (const date of availableDates(safe)) {
@@ -3430,13 +3468,14 @@ export default {
     }
     if (request.method === "GET" && url.pathname === "/web/calendar") {
       try {
-        const [snapshot, weather] = await Promise.all([
+        const [snapshot, weather, venues] = await Promise.all([
           loadSnapshot(env),
           loadWebWeather(env),
+          loadRatsVenues(env),
         ]);
         return webJson(request, {
           ok: true,
-          calendar: webCalendarDetails(snapshot, weather, 14),
+          calendar: webCalendarDetails(snapshot, weather, 14, localDate(), new Date(), venues),
         });
       } catch {
         return webJson(
@@ -3449,10 +3488,10 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/web/next-game") {
       try {
-        const snapshot = await loadSnapshot(env);
+        const [snapshot, venues] = await Promise.all([loadSnapshot(env), loadRatsVenues(env)]);
         return webJson(request, {
           ok: true,
-          game: webNextGameDetails(snapshot),
+          game: withCachedVenue(webNextGameDetails(snapshot), venues),
         });
       } catch {
         return webJson(
