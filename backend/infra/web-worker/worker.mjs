@@ -2180,6 +2180,28 @@ function pickupStatus(snapshot, date, { includeDate = true } = {}) {
   return lines.join("\n");
 }
 
+function isPersonalRsvpQuestion(question) {
+  return /\b(?:am i|did i|have i|my (?:rsvp|reservation|spot|signup)|i'm (?:in|on|registered|confirmed|waitlisted)|i am (?:in|on|registered|confirmed|waitlisted))\b/i.test(question);
+}
+
+// Compute exactly one signed-in person's status from the encrypted source
+// roster. Never expose other participants, array indexes, or participant names.
+export function personalPickupAnswer(snapshot, date, userRsvpName) {
+  const sourceDate = pickupSourceDateForDisplay(snapshot, date);
+  if (!sourceDate) return "That pickup date isn't published.";
+  const privateEvent = snapshot.pickupPrivate?.events?.[sourceDate];
+  if (!privateEvent || !Array.isArray(privateEvent.players) ||
+      !Array.isArray(privateEvent.waitlist)) {
+    return "RSVP names are not available yet, so I can't verify your reservation.";
+  }
+  const identity = cleanText(userRsvpName, 120);
+  if (!identity) return "Set your RSVP name in Settings to check your reservation.";
+  const state = pickupUserRsvpState(snapshot, sourceDate, identity);
+  if (state.confirmed) return "✅ You are confirmed for this pickup.";
+  if (state.waitlisted) return "🎟️ You are on the waitlist for this pickup.";
+  return "Your RSVP name is not currently on the confirmed or waitlist roster.";
+}
+
 function pickupUserRsvpState(snapshot, date, userRsvpName = "") {
   const owner = cleanText(
     userRsvpName || snapshot?.settings?.ownerRsvpName || snapshot?.ownerName || "",
@@ -3075,6 +3097,7 @@ async function webAnswer(env, question, context = {}) {
   }
 
   const userRsvpName = cleanText(context?.userRsvpName, 120);
+  const userAuthorized = context?.userAuthorized === true;
   if (userRsvpName) {
     snapshot = {
       ...snapshot,
@@ -3089,7 +3112,7 @@ async function webAnswer(env, question, context = {}) {
   // Fixture-aware answers precede generic keyword routing. Every remembered
   // key must resolve against the current, visibility-filtered source schedule.
   const fixture = answerFixtureQuestion(text, leagueMatches(snapshot), safeContext, localDate());
-  if (fixture) return { ok: true, ...fixture, version: snapshot.version };
+  if (fixture) return { ok:true, ...fixture, version:snapshot.version, sources:[{label:"RATS schedule and standings",url:"https://seattlerats.org/schedule--standings"}] };
   const lower = text.toLowerCase();
   const hasExplicitDate =
     /\b(?:today|tomorrow|sunday|monday|tuesday|wednesday|thursday|friday|saturday|\d{1,2}\/\d{1,2}|20\d{2}-\d{1,2}-\d{1,2})\b/.test(lower);
@@ -3174,12 +3197,23 @@ async function webAnswer(env, question, context = {}) {
   } else if (intent === "pickup_status") {
     const requested = aiDate || resolveDate(text, snapshot, safeContext);
     if (!requested) return { ok: false, error: "I couldn't resolve that pickup date." };
-    reply = pickupStatus(snapshot, requested);
+    if (isPersonalRsvpQuestion(text)) {
+      if (!userAuthorized) {
+        return {ok:false, error:"Sign in to check your own RSVP status.", intent:"pickup_status"};
+      }
+      reply = personalPickupAnswer(rawSnapshot, requested, userRsvpName);
+    } else {
+      reply = pickupStatus(snapshot, requested);
+    }
     lastDate = requested;
   }
 
+  const source = ["date_games", "range_games", "today_games", "next_game", "league_teams", "briefing"].includes(intent)
+    ? [{label:"RATS schedule and standings",url:"https://seattlerats.org/schedule--standings"}]
+    : intent === "pickup_status" && !isPersonalRsvpQuestion(text)
+      ? [{label:"Pickup RSVP source",url:PICKUP_RSVP_SITE}] : [];
   return reply
-    ? { ok: true, reply, intent, lastDate, version: snapshot.version }
+    ? { ok: true, reply, intent, lastDate, version: snapshot.version, sources:source }
     : { ok: false, error: "No read-only answer is available for that question." };
 }
 
@@ -4119,6 +4153,7 @@ export default {
 
       const answer = await webAnswer(env, question, {
         ...(body?.context || {}),
+        userAuthorized: Boolean(userAccount),
         userRsvpName: userAccount?.rsvpName || "",
       });
       const feedbackToken = answer.ok
