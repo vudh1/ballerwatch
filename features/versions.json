@@ -7,15 +7,18 @@
       "date": "2026-10-08",
       "type": "patch",
       "source": "user-requested",
-      "title": "RATS-published field map discovery and persistent exact-field caching",
-      "webAnnouncement": "Directions and Share now prioritize exact RATS-published field links found in fixtures, venue catalogs, or verified field pages. Newly scheduled fields are checked first; confirmed links are saved encrypted and reused.",
+      "title": "Exact RATS venue links and reliable RSVP match cards",
+      "webAnnouncement": "Directions and Share prioritize RATS-published field links. New RSVP dates now appear as match cards even beyond the initial 14-day calendar or before a venue is announced; verified venue links are cached encrypted.",
       "changes": [
         "Indexes RATS fixture venue catalogues and links instead of relying only on URLs embedded in individual event objects.",
         "Checks only new or unresolved field pages on the RATS website, with a daily backoff, bounded fetches, strict domain validation, and no redirect following.",
         "Extracts published Maps destinations only from verified matching field pages, and rejects ambiguous links or mismatched field subdivisions such as Mod North versus Mod South.",
         "Keeps the original RATS field page and the discovered direct Maps link separately in the encrypted append-only venue directory, preserving previously verified information.",
         "Prioritizes verified direct RATS Maps links for both Directions and Share; retains coordinates and Google Maps field-name search as fallback when source evidence is missing.",
-        "Adds regression coverage for exact-field discovery, source-backed catalogues, encrypted cache persistence, refresh throttling, and navigation priority."
+        "Adds regression coverage for exact-field discovery, source-backed catalogues, encrypted cache persistence, refresh throttling, and navigation priority.",
+        "Shows every upcoming RSVP pickup date in the match-card carousel and expanded calendar, rather than dropping pickup matches beyond the initial 14-day grid.",
+        "Keeps new RSVP dates visible when a venue has not yet been announced, showing a pending-venue label without inventing Maps directions.",
+        "Distinguishes unknown RSVP capacity from zero capacity and adds regression tests for these previously missing match cards."
       ]
     },
     {
