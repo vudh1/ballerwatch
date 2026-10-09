@@ -913,3 +913,15 @@ test("manually changed field only uses cached link when new field matches, never
   assert.equal(changed.locationUrl,"https://maps.google.com/?q=47.5,-122.3");
   assert.equal(withCachedVenue({location:"Unknown Field",overrideActive:true,locationUrl:""},directory).locationUrl,"");
 });
+
+test("verified venue-page Maps URL overrides page link for both navigation actions", () => {
+  const directory = {venues:[{
+    name:"Walt Hundley Playfield - Mod South",
+    url:"https://seattlerats.org/venue/walt-hundley-playfield-mod-south/",
+    mapUrl:"https://maps.app.goo.gl/actualRatsFieldSouth",
+  }]};
+  assert.equal(withCachedVenue({location:"Walt Hundley Playfield - Mod South"},directory).locationUrl,
+    "https://maps.app.goo.gl/actualRatsFieldSouth");
+  assert.equal(withCachedVenue({location:"Walt Hundley Playfield - Mod North"},directory).locationUrl,
+    undefined);
+});
