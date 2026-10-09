@@ -740,14 +740,14 @@ test("notification push control is compact and only displays On or Off", () => {
   assert.match(css, /width:\s*2\.15rem/);
 });
 
-test("next-game sharing uses the generic device share sheet", () => {
+test("next-game sharing sends only the field URL through the native share sheet", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
 
   assert.match(html, /id="next-game-share" type="button">Share<\/button>/);
   assert.match(app, /navigator\.share/);
-  assert.match(app, /title: "BallerWatch game"/);
-  assert.match(app, /Field location copied/);
+  assert.match(app, /await navigator\.share\(\{ url: maps \}\)/);
+  assert.match(app, /Field location link copied/);
   assert.doesNotMatch(app, /Choose Tesla in the share sheet/);
   assert.doesNotMatch(app, /https:\/\/ts\.la\/app/);
 });
