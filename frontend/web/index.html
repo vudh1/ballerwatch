@@ -11,11 +11,11 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="BallerWatch">
   <title>BallerWatch</title>
-  <link rel="manifest" href="./manifest.webmanifest?v=7.1.7">
-  <link rel="icon" href="./icon.svg?v=7.1.7" type="image/svg+xml">
-  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=7.1.7">
-  <script src="./launch-prepaint.js?v=7.1.7"></script>
-  <link rel="stylesheet" href="./styles.css?v=7.1.7">
+  <link rel="manifest" href="./manifest.webmanifest?v=8.0.0">
+  <link rel="icon" href="./icon.svg?v=8.0.0" type="image/svg+xml">
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=8.0.0">
+  <script src="./launch-prepaint.js?v=8.0.0"></script>
+  <link rel="stylesheet" href="./styles.css?v=8.0.0">
 </head>
 <body>
   <div class="launch-intro" id="launch-intro" aria-hidden="true">
@@ -35,7 +35,7 @@
   <main class="shell">
     <header class="hero">
       <div class="brand-lockup">
-        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=7.1.7" alt=""></div>
+        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=8.0.0" alt=""></div>
         <div>
           <p class="eyebrow">SOCCER AT A GLANCE</p>
           <h1>BallerWatch</h1>
@@ -162,7 +162,7 @@
   </main>
 
   <button class="chat-launcher" id="chat-launcher" type="button"
-    aria-label="Ask BallerWatch" aria-haspopup="dialog">
+    aria-label="Open BallerWatch AI" aria-haspopup="dialog">
     <svg viewBox="0 0 32 32" aria-hidden="true">
       <rect x="5" y="8" width="22" height="17" rx="7"/>
       <path d="M11 25 8 29v-6"/>
@@ -189,8 +189,8 @@
             </svg>
           </span>
           <div>
-            <p class="eyebrow">QUICK ANSWERS</p>
-            <h2>Ask BallerWatch</h2>
+            <p class="eyebrow">MATCH INTELLIGENCE · V8</p>
+            <h2>BallerWatch AI</h2>
           </div>
         </div>
         <button class="icon-button" id="close-chat" type="button" aria-label="Close chat">×</button>
@@ -200,7 +200,7 @@
         <div class="question-row">
           <div class="question-input-wrap">
             <input id="question" name="question" maxlength="600" autocomplete="off"
-              placeholder="Ask a question…" role="combobox"
+              placeholder="Ask about opponents, fields, history…" role="combobox"
               aria-autocomplete="list" aria-expanded="false" aria-controls="question-suggestions" required>
             <div class="question-suggestions" id="question-suggestions" role="listbox" hidden></div>
           </div>
@@ -211,7 +211,7 @@
       <div class="answer-feedback-controls">
         <p class="answer-feedback-status" id="answer-feedback-status" hidden></p>
       </div>
-      <p class="hint chat-dialog-hint">Type <strong>/</strong> for commands. Double-click an answer, or press and hold it on touch, to mark or unmark it as wrong.</p>
+      <p class="hint chat-dialog-hint">Ask follow-ups about the same match. Answers come from published match data, not invented predictions. Type <strong>/</strong> for commands. Double-click an answer, or press and hold it on touch, to mark or unmark it as wrong.</p>
     </div>
   </dialog>
 
@@ -506,6 +506,6 @@
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=7.1.7"></script>
+  <script type="module" src="./app.js?v=8.0.0"></script>
 </body>
 </html>
