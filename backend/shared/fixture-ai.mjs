@@ -88,7 +88,7 @@ function fixtureDetail(game, focus) {
 
 const HISTORY_WORDS = /\b(?:record|historical|history|head.to.head|h2h|played before|met before|previous meetings|beat|beaten|lost to|won against)\b/i;
 const GAME_WORDS = /\b(?:game|games|match|matches|fixture|fixtures|play|playing|plays|face|faces|against|vs|versus|opponent|next|upcoming|where|when|time|kickoff|jersey|wear|field|venue|schedule)\b/i;
-const FOLLOWUP = /^(?:and )?(?:where(?: is| was)?(?: it| that| the (?:game|match))?|what (?:time|field|venue|jersey|color|colour)|when(?: is| was)?(?: it| that)?|what about (?:that|it)|tell me more|and (?:the )?(?:time|field|venue|jersey)|which field)\??$/i;
+const FOLLOWUP = /^(?:and )?(?:where(?: is| was)?(?: it| that(?: (?:game|match))?| the (?:game|match))?|what (?:time|field|venue|jersey|color|colour)(?: (?:do we wear|is it|should we wear))?|when(?: is| was)?(?: it| that)?|what about (?:that|it)|tell me more|and (?:the )?(?:time|field|venue|jersey)|which field)\??$/i;
 
 export function answerFixtureQuestion(question, rawGames = [], context = {}, today = "") {
   const text = String(question || "").trim().slice(0, 600);
@@ -109,7 +109,13 @@ export function answerFixtureQuestion(question, rawGames = [], context = {}, tod
   if (!namedTeams.length && !remembered.length) return null;
   if (!GAME_WORDS.test(text) && !followup) return null;
 
-  const candidates = (remembered.length ? remembered : matched)
+  // When both clubs are named, require one fixture that contains both.
+  // Broad union matching would accidentally list games against other opponents.
+  const bothSides = namedTeams.length >= 2 ? matched.filter(game =>
+    namedTeams.every(name =>
+      normalize(game.team) === name || normalize(game.opponent) === name ||
+      aliases(game.team).includes(name) || aliases(game.opponent).includes(name))) : matched;
+  const candidates = (remembered.length ? remembered : bothSides)
     .filter(game => explicitDate ? game.date === explicitDate : !today || game.date >= today);
   const focus = /\b(?:where|location|venue|field)\b/i.test(text) ? "where" :
     /\b(?:jersey|kit|uniform|color|colour|wear)\b/i.test(text) ? "jersey" :
