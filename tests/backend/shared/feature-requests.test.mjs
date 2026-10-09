@@ -32,6 +32,8 @@ test("shared feature request classifier covers current web request categories", 
   assert.equal(requestCategory("notification alert settings"), "notifications");
   assert.equal(requestCategory("monitor another league team"), "league");
   assert.equal(requestCategory("change user password settings"), "setup");
+  assert.equal(requestCategory("make the BallerWatch AI bot understand followups"), "qa");
+  assert.equal(requestCategory("the assistant gave the wrong reply"), "qa");
 });
 
 test("audit rejects free text, metadata, arbitrary categories and malformed counts", () => {
