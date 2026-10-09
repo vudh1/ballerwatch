@@ -4,6 +4,7 @@
  * No network requests, Google scraping, or repeated geocoding are needed.
  */
 import fs from "node:fs";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { decryptState, encryptState } from "../shared/state-crypto.mjs";
 import { appendVenueObservations } from "../shared/venue-directory.mjs";
@@ -32,7 +33,7 @@ export function captureVenueObservations(observations, file = VENUES_FILE) {
   const previous = readVenues(file);
   const result = appendVenueObservations(previous, observations);
   if (result.added || result.enriched) {
-    fs.mkdirSync(new URL("../../league/state/", import.meta.url), { recursive: true });
+    fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, JSON.stringify(encryptState(result.directory), null, 2) + "\n");
   }
   return { ...result, count: result.directory.venues.length };
