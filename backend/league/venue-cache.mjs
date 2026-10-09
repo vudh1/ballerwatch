@@ -10,6 +10,7 @@ import { decryptState, encryptState } from "../shared/state-crypto.mjs";
 import { appendVenueObservations } from "../shared/venue-directory.mjs";
 import { publishedVenueCoordinates, publishedVenueUrl } from "./watcher.mjs";
 import { discoverPublishedRatsVenue } from "./venue-site.mjs";
+import { discoverRatsScheduleLinks, ratsScheduleFieldSearchUrl } from "./schedule-venue-links.mjs";
 
 export const VENUES_FILE = fileURLToPath(new URL("../../league/state/venues.json", import.meta.url));
 function fromEvent(event) {
@@ -54,6 +55,7 @@ export async function captureLiveLeagueVenues(
   const initial = captureVenueObservations(
     schedule.teams.flatMap(team => team.matches || []).map(match => ({
       name: match.location, url: match.locationUrl, coordinates: match.venueCoordinates,
+      searchUrl: ratsScheduleFieldSearchUrl(match.location),
     })), file,
   );
 
@@ -68,12 +70,19 @@ export async function captureLiveLeagueVenues(
       now.getTime() - Date.parse(venue.discoveryCheckedAt) >= 24 * 60 * 60 * 1000;
   }).slice(0, Math.max(0, Math.min(4, maxLookups)));
 
+  // The official schedule can contain the clickable field URL even when
+  // its fixture API has only a plain field name. Scan the schedule once for
+  // all due names, then fall back to a same-origin individual venue page.
+  const scheduleLinks = await discoverRatsScheduleLinks(due.map(venue => venue.name), {fetchImpl});
+  const publishedByName = new Map(scheduleLinks.map(item => [item.name, item]));
   const observations = [];
   for (const venue of due) {
-    const published = await discoverPublishedRatsVenue(venue.name, venue.url, {fetchImpl});
+    const onSchedule = publishedByName.get(venue.name);
+    const page = onSchedule ? null :
+      await discoverPublishedRatsVenue(venue.name, venue.url, {fetchImpl});
     const observation = {name: venue.name, discoveryCheckedAt: now.toISOString()};
-    if (published?.mapUrl) observation.mapUrl = published.mapUrl;
-    if (!venue.url && published?.sourceUrl) observation.url = published.sourceUrl;
+    if (onSchedule?.mapUrl || page?.mapUrl) observation.mapUrl = onSchedule?.mapUrl || page.mapUrl;
+    if (!venue.url && page?.sourceUrl) observation.url = page.sourceUrl;
     observations.push(observation);
   }
   if (!observations.length) return initial;
