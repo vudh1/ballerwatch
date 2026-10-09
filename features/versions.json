@@ -1,7 +1,23 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.1.7",
+  "currentVersion": "7.1.8",
   "releases": [
+    {
+      "version": "7.1.8",
+      "date": "2026-10-08",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "RATS-published field map discovery and persistent exact-field caching",
+      "webAnnouncement": "Directions and Share now prioritize exact RATS-published field links found in fixtures, venue catalogs, or verified field pages. Newly scheduled fields are checked first; confirmed links are saved encrypted and reused.",
+      "changes": [
+        "Indexes RATS fixture venue catalogues and links instead of relying only on URLs embedded in individual event objects.",
+        "Checks only new or unresolved field pages on the RATS website, with a daily backoff, bounded fetches, strict domain validation, and no redirect following.",
+        "Extracts published Maps destinations only from verified matching field pages, and rejects ambiguous links or mismatched field subdivisions such as Mod North versus Mod South.",
+        "Keeps the original RATS field page and the discovered direct Maps link separately in the encrypted append-only venue directory, preserving previously verified information.",
+        "Prioritizes verified direct RATS Maps links for both Directions and Share; retains coordinates and Google Maps field-name search as fallback when source evidence is missing.",
+        "Adds regression coverage for exact-field discovery, source-backed catalogues, encrypted cache persistence, refresh throttling, and navigation priority."
+      ]
+    },
     {
       "version": "7.1.7",
       "date": "2026-10-08",
