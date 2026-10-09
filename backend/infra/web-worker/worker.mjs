@@ -1728,7 +1728,7 @@ export function withCachedVenue(game, directory) {
   if (!venue) return game;
   return {
     ...game,
-    locationUrl: venue.mapUrl || game.locationUrl || venue.url || venue.searchUrl || "",
+    locationUrl: venue.mapUrl || game.locationUrl || venue.searchUrl || venue.url || "",
     // A cached coordinate belongs to this matched venue, not a weather fallback.
     ...(venue.coordinates ? { coordinates: venue.coordinates, venueCoordinates: venue.coordinates } : {}),
   };
