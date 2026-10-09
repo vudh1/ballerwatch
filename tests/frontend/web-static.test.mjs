@@ -1557,3 +1557,12 @@ test("worker retains RATS source links and respects venue overrides for GPS", ()
   assert.ok(worker.includes("locationUrl: game?.manualOverride ? \"\""));
   assert.ok(worker.includes("venueCoordinates: game?.manualOverride ? null"));
 });
+
+
+test("new pickup cards show venue pending instead of hiding the match or guessing directions", () => {
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
+  assert.match(app, /game\.kind === "pickup"\)[\s\S]{0,100}Venue to be announced/);
+  assert.match(worker, /if \(date < startDate\) continue;\s*const facts = pickupFacts\(safe, date\);/);
+  assert.doesNotMatch(worker, /!\(facts\.field && facts\.address\)/);
+});
