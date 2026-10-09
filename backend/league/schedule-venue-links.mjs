@@ -51,8 +51,9 @@ export function extractPublishedRatsScheduleLinks(html, fieldNames = []) {
   const candidates = new Map(requested.map(name => [name, new Set()]));
 
   // Covers server-rendered anchors and links embedded in JSON/script data.
-  const rawUrls = [...markup.matchAll(/https?:\\?\/\\?\/(?:www\.)?google\.com\\?\/maps\?q=[^\s<>"']+/gi)]
-    .map(item => htmlDecode(item[0].replace(/\\\//g, "/").replace(/&amp;/gi, "&")));
+  const normalizedMarkup = markup.replace(/\\\//g, "/");
+  const rawUrls = [...normalizedMarkup.matchAll(/https?:\/\/(?:www\.)?google\.com\/maps\?q=[^\s<>"']+/gi)]
+    .map(item => htmlDecode(item[0]));
   const anchors = [...markup.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)].map(item => {
     const href = item[1].match(/\bhref\s*=\s*(?:"([^"]*)"|'([^']*)')/i);
     return {url:htmlDecode(href?.[1] || href?.[2] || ""), label:readableText(item[2])};
