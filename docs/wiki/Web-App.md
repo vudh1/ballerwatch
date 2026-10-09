@@ -28,6 +28,14 @@ The visual waterfall is independent from that hit area: its blur/glow still span
 
 When the RSVP roster is opened by mouse or touch, closing it clears the temporary capacity-pill focus state so the green focus outline does not linger. Keyboard-opened rosters retain focus for accessibility.
 
+## Cached RATS venue directions and sharing
+
+Directions and Share use the same venue resolution. First they look for a confidently matched name in the encrypted, append-only `league/state/venues.json` directory, populated by live monitored league fixtures and historical aggregate scans. Only URLs explicitly published in RATS event fields/notes (or other validated public venue URLs) are cached; a synthesized search result is never mistaken for a verified published link. New location names are added automatically; a stored destination is never overwritten, though an unresolved entry may receive its first verified URL or coordinates.
+
+The matcher normalizes punctuation, soccer/playfield suffixes, and minor misspellings while preserving numbered-field and directional distinctions. Ambiguous matches are discarded. If no verified source destination exists, the frontend falls back to field-specific GPS from the existing geocoder or Google Maps search; it never treats Google Maps viewport coordinates as a known field GPS point.
+
+Venue directory state is encrypted on the dedicated runtime-state branch, included in encryption audits and failover backups, and cached in the Worker for at most ten minutes. The cache has no scheduled recrawl/update for existing confirmed links. Site venue pages that render only in JavaScript are not assumed to contain exact GPS coordinates.
+
 ## RATS historical Q&A
 
 Ask BallerWatch can answer deterministic questions about public Seattle RATS history, including a team's all-time record, a record in a named season, whether two teams have met before, head-to-head summaries with recent scored meetings, and which indexed seasons a team appeared in.
