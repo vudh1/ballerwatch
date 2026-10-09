@@ -5,6 +5,7 @@
  * last-good schedule. Cold starts, auth/configuration errors, and schema/integrity
  * failures remain fail-closed. Runtime snapshots are transient and encrypted elsewhere.
  */
+import { appendVenueObservations, matchVenue } from "../shared/venue-directory.mjs";
 import fs from "node:fs";
 import { pathToFileURL } from "node:url";
 import {
@@ -317,7 +318,7 @@ export function publishedVenueUrl(event = {}) {
   const fields = [
     field.url, field.link, field.maps_url, field.google_maps_url,
     location.url, location.link, location.maps_url, location.google_maps_url,
-    event.location_url, event.locationUrl, event.location_link, event.locationLink,
+    event.url, event.link, event.location_url, event.locationUrl, event.location_link, event.locationLink,
     event.maps_url, event.mapsUrl, event.map_url, event.mapUrl,
     event.google_maps_url, event.googleMapsUrl,
     event.venue_url, event.venueUrl, event.directions_url, event.directionsUrl,
@@ -363,6 +364,31 @@ export function publishedVenueCoordinates(event = {}) {
   return null;
 }
 
+// Some RATS schedule pages publish the clickable field destination in their
+// venue catalogue rather than on each fixture event. Resolve only a strong,
+// qualifier-preserving match (north/south and numbered pitches never mix).
+export function aggregateVenueDirectory(aggregate = {}) {
+  const observations = [];
+  for (const key of ["venues", "fields", "locations", "field_locations", "venue_list"]) {
+    const source = aggregate?.[key];
+    const entries = Array.isArray(source) ? source.map(value => ["", value])
+      : source && typeof source === "object" ? Object.entries(source) : [];
+    for (const [fallbackName, value] of entries.slice(0, 2000)) {
+      const item = typeof value === "string" ? {url: value} : value;
+      if (!item || typeof item !== "object") continue;
+      const name = item.name || item.field_name || item.venue_name ||
+        item.location_name || item.title || item.label || fallbackName;
+      if (!name) continue;
+      observations.push({
+        name,
+        url: publishedVenueUrl(item),
+        coordinates: publishedVenueCoordinates(item),
+      });
+    }
+  }
+  return appendVenueObservations({}, observations).directory;
+}
+
 export function normalize(
   seasonId,
   aggregate,
@@ -378,6 +404,7 @@ export function normalize(
     throw new Error("Unrecognized aggregate schema");
   }
 
+  const publishedFields = aggregateVenueDirectory(aggregate);
   const result = [];
   for (const teamName of teamNames) {
     const matches = teamMatches(aggregate, teamName);
@@ -499,6 +526,9 @@ export function normalize(
         `${opponent}|${home ? "home" : "away"}|${date}`;
       const rawKey = sourceId ? String(sourceId) : digest(identity).slice(0, 24);
 
+      const catalogued = matchVenue(publishedFields, event.location);
+      const sourceVenueUrl = publishedVenueUrl(event) || catalogued?.url || "";
+      const sourceCoordinates = publishedVenueCoordinates(event) || catalogued?.coordinates || null;
       const game = {
         key: `${CALENDAR_TRACKING_KEY_VERSION}:${rawKey}`,
         sourceMatchId: sourceId ? String(sourceId) : null,
@@ -514,8 +544,8 @@ export function normalize(
         endEstimated: !publishedEnd,
         timezone: TZ,
         location: event.location || null,
-        locationUrl: publishedVenueUrl(event),
-        venueCoordinates: publishedVenueCoordinates(event),
+        locationUrl: sourceVenueUrl,
+        venueCoordinates: sourceCoordinates,
         fieldNotes: event.notes || null,
         jerseyColor: ownColor || null,
         opponentJerseyColor: otherColor || null,
@@ -524,7 +554,7 @@ export function normalize(
         division,
         season: seasonLabel(seasonId),
         sourceUrl: SOURCE,
-        mapUrl: publishedVenueUrl(event) || (event.location
+        mapUrl: sourceVenueUrl || (event.location
           ? "https://maps.google.com/?q=" + quoteLikePython(event.location)
           : null),
         eventType: row["Event Type"],

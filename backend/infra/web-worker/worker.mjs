@@ -1728,7 +1728,7 @@ export function withCachedVenue(game, directory) {
   if (!venue) return game;
   return {
     ...game,
-    locationUrl: venue.url || game.locationUrl || "",
+    locationUrl: venue.mapUrl || venue.url || game.locationUrl || "",
     // A cached coordinate belongs to this matched venue, not a weather fallback.
     ...(venue.coordinates ? { coordinates: venue.coordinates, venueCoordinates: venue.coordinates } : {}),
   };
@@ -2126,8 +2126,8 @@ function pickupFacts(snapshot, date) {
   const priv = snapshot.pickupPrivate?.events?.[sourceDate] || {};
   if (!pub?.ok) return null;
   const effective = effectivePickupRecord(snapshot, sourceDate);
-  const reserved = Number(pub.reserved);
-  const capacity = Number(pub.capacity);
+  const reserved = pub.reserved == null ? NaN : Number(pub.reserved);
+  const capacity = pub.capacity == null ? NaN : Number(pub.capacity);
   return {
     id: effective.id,
     sourceDate,
@@ -2657,13 +2657,14 @@ export function webCalendarDetails(
   };
 
   for (const date of availableDates(safe)) {
-    if (date < startDate || date > endDate) continue;
+    // The calendar shell shows 14 days initially, but its expanded view and
+    // match-card carousel need every published future pickup date, just as
+    // they already receive every future RATS league fixture.
+    if (date < startDate) continue;
     const facts = pickupFacts(safe, date);
-    if (
-      !facts ||
-      (!facts.field && !facts.address) ||
-      !gameIsUpcoming(date, facts.start, facts.end, 180, now)
-    ) continue;
+    // A newly published RSVP date may precede field/address metadata. Keep
+    // its match card visible, with Directions disabled until a venue appears.
+    if (!facts || !gameIsUpcoming(date, facts.start, facts.end, 180, now)) continue;
     const id = facts.id || webCalendarGameId("pickup", facts.sourceDate || date);
     const sourceWeather = weatherById.get(id)?.weather || null;
     games.push(addGps({

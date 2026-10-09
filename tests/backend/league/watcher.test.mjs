@@ -6,6 +6,7 @@ import test from "node:test";
 
 import {
   HEADERS,
+  aggregateVenueDirectory,
   HttpError,
   call,
   calendarFingerprint,
@@ -317,4 +318,28 @@ test("RATS venue URL validation prevents arbitrary links and invalid coordinates
     "https://maps.app.goo.gl/abc123");
   assert.equal(publishedVenueCoordinates({latitude:0,longitude:0}), null);
   assert.equal(publishedVenueCoordinates({latitude:991,longitude:0}), null);
+});
+
+test("fixture links resolve from the RATS venue catalogue without mixing subdivisions", () => {
+  const data = fixtures();
+  const location = "Walt Hundley Playfield - Mod South";
+  data.aggregate.events[0].location = location;
+  data.exportsByTeam["Team Alpha"][1][8] = location;
+  data.aggregate.venues = [
+    {name:"Walt Hundley Playfield - Mod North", maps_url:"https://maps.app.goo.gl/north123"},
+    {name:location, google_maps_url:"https://maps.app.goo.gl/south123"},
+  ];
+  const directory = aggregateVenueDirectory(data.aggregate);
+  assert.equal(directory.venues.length, 2);
+  assert.equal(normalized(data).teams[0].matches[0].locationUrl,
+    "https://maps.app.goo.gl/south123");
+  delete data.aggregate.venues[1].google_maps_url;
+  assert.equal(normalized(data).teams[0].matches[0].locationUrl, "",
+    "never borrow the North destination for Mod South");
+
+  data.aggregate.locations = {
+    [location]: "https://maps.app.goo.gl/south456",
+  };
+  assert.equal(normalized(data).teams[0].matches[0].locationUrl,
+    "https://maps.app.goo.gl/south456");
 });

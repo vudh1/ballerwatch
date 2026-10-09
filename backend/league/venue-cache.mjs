@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { decryptState, encryptState } from "../shared/state-crypto.mjs";
 import { appendVenueObservations } from "../shared/venue-directory.mjs";
 import { publishedVenueCoordinates, publishedVenueUrl } from "./watcher.mjs";
+import { discoverPublishedRatsVenue } from "./venue-site.mjs";
 
 export const VENUES_FILE = fileURLToPath(new URL("../../league/state/venues.json", import.meta.url));
 function fromEvent(event) {
@@ -32,7 +33,7 @@ export function readVenues(file = VENUES_FILE) {
 export function captureVenueObservations(observations, file = VENUES_FILE) {
   const previous = readVenues(file);
   const result = appendVenueObservations(previous, observations);
-  if (result.added || result.enriched) {
+  if (result.added || result.enriched || result.checked) {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, JSON.stringify(encryptState(result.directory), null, 2) + "\n");
   }
@@ -43,20 +44,51 @@ export function captureVenueEvents(events = [], file = VENUES_FILE) {
   return captureVenueObservations(events.map(fromEvent).filter(Boolean), file);
 }
 
-export function captureLiveLeagueVenues(file = VENUES_FILE, scheduleFile = "league/schedule.json") {
+export async function captureLiveLeagueVenues(
+  file = VENUES_FILE,
+  scheduleFile = "league/schedule.json",
+  { fetchImpl = globalThis.fetch, now = new Date(), maxLookups = 4 } = {},
+) {
   const schedule = JSON.parse(fs.readFileSync(scheduleFile, "utf8"));
   if (!schedule?.ok || !Array.isArray(schedule.teams)) throw new Error("Invalid league schedule");
-  return captureVenueObservations(
+  const initial = captureVenueObservations(
     schedule.teams.flatMap(team => team.matches || []).map(match => ({
       name: match.location, url: match.locationUrl, coordinates: match.venueCoordinates,
     })), file,
   );
+
+  // Newest unresolved fields are checked first, once per day at most, so a
+  // historical backlog cannot delay navigation for a newly scheduled venue.
+  // A stable published map destination never triggers another website lookup.
+  const due = [...readVenues(file).venues].reverse().filter(venue => {
+    if (venue.mapUrl || (venue.url && !/^https:\/\/(?:www\.)?seattlerats\.org\//.test(venue.url))) {
+      return false;
+    }
+    return !venue.discoveryCheckedAt ||
+      now.getTime() - Date.parse(venue.discoveryCheckedAt) >= 24 * 60 * 60 * 1000;
+  }).slice(0, Math.max(0, Math.min(4, maxLookups)));
+
+  const observations = [];
+  for (const venue of due) {
+    const published = await discoverPublishedRatsVenue(venue.name, venue.url, {fetchImpl});
+    const observation = {name: venue.name, discoveryCheckedAt: now.toISOString()};
+    if (published?.mapUrl) observation.mapUrl = published.mapUrl;
+    if (!venue.url && published?.sourceUrl) observation.url = published.sourceUrl;
+    observations.push(observation);
+  }
+  if (!observations.length) return initial;
+  const discovery = captureVenueObservations(observations, file);
+  return {
+    ...discovery,
+    added: initial.added + discovery.added,
+    enriched: initial.enriched + discovery.enriched,
+  };
 }
 
 if (process.argv[1] && import.meta.url === new URL("file://" + process.argv[1]).href) {
   const command = process.argv[2];
   if (command !== "capture-live") throw new Error("Usage: node venue-cache.mjs capture-live");
-  const result = captureLiveLeagueVenues();
+  const result = await captureLiveLeagueVenues();
   console.log("RATS venue cache: " + result.count + " names, " +
     result.added + " added, " + result.enriched + " enriched.");
 }

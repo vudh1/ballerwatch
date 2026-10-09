@@ -2092,15 +2092,20 @@ function spotlightModel(game, label = "NEXT GAME") {
   const locationParts = [];
   if (game.location) locationParts.push(game.location);
   if (game.address && game.address !== game.location) locationParts.push(game.address);
+  if (!locationParts.length && game.kind === "pickup") {
+    locationParts.push("Venue to be announced");
+  }
   if (game.jerseyColor) locationParts.push(`${game.jerseyColor} jersey`);
 
   const capacity = Number(game.capacity);
   const reserved = Number(game.reserved);
-  const hasCapacity = game.kind === "pickup" && Number.isFinite(reserved);
-  const capacityPercent = hasCapacity && Number.isFinite(capacity) && capacity > 0
+  const hasCapacity = game.kind === "pickup" && game.reserved != null &&
+    Number.isFinite(reserved);
+  const capacityKnown = game.capacity != null && Number.isFinite(capacity);
+  const capacityPercent = hasCapacity && capacityKnown && capacity > 0
     ? Math.max(0, Math.min(100, Math.round((reserved / capacity) * 100)))
     : 0;
-  const spotsText = hasCapacity && Number.isFinite(capacity)
+  const spotsText = hasCapacity && capacityKnown
     ? (capacity - reserved > 0 ? `${capacity - reserved} spots left` : "Full")
     : "";
 

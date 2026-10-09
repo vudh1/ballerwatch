@@ -1552,8 +1552,18 @@ test("share prefers published RATS map links or verified GPS and falls back to D
 test("worker retains RATS source links and respects venue overrides for GPS", () => {
   const watcher = fs.readFileSync("backend/league/watcher.mjs", "utf8");
   const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
-  assert.ok(watcher.includes("locationUrl: publishedVenueUrl(event)"));
-  assert.ok(watcher.includes("venueCoordinates: publishedVenueCoordinates(event)"));
+  assert.ok(watcher.includes("locationUrl: sourceVenueUrl"));
+  assert.ok(watcher.includes("venueCoordinates: sourceCoordinates"));
   assert.ok(worker.includes("locationUrl: game?.manualOverride ? \"\""));
   assert.ok(worker.includes("venueCoordinates: game?.manualOverride ? null"));
+});
+
+
+test("new pickup cards show venue pending instead of hiding the match or guessing directions", () => {
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
+  assert.match(app, /game\.kind === "pickup"\)[\s\S]{0,100}Venue to be announced/);
+  assert.match(app, /const capacityKnown = game\.capacity != null && Number\.isFinite\(capacity\)/);
+  assert.match(worker, /if \(date < startDate\) continue;\s*const facts = pickupFacts\(safe, date\);/);
+  assert.doesNotMatch(worker, /!\(facts\.field && facts\.address\)/);
 });
