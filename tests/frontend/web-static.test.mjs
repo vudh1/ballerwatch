@@ -12,19 +12,19 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
 
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   assert.match(html, /manifest\.webmanifest/);
-  assert.match(html, /apple-touch-icon\.png\?v=8\.0\.0/);
+  assert.match(html, /apple-touch-icon\.png\?v=8\.1\.1/);
   assert.match(html, /class="brand-icon"/);
-  assert.match(html, /icon\.svg\?v=8\.0\.0/);
+  assert.match(html, /icon\.svg\?v=8\.1\.1/);
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=8\.0\.0/);
-  assert.match(html, /app\.js\?v=8\.0\.0/);
+  assert.match(html, /styles\.css\?v=8\.1\.1/);
+  assert.match(html, /app\.js\?v=8\.1\.1/);
 
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v8-0-0-shell/);
+  assert.match(sw, /ballerwatch-v8-1-1-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -93,7 +93,7 @@ test("promotion watches Worker and Pages then refreshes the open PWA", () => {
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=8\.0\.0/);
+  assert.match(app, /sw\.js\?v=8\.1\.1/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -740,14 +740,14 @@ test("notification push control is compact and only displays On or Off", () => {
   assert.match(css, /width:\s*2\.15rem/);
 });
 
-test("next-game sharing uses the generic device share sheet", () => {
+test("next-game sharing sends only the field URL through the native share sheet", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
 
   assert.match(html, /id="next-game-share" type="button">Share<\/button>/);
   assert.match(app, /navigator\.share/);
-  assert.match(app, /title: "BallerWatch game"/);
-  assert.match(app, /Field location copied/);
+  assert.match(app, /await navigator\.share\(\{ url: maps \}\)/);
+  assert.match(app, /Field location link copied/);
   assert.doesNotMatch(app, /Choose Tesla in the share sheet/);
   assert.doesNotMatch(app, /https:\/\/ts\.la\/app/);
 });
@@ -797,7 +797,7 @@ test("page uses a soccer-pitch backdrop with readable translucent cards", () => 
   assert.match(icon, /A soccer pitch with a soccer ball/);
   assert.match(icon, /<circle cx="256" cy="256" r="54"\/>/);
   assert.match(icon, /translate\(347 344\)/);
-  assert.match(manifest, /icon\.svg\?v=8\.0\.0/);
+  assert.match(manifest, /icon\.svg\?v=8\.1\.1/);
   assert.match(css, /\.card,[\s\S]*\.footer-install \{[\s\S]*rgba\(6, 18, 22, 0\.57\)/);
   assert.match(css, /\.spotlight-card \{[\s\S]*rgba\(4, 16, 22, 0\.72\)/);
   assert.match(css, /backdrop-filter:\s*blur\(24px\) saturate\(135%\)/);
@@ -1321,7 +1321,7 @@ test("cinematic launch owns first paint, stays session-scoped, and is reduced-mo
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
 
   assert.match(html, /<html lang="en" class="launch-intro-pending">/);
-  assert.match(html, /<script src="\.\/launch-prepaint\.js\?v=8\.0\.0"><\/script>[\s\S]*<link rel="stylesheet"/);
+  assert.match(html, /<script src="\.\/launch-prepaint\.js\?v=8\.1\.1"><\/script>[\s\S]*<link rel="stylesheet"/);
   assert.match(html, /id="launch-intro" aria-hidden="true">/);
   assert.doesNotMatch(html, /id="launch-intro"[^>]*\shidden/);
   assert.match(html, /class="launch-intro-word-main">BallerWatch<\/span>/);
@@ -1342,7 +1342,7 @@ test("cinematic launch owns first paint, stays session-scoped, and is reduced-mo
   assert.match(css, /@keyframes ballerwatch-intro-shine/);
   assert.match(css, /\.launch-intro\.is-active \{[\s\S]*pointer-events:\s*auto/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.launch-intro \{[\s\S]*display:\s*none !important/);
-  assert.match(sw, /\.\/launch-prepaint\.js\?v=8\.0\.0/);
+  assert.match(sw, /\.\/launch-prepaint\.js\?v=8\.1\.1/);
   assert.doesNotMatch([html, gate, app, css].join("\n"), /Netflix/i);
 });
 
@@ -1573,4 +1573,18 @@ test("BallerWatch AI 8 has match-scoped follow-up context and trust messaging", 
   assert.match(html, /BallerWatch AI/);
   assert.match(app, /ballerwatch-last-match-key/);
   assert.match(app, /Where is Supermokh FC vs PhoSaiGon/);
+});
+
+
+test("Share sends only the Google Maps field URL, never the fixture summary", () => {
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const start = app.indexOf("async function shareNextGame() {");
+  const end = app.indexOf("async function scheduleTestNotification()", start);
+  assert.ok(start >= 0 && end > start);
+  const share = app.slice(start, end);
+  assert.match(share, /await navigator\.share\(\{ url: maps \}\)/);
+  assert.match(share, /await navigator\.clipboard\.writeText\(maps\)/);
+  assert.doesNotMatch(share, /shareText|currentNextGame\.title/);
+  assert.doesNotMatch(share, /title:\s*"BallerWatch game"|text:|GPS:/);
+  assert.match(share, /const \{ url: maps, source \} = venueShareDetails\(currentNextGame\)/);
 });
