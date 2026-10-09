@@ -100,3 +100,56 @@ test("real pickup watcher writes one encrypted alert per threshold and per new s
   expectAlert(secondDate,10,/50%/);
   assert.equal(board().length,8);
 });
+
+
+test("24-hour RSVP and one-hour match reminders still fire once in silent synthetic runs", t => {
+  const previous = process.env.TRACKER_STATE_KEY;
+  process.env.TRACKER_STATE_KEY = "synthetic-pickup-reminder-test-secret";
+  t.after(() => {
+    if (previous === undefined) delete process.env.TRACKER_STATE_KEY;
+    else process.env.TRACKER_STATE_KEY = previous;
+  });
+  for (const scenario of [
+    { offsetMinutes:130, title:"Pickup RSVP reminder" },
+    { offsetMinutes:35, title:"Pickup starts in 1 hour" },
+  ]) {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "ballerwatch-reminders-"));
+    t.after(() => fs.rmSync(root, {recursive:true, force:true}));
+    const future = new Date(Date.now() + scenario.offsetMinutes * 60_000);
+    const parts = Object.fromEntries(
+      new Intl.DateTimeFormat("en-US", {
+        timeZone:"America/Los_Angeles",
+        year:"numeric", month:"2-digit", day:"2-digit",
+        hour:"2-digit", minute:"2-digit", hourCycle:"h23",
+      }).formatToParts(future).filter(p => p.type !== "literal")
+        .map(p => [p.type, p.value]),
+    );
+    const date = [parts.year,parts.month,parts.day].join("-");
+    const time = parts.hour + ":" + parts.minute;
+    const datesDir = path.join(root, ".runtime/pickup/data/dates");
+    fs.mkdirSync(datesDir, {recursive:true});
+    fs.writeFileSync(path.join(root, ".runtime/pickup/data/index.json"),
+      JSON.stringify({ok:true,dates:[{date}]}));
+    fs.writeFileSync(path.join(root, ".runtime/pickup/events.json"),
+      JSON.stringify({events:{[date]:{fieldName:"Fixture Field",address:"Fixture City"}}}));
+    fs.writeFileSync(path.join(datesDir,date+".json"),
+      JSON.stringify({ok:true,date,reserved:4,capacity:16,startTime:time,endTime:""}));
+    const run = () => spawnSync(process.execPath,
+      [path.resolve("backend/pickup/notify.mjs")], {
+        cwd:root,encoding:"utf8",
+        env:{...process.env,TRACKER_STATE_KEY:process.env.TRACKER_STATE_KEY},
+      });
+    const first = run();
+    assert.equal(first.status,0,first.stderr);
+    const boardFile = path.join(root,"state/web-board-pickup.json");
+    const board = () => decryptState(JSON.parse(fs.readFileSync(boardFile,"utf8"))).entries;
+    const notices = board();
+    assert.equal(notices.filter(x=>x.title===scenario.title).length,1,
+      scenario.title+" should be recorded");
+    assert.ok(fs.existsSync(path.join(root,".runtime/web-push-pending")));
+    const second = run();
+    assert.equal(second.status,0,second.stderr);
+    assert.equal(board().length,notices.length,
+      scenario.title+" should never duplicate across watcher runs");
+  }
+});
