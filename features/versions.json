@@ -1,7 +1,25 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.0.0",
+  "currentVersion": "8.1.0",
   "releases": [
+    {
+      "version": "8.1.0",
+      "date": "2026-10-09",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "BallerWatch AI 8.1 — review-guided reliable answers",
+      "webAnnouncement": "BallerWatch AI 8.1 answers your own RSVP status when signed in, improves historical matchup accuracy, adds official evidence links and safer conversational memory, and uses optional privacy-gated AI routing only when needed.",
+      "changes": [
+        "Routes low-risk, public, otherwise unclassified soccer questions to configured free Gemini/Groq intent classifiers. The model cannot compose facts, perform writes, view RSVP rosters or receive account/identity details.",
+        "Handles personal RSVP questions from a verified signed-in user's configured RSVP name and encrypted source roster, reporting only their own confirmation or waitlist status.",
+        "Requires two distinct recognized RATS clubs for an explicit head-to-head query; never silently substitutes a single-team record for a partially matched opponent.",
+        "Labels historical results as indexed seasons and warns that older or unpublished scores can be missing.",
+        "Attaches allowlisted clickable RATS or pickup-source links to factual web answers and expires browser follow-up context after 20 minutes.",
+        "Classifies future AI/assistant feature requests as QA rather than undifferentiated Other and retains fully encrypted, sanitized wrong-answer reviews.",
+        "Runs notification-silent AI regression tests every six hours alongside the existing feedback-review workflow; does not automatically train model weights or deploy code.",
+        "Adds privacy, classification, match-history, and personal RSVP non-disclosure regression tests informed by safe review categories."
+      ]
+    },
     {
       "version": "8.0.0",
       "date": "2026-10-09",
