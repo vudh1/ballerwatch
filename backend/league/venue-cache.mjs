@@ -57,9 +57,10 @@ export async function captureLiveLeagueVenues(
     })), file,
   );
 
-  // Only unresolved source fields are checked, once per day at most. A stable
-  // published map destination never triggers another website lookup.
-  const due = readVenues(file).venues.filter(venue => {
+  // Newest unresolved fields are checked first, once per day at most, so a
+  // historical backlog cannot delay navigation for a newly scheduled venue.
+  // A stable published map destination never triggers another website lookup.
+  const due = [...readVenues(file).venues].reverse().filter(venue => {
     if (venue.mapUrl || (venue.url && !/^https:\/\/(?:www\.)?seattlerats\.org\//.test(venue.url))) {
       return false;
     }
