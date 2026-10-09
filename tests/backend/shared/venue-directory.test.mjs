@@ -60,7 +60,7 @@ test("cache avoids ambiguity and coalesces safe name variants", () => {
   assert.ok(cache.directory.venues[0].aliases.includes("Bobby Morris Soccer Field"));
   const ambiguous=appendVenueObservations({},[
     {name:"Riverside Memorial Field",url:"https://maps.google.com/?q=47.6,-122.3"},
-    {name:"Riverside Memorial Park",url:"https://maps.google.com/?q=47.5,-122.4"},
+    {name:"Riverside Memorial Soccer Field",url:"https://maps.google.com/?q=47.5,-122.4"},
   ]);
   assert.equal(matchVenue(ambiguous.directory,"Riverside Memorial Soccer"),null);
   assert.equal(venueNameParts("Delridge #2 South").qualifiers,"2|south");
