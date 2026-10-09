@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, Calendar sync, and quick answers into one installable app.
 
-**Current source version: 7.1.10**
+**Current source version: 8.0.0**
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
 
@@ -18,7 +18,7 @@ BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS leag
 - Get allowed Web Push reminders and real schedule-change notifications.
 - **Dynamic pickup capacity alerts:** RSVP bookings trigger at **25%, 50%, and 75%** of each published match's capacity, then each additional occupied spot through full. Thresholds round up to whole reservations (e.g., 16 slots alerts at 4, 8, 12, 13, 14, 15, and 16). A new match starts with a silent baseline, so past thresholds are not replayed; cancellations or settings-only capacity changes do not trigger booking alerts. The 24-hour RSVP and one-hour kickoff reminders remain separate, and muting/snoozing is honored.
 - Open **Inbox** and **Settings** from the top-right notification bell and gear.
-- Ask read-only questions such as `/next`, `What time is Thursday?`, `What is Team X’s RATS record?`, or `Have Team A and Team B played before?`.
+- Ask **BallerWatch AI** about opponents, match fields, jersey colors, weekly briefings, next games, and indexed RATS results—with follow-ups for a specific fixture.
 - Sign in with separate user accounts and revocable sessions.
 - For administrators: manage users, monitored RATS teams, reversible match overrides/deletes, and app promotion.
 - Keep real RATS schedule changes synchronized to Google Calendar.
@@ -32,6 +32,18 @@ Saturday synthetic pickup is shown simply as **Pickup** and has no RSVP/capacity
 A 22-second walkthrough with a short animated intro. Recorded from the app using synthetic sample data; game details, answers, and notifications are illustrative.
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Static screenshot](docs/demo.jpg)
+
+## BallerWatch 8 — BallerWatch AI
+
+BallerWatch AI combines the existing verified RATS history index, live schedules, pickup RSVP totals, and short-lived on-device conversation context. The core factual answering path is deterministic and needs **no paid AI service**. The app never guesses a location, game, result, or personal RSVP.
+
+- **Ask by opponent:** `When do we play PhoSaiGon?`, `Where is Supermokh FC vs PhoSaiGon?`. Queries with two clubs must resolve to the same official fixture, not unrelated games.
+- **Natural follow-ups:** After one fixture, ask `Where is that match?`, `What jersey do we wear?` or `What time?`. Fixture context stays in the browser session and is validated against the current, visibility-filtered schedule.
+- **Weekly briefing:** `Brief me on this week` or `Which pickup is filling up?` combines the next seven days of RATS matches and published RSVP counts. Occupancy at or above 75% is flagged without showing private participants.
+- **Source-aware, bounded answers:** The bot labels published RATS schedule information and calls out missing times, venues, or unavailable history rather than making claims beyond the data.
+- **Privacy-safe improvement:** The existing encrypted thumbs-down engineering reviews run every six hours, and league/pickup source indexes refresh on their existing schedules. This makes the *data* fresher over time; it is **not autonomous training of model weights**. Proposed behavior changes are tested and reviewed before a new release.
+
+BallerWatch AI remains **read-only**. Match edits, RSVPs, and app promotions use their existing authenticated controls; a chat question cannot perform those actions.
 
 ## BallerWatch 7
 
