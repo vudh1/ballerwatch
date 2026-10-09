@@ -22,8 +22,9 @@ test("source-published URLs grow the durable encrypted venue cache without repla
   assert.equal(readVenues(file).venues[0].url,event.venue.url);
   assert.equal(captureVenueObservations([{
     name:event.location,url:"https://www.google.com/maps?q=47.6,-122.3",
-  }],file).enriched,0);
+  }],file).enriched,1);
   assert.equal(readVenues(file).venues[0].url,event.venue.url);
+  assert.equal(readVenues(file).venues[0].mapUrl,"https://www.google.com/maps?q=47.6,-122.3");
   assert.equal(captureVenueEvents([{location:"Another Soccer Field"}],file).added,1);
   assert.equal(readVenues(file).venues.length,2);
 });
