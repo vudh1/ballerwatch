@@ -3022,6 +3022,27 @@ export function webSafeSnapshot(snapshot) {
   };
 }
 
+async function webHistoryAnswer(env, text, lastHistoryTeams, lastDate) {
+  try {
+    const history = await loadRatsHistory(env);
+    const result = answerRatsHistoryQuestion(text, history, lastHistoryTeams);
+    if (result.ready === false) {
+      return { ok:false, error:result.reply, intent:"rats_history", historyTeams:result.teams };
+    }
+    return {
+      ok:true, reply:result.reply, intent:"rats_history", historyTeams:result.teams,
+      lastDate:cleanText(lastDate, 20),
+      sources:[{ label:"RATS schedule and standings", url:"https://seattlerats.org/schedule--standings" }],
+    };
+  } catch {
+    return {
+      ok:false,
+      error:"RATS historical results are temporarily unavailable while the history index refreshes.",
+      intent:"rats_history",
+    };
+  }
+}
+
 async function webAnswer(env, question, context = {}) {
   const text = cleanText(question, 600);
   if (!text) return { ok: false, error: "Ask a question first." };
@@ -3041,36 +3062,14 @@ async function webAnswer(env, question, context = {}) {
     .slice(0, 2);
 
   if (preliminaryIntent === "rats_history") {
-    try {
-      const history = await loadRatsHistory(env);
-      const result = answerRatsHistoryQuestion(text, history, lastHistoryTeams);
-      if (result.ready === false) {
-        return {
-          ok: false,
-          error: result.reply,
-          intent: "rats_history",
-          historyTeams: result.teams,
-        };
-      }
-      return {
-        ok: true,
-        reply: result.reply,
-        intent: "rats_history",
-        historyTeams: result.teams,
-        lastDate: cleanText(context?.lastDate, 20),
-      };
-    } catch {
-      return {
-        ok: false,
-        error: "RATS historical results are temporarily unavailable while the history index refreshes.",
-        intent: "rats_history",
-      };
-    }
+    return webHistoryAnswer(env, text, lastHistoryTeams, context?.lastDate);
   }
 
   let snapshot;
+  let rawSnapshot;
   try {
-    snapshot = webSafeSnapshot(await loadSnapshot(env));
+    rawSnapshot = await loadSnapshot(env);
+    snapshot = webSafeSnapshot(rawSnapshot);
   } catch {
     return { ok: false, error: "BallerWatch data is temporarily unavailable." };
   }
@@ -3101,6 +3100,14 @@ async function webAnswer(env, question, context = {}) {
     !/\b(?:pickup|rsvp|reserved|spots?|capacity|availability|full|waitlist|registered|signed\s*up)\b/.test(lower);
 
   let intent = contextualGameDetail ? "date_games" : preliminaryIntent;
+  let aiDate = "";
+  if (!intent || intent === "github") {
+    const ai = await classifyWithAi(env, text, snapshot, safeContext);
+    if (ai) { intent = ai.intent; aiDate = ai.date; }
+  }
+  if (intent === "rats_history") {
+    return webHistoryAnswer(env, text, lastHistoryTeams, safeContext.lastDate);
+  }
   if (!intent || intent === "github") {
     return {
       ok: false,
@@ -3151,7 +3158,7 @@ async function webAnswer(env, question, context = {}) {
   } else if (intent === "date_games") {
     const requested = contextualGameDetail
       ? safeContext.lastDate
-      : resolveScheduleDate(text, snapshot, safeContext);
+      : aiDate || resolveScheduleDate(text, snapshot, safeContext);
     if (!requested) return { ok: false, error: "I couldn't resolve that game date." };
     reply = dateGameAnswer(snapshot, requested, text);
     lastDate = requested;
@@ -3165,7 +3172,7 @@ async function webAnswer(env, question, context = {}) {
     reply = next.reply;
     if (next.date) lastDate = next.date;
   } else if (intent === "pickup_status") {
-    const requested = resolveDate(text, snapshot, safeContext);
+    const requested = aiDate || resolveDate(text, snapshot, safeContext);
     if (!requested) return { ok: false, error: "I couldn't resolve that pickup date." };
     reply = pickupStatus(snapshot, requested);
     lastDate = requested;
