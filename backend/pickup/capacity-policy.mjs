@@ -20,7 +20,7 @@ export function pickupCapacityAlert(previous, current) {
   const half = Math.ceil(capacity * 0.5);
   const threeQuarter = Math.ceil(capacity * 0.75);
   let kind = "";
-  if (reserved >= capacity && before < capacity && before >= threeQuarter) {
+  if (reserved >= capacity && before < capacity) {
     kind = "full";
   } else if (reserved >= threeQuarter) {
     // From 75% onward, every newly observed filled spot generates an alert.
