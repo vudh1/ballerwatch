@@ -1515,7 +1515,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=8.0.0", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=8.1.1", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -3343,29 +3343,23 @@ async function resetMatchOverride() {
 
 async function shareNextGame() {
   if (!currentNextGame) return;
-  const { url: maps, gps, source } = venueShareDetails(currentNextGame);
+  const { url: maps, source } = venueShareDetails(currentNextGame);
   if (!maps) {
     els.nextGameHint.textContent = "No field location is published for this game.";
     return;
   }
-  const text = [
-    currentNextGame.shareText || currentNextGame.title || "BallerWatch game",
-    gps ? "📍 GPS: " + gps : "",
-  ].filter(Boolean).join("\n");
 
   try {
     if (navigator.share) {
-      await navigator.share({
-        title: "BallerWatch game",
-        text,
-        ...(maps ? { url: maps } : {}),
-      });
+      // Share only the source-backed field link. Supplying text or title causes
+      // iOS to prepend the entire fixture summary to the Maps URL.
+      await navigator.share({ url: maps });
       els.nextGameHint.textContent = source === "lookup" ? "Shared field lookup in Google Maps." : "Shared field location.";
       return;
     }
 
-    await navigator.clipboard.writeText([text, maps].filter(Boolean).join("\n"));
-    els.nextGameHint.textContent = source === "lookup" ? "Google Maps field lookup copied." : "Field location copied.";
+    await navigator.clipboard.writeText(maps);
+    els.nextGameHint.textContent = source === "lookup" ? "Google Maps field lookup copied." : "Field location link copied.";
   } catch (error) {
     if (error?.name !== "AbortError") {
       els.nextGameHint.textContent = "Unable to share from this device.";
