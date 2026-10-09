@@ -81,6 +81,16 @@ function cleanEntry(entry) {
     aliases: [...new Set((Array.isArray(entry?.aliases) ? entry.aliases : [])
       .map(a => String(a || "").trim().slice(0, 150)).filter(Boolean))].slice(0, 12),
     url: validRatsVenueUrl(entry?.url),
+    // Generated from a RATS-published field name, not a verified GPS pin
+    // or a directly observed href; direct sources always take priority.
+    searchUrl: (() => {
+      const url = validRatsVenueUrl(entry?.searchUrl);
+      if (!url) return "";
+      const parsed = new URL(url);
+      const query = parsed.searchParams.get("q");
+      return parsed.pathname === "/maps" && query &&
+        venueNameParts(query).key === venueNameParts(name).key ? url : "";
+    })(),
     mapUrl: (() => {
       const url = validRatsVenueUrl(entry?.mapUrl);
       return url && !["seattlerats.org", "www.seattlerats.org"].includes(new URL(url).hostname)
@@ -122,6 +132,10 @@ export function appendVenueObservations(previous = {}, observations = []) {
       if (!existing.url && incoming.url) { existing.url = incoming.url; enriched++; }
       if (!existing.coordinates && incoming.coordinates) { existing.coordinates = incoming.coordinates; enriched++; }
       if (!existing.mapUrl && incoming.mapUrl) { existing.mapUrl = incoming.mapUrl; enriched++; }
+      if (!existing.searchUrl && incoming.searchUrl) {
+        existing.searchUrl = incoming.searchUrl;
+        enriched++;
+      }
       // Keep the original RATS venue-page link immutable, but allow a newly
       // published direct Maps URL for that same exact field to enrich it.
       if (!existing.mapUrl && existing.url && incoming.url &&
