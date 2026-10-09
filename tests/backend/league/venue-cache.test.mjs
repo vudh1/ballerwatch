@@ -51,6 +51,10 @@ test("new fixture venues are checked once then direct RATS Maps links are cached
   let visits = 0;
   const fetchImpl = async url => {
     visits++;
+    if (url.includes("schedule--standings")) {
+      return {ok:true,headers:{get:()=> "text/html"},
+        text:async () => "<div id='app'></div>"};
+    }
     const label = url.includes("mod-south") ? "Mod South" : "Mod North";
     const map = label === "Mod South" ? SOUTH : NORTH;
     return {ok:true,headers:{get:()=> "text/html"},
@@ -61,7 +65,7 @@ test("new fixture venues are checked once then direct RATS Maps links are cached
   const first = await captureLiveLeagueVenues(cacheFile, scheduleFile, options);
   assert.equal(first.added, 2);
   assert.equal(first.enriched, 4);
-  assert.equal(visits, 2);
+  assert.equal(visits, 3);
   const stored = fs.readFileSync(cacheFile, "utf8");
   assert.doesNotMatch(stored, /Walt Hundley|southMod|northMod/);
   const south = readVenues(cacheFile).venues.find(v => /South/.test(v.name));
@@ -69,9 +73,11 @@ test("new fixture venues are checked once then direct RATS Maps links are cached
   assert.equal(south.mapUrl, SOUTH);
   assert.equal(north.mapUrl, NORTH);
   assert.notEqual(south.mapUrl, north.mapUrl);
+  assert.equal(south.searchUrl,
+    "https://www.google.com/maps?q=Walt+Hundley+Playfield+-+Mod+South");
 
   await captureLiveLeagueVenues(cacheFile, scheduleFile, options);
-  assert.equal(visits, 2, "verified destinations do not trigger more website fetches");
+  assert.equal(visits, 3, "verified destinations do not trigger more website fetches");
 
   fs.writeFileSync(scheduleFile, JSON.stringify({ok:true,teams:[{matches:[
     {location:"Walt Hundley Playfield - Mod South"},
@@ -82,7 +88,39 @@ test("new fixture venues are checked once then direct RATS Maps links are cached
     fetchImpl: async () => { visits++; throw new Error("RATS is temporarily down"); },
     now:new Date("2026-10-08T23:00:00Z"),
   });
-  assert.equal(visits, 3, "only the new field was queried");
+  assert.equal(visits, 5, "only the new field triggered schedule and venue-page checks");
   assert.equal(readVenues(cacheFile).venues.length, 3);
   assert.ok(readVenues(cacheFile).venues.find(v => /Queen Anne/.test(v.name)).discoveryCheckedAt);
+});
+
+
+test("official RATS schedule-page href is cached before individual venue-page discovery", async t => {
+  const previous = process.env.TRACKER_STATE_KEY;
+  process.env.TRACKER_STATE_KEY = "rats-schedule-cache-fixture-key";
+  t.after(() => {
+    if (previous === undefined) delete process.env.TRACKER_STATE_KEY;
+    else process.env.TRACKER_STATE_KEY = previous;
+  });
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),"ballerwatch-rats-schedule-"));
+  t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+  const cache=path.join(dir,"venues.json");
+  const schedule=path.join(dir,"schedule.json");
+  const name="Walt Hundley Playfield - Mod South";
+  const map="https://www.google.com/maps?q=Walt+Hundley+Playfield+-+Mod+South";
+  fs.writeFileSync(schedule,JSON.stringify({ok:true,teams:[{matches:[{location:name}]}]}));
+  const calls=[];
+  const result=await captureLiveLeagueVenues(cache,schedule,{
+    now:new Date("2026-10-08T21:00:00Z"),
+    fetchImpl:async url=>{
+      calls.push(url);
+      if (!url.includes("schedule--standings")) throw new Error("Unnecessary venue fetch");
+      return {ok:true,headers:{get:()=>"text/html"},
+        text:async()=>'<a href="'+map+'">'+name+"</a>"};
+    },
+  });
+  assert.equal(result.added,1);
+  assert.equal(calls.length,1);
+  assert.equal(readVenues(cache).venues[0].mapUrl,map);
+  assert.equal(readVenues(cache).venues[0].searchUrl,map);
+  assert.doesNotMatch(fs.readFileSync(cache,"utf8"),/Walt Hundley|google\.com/);
 });
