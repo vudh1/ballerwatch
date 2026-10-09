@@ -8,6 +8,7 @@ import {
   issuePushRegistrationChallenge,
   normalizeUserName,
   pickupUserRsvpView,
+  personalPickupAnswer,
   verifyOwnerCapability,
   normalizeOwnerSettingsInput,
   verifyOwnerToken,
@@ -1016,4 +1017,25 @@ test("Share and Directions reuse RATS-format field URL from encrypted cache", ()
   assert.equal(withCachedVenue({location:venue},{venues:[{
     name:venue,searchUrl:sourceLink,mapUrl:actual,
   }]}).locationUrl,actual,"captured official page href takes precedence");
+});
+
+
+test("signed-in Ask AI answers only the current user's RSVP status", () => {
+  const date = "2099-10-08";
+  const snapshot = {
+    pickup:{dates:[{date}],events:{[date]:{ok:true,reserved:2,capacity:16}}},
+    pickupPrivate:{events:{[date]:{
+      fieldName:"Synthetic RSVP pitch",players:[{name:"Example User"},{name:"Other Name"}],
+      waitlist:[{name:"Waitlisted User"}],
+    }}},
+  };
+  assert.match(personalPickupAnswer(snapshot,date,"Example User"),/You are confirmed/);
+  assert.match(personalPickupAnswer(snapshot,date,"Waitlisted User"),/You are on the waitlist/);
+  assert.match(personalPickupAnswer(snapshot,date,"Not Listed"),/not currently on the confirmed/);
+  for (const name of ["Example User","Waitlisted User","Not Listed"]) {
+    assert.doesNotMatch(personalPickupAnswer(snapshot,date,name),/Other Name|Example User|Waitlisted User|Synthetic/);
+  }
+  assert.match(personalPickupAnswer(snapshot,date,""),/Set your RSVP name/);
+  assert.match(personalPickupAnswer({...snapshot,pickupPrivate:{events:{}}},date,"Example User"),
+    /can't verify your reservation/);
 });
