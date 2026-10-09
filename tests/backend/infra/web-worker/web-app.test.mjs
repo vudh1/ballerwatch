@@ -16,6 +16,7 @@ import {
   webCalendarDetails,
   webNextGameDetails,
   webSafeSnapshot,
+  withCachedVenue,
 } from "../../../../backend/infra/web-worker/worker.mjs";
 
 test("web snapshot strips private pickup roster and owner settings", () => {
@@ -882,4 +883,33 @@ test("RATS-published map destination and GPS appear on calendar but not stale ov
   assert.equal(overridden.location, "Replacement Field");
   assert.equal(overridden.locationUrl, "");
   assert.equal(overridden.coordinates, null);
+});
+
+test("calendar and next-game share immutable RATS venue cache for renamed and misspelled fields", () => {
+  const directory = {schemaVersion:1,venues:[
+    {name:"Queen Anne Bowl Playfield Soccer",
+      url:"https://www.google.com/maps/place/Queen+Anne+Bowl+Playfield",
+      coordinates:{latitude:47.6361,longitude:-122.3581}},
+    {name:"Delridge South Field 2",
+      url:"https://maps.google.com/?q=47.52,-122.36"},
+  ]};
+  const match = {key:"v2:venue-cache",date:"2099-10-06",
+    start:"2099-10-06T19:00:00-07:00",end:"2099-10-06T21:00:00-07:00",
+    team:"Team Alpha",opponent:"Team Beta",location:"Queen Ann Bowl Soccer Field"};
+  const snapshot={pickup:{dates:[],events:{}},pickupPrivate:{events:{}},
+    league:{teams:[{name:"Team Alpha",matches:[match]}]}};
+  const calendar=webCalendarDetails(snapshot,{},14,"2099-10-01",new Date("2099-10-01T12:00:00Z"),directory);
+  const item=calendar.games.find(x=>x.id==="league:v2:venue-cache");
+  assert.equal(item.locationUrl,directory.venues[0].url);
+  assert.deepEqual(item.coordinates,directory.venues[0].coordinates);
+  assert.equal(withCachedVenue({location:"Queen Ann Bowl Soccer Field"},directory).locationUrl,
+    directory.venues[0].url);
+  assert.equal(withCachedVenue({location:"Delridge North Field 2"},directory).locationUrl,undefined);
+});
+
+test("manually changed field only uses cached link when new field matches, never old source", () => {
+  const directory={venues:[{name:"Replacement Field",url:"https://maps.google.com/?q=47.5,-122.3"}]};
+  const changed=withCachedVenue({location:"Replacement Field",overrideActive:true,locationUrl:""},directory);
+  assert.equal(changed.locationUrl,"https://maps.google.com/?q=47.5,-122.3");
+  assert.equal(withCachedVenue({location:"Unknown Field",overrideActive:true,locationUrl:""},directory).locationUrl,"");
 });
