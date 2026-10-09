@@ -26,7 +26,11 @@ Saturday synthetic pickup is shown simply as **Pickup** and has no RSVP/capacity
 
 ## Demo
 
-![BallerWatch web app demo](docs/demo.jpg)
+![BallerWatch animated demo: upcoming games, pickup RSVP capacity, quick answers, and Inbox notifications](docs/demo.gif)
+
+A 22-second walkthrough with a short animated intro. Recorded from the app using synthetic sample data; game details, answers, and notifications are illustrative.
+
+[Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Static screenshot](docs/demo.jpg)
 
 ## BallerWatch 7
 
@@ -106,7 +110,8 @@ tests/
   backend/                backend tests mirrored by domain
 
 docs/
-  demo.jpg                current README demo
+  demo.gif                animated README walkthrough
+  demo.jpg                static app screenshot
   wiki/                   maintained project documentation
 
 features/versions.json    product version ledger
