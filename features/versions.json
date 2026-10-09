@@ -1,7 +1,24 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.1.10",
+  "currentVersion": "8.0.0",
   "releases": [
+    {
+      "version": "8.0.0",
+      "date": "2026-10-09",
+      "type": "major",
+      "source": "user-requested",
+      "title": "BallerWatch AI 8 — grounded match intelligence",
+      "webAnnouncement": "Meet BallerWatch AI: ask about RATS opponents, locations, kickoff times and jerseys, follow up about a specific fixture, and get a weekly briefing of upcoming matches and pickup capacity—all grounded in live BallerWatch data.",
+      "changes": [
+        "Introduces the BallerWatch AI identity in the floating chat, with first-class fixture questions and suggestions.",
+        "Searches monitored RATS schedules by team and opponent instead of requiring a date, disambiguates two named teams to the exact matchup, and never invents unpublished games.",
+        "Carries a session-scoped match key into follow-up questions (where, when, jersey), validating it against currently visible fixtures to avoid stale or hidden matches.",
+        "Adds a weekly seven-day AI briefing combining published league fixtures with RSVP pickup capacity, highlighting filling-up pickup dates without claiming private user attendance or predicted outcomes.",
+        "Labels fixture-answer provenance as RATS monitored schedule and explains pending locations/times instead of fabricating details.",
+        "Reuses existing free deterministic RATS-history engine, live schedule refreshes, encrypted feedback review, and provider-independent answer path; no paid AI plan or self-training of model weights required.",
+        "Refreshes PWA shell/version assets and adds regression tests for matchup accuracy, follow-up safety, data privacy, briefing claims, and zero-guess behavior."
+      ]
+    },
     {
       "version": "7.1.10",
       "date": "2026-10-09",
