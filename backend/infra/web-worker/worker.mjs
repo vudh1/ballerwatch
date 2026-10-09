@@ -22,6 +22,7 @@ import { publicRequestSummary } from "../../shared/feature-request-summary.mjs";
 import { historyIntentLabel, negativeFeedbackProjection } from "../../shared/feedback-review.mjs";
 import { classifyIndexedIntent } from "../../shared/intent-index.mjs";
 import { answerFixtureQuestion } from "../../shared/fixture-ai.mjs";
+import { weeklyMatchBriefing } from "../../shared/match-briefing.mjs";
 import { answerRatsHistoryQuestion } from "../../shared/rats-history.mjs";
 import { matchVenue } from "../../shared/venue-directory.mjs";
 import {
@@ -2429,8 +2430,12 @@ export function directIntent(text) {
   const clean = cleanText(text, 600);
   const lower = clean.toLowerCase();
 
-  if (/^\/?version\b/.test(lower)) return "version";
+  if (/^\\/?version\\b/.test(lower)) return "version";
   if (/^\/?help\b/.test(lower)) return "help";
+  if (
+    /\\b(?:brief(?:ing)?|weekly (?:summary|digest)|week(?:ly)? recap)\\b/.test(lower) ||
+    /\\b(?:which|what) (?:pickup|rsvp)(?: date| game)? (?:is |are )?filling (?:up|fast)\\b/.test(lower)
+  ) return "briefing";
   if (
     /\b(?:record|history|historical|head[ -]?to[ -]?head|h2h|previous meetings?)\b/.test(lower) ||
     /\b(?:played|met)\b[^?!.]{0,80}\bbefore\b/.test(lower) ||
@@ -3104,7 +3109,16 @@ async function webAnswer(env, question, context = {}) {
   let reply = "";
   let lastDate = safeContext.lastDate || "";
   if (intent === "version") reply = `BallerWatch v${snapshot.version}`;
-  else if (intent === "help") {
+  else if (intent === "briefing") {
+    const today = localDate();
+    const digest = weeklyMatchBriefing({
+      pickups: availableDates(snapshot).map(date => pickupFacts(snapshot, date)).filter(Boolean),
+      leagueGames: leagueMatches(snapshot),
+      startDate: today, endDate: addDays(today, 6),
+    });
+    reply = digest.reply;
+    lastDate = digest.lastDate || today;
+  } else if (intent === "help") {
     reply = [
       "You can ask:",
       "• what game is on 10/6?",
@@ -3117,6 +3131,8 @@ async function webAnswer(env, question, context = {}) {
       "• what's my next game?",
       "• what's the all-time record for Team Name?",
       "• have Team A and Team B played before?",
+      "• brief me on this week",
+      "• which pickup is filling up?",
       "• when do we play PhoSaiGon?",
       "• where is Supermokh FC vs PhoSaiGon?",
       "• where is that match? (follow-up)",
