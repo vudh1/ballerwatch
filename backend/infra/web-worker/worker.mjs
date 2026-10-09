@@ -2430,11 +2430,11 @@ export function directIntent(text) {
   const clean = cleanText(text, 600);
   const lower = clean.toLowerCase();
 
-  if (/^\\/?version\\b/.test(lower)) return "version";
+  if (/^\/?version\b/.test(lower)) return "version";
   if (/^\/?help\b/.test(lower)) return "help";
   if (
-    /\\b(?:brief(?:ing)?|weekly (?:summary|digest)|week(?:ly)? recap)\\b/.test(lower) ||
-    /\\b(?:which|what) (?:pickup|rsvp)(?: date| game)? (?:is |are )?filling (?:up|fast)\\b/.test(lower)
+    /\b(?:brief(?:ing)?|weekly (?:summary|digest)|week(?:ly)? recap)\b/.test(lower) ||
+    /\b(?:which|what) (?:pickup|rsvp)(?: date| game)? (?:is |are )?filling (?:up|fast)\b/.test(lower)
   ) return "briefing";
   if (
     /\b(?:record|history|historical|head[ -]?to[ -]?head|h2h|previous meetings?)\b/.test(lower) ||
