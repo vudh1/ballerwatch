@@ -6,6 +6,7 @@
  * Updated v5.8.0: uses user-facing authentication terminology, supports /web/user routes,
  * and reads/writes every runtime-state document as a complete encrypted envelope.
  * Updated v7.1.0: serves deterministic all-season RATS history Q&A from encrypted runtime state.
+ * Updated v8.0.0: grounded, multi-turn RATS fixture intelligence without a paid model dependency.
  */
 import {
   fetchPickupSnapshot,
@@ -20,6 +21,8 @@ import { aiProviders, requestAiJson } from "../../shared/ai-provider.mjs";
 import { publicRequestSummary } from "../../shared/feature-request-summary.mjs";
 import { historyIntentLabel, negativeFeedbackProjection } from "../../shared/feedback-review.mjs";
 import { classifyIndexedIntent } from "../../shared/intent-index.mjs";
+import { answerFixtureQuestion } from "../../shared/fixture-ai.mjs";
+import { weeklyMatchBriefing } from "../../shared/match-briefing.mjs";
 import { answerRatsHistoryQuestion } from "../../shared/rats-history.mjs";
 import { matchVenue } from "../../shared/venue-directory.mjs";
 import {
@@ -2430,6 +2433,10 @@ export function directIntent(text) {
   if (/^\/?version\b/.test(lower)) return "version";
   if (/^\/?help\b/.test(lower)) return "help";
   if (
+    /\b(?:brief(?:ing)?|weekly (?:summary|digest)|week(?:ly)? recap)\b/.test(lower) ||
+    /\b(?:which|what) (?:pickup|rsvp)(?: date| game)? (?:is |are )?filling (?:up|fast)\b/.test(lower)
+  ) return "briefing";
+  if (
     /\b(?:record|history|historical|head[ -]?to[ -]?head|h2h|previous meetings?)\b/.test(lower) ||
     /\b(?:played|met)\b[^?!.]{0,80}\bbefore\b/.test(lower) ||
     /\b(?:beat|beaten|won against|lost to)\b/.test(lower)
@@ -3074,7 +3081,14 @@ async function webAnswer(env, question, context = {}) {
       ownerName: userRsvpName,
     };
   }
-  const safeContext = { lastDate: cleanText(context?.lastDate, 20) };
+  const safeContext = {
+    lastDate: cleanText(context?.lastDate, 20),
+    lastMatchKey: cleanText(context?.lastMatchKey, 120),
+  };
+  // Fixture-aware answers precede generic keyword routing. Every remembered
+  // key must resolve against the current, visibility-filtered source schedule.
+  const fixture = answerFixtureQuestion(text, leagueMatches(snapshot), safeContext, localDate());
+  if (fixture) return { ok: true, ...fixture, version: snapshot.version };
   const lower = text.toLowerCase();
   const hasExplicitDate =
     /\b(?:today|tomorrow|sunday|monday|tuesday|wednesday|thursday|friday|saturday|\d{1,2}\/\d{1,2}|20\d{2}-\d{1,2}-\d{1,2})\b/.test(lower);
@@ -3095,7 +3109,16 @@ async function webAnswer(env, question, context = {}) {
   let reply = "";
   let lastDate = safeContext.lastDate || "";
   if (intent === "version") reply = `BallerWatch v${snapshot.version}`;
-  else if (intent === "help") {
+  else if (intent === "briefing") {
+    const today = localDate();
+    const digest = weeklyMatchBriefing({
+      pickups: availableDates(snapshot).map(date => pickupFacts(snapshot, date)).filter(Boolean),
+      leagueGames: leagueMatches(snapshot),
+      startDate: today, endDate: addDays(today, 6),
+    });
+    reply = digest.reply;
+    lastDate = digest.lastDate || today;
+  } else if (intent === "help") {
     reply = [
       "You can ask:",
       "• what game is on 10/6?",
@@ -3108,6 +3131,11 @@ async function webAnswer(env, question, context = {}) {
       "• what's my next game?",
       "• what's the all-time record for Team Name?",
       "• have Team A and Team B played before?",
+      "• brief me on this week",
+      "• which pickup is filling up?",
+      "• when do we play PhoSaiGon?",
+      "• where is Supermokh FC vs PhoSaiGon?",
+      "• where is that match? (follow-up)",
       "• what league teams are you monitoring?",
       "• /version",
     ].join("\n");

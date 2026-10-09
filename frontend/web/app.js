@@ -234,6 +234,11 @@ const BASE_QUESTION_COMPLETIONS = [
   "What league teams are you monitoring?",
   "What is the RATS record for a team?",
   "Have two RATS teams played each other before?",
+  "When do we play PhoSaiGon?",
+  "Where is Supermokh FC vs PhoSaiGon?",
+  "Where is that match?",
+  "Brief me on this week",
+  "Which pickup is filling up?",
   "What version is BallerWatch?",
   ...WEEKDAYS.flatMap((day) => [
     `What game is on ${day}?`,
@@ -1510,7 +1515,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=7.1.7", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=8.0.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -3670,6 +3675,7 @@ els.form.addEventListener("submit", async (event) => {
         question,
         context: {
           lastDate: sessionStorage.getItem("ballerwatch-last-date") || "",
+          lastMatchKey: sessionStorage.getItem("ballerwatch-last-match-key") || "",
           lastHistoryTeams: (() => {
             try {
               const value = JSON.parse(
@@ -3698,6 +3704,11 @@ els.form.addEventListener("submit", async (event) => {
     els.answerFeedbackStatus.hidden = true;
     els.answerFeedbackStatus.textContent = "";
     if (payload.lastDate) sessionStorage.setItem("ballerwatch-last-date", payload.lastDate);
+    if (payload.intent === "league_fixture" && payload.lastMatchKey) {
+      sessionStorage.setItem("ballerwatch-last-match-key", payload.lastMatchKey);
+    } else {
+      sessionStorage.removeItem("ballerwatch-last-match-key");
+    }
     if (Array.isArray(payload.historyTeams) && payload.historyTeams.length) {
       sessionStorage.setItem(
         "ballerwatch-last-rats-teams",
