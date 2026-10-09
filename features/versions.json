@@ -1,7 +1,23 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.1.9",
+  "currentVersion": "7.1.10",
   "releases": [
+    {
+      "version": "7.1.10",
+      "date": "2026-10-09",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Dynamic RSVP capacity milestones and reliable pickup reminders",
+      "webAnnouncement": "Pickup RSVP alerts now trigger at 25%, 50%, and 75% of each match's capacity, then after every additional booked spot through full capacity. One-hour and RSVP reminders remain active.",
+      "changes": [
+        "Replaces the former fixed 3/2/1/full-spots-left alert rule with dynamic 25%, 50%, and 75% reservation thresholds rounded up to the next whole booking.",
+        "After reaching 75%, sends a capacity update for each newly observed increase in bookings, including the full-capacity alert.",
+        "Tracks encrypted per-source-date capacity baselines for all future RSVP dates, avoiding lost updates when the primary highlighted game changes and duplicate alerts when counts remain unchanged.",
+        "Suppresses capacity catch-up alerts on initial observation, capacity-only setting changes, cancellations, snoozed or muted dates, and already-started matches.",
+        "Preserves separate 24-hour RSVP and one-hour match reminders and respects hidden, muted, and manually rescheduled match dates.",
+        "Adds end-to-end notification-board/push-queue synthetic tests plus dynamic-capacity regression cases for 12, 16, 20, and 21 spots, without sending real Web Push in tests."
+      ]
+    },
     {
       "version": "7.1.9",
       "date": "2026-10-08",

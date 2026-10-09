@@ -19,6 +19,7 @@ import {
   rsvpReminderDue,
 } from "../shared/match-reminders.mjs";
 import { parseTime, selectPrimaryEvent, weekStart } from "./selection.mjs";
+import { pickupCapacityAlert } from "./capacity-policy.mjs";
 
 const TIME_ZONE = "America/Los_Angeles";
 const STATE_PATH = "pickup/state/notify.json";
@@ -215,8 +216,8 @@ async function processNewDates(state, now, settings) {
       continue;
     }
 
-    const reserved = Number(event.reserved);
-    const capacity = Number(event.capacity);
+    const reserved = countOrNull(event.reserved);
+    const capacity = countOrNull(event.capacity);
     const remaining =
       Number.isFinite(reserved) && Number.isFinite(capacity)
         ? capacity - reserved
@@ -308,14 +309,20 @@ function formatDate(date) {
   return `${weekday} ${month}/${day}`;
 }
 
+function countOrNull(value) {
+  if (value == null || value === "") return null;
+  const count = Number(value);
+  return Number.isSafeInteger(count) && count >= 0 ? count : null;
+}
+
 function snapshotFromEvent(event) {
   return {
     date: event.date,
     fieldName: String(event.private.fieldName || ""),
     address: String(event.private.address || ""),
     locked: Boolean(event.private.locked),
-    reserved: Number.isFinite(Number(event.reserved)) ? Number(event.reserved) : null,
-    capacity: Number.isFinite(Number(event.capacity)) ? Number(event.capacity) : null,
+    reserved: countOrNull(event.reserved),
+    capacity: countOrNull(event.capacity),
     startTime: String(event.startTime || ""),
     endTime: String(event.endTime || ""),
   };
@@ -326,12 +333,6 @@ function secureFingerprint(event, snapshot) {
     .createHmac("sha256", stateKey())
     .update(JSON.stringify(snapshot))
     .digest("hex");
-}
-
-function remainingSpots(snapshot) {
-  return Number.isFinite(snapshot?.reserved) && Number.isFinite(snapshot?.capacity)
-    ? snapshot.capacity - snapshot.reserved
-    : null;
 }
 
 function weatherDetailsChanged(previous, current) {
@@ -351,15 +352,6 @@ function publicDetailsChanged(previous, current) {
     weatherDetailsChanged(previous, current) ||
     previous.locked !== current.locked
   );
-}
-
-function capacityThresholdReached(previous, current) {
-  if (!previous || previous.date !== current.date) return false;
-  const before = remainingSpots(previous);
-  const after = remainingSpots(current);
-  if (!Number.isFinite(before) || !Number.isFinite(after) || before === after) return false;
-  // Low-capacity notifications fire whenever the remaining count reaches 3, 2, 1, or full.
-  return after <= 3;
 }
 
 function googleMapsUrl(fieldName, address) {
@@ -393,6 +385,66 @@ function timeLine(event) {
   return "";
 }
 
+async function processCapacityAlerts(state, now, settings) {
+  // Each source date gets its own encrypted reservation baseline, so the
+  // highlighted "primary" match changing never loses another date's alerts.
+  const previousByDate = state.capacitySnapshots && typeof state.capacitySnapshots === "object" &&
+    !Array.isArray(state.capacitySnapshots) ? state.capacitySnapshots : {};
+  const priorPrimary = decryptSnapshot(state.snapshot);
+  const nextByDate = {};
+
+  for (const sourceDate of currentFutureDates(now.date)) {
+    const event = eventForDate(sourceDate, settings);
+    if (!event || event.date < now.date) continue;
+    const current = snapshotFromEvent(event);
+    const previous = previousByDate[sourceDate] ||
+      (state.eventDate === current.date && priorPrimary?.date === current.date
+        ? priorPrimary : null);
+    nextByDate[sourceDate] = {
+      reserved: current.reserved,
+      capacity: current.capacity,
+    };
+
+    const startsAt = parseTime(event.startTime);
+    const started = event.date === now.date &&
+      startsAt != null && now.minuteOfDay >= startsAt;
+    const suppressed = (Array.isArray(settings.mutedDates) &&
+      (settings.mutedDates.includes(sourceDate) || settings.mutedDates.includes(event.date))) ||
+      isDateSnoozed(settings, sourceDate) || isDateSnoozed(settings, event.date);
+    // Even when suppressed, advance the baseline so alerts aren't replayed
+    // after a mute ends or when a match has already begun.
+    if (started || suppressed) continue;
+
+    const alert = pickupCapacityAlert(previous, current);
+    if (!alert) continue;
+    const title = alert.kind === "full" ? "Pickup RSVP full" :
+      alert.kind === "spot"
+        ? `Pickup: ${alert.remaining} ${alert.remaining === 1 ? "spot" : "spots"} left`
+        : `Pickup RSVP ${alert.kind} filled`;
+    const headline = alert.kind === "full" ? "⛔ RSVP FULL" :
+      alert.kind === "spot"
+        ? `🚨 ${alert.remaining} ${alert.remaining === 1 ? "spot" : "spots"} remaining`
+        : `📈 RSVP reached ${alert.kind} capacity`;
+    const spotsLine = alert.remaining > 0
+      ? `${alert.remaining} ${alert.remaining === 1 ? "spot" : "spots"} left`
+      : "full";
+    await deliverPickupNotification({
+      title,
+      tag: `pickup-capacity-${sourceDate}-${alert.reserved}`,
+      body: [
+        headline,
+        formatDate(event.date),
+        `${alert.reserved}/${alert.capacity} reserved (${alert.occupancyPercent}%) — ${spotsLine}`,
+        ...locationLines(current),
+        timeLine(event),
+      ].filter(Boolean).join("\n"),
+    });
+  }
+  // Expired/cancelled dates are dropped; the next observed count for a new
+  // date creates a baseline without a misleading historical milestone.
+  return { ...state, capacitySnapshots: nextByDate };
+}
+
 async function processScheduledReminders(state, now, settings) {
   const rsvpSent = new Set(
     Array.isArray(state.rsvpReminderDates) ? state.rsvpReminderDates : [],
@@ -403,20 +455,24 @@ async function processScheduledReminders(state, now, settings) {
   const dates = currentFutureDates(now.date);
 
   for (const date of dates) {
-    if (isDateSnoozed(settings, date)) continue;
-    const event = eventForDate(date);
-    if (!event) continue;
+    const event = eventForDate(date, settings);
+    if (!event || event.date < now.date) continue;
+    if (
+      isDateSnoozed(settings, date) || isDateSnoozed(settings, event.date) ||
+      (Array.isArray(settings.mutedDates) &&
+        (settings.mutedDates.includes(date) || settings.mutedDates.includes(event.date)))
+    ) continue;
     const startMinute = parseTime(event.startTime);
     const minutesUntilStart = localMinutesUntilStart({
-      matchDate: date,
+      matchDate: event.date,
       startMinute,
       nowDate: now.date,
       nowMinute: now.minuteOfDay,
     });
     if (!Number.isFinite(minutesUntilStart)) continue;
 
-    const reserved = Number(event.reserved);
-    const capacity = Number(event.capacity);
+    const reserved = countOrNull(event.reserved);
+    const capacity = countOrNull(event.capacity);
     const remaining =
       Number.isFinite(reserved) && Number.isFinite(capacity)
         ? capacity - reserved
@@ -427,7 +483,7 @@ async function processScheduledReminders(state, now, settings) {
           : `${reserved}/${capacity} reserved — full`)
       : "";
     const publicLines = [
-      formatDate(date),
+      formatDate(event.date),
       capacityLine,
       ...locationLines(snapshotFromEvent(event)),
       timeLine(event),
@@ -472,6 +528,7 @@ async function main() {
 
   state = await processNewDates(state, now, settings);
   state = await processScheduledReminders(state, now, settings);
+  state = await processCapacityAlerts(state, now, settings);
   writeState(state);
 
   const selected = selectEvent(now, settings);
@@ -498,7 +555,6 @@ async function main() {
     return;
   }
   const changed = state.lastObservedFingerprint !== currentFingerprint;
-  const sameEventAsPrevious = previousSnapshot?.date === snapshot.date;
   const selectionChanged = Boolean(state.eventDate && state.eventDate !== event.date);
 
   const nextState = {
@@ -523,10 +579,6 @@ async function main() {
     return;
   }
 
-  const remaining = Number.isFinite(capacity) ? capacity - reserved : null;
-  const urgentCapacity = Number.isFinite(remaining) && remaining > 0 && remaining < 4;
-  const isFull = Number.isFinite(remaining) && remaining <= 0;
-  const thresholdReached = capacityThresholdReached(previousSnapshot, snapshot);
   const weatherChanged = weatherDetailsChanged(previousSnapshot, snapshot);
   const detailsChanged = publicDetailsChanged(previousSnapshot, snapshot);
   if (weatherChanged) {
@@ -534,24 +586,14 @@ async function main() {
     fs.writeFileSync(".runtime/pickup/weather-refresh-needed", "1\n");
   }
 
-  if (!thresholdReached && !detailsChanged && !selectionChanged) {
+  if (!detailsChanged && !selectionChanged) {
     if (changed || !state.snapshot) writeState(nextState);
-    console.log("No public notification threshold or match-detail change.");
+    console.log("No primary match-detail change.");
     return;
   }
 
   const capacityText = Number.isFinite(capacity) ? capacity : "?";
   const webLines = [];
-
-  if (thresholdReached) {
-    if (urgentCapacity) {
-      webLines.push(
-        `🚨 ONLY ${remaining} ${remaining === 1 ? "SPOT" : "SPOTS"} LEFT`,
-      );
-    } else if (isFull) {
-      webLines.push("⛔ RSVP FULL");
-    }
-  }
 
   if (selectionChanged) {
     webLines.push(`🔄 Primary watch switched to ${formatDate(event.date)}`);
@@ -572,11 +614,7 @@ async function main() {
 
   const webRecorded = await deliverPickupNotification({
     body: webLines.filter(Boolean).join("\n"),
-    title: thresholdReached && urgentCapacity
-      ? `Pickup: ${remaining} ${remaining === 1 ? "spot" : "spots"} left`
-      : thresholdReached && isFull
-        ? "Pickup RSVP full"
-        : "Pickup details updated",
+    title: "Pickup details updated",
     tag: `pickup-${event.date}`,
   });
 
@@ -584,20 +622,12 @@ async function main() {
     ...nextState,
     lastSentAt: nowIso,
     lastSentFingerprint: currentFingerprint,
-    lastSendReason: thresholdReached
-      ? (isFull ? "capacity-full" : "capacity-threshold")
-      : selectionChanged
-        ? "selection-change"
-        : "details-change",
+    lastSendReason: selectionChanged ? "selection-change" : "details-change",
   });
 
   console.log(
     `${webRecorded ? "Web" : "No"} notification recorded (${
-      thresholdReached
-        ? (isFull ? "capacity full" : "capacity threshold")
-        : selectionChanged
-          ? "selection change"
-          : "match details change"
+      selectionChanged ? "selection change" : "match details change"
     }).`,
   );
 }
