@@ -996,3 +996,20 @@ test("new RSVP dates remain visible while venue details are pending", () => {
     "administrator-hidden dates remain hidden",
   );
 });
+
+
+test("Share and Directions reuse RATS-format field URL from encrypted cache", () => {
+  const venue="Walt Hundley Playfield - Mod South";
+  const sourceLink="https://www.google.com/maps?q=Walt+Hundley+Playfield+-+Mod+South";
+  const directory={venues:[{name:venue,searchUrl:sourceLink}]};
+  const game=withCachedVenue({location:venue,locationUrl:""},directory);
+  assert.equal(game.locationUrl,sourceLink);
+  assert.equal(withCachedVenue({location:"Walt Hundley Playfield - Mod North"},directory).locationUrl,
+    undefined);
+  const actual="https://maps.app.goo.gl/verifiedFromRats";
+  assert.equal(withCachedVenue({location:venue,locationUrl:actual},directory).locationUrl,actual,
+    "directly sourced map links override RATS-format search fallback");
+  assert.equal(withCachedVenue({location:venue},{venues:[{
+    name:venue,searchUrl:sourceLink,mapUrl:actual,
+  }]}).locationUrl,actual,"captured official page href takes precedence");
+});
