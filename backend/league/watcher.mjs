@@ -312,7 +312,11 @@ export function validPublishedVenueUrl(value) {
 
 export function publishedVenueUrl(event = {}) {
   const venue = event?.venue && typeof event.venue === "object" ? event.venue : {};
+  const field = event?.field && typeof event.field === "object" ? event.field : {};
+  const location = event?.location_details && typeof event.location_details === "object" ? event.location_details : {};
   const fields = [
+    field.url, field.link, field.maps_url, field.google_maps_url,
+    location.url, location.link, location.maps_url, location.google_maps_url,
     event.location_url, event.locationUrl, event.location_link, event.locationLink,
     event.maps_url, event.mapsUrl, event.map_url, event.mapUrl,
     event.google_maps_url, event.googleMapsUrl,
@@ -337,7 +341,10 @@ export function publishedVenueUrl(event = {}) {
 
 export function publishedVenueCoordinates(event = {}) {
   const venue = event?.venue && typeof event.venue === "object" ? event.venue : {};
+  const field = event?.field && typeof event.field === "object" ? event.field : {};
   const pairs = [
+    [field.latitude, field.longitude],
+    [field.lat, field.lng],
     [event.latitude, event.longitude],
     [event.lat, event.lng],
     [event.lat, event.lon],

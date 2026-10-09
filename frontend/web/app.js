@@ -1510,7 +1510,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=7.1.6", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=7.1.7", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -1990,8 +1990,7 @@ function gpsFromMapsUrl(value) {
     const query = parsed.searchParams.get("q") || parsed.searchParams.get("query") || "";
     const text = query.match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
     if (text) return venueGpsPoint({ latitude: text[1], longitude: text[2] });
-    const at = parsed.pathname.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
-    if (at) return venueGpsPoint({ latitude: at[1], longitude: at[2] });
+    // @lat,lng describes a Google Maps viewport, not an authoritative field pin.
     const exact = parsed.pathname.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
     if (exact) return venueGpsPoint({ latitude: exact[1], longitude: exact[2] });
   } catch {}

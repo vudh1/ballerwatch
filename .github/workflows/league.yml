@@ -66,6 +66,13 @@ jobs:
         if: steps.gate.outputs.should_run == 'true'
         run: /usr/bin/time -f 'leagueWatcherSeconds=%e' node ../backend/league/watcher.mjs
 
+      - name: Append verified RATS venues to encrypted directory
+        if: steps.gate.outputs.should_run == 'true'
+        working-directory: .
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: node backend/league/venue-cache.mjs capture-live
+
       - name: Refresh RATS historical index when stale
         if: steps.gate.outputs.should_run == 'true'
         working-directory: .
