@@ -81,8 +81,12 @@ function cleanEntry(entry) {
     aliases: [...new Set((Array.isArray(entry?.aliases) ? entry.aliases : [])
       .map(a => String(a || "").trim().slice(0, 150)).filter(Boolean))].slice(0, 12),
     url: validRatsVenueUrl(entry?.url),
-    mapUrl: (() => { const url = validRatsVenueUrl(entry?.mapUrl); return url && !/seattlerats\\.org/.test(new URL(url).hostname) ? url : ""; })(),
-    discoveryCheckedAt: /^\\d{4}-\\d{2}-\\d{2}T/.test(String(entry?.discoveryCheckedAt || "")) &&
+    mapUrl: (() => {
+      const url = validRatsVenueUrl(entry?.mapUrl);
+      return url && !["seattlerats.org", "www.seattlerats.org"].includes(new URL(url).hostname)
+        ? url : "";
+    })(),
+    discoveryCheckedAt: /^\d{4}-\d{2}-\d{2}T/.test(String(entry?.discoveryCheckedAt || "")) &&
       Number.isFinite(Date.parse(entry.discoveryCheckedAt)) ? entry.discoveryCheckedAt : "",
     coordinates: validVenueCoordinates(entry?.coordinates),
   };
