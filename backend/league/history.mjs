@@ -16,6 +16,7 @@ import {
   seasonLabel,
 } from "./watcher.mjs";
 import { decryptState, encryptState } from "../shared/state-crypto.mjs";
+import { captureVenueEvents } from "./venue-cache.mjs";
 
 export const HISTORY_FILE = "league/state/history.json";
 export const HISTORY_START_YEAR = 2023;
@@ -337,6 +338,7 @@ export async function refreshRatsHistory({
     try {
       const aggregate = await callFn("get-aggregate", { season: seasonId });
       const normalized = normalizeHistoryAggregate(seasonId, aggregate);
+      if (process.env.TRACKER_STATE_KEY && normalized) captureVenueEvents(aggregate.events);
       successfulFetches += 1;
       checked.add(seasonId);
       unresolved.delete(seasonId);
