@@ -1,7 +1,23 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.1.6",
+  "currentVersion": "7.1.7",
   "releases": [
+    {
+      "version": "7.1.7",
+      "date": "2026-10-08",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Persistent RATS field directory for reliable navigation",
+      "webAnnouncement": "Directions and Share now reuse an encrypted, growing cache of verified RATS venue links and coordinates. Field-name variations and minor typos match conservatively; ambiguous fields fall back to Google Maps search instead of the wrong location.",
+      "changes": [
+        "Creates an encrypted append-only RATS venue directory on runtime-state, populated from current match source data and historical RATS aggregate refreshes.",
+        "Remembers first published RATS Maps or venue links and coordinates; never silently replaces confirmed locations, but adds new fields and fills missing destinations.",
+        "Provides cautious field-name matching despite spelling errors, punctuation changes, or soccer/playfield wording while keeping numbered pitches and north/south distinctions separate.",
+        "Uses the same directory for upcoming match cards and next-game endpoints so Directions and Share share the published destination when available.",
+        "Keeps field GPS and Google Maps search as fallback where no actual source venue link exists; avoids presenting Google Maps camera viewport positions as GPS pins.",
+        "Includes tests for encrypted persistence, aliases, mixed field numbering, conflicts, manual overrides, and source-link extraction."
+      ]
+    },
     {
       "version": "7.1.6",
       "date": "2026-10-08",
