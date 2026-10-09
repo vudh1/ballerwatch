@@ -1552,8 +1552,8 @@ test("share prefers published RATS map links or verified GPS and falls back to D
 test("worker retains RATS source links and respects venue overrides for GPS", () => {
   const watcher = fs.readFileSync("backend/league/watcher.mjs", "utf8");
   const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
-  assert.ok(watcher.includes("locationUrl: publishedVenueUrl(event)"));
-  assert.ok(watcher.includes("venueCoordinates: publishedVenueCoordinates(event)"));
+  assert.ok(watcher.includes("locationUrl: sourceVenueUrl"));
+  assert.ok(watcher.includes("venueCoordinates: sourceCoordinates"));
   assert.ok(worker.includes("locationUrl: game?.manualOverride ? \"\""));
   assert.ok(worker.includes("venueCoordinates: game?.manualOverride ? null"));
 });
