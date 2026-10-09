@@ -20,6 +20,8 @@ export function historyIntentLabel(intent) {
     today_games: "today schedule",
     league_teams: "league-team",
     rats_history: "RATS-history",
+    league_fixture: "league fixture",
+    briefing: "weekly briefing",
     feature_request: "feature-request",
   };
   return labels[value] || "web Q&A";
@@ -57,6 +59,8 @@ export function feedbackQuestionShape(question) {
   ) {
     add("head-to-head");
   }
+  if (/\\b(?:brief(?:ing)?|weekly digest|weekly summary|recap)\\b/.test(lower)) add("weekly briefing");
+  if (/\\b(?:wrong|incorrect|not right|untrue|missing result)\\b/.test(lower)) add("answer correction");
   if (/\b(?:winter|spring|summer|fall)\s+20\d{2}\b/.test(lower)) {
     add("historical season");
   }

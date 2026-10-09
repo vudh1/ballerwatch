@@ -3668,6 +3668,12 @@ els.form.addEventListener("submit", async (event) => {
   els.answer.hidden = false;
   els.answer.textContent = "Thinking…";
   try {
+    // Avoid carrying stale conversation identifiers into a later session.
+    const contextAt = Number(sessionStorage.getItem("ballerwatch-ai-context-at") || 0);
+    if (!contextAt || Date.now() - contextAt > 20 * 60 * 1000) {
+      for (const key of ["ballerwatch-last-date", "ballerwatch-last-match-key",
+        "ballerwatch-last-rats-teams"]) sessionStorage.removeItem(key);
+    }
     const payload = await api("/web/ask", {
       method: "POST",
       headers: ownerHeaders(),
@@ -3690,6 +3696,27 @@ els.form.addEventListener("submit", async (event) => {
       }),
     });
     els.answer.textContent = payload.reply;
+    // Source URLs are never interpolated as HTML. Restrict every link to
+    // BallerWatch's published RATS or RSVP source domains.
+    const allowedSources = {
+      "seattlerats.org":"https://seattlerats.org",
+      "nhcuong95.github.io":"https://nhcuong95.github.io",
+    };
+    for (const source of Array.isArray(payload.sources) ? payload.sources.slice(0, 3) : []) {
+      try {
+        const url = new URL(String(source.url || ""));
+        if (url.protocol !== "https:" || allowedSources[url.hostname] !== url.origin) continue;
+        const link = document.createElement("a");
+        link.href = url.href;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.textContent = "↗ " + String(source.label || "Source").slice(0, 70);
+        const line = document.createElement("div");
+        line.className = "answer-source";
+        line.append(link);
+        els.answer.append(line);
+      } catch {}
+    }
     rememberQuestion(question);
     lastAnswerExchange = {
       question,
@@ -3703,6 +3730,7 @@ els.form.addEventListener("submit", async (event) => {
     els.answer.classList.remove("answer-feedback-pending", "answer-feedback-sent");
     els.answerFeedbackStatus.hidden = true;
     els.answerFeedbackStatus.textContent = "";
+    sessionStorage.setItem("ballerwatch-ai-context-at", String(Date.now()));
     if (payload.lastDate) sessionStorage.setItem("ballerwatch-last-date", payload.lastDate);
     if (payload.intent === "league_fixture" && payload.lastMatchKey) {
       sessionStorage.setItem("ballerwatch-last-match-key", payload.lastMatchKey);

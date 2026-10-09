@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, Calendar sync, and quick answers into one installable app.
 
-**Current source version: 8.0.0**
+**Current source version: 8.1.0**
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
 
@@ -32,6 +32,16 @@ Saturday synthetic pickup is shown simply as **Pickup** and has no RSVP/capacity
 A 22-second walkthrough with a short animated intro. Recorded from the app using synthetic sample data; game details, answers, and notifications are illustrative.
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/)
+
+## BallerWatch AI 8.1 — stronger answers and reviewed feedback
+
+- **Privacy-gated free AI intent fallback:** If local routing cannot understand a short, public soccer question, the Cloudflare Worker may use configured Gemini/Groq providers to select a strict read-only intent. Account details, roster names, emails, phone numbers, locations/addresses, and user-specific RSVP questions are never forwarded. Providers return classification **only**, not unverified answer text; no provider is needed for standard questions.
+- **Signed-in RSVP questions:** `Am I in for Thursday pickup?` checks **only the authenticated user's configured RSVP name** against encrypted roster data. It reports confirmed, waitlisted, not listed, or unavailable without exposing others. Unauthenticated users are asked to sign in.
+- **Historical answer correctness:** Explicit head-to-head questions now require two identified teams. If one club is unknown, the bot asks for clarification rather than returning a misleading single-team W-D-L record. Results name the indexed season range and disclose gaps in archived coverage.
+- **Evidence links:** Supported factual answers can open their official RATS schedule or pickup RSVP source link. Browser links are allowlisted and not rendered from arbitrary HTML.
+- **Safer conversation memory:** Fixture/date/history context expires after 20 minutes of inactivity in the current browser session.
+- **A six-hour improvement check:** The encrypted, privacy-safe review job rechecks historical, fixture, briefing and classifier regressions. No model weights or code are silently retrained or deployed. New bot requests receive a distinct category in future anonymized summaries.
+- **Feedback audit that drove this release:** The most recent sanitized review contained 4 RATS-history and 1 monitored-teams negative feedback reports; the request projection had 10 unclassified "other" and 1 schedule report. Those historical counts do not expose question text or prove each report is individually fixed. New tests specifically target historical H2H misclassification and authenticated RSVP answer correctness.
 
 ## BallerWatch 8 — BallerWatch AI
 

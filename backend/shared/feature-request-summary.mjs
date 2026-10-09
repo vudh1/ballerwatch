@@ -19,7 +19,7 @@ export const REQUEST_CATEGORIES = Object.freeze([
 export function requestCategory(question) {
   const text = String(question || "").toLowerCase();
   if (/\b(weather|rain|temperature|forecast)\b/.test(text)) return "weather";
-  if (/\b(q&a|qa|question|answer|autocomplete|auto complete|suggestion|suggestions|ask box|search)\b/.test(text)) return "qa";
+  if (/\b(q&a|qa|question|answer|autocomplete|auto complete|suggestion|suggestions|ask box|search|chatbot|chat bot|assistant|bot|ai|intelligence|prompt|typo|language|conversation|feedback|wrong reply)\b/.test(text)) return "qa";
   if (/\b(schedule|game|match|when|today|tomorrow|week)\b/.test(text)) return "schedule";
   if (/\b(rsvp|waitlist|reserved|capacity|count|players|availability)\b/.test(text)) return "rsvp";
   if (/\b(notify|notification|notifications|mute|snooze|alert)\b/.test(text)) return "notifications";

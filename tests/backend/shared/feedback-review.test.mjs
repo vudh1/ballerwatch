@@ -36,3 +36,18 @@ test("safe review groups failures by intent and runs on a regular cadence", () =
   assert.match(script, /intent:\s*String\(signal\?\.intent/);
   assert.match(workflow, /schedule:[\s\S]*cron:\s*"17 \*\/6 \* \* \*"/);
 });
+
+
+test("AI 8.1 feedback review identifies fixture and briefing failures without names", () => {
+  const fixture = negativeFeedbackProjection({
+    intent:"league_fixture",
+    question:"The fixture venue for Private Club is wrong",
+  });
+  const briefing = negativeFeedbackProjection({
+    intent:"briefing",
+    question:"Weekly briefing for Private Club had a missing result",
+  });
+  assert.match(fixture.summary,/league fixture/);
+  assert.match(briefing.summary,/weekly briefing/);
+  assert.doesNotMatch(JSON.stringify([fixture,briefing]),/Private Club/);
+});

@@ -271,8 +271,8 @@ function historyCoverageScope(history) {
     };
   }
   return {
-    label: range ? `all discoverable RATS seasons (${range})` : "all discoverable RATS seasons",
-    warning: "",
+    label: range ? `indexed RATS seasons (${range})` : "indexed RATS seasons",
+    warning: "Records cover only indexed scored games; older or unpublished seasons may be missing.",
   };
 }
 
@@ -330,6 +330,28 @@ export function answerRatsHistoryQuestion(question, history, contextTeams = []) 
         : "I couldn't match a RATS team name in the historical index.",
       teams: [],
       ready: true,
+    };
+  }
+
+  // Explicit two-club questions must identify TWO clubs. Previously a typo
+  // in the opponent silently turned head-to-head into a single-team record.
+  const asksForPair = /\b(?:vs\.?|versus|against)\b/i.test(question) ||
+    /\b(?:played|met|faced)\b[^?!.]{0,100}\bbefore\b/i.test(question) ||
+    /\b(?:have|did)\b[^?!.]{0,140}\band\b[^?!.]{0,100}\b(?:played|met|faced)\b/i.test(question);
+  if (asksForPair && teams.length !== 2) {
+    return {
+      reply: teams.length
+        ? "I recognized " + teams[0] + ", but couldn't identify both RATS clubs. Please use two full team names for a head-to-head record."
+        : "I couldn't identify both RATS clubs. Please use their published team names.",
+      teams: [],
+      ready: true,
+    };
+  }
+  if (teams.length === 2 && historyTeamKey(teams[0]) === historyTeamKey(teams[1])) {
+    return {
+      reply:"Those team names resolve to the same club. Please specify two different teams.",
+      teams:[],
+      ready:true,
     };
   }
 

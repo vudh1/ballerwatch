@@ -34,3 +34,13 @@ jobs:
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
         run: node scripts/review-feedback.mjs ../runtime
+
+      - name: Recheck AI answer regressions
+        working-directory: source
+        run: >-
+          node --test
+          tests/backend/shared/ai-intent-privacy.test.mjs
+          tests/backend/shared/rats-history.test.mjs
+          tests/backend/shared/fixture-ai.test.mjs
+          tests/backend/shared/match-briefing.test.mjs
+          tests/backend/shared/feedback-review.test.mjs
