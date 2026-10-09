@@ -2092,6 +2092,9 @@ function spotlightModel(game, label = "NEXT GAME") {
   const locationParts = [];
   if (game.location) locationParts.push(game.location);
   if (game.address && game.address !== game.location) locationParts.push(game.address);
+  if (!locationParts.length && game.kind === "pickup") {
+    locationParts.push("Venue to be announced");
+  }
   if (game.jerseyColor) locationParts.push(`${game.jerseyColor} jersey`);
 
   const capacity = Number(game.capacity);
