@@ -108,7 +108,7 @@ test("bot answers all-time record and previous-meeting questions deterministical
     "what is the record of Team Alpha?",
     historyFixture(),
   );
-  assert.match(record.reply, /Team Alpha — all discoverable RATS seasons \(Fall 2024–Spring 2025\)/);
+  assert.match(record.reply, /Team Alpha — indexed RATS seasons \(Fall 2024–Spring 2025\)/);
   assert.match(record.reply, /1-1-1 \(W-D-L\)/);
 
   const h2h = answerRatsHistoryQuestion(
@@ -254,4 +254,20 @@ test("singular/plural RATS names find the same club and aggregate records", () =
   assert.equal(historyRecord(history, "Tuesday Marmot").games, 3);
   assert.equal(historyHeadToHead(history, "Tuesday Marmot", "Crow FC").matches.length, 2);
   assert.match(answerRatsHistoryQuestion("tuesday marmot vs crow fc", history).reply, /2 meetings/);
+});
+
+
+test("review regression: unknown second club never becomes a single-team record", () => {
+  const result = answerRatsHistoryQuestion(
+    "has Team Alpha played Unlisted Wanderers before?", historyFixture());
+  assert.match(result.reply, /couldn't identify both RATS clubs/i);
+  assert.doesNotMatch(result.reply, /Record:|Goals:/);
+  assert.deepEqual(result.teams, []);
+});
+
+test("review regression: complete index still acknowledges seasons outside its coverage", () => {
+  const record = answerRatsHistoryQuestion("Team Alpha record", historyFixture());
+  assert.match(record.reply, /indexed RATS seasons/);
+  assert.match(record.reply, /older or unpublished seasons may be missing/);
+  assert.doesNotMatch(record.reply, /all discoverable/i);
 });
