@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "7.1.8",
+  "currentVersion": "7.1.9",
   "releases": [
+    {
+      "version": "7.1.9",
+      "date": "2026-10-08",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Preserve RATS schedule field map links for Share and Directions",
+      "webAnnouncement": "Match navigation now reuses the map link style published by RATS, stores matching links in the encrypted venue directory, and prefers exact source hyperlinks when the schedule exposes them.",
+      "changes": [
+        "Checks the actual RATS Schedule & Standings page for published map hyperlinks corresponding to each newly encountered or unresolved match field.",
+        "Mirrors the official RATS Google Maps field-name query format for every source-published field when its JavaScript-rendered page does not expose the original hyperlink to the server.",
+        "Persists a lower-trust RATS-format searchUrl separately from verified mapUrl and venue-page URL so later genuine source links always take precedence.",
+        "Uses the same cached destination for Directions and Share; rejects near-identical but distinct field subdivisions and never treats query links as GPS coordinates.",
+        "Adds regression tests for the exact Supermokh FC vs PhoSaiGon / Walt Hundley Playfield – Mod South source URL, schedule HTML/script parsing, encrypted cache persistence and fallback behavior."
+      ]
+    },
     {
       "version": "7.1.8",
       "date": "2026-10-08",
