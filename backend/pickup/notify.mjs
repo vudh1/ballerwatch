@@ -455,12 +455,16 @@ async function processScheduledReminders(state, now, settings) {
   const dates = currentFutureDates(now.date);
 
   for (const date of dates) {
-    if (isDateSnoozed(settings, date)) continue;
-    const event = eventForDate(date);
-    if (!event) continue;
+    const event = eventForDate(date, settings);
+    if (!event || event.date < now.date) continue;
+    if (
+      isDateSnoozed(settings, date) || isDateSnoozed(settings, event.date) ||
+      (Array.isArray(settings.mutedDates) &&
+        (settings.mutedDates.includes(date) || settings.mutedDates.includes(event.date)))
+    ) continue;
     const startMinute = parseTime(event.startTime);
     const minutesUntilStart = localMinutesUntilStart({
-      matchDate: date,
+      matchDate: event.date,
       startMinute,
       nowDate: now.date,
       nowMinute: now.minuteOfDay,
@@ -479,7 +483,7 @@ async function processScheduledReminders(state, now, settings) {
           : `${reserved}/${capacity} reserved — full`)
       : "";
     const publicLines = [
-      formatDate(date),
+      formatDate(event.date),
       capacityLine,
       ...locationLines(snapshotFromEvent(event)),
       timeLine(event),
@@ -551,7 +555,6 @@ async function main() {
     return;
   }
   const changed = state.lastObservedFingerprint !== currentFingerprint;
-  const sameEventAsPrevious = previousSnapshot?.date === snapshot.date;
   const selectionChanged = Boolean(state.eventDate && state.eventDate !== event.date);
 
   const nextState = {
@@ -585,7 +588,7 @@ async function main() {
 
   if (!detailsChanged && !selectionChanged) {
     if (changed || !state.snapshot) writeState(nextState);
-    console.log("No public notification threshold or match-detail change.");
+    console.log("No primary match-detail change.");
     return;
   }
 
