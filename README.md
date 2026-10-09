@@ -31,7 +31,7 @@ Saturday synthetic pickup is shown simply as **Pickup** and has no RSVP/capacity
 
 A 22-second walkthrough with a short animated intro. Recorded from the app using synthetic sample data; game details, answers, and notifications are illustrative.
 
-[Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Static screenshot](docs/demo.jpg)
+[Open BallerWatch](https://vudh1.github.io/ballerwatch/)
 
 ## BallerWatch 8 — BallerWatch AI
 
@@ -125,7 +125,6 @@ tests/
 
 docs/
   demo.gif                animated README walkthrough
-  demo.jpg                static app screenshot
   wiki/                   maintained project documentation
 
 features/versions.json    product version ledger

@@ -1128,9 +1128,7 @@ test("README includes the web app demo and multi-user settings are exposed", () 
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   assert.match(readme, /!\[BallerWatch animated demo[^\]]*\]\(docs\/demo\.gif\)/);
-  assert.match(readme, /\[Static screenshot\]\(docs\/demo\.jpg\)/);
   assert.equal(fs.readFileSync("docs/demo.gif").subarray(0, 6).toString(), "GIF89a");
-  assert.equal(fs.existsSync("docs/demo.jpg"), true);
   assert.match(html, /id="owner-login-username"/);
   assert.match(html, /id="user-management"/);
   assert.match(html, /id="user-create-form"/);

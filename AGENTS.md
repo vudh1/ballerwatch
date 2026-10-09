@@ -88,7 +88,7 @@ Repository source boundaries are deliberate:
 - browser/PWA source lives under `frontend/web/`;
 - server, watcher, state, scheduling, and integration source lives under `backend/`;
 - test-only source stays under `tests/`, split into `tests/frontend/` and `tests/backend/`;
-- maintained documentation lives under `docs/wiki/`; the animated README demo lives at `docs/demo.gif`, with `docs/demo.jpg` retained as a static screenshot;
+- maintained documentation lives under `docs/wiki/`; the animated README demo lives at `docs/demo.gif`;
 - canonical runtime-state paths such as `pickup/state/` and `league/state/` are storage contracts, not source directories, and must not be renamed as part of source refactors.
 
 - Keep runtime modules domain-focused.
