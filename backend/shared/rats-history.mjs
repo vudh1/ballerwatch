@@ -336,6 +336,7 @@ export function answerRatsHistoryQuestion(question, history, contextTeams = []) 
   // Explicit two-club questions must identify TWO clubs. Previously a typo
   // in the opponent silently turned head-to-head into a single-team record.
   const asksForPair = /\b(?:vs\.?|versus|against)\b/i.test(question) ||
+    /\b(?:played|met|faced)\b[^?!.]{0,100}\bbefore\b/i.test(question) ||
     /\b(?:have|did)\b[^?!.]{0,140}\band\b[^?!.]{0,100}\b(?:played|met|faced)\b/i.test(question);
   if (asksForPair && teams.length !== 2) {
     return {
