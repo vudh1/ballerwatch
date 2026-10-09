@@ -237,6 +237,8 @@ const BASE_QUESTION_COMPLETIONS = [
   "When do we play PhoSaiGon?",
   "Where is Supermokh FC vs PhoSaiGon?",
   "Where is that match?",
+  "Brief me on this week",
+  "Which pickup is filling up?",
   "What version is BallerWatch?",
   ...WEEKDAYS.flatMap((day) => [
     `What game is on ${day}?`,
