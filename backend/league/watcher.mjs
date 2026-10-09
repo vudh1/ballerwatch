@@ -318,7 +318,7 @@ export function publishedVenueUrl(event = {}) {
   const fields = [
     field.url, field.link, field.maps_url, field.google_maps_url,
     location.url, location.link, location.maps_url, location.google_maps_url,
-    event.location_url, event.locationUrl, event.location_link, event.locationLink,
+    event.url, event.link, event.location_url, event.locationUrl, event.location_link, event.locationLink,
     event.maps_url, event.mapsUrl, event.map_url, event.mapUrl,
     event.google_maps_url, event.googleMapsUrl,
     event.venue_url, event.venueUrl, event.directions_url, event.directionsUrl,
