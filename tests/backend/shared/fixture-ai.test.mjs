@@ -64,7 +64,8 @@ test("BallerWatch AI fails closed on unpublished, past, or ambiguous match data"
   assert.equal(answerFixtureQuestion("Who will win?", fixtures, {}, "2099-10-01"), null);
   assert.equal(answerFixtureQuestion("What was the record between Supermokh and PhoSaiGon?",
     fixtures, {}, "2099-10-01"),null);
-  assert.equal(answerFixtureQuestion("Does Supermokh play?", fixtures, {}, "2099-10-01"),null);
+  assert.match(answerFixtureQuestion("Does Supermokh play?", fixtures, {}, "2099-10-01").reply,
+    /Supermokh FC/);
   const missing = answerFixtureQuestion("Where is Supermokh FC vs PhoSaiGon?",
     [{key:"c",team:"Supermokh FC",opponent:"PhoSaiGon",date:"2099-10-12"}], {},
     "2099-10-01");
