@@ -3059,6 +3059,9 @@ function setStandingsSlide(index) {
     slide.inert = slideIndex !== standingsIndex;
     if (slideIndex === standingsIndex) {
       els.standingsViewport.style.height = `${slide.offsetHeight}px`;
+      els.standingsViewport.parentElement?.style.setProperty(
+        "--standings-edge-height", `${slide.offsetHeight}px`,
+      );
     }
   }
 }
