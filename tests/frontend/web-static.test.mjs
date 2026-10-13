@@ -1649,7 +1649,7 @@ test("standings carousel highlights monitored teams and has accessible history d
   assert.match(html, /id="close-team-history"/);
   assert.match(app, /function renderStandings\(/);
   assert.match(app, /\.standings-track/);
-  assert.match(app, /setStandingsSlide\(standingsIndex \+ \(dx < 0 \? 1 : -1\)\)/);
+  assert.match(app, /setStandingsSlide\(originalIndex \+ step\)/);
   assert.match(app, /row\.highlighted/);
   assert.match(app, /button\.addEventListener\("click", \(\) => void openTeamHistory\(row\.name\)\)/);
   assert.match(app, /encodeURIComponent\(teamName\)/);
@@ -1660,4 +1660,29 @@ test("standings carousel highlights monitored teams and has accessible history d
   assert.match(worker, /url\.pathname === "\/web\/team-history"/);
   assert.match(worker, /card\.rows\.some\(\(row\) => row\.name === teamName\)/);
   assert.doesNotMatch(html, /PhoSaiGon|Third Touch FC/);
+});
+
+test("standings uses adjacent-card drag train and minimal table, preserving team-history taps", () => {
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
+
+  assert.match(html, /class="standings-rail"/);
+  assert.match(html, /class="standings-step standings-step-previous"/);
+  assert.match(html, /class="standings-step standings-step-next"/);
+  assert.doesNotMatch(html, /class="card standings-card"/);
+  assert.match(app, /function standingsStepWidth\(\)/);
+  assert.match(app, /els\.standingsViewport\.clientWidth \+ gap/);
+  assert.match(app, /standingsIndex \* standingsStepWidth\(\)/);
+  assert.doesNotMatch(app, /standingsIndex \* 100/);
+  assert.match(app, /viewport\.setPointerCapture\(event\.pointerId\)/);
+  assert.match(app, /"pointermove"/);
+  assert.match(app, /"pointercancel"/);
+  assert.match(app, /is-train-dragging/);
+  assert.match(app, /setStandingsSlide\(originalIndex \+ step\)/);
+  assert.match(css, /\.standings-track\.is-train-dragging \{ transition: none;/);
+  assert.match(css, /--standings-train-gap: 12px/);
+  assert.match(css, /\.standings-step-next::before/);
+  assert.match(app, /\["W-D-L", "Wins, draws, losses"\]/);
+  assert.match(app, /openTeamHistory\(row\.name\)/);
 });
