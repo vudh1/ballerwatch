@@ -8,7 +8,7 @@ import fs from "node:fs";
 import { pathToFileURL } from "node:url";
 import { dateInZone, digest, normalizeText, TZ } from "./rats-utils.mjs";
 import { calendarFingerprint } from "./watcher.mjs";
-import { applyLeagueMatchOverride } from "../shared/match-overrides.mjs";
+import { applyLeagueMatchOverride, matchHidden } from "../shared/match-overrides.mjs";
 import { loadUserSettings } from "../shared/user-state.mjs";
 
 const SCHEDULE = "schedule.json";
@@ -68,7 +68,10 @@ export function applyCalendarOverrides(feed, settings = {}) {
     ...(feed || {}),
     teams: (feed?.teams || []).map((team) => ({
       ...team,
-      matches: (team?.matches || []).map((sourceMatch) => {
+      matches: (team?.matches || []).filter((sourceMatch) => {
+        // A manually deleted card must also leave the managed Calendar.
+        return !matchHidden(settings, `league:${sourceMatch?.key || ""}`);
+      }).map((sourceMatch) => {
         const match = applyLeagueMatchOverride(sourceMatch, settings);
         const clean = { ...match };
         delete clean.overrideId;
@@ -133,13 +136,14 @@ export function hydrateStateFromBootstrap(
   return state;
 }
 
-export function compare(feed, state, now = new Date()) {
+export function compare(feed, state, now = new Date(), settings = {}) {
   const current = futureMatches(feed, now);
   const applied = state?.appliedMatches || {};
   const pending = [];
 
   const unmatchedOld = Object.fromEntries(
-    Object.entries(applied).filter(([key]) => !(key in current)),
+    Object.entries(applied).filter(([key]) =>
+      !(key in current) && !matchHidden(settings, `league:${key}`)),
   );
 
   for (const [key, item] of Object.entries(current)) {
@@ -173,6 +177,11 @@ export function compare(feed, state, now = new Date()) {
   const missing = [];
   for (const [key, value] of Object.entries(applied)) {
     if (key in current) continue;
+    if (matchHidden(settings, `league:${key}`)) {
+      // Deletion requires an explicit administrator hide, never a missing feed item.
+      pending.push({type: "deleted", key, match: value?.match || null});
+      continue;
+    }
     const oldMatch = value?.match;
     if (!oldMatch?.end) continue;
     const end = new Date(oldMatch.end);
@@ -191,10 +200,11 @@ export function runCalendarGate({
   bootstrapFile = BOOTSTRAP,
   changesFile = CHANGES,
 } = {}) {
-  const feed = applyCalendarOverrides(readJson(scheduleFile), loadUserSettings());
+  const settings = loadUserSettings();
+  const feed = applyCalendarOverrides(readJson(scheduleFile), settings);
   const current = futureMatches(feed, now);
   const state = hydrateStateFromBootstrap(current, {stateFile, bootstrapFile});
-  const {pending, missing} = compare(feed, state, now);
+  const {pending, missing} = compare(feed, state, now, settings);
 
   const result = {
     schemaVersion: 1,
