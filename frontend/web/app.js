@@ -3033,12 +3033,23 @@ function standingsCell(tag, text, className = "") {
   return element;
 }
 
+function standingsStepWidth() {
+  const track = els.standingsViewport.querySelector(".standings-track");
+  const gap = track ? Number.parseFloat(getComputedStyle(track).columnGap) || 0 : 0;
+  return els.standingsViewport.clientWidth + gap;
+}
+
 function setStandingsSlide(index) {
   const cards = currentStandings?.cards || [];
   if (!cards.length) return;
   standingsIndex = Math.max(0, Math.min(cards.length - 1, index));
   const track = els.standingsViewport.querySelector(".standings-track");
-  if (track) track.style.transform = `translate3d(-${standingsIndex * 100}%, 0, 0)`;
+  // The train is a viewport-wide sequence. A percentage transform here would
+  // move by the width of the entire track, skipping adjacent team cards.
+  if (track) {
+    track.style.transform =
+      `translate3d(-${standingsIndex * standingsStepWidth()}px, 0, 0)`;
+  }
   els.standingsPosition.textContent = `${standingsIndex + 1} / ${cards.length}`;
   els.standingsPrevious.disabled = standingsIndex === 0;
   els.standingsNext.disabled = standingsIndex === cards.length - 1;
@@ -3068,6 +3079,8 @@ function renderStandings() {
   for (const card of cards) {
     const slide = document.createElement("article");
     slide.className = "standings-slide";
+    slide.setAttribute("role", "group");
+    slide.setAttribute("aria-roledescription", "slide");
     slide.setAttribute("aria-label", `${card.team} league standings`);
 
     const meta = document.createElement("div");
@@ -3106,7 +3119,7 @@ function renderStandings() {
     const header = document.createElement("tr");
     for (const [text, description] of [
       ["#", "Rank"], ["Team", "Team name"], ["P", "Played"],
-      ["W", "Wins"], ["D", "Draws"], ["L", "Losses"],
+      ["W-D-L", "Wins, draws, losses"],
       ["GD", "Goal difference"], ["Pts", "Points"],
     ]) {
       const cell = standingsCell("th", text);
@@ -3135,7 +3148,8 @@ function renderStandings() {
       button.addEventListener("click", () => void openTeamHistory(row.name));
       name.append(button);
       tr.append(name);
-      for (const number of [row.played, row.wins, row.draws, row.losses,
+      for (const number of [row.played,
+        `${standingsNumber(row.wins)}-${standingsNumber(row.draws)}-${standingsNumber(row.losses)}`,
         row.goalDifference, row.points]) {
         tr.append(standingsCell("td", standingsNumber(number)));
       }
@@ -3147,9 +3161,6 @@ function renderStandings() {
     if (!card.hasResults) {
       slide.append(standingsCell("p", "No scored league matches indexed for this division yet.",
         "muted standings-message"));
-    } else {
-      slide.append(standingsCell("p", "Tap a team name to view scored match history.",
-        "standings-gesture-hint"));
     }
     track.append(slide);
   }
@@ -3169,6 +3180,8 @@ async function loadStandings() {
     const payload = await api("/web/standings");
     if (!payload?.ok || !payload.standings) throw new Error("Standings unavailable");
     const selectedTeam = currentStandings?.cards?.[standingsIndex]?.team;
+    // Preserve scroll/drag position when a 60-second API poll returns unchanged data.
+    if (JSON.stringify(currentStandings) === JSON.stringify(payload.standings)) return true;
     currentStandings = payload.standings;
     const index = currentStandings.cards?.findIndex((card) => card.team === selectedTeam) ?? -1;
     standingsIndex = index >= 0 ? index : 0;
@@ -3242,33 +3255,114 @@ async function openTeamHistory(teamName) {
 }
 
 function installStandingsSwipe() {
-  let startX = null;
-  let startY = null;
-  els.standingsViewport.addEventListener("touchstart", (event) => {
-    const touch = event.changedTouches?.[0];
-    if (!touch) return;
-    startX = touch.clientX;
-    startY = touch.clientY;
-  }, { passive: true });
-  els.standingsViewport.addEventListener("touchend", (event) => {
-    const touch = event.changedTouches?.[0];
-    if (!touch || startX === null || startY === null) return;
-    const dx = touch.clientX - startX;
-    const dy = touch.clientY - startY;
-    startX = null;
-    startY = null;
-    if (Math.abs(dx) >= 55 && Math.abs(dx) > Math.abs(dy) * 1.25) {
-      setStandingsSlide(standingsIndex + (dx < 0 ? 1 : -1));
-    }
-  }, { passive: true });
-  els.standingsViewport.addEventListener("touchcancel", () => {
-    startX = null;
-    startY = null;
+  let pointerStart = null;
+  let dragging = false;
+  let suppressClick = false;
+  const viewport = els.standingsViewport;
+
+  const resetDrag = () => {
+    viewport.querySelector(".standings-track")?.classList.remove("is-train-dragging");
+    pointerStart = null;
+    dragging = false;
+  };
+
+  viewport.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0 || event.target.closest("button, a, input, textarea")) return;
+    pointerStart = {
+      id: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      index: standingsIndex,
+    };
+    dragging = false;
   });
-  els.standingsPrevious.addEventListener("click", () =>
-    setStandingsSlide(standingsIndex - 1));
-  els.standingsNext.addEventListener("click", () =>
-    setStandingsSlide(standingsIndex + 1));
+
+  viewport.addEventListener("pointermove", (event) => {
+    if (!pointerStart || pointerStart.id !== event.pointerId) return;
+    const dx = event.clientX - pointerStart.x;
+    const dy = event.clientY - pointerStart.y;
+    if (!dragging) {
+      if (Math.abs(dx) < 8) return;
+      if (Math.abs(dx) <= Math.abs(dy) * 1.1) {
+        resetDrag();
+        return;
+      }
+      dragging = true;
+      viewport.setPointerCapture(event.pointerId);
+      viewport.querySelector(".standings-track")?.classList.add("is-train-dragging");
+    }
+    event.preventDefault();
+    const track = viewport.querySelector(".standings-track");
+    const step = standingsStepWidth();
+    const atStart = pointerStart.index === 0 && dx > 0;
+    const atEnd = pointerStart.index === (currentStandings?.cards?.length || 1) - 1 && dx < 0;
+    const movement = (atStart || atEnd) ? dx * 0.18 : dx;
+    if (track) {
+      track.style.transform =
+        `translate3d(${-(pointerStart.index * step) + movement}px, 0, 0)`;
+    }
+  });
+
+  const finish = (event, cancelled = false) => {
+    if (!pointerStart || pointerStart.id !== event.pointerId) return;
+    const dx = event.clientX - pointerStart.x;
+    const dy = event.clientY - pointerStart.y;
+    const didDrag = dragging;
+    const originalIndex = pointerStart.index;
+    resetDrag();
+    if (didDrag) {
+      suppressClick = true;
+      // A captured swipe must never accidentally open the history dialog.
+      window.setTimeout(() => { suppressClick = false; }, 0);
+    }
+    const step = !cancelled && didDrag && Math.abs(dx) >= 55 &&
+      Math.abs(dx) > Math.abs(dy) * 1.2 ? (dx < 0 ? 1 : -1) : 0;
+    setStandingsSlide(originalIndex + step);
+  };
+
+  viewport.addEventListener("pointerup", (event) => finish(event));
+  viewport.addEventListener("pointercancel", (event) => finish(event, true));
+  viewport.addEventListener("click", (event) => {
+    if (!suppressClick) return;
+    event.preventDefault();
+    event.stopPropagation();
+  }, true);
+
+  for (const [control, direction] of [
+    [els.standingsPrevious, -1], [els.standingsNext, 1],
+  ]) {
+    control.addEventListener("click", () => setStandingsSlide(standingsIndex + direction));
+    const clear = () => {
+      control.style.setProperty("--standings-edge-opacity", "0.10");
+      control.style.setProperty("--standings-arrow-opacity", "0.60");
+    };
+    control.addEventListener("pointermove", (event) => {
+      const rect = control.getBoundingClientRect();
+      if (!rect.width) return;
+      const fromBorder = direction < 0
+        ? event.clientX - rect.left
+        : rect.right - event.clientX;
+      const strength = Math.max(0, 1 - Math.max(0, fromBorder) / rect.width);
+      control.style.setProperty("--standings-edge-opacity",
+        (0.1 + 0.85 * strength * strength).toFixed(3));
+      control.style.setProperty("--standings-arrow-opacity",
+        (0.6 + 0.4 * strength).toFixed(3));
+    });
+    control.addEventListener("pointerleave", clear);
+    control.addEventListener("blur", clear);
+    clear();
+  }
+
+  window.addEventListener("resize", () => {
+    // Slide geometry comes from the viewport, not the growing train width.
+    if (pointerStart) resetDrag();
+    const track = viewport.querySelector(".standings-track");
+    if (!track) return;
+    track.classList.add("is-train-dragging");
+    setStandingsSlide(standingsIndex);
+    window.requestAnimationFrame(() => track.classList.remove("is-train-dragging"));
+  });
+
   els.closeTeamHistory.addEventListener("click", closeTeamHistory);
   els.teamHistoryDialog.addEventListener("click", (event) => {
     if (event.target === els.teamHistoryDialog) closeTeamHistory();
