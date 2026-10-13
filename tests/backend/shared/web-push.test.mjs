@@ -5,6 +5,7 @@ import path from "node:path";
 import test from "node:test";
 
 import { encryptState } from "../../../backend/shared/state-crypto.mjs";
+import { saveUserState } from "../../../backend/shared/user-state.mjs";
 import {
   isUnsafeWebPushAddress,
   applyEncryptedRegistrationEventB64,
@@ -277,4 +278,37 @@ test("validates all DNS answers for a recognized public endpoint", async () => {
     }),
     MOZILLA_ENDPOINT,
   );
+});
+
+test("push sender skips booked players without using notification payloads", async (t) => {
+  inTempDir(t);
+  writeSubscriptionState({
+    endpoint: MOZILLA_ENDPOINT,
+    userId: "admin",
+    channels: {pickup: true, league: true, version: true},
+  });
+  saveUserState({ownerRsvpName: "Casey Sample"});
+  fs.mkdirSync(".runtime/pickup", {recursive: true});
+  fs.writeFileSync(".runtime/pickup/events.json", JSON.stringify({
+    events: {"2026-10-15": {
+      players: [{name: "Casey Sample"}],
+      waitlist: [],
+    }},
+  }));
+  let calls = 0;
+  const common = {
+    channel: "pickup",
+    resolveHost: async () => [{address: "34.120.0.1", family: 4}],
+    fetchImpl: async () => { calls += 1; return {ok: true, status: 201}; },
+  };
+  const blocked = await sendWebPushSignals({
+    ...common, entry: {tag: "pickup-rsvp-reminder-2026-10-15"},
+  });
+  assert.equal(blocked.sent, 0);
+  assert.equal(calls, 0);
+  const kickoff = await sendWebPushSignals({
+    ...common, entry: {tag: "pickup-start-reminder-2026-10-15"},
+  });
+  assert.equal(kickoff.sent, 1);
+  assert.equal(calls, 1);
 });
