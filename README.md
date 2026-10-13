@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, Calendar sync, and quick answers into one installable app.
 
-**Current source version: 8.1.1**
+**Current source version: 8.1.2**
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
 
@@ -33,6 +33,12 @@ Saturday synthetic pickup is shown simply as **Pickup** and has no RSVP/capacity
 A 22-second walkthrough with a short animated intro. Recorded from the app using synthetic sample data; game details, answers, and notifications are illustrative.
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/)
+
+## BallerWatch 8.1.2 — RSVP and Calendar reliability
+
+- **No duplicate RSVP nudges after booking:** Confirmed signed-in players no longer receive pickup RSVP or capacity prompts; waitlisted players no longer receive requests to RSVP again. Personal eligibility uses encrypted source rosters inside the workflow, and already-irrelevant reminders disappear from the signed-in Inbox and PWA push presentation. One-hour kickoff reminders are still eligible.
+- **Match-card edits and deletion:** The built-in BallerWatch calendar reflects match-card overrides immediately. For RATS league matches managed through the paired Google Calendar bridge, changed dates/times/locations are reconciled with the existing calendar event. Explicitly deleted cards remove *only* BallerWatch-tracked calendar events. Missing RATS upstream data alone never triggers deletion.
+- **Calendar bridge deployment:** Managed Google Calendar deletion requires redeploying `backend/league/google_apps_script/Code.gs` as Apps Script bridge **v6**. Older bridge deployments fail closed; source promotion alone does not redeploy a privately hosted Apps Script. Pickup matches are visible in BallerWatch's built-in calendar but are **not** created in Google Calendar by the RATS-only bridge.
 
 ## BallerWatch AI 8.1 — stronger answers and reviewed feedback
 
