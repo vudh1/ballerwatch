@@ -237,11 +237,11 @@ self.addEventListener("push", (event) => {
         readRsvpState(),
       ]);
       const payload = await response.json();
-      entry = (payload?.entries || []).find((item) => {
-        const channel = String(item?.channel || "");
-        return (!channel || channels[channel] !== false) &&
-          !skipBookedRsvpAlert(item, rsvpState);
-      }) || null;
+      // A suppressed new alert must not replay an older notification.
+      const candidate = Array.isArray(payload?.entries) ? payload.entries[0] : null;
+      const channel = String(candidate?.channel || "");
+      entry = candidate && (!channel || channels[channel] !== false) &&
+        !skipBookedRsvpAlert(candidate, rsvpState) ? candidate : null;
     } catch {}
 
     if (!entry) return;
