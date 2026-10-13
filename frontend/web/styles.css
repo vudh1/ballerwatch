@@ -4855,3 +4855,82 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
     transform: translateY(0);
   }
 }
+
+/* v8.1.3 calendar paging stays compact, with a separate full-card expansion target. */
+.calendar-heading {
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.calendar-heading > div:first-child {
+  min-width: 0;
+}
+
+.calendar-window-controls {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.38rem;
+  margin-left: auto;
+}
+
+.calendar-window-control {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.65rem;
+  padding: 0;
+  border: 1px solid rgba(125, 211, 252, 0.18);
+  border-radius: 13px;
+  background: linear-gradient(130deg, rgba(125, 211, 252, 0.09), rgba(15, 35, 42, 0.24));
+  color: rgba(226, 250, 255, 0.92);
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  transition: background-color 150ms ease, border-color 150ms ease, opacity 150ms ease;
+}
+
+.calendar-window-control span {
+  font-size: 1.8rem;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.calendar-window-control:not(:disabled):is(:hover, :focus-visible) {
+  border-color: rgba(125, 211, 252, 0.56);
+  background-color: rgba(14, 116, 144, 0.22);
+  box-shadow: 0 0 18px rgba(56, 189, 248, 0.14);
+}
+
+.calendar-window-control:focus-visible {
+  outline: 2px solid rgba(125, 211, 252, 0.72);
+  outline-offset: 2px;
+}
+
+.calendar-window-control:disabled {
+  cursor: default;
+  opacity: 0.3;
+}
+
+.calendar-card.is-expanded .calendar-window-controls {
+  display: none;
+}
+
+/* Keep empty calendar dates clickable so the card still expands everywhere. */
+.calendar-day[aria-disabled="true"] {
+  opacity: 0.7;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  /* The right hit area begins below Edit; its chevron tracks the full card center. */
+  .spotlight-edge-next span {
+    top: -2.7rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .calendar-window-control {
+    transition: none;
+  }
+}
