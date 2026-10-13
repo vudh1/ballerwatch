@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.1.3",
+  "currentVersion": "8.2.0",
   "releases": [
+    {
+      "version": "8.2.0",
+      "date": "2026-10-13",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Team standings carousel and match-history drill-down",
+      "webAnnouncement": "Browse current-season RATS division standings for each tracked team, with your team highlighted. Swipe between team cards and tap any standings team to see its indexed match results.",
+      "changes": [
+        "Adds a standings carousel for monitored league teams, showing each current RATS season/division table and highlighted team rank, record, goals and points.",
+        "Calculates provisional 3–1–0 rankings from scored public RATS fixtures without a previous-season fallback; displays data freshness and avoids claiming official tie-breaker order.",
+        "Tap any team in the standings to open its latest scored games across indexed RATS seasons, including dates and W/D/L outcomes.",
+        "Reuses the encrypted RATS history archive and serves bounded public-only web endpoints with no private roster data or new provider cost.",
+        "Supports mobile swipe and accessible arrow navigation with transparent styling and regression coverage."
+      ]
+    },
     {
       "version": "8.1.3",
       "date": "2026-10-13",
