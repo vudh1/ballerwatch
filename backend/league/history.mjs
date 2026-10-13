@@ -20,7 +20,7 @@ import { captureVenueEvents } from "./venue-cache.mjs";
 
 export const HISTORY_FILE = "league/state/history.json";
 export const HISTORY_START_YEAR = 2023;
-export const HISTORY_REFRESH_MS = 24 * 60 * 60 * 1000;
+export const HISTORY_REFRESH_MS = 12 * 60 * 60 * 1000;
 export const HISTORY_RETRY_MS = 30 * 60 * 1000;
 export const HISTORY_BATCH_SIZE = 4;
 export const HISTORY_MAX_ATTEMPTS_PER_SEASON = 3;

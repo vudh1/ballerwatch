@@ -68,7 +68,8 @@ test("RATS history refresh repairs legacy and zero-score archives immediately", 
   );
 });
 
-test("complete RATS history refreshes daily while partial coverage retries sooner", () => {
+test("complete RATS history refreshes every 12 hours while partial coverage retries sooner", () => {
+  assert.equal(HISTORY_REFRESH_MS, 12 * 60 * 60 * 1000);
   const now = new Date("2026-10-07T12:00:00Z");
   const complete = {
     schemaVersion: 3,
