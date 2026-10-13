@@ -3807,8 +3807,13 @@ export default {
           { hidden: request.method === "DELETE" },
         );
         ctx.waitUntil(
-          dispatchWorkflow(env, "watchdog.yml", { external_fallback: true })
-            .catch((error) => console.warn("Match visibility weather refresh dispatch failed", error)),
+          (
+            saved.id.startsWith("league:")
+              ? dispatchWorkflow(env, "league.yml")
+              : saved.id.startsWith("pickup:")
+                ? dispatchWorkflow(env, "pickup.yml")
+                : dispatchWorkflow(env, "watchdog.yml", { external_fallback: true })
+          ).catch((error) => console.warn("Match visibility reconciliation dispatch failed", error)),
         );
         return webJson(request, {
           ok: true,

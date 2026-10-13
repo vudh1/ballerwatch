@@ -12,6 +12,9 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { decryptState, encryptState } from "./state-crypto.mjs";
 import { normalizeWebPushEndpoint } from "./web-push-endpoint.mjs";
+import { pickupNotificationAudience } from "./notification-audience.mjs";
+import { loadUserSettings } from "./user-state.mjs";
+import { loadWebNotificationChannel } from "./web-notifications.mjs";
 
 const STATE_PATH = "state/web-push.json";
 const MAX_SUBSCRIPTIONS = 24;
@@ -317,6 +320,7 @@ export async function sendWebPushSignals({
   resolveHost = dnsLookup,
   now = new Date(),
   channel = "",
+  entry = null,
 } = {}) {
   const state = loadWebPushState();
   if (!state?.subscriptions?.length) {
@@ -327,9 +331,23 @@ export async function sendWebPushSignals({
   let sent = 0;
   let failed = 0;
   const staleEndpoints = new Set();
+  // The roster is read only in the encrypted Actions runner. Push remains
+  // payload-free, and no account or participant details are logged.
+  let privateEvents = {};
+  if (channel === "pickup" && entry) {
+    try {
+      const source = JSON.parse(fs.readFileSync(".runtime/pickup/events.json", "utf8"));
+      privateEvents = source?.events || {};
+    } catch {}
+  }
+  const settings = channel === "pickup" && entry ? loadUserSettings() : {};
 
   for (const subscription of state.subscriptions) {
     if (channel && normalizedChannels(subscription?.channels)[channel] === false) {
+      continue;
+    }
+    if (channel === "pickup" && entry &&
+        !pickupNotificationAudience(entry, subscription, settings, privateEvents)) {
       continue;
     }
 
@@ -388,11 +406,16 @@ export async function sendPendingWebPushSignals(options = {}) {
   }
   try {
     let channel = "";
+    let entry = null;
     try {
       const pending = JSON.parse(fs.readFileSync(".runtime/web-push-pending", "utf8"));
       channel = clean(pending?.channel, 30);
+      if (channel && pending?.id) {
+        const board = loadWebNotificationChannel(channel);
+        entry = board.entries?.find((item) => item.id === pending.id) || null;
+      }
     } catch {}
-    const result = await sendWebPushSignals({ ...options, channel });
+    const result = await sendWebPushSignals({ ...options, channel, entry });
     return { ...result, skipped: false };
   } finally {
     fs.rmSync(".runtime/web-push-pending", { force: true });

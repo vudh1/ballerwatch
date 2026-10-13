@@ -889,10 +889,54 @@ function ownerHeaders() {
   return authHeaders();
 }
 
+// RSVP status affects only this account's view and device; public board
+// entries remain generic and never disclose participant identities.
+function rsvpAlertDates() {
+  const confirmed = new Set(confirmedRsvpDates);
+  const waitlisted = new Set(waitlistedRsvpDates);
+  for (const game of currentCalendar?.games || []) {
+    if (game.kind !== "pickup") continue;
+    const sourceDate = String(game.sourceDate || game.date || "");
+    if (confirmed.has(game.date)) confirmed.add(sourceDate);
+    if (waitlisted.has(game.date)) waitlisted.add(sourceDate);
+  }
+  return { confirmed, waitlisted };
+}
+
+function skipPersonalPickupAlert(item) {
+  const tag = String(item?.tag || "");
+  const reminder = tag.match(/^pickup-rsvp-reminder-(\d{4}-\d{2}-\d{2})$/);
+  const capacity = tag.match(/^pickup-capacity-(\d{4}-\d{2}-\d{2})-\d+$/);
+  if (!reminder && !capacity) return false;
+  const { confirmed, waitlisted } = rsvpAlertDates();
+  const date = (reminder || capacity)[1];
+  return confirmed.has(date) || Boolean(reminder && waitlisted.has(date));
+}
+
+async function syncServiceWorkerRsvpState() {
+  if (!("serviceWorker" in navigator)) return;
+  try {
+    const registration = serviceWorkerRegistration || await navigator.serviceWorker.ready;
+    const worker = registration?.active || navigator.serviceWorker.controller;
+    const { confirmed, waitlisted } = rsvpAlertDates();
+    worker?.postMessage({
+      type: "ballerwatch:rsvp-state",
+      confirmedDates: [...confirmed],
+      waitlistedDates: [...waitlisted],
+    });
+  } catch {}
+}
+
+function updatePersonalPickupAlertState() {
+  renderBoard(currentBoardEntries);
+  void syncServiceWorkerRsvpState();
+}
+
 async function loadRsvpStatus() {
   if (!ownerToken()) {
     confirmedRsvpDates = new Set();
     waitlistedRsvpDates = new Set();
+    updatePersonalPickupAlertState();
     return false;
   }
 
@@ -907,11 +951,13 @@ async function loadRsvpStatus() {
     waitlistedRsvpDates = new Set(
       Array.isArray(payload?.rsvp?.waitlistedDates) ? payload.rsvp.waitlistedDates : [],
     );
+    updatePersonalPickupAlertState();
     return true;
   } catch (error) {
     confirmedRsvpDates = new Set();
     waitlistedRsvpDates = new Set();
     if (error.status === 401) clearSession();
+    updatePersonalPickupAlertState();
     return false;
   }
 }
@@ -1451,6 +1497,7 @@ function disconnectOwnerDevice() {
   currentNotificationProfile = null;
   confirmedRsvpDates = new Set();
   waitlistedRsvpDates = new Set();
+  updatePersonalPickupAlertState();
   renderNotificationPreferences();
   renderBoard(currentBoardEntries);
   void syncCurrentPushRegistration();
@@ -1515,7 +1562,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=8.1.1", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=8.1.2", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -1741,7 +1788,8 @@ function notificationViewState(entries = currentBoardEntries) {
   const deleted = accountNotificationStateActive()
     ? new Set(currentNotificationProfile.deletedIds)
     : storedNotificationIds(NOTIFICATION_DELETED_KEY);
-  const allVisible = entries.filter((item) => !deleted.has(notificationId(item)));
+  const allVisible = entries.filter((item) =>
+    !deleted.has(notificationId(item)) && !skipPersonalPickupAlert(item));
   const visible = notificationFilter === "all"
     ? allVisible
     : allVisible.filter((item) => String(item?.channel || "") === notificationFilter);
@@ -2864,6 +2912,7 @@ function setCalendarExpanded(expanded) {
 
 function renderCalendar(calendar) {
   currentCalendar = calendar || null;
+  updatePersonalPickupAlertState();
   els.calendarGrid.replaceChildren();
 
   if (!calendar?.startDate) {

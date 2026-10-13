@@ -1,21 +1,22 @@
-const CACHE = "ballerwatch-v8-1-1-shell";
+const CACHE = "ballerwatch-v8-1-2-shell";
 const SHELL = [
   "./",
   "./index.html",
-  "./launch-prepaint.js?v=8.1.1",
-  "./styles.css?v=8.1.1",
-  "./app.js?v=8.1.1",
+  "./launch-prepaint.js?v=8.1.2",
+  "./styles.css?v=8.1.2",
+  "./app.js?v=8.1.2",
   "./lib/client.js",
   "./lib/notification-state.js",
-  "./manifest.webmanifest?v=8.1.1",
-  "./icon.svg?v=8.1.1",
-  "./apple-touch-icon.png?v=8.1.1",
+  "./manifest.webmanifest?v=8.1.2",
+  "./icon.svg?v=8.1.2",
+  "./apple-touch-icon.png?v=8.1.2",
 ];
 const API = "https://ballerwatch-web.vudhone.workers.dev";
 const APP_URL = "https://vudh1.github.io/ballerwatch/";
 const DEVICE_STATE_CACHE = "ballerwatch-device-state-v1";
 const BADGE_STATE_URL = new URL("./.badge-state", self.location.href).href;
 const NOTIFICATION_PREFS_URL = new URL("./.notification-prefs", self.location.href).href;
+const RSVP_STATE_URL = new URL("./.rsvp-state", self.location.href).href;
 
 function normalizedBadgeCount(value) {
   return Math.min(999, Math.max(0, Math.floor(Number(value) || 0)));
@@ -103,6 +104,47 @@ async function writeNotificationChannels(channels) {
   return normalized;
 }
 
+function cleanRsvpDates(value) {
+  return [...new Set((Array.isArray(value) ? value : [])
+    .filter((item) => /^\d{4}-\d{2}-\d{2}$/.test(String(item))))].slice(0, 300);
+}
+
+async function writeRsvpState(state) {
+  const value = {
+    confirmedDates: cleanRsvpDates(state?.confirmedDates),
+    waitlistedDates: cleanRsvpDates(state?.waitlistedDates),
+  };
+  try {
+    const cache = await caches.open(DEVICE_STATE_CACHE);
+    await cache.put(
+      RSVP_STATE_URL,
+      new Response(JSON.stringify(value), {
+        headers: { "content-type": "application/json" },
+      }),
+    );
+  } catch {}
+}
+
+async function readRsvpState() {
+  try {
+    const cache = await caches.open(DEVICE_STATE_CACHE);
+    const response = await cache.match(RSVP_STATE_URL);
+    return response ? await response.json() : {};
+  } catch {
+    return {};
+  }
+}
+
+function skipBookedRsvpAlert(entry, state) {
+  const tag = String(entry?.tag || "");
+  const reminder = tag.match(/^pickup-rsvp-reminder-(\d{4}-\d{2}-\d{2})$/);
+  const capacity = tag.match(/^pickup-capacity-(\d{4}-\d{2}-\d{2})-\d+$/);
+  if (!reminder && !capacity) return false;
+  const date = (reminder || capacity)[1];
+  return (state?.confirmedDates || []).includes(date) ||
+    Boolean(reminder && (state?.waitlistedDates || []).includes(date));
+}
+
 function safeAppUrl(value) {
   try {
     const url = new URL(String(value || APP_URL), APP_URL);
@@ -158,6 +200,10 @@ self.addEventListener("message", (event) => {
     event.waitUntil(writeNotificationChannels(event.data?.channels));
     return;
   }
+  if (event.data?.type === "ballerwatch:rsvp-state") {
+    event.waitUntil(writeRsvpState(event.data));
+    return;
+  }
   if (event.data?.type !== "ballerwatch:test-notification") return;
   const requestedDelay = Number(event.data?.delayMs);
   const delayMs = Number.isFinite(requestedDelay)
@@ -185,15 +231,17 @@ self.addEventListener("push", (event) => {
   event.waitUntil((async () => {
     let entry = null;
     try {
-      const [response, channels] = await Promise.all([
+      const [response, channels, rsvpState] = await Promise.all([
         fetch(API + "/web/board?limit=30", { cache: "no-store" }),
         readNotificationChannels(),
+        readRsvpState(),
       ]);
       const payload = await response.json();
-      entry = (payload?.entries || []).find((item) => {
-        const channel = String(item?.channel || "");
-        return !channel || channels[channel] !== false;
-      }) || null;
+      // A suppressed new alert must not replay an older notification.
+      const candidate = Array.isArray(payload?.entries) ? payload.entries[0] : null;
+      const channel = String(candidate?.channel || "");
+      entry = candidate && (!channel || channels[channel] !== false) &&
+        !skipBookedRsvpAlert(candidate, rsvpState) ? candidate : null;
     } catch {}
 
     if (!entry) return;

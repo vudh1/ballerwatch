@@ -19,6 +19,24 @@ Allowed proactive Web Push:
 
 Operational health, tests, deployments, commits, PRs, score-only changes, and setup reminders do not generate user notifications.
 
+## Managed Google Calendar reconciliation
+
+The Google Apps Script bridge is hosted in the paired account, not GitHub Pages.
+Before deploying BallerWatch 8.1.2's Calendar deletion feature, copy the current
+`backend/league/google_apps_script/Code.gs` into the paired Apps Script project
+and deploy a new **web app version** (same existing deployment URL and secret).
+Verify its authenticated-unrestricted health `doGet` response reports
+`version: 6` and `calendarPaired: true` without exposing any credentials.
+
+Only an explicit administrator deletion of a tracked RATS league match is
+eligible for deletion from the paired Google Calendar. Unknown, untracked or
+temporarily missing upstream events are not deleted. Restoring a hidden match
+or editing its time/location is applied by the next successful league watcher.
+Without bridge v6, deletions fail closed and are retried on later watcher runs.
+
+The paired bridge currently manages RATS league games, **not pickup** games.
+The BallerWatch built-in calendar includes both and refreshes independently.
+
 ## Password recovery
 
 1. Set temporary repository secret `BALLERWATCH_RECOVERY_PASSWORD`.
