@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.1.2",
+  "currentVersion": "8.1.3",
   "releases": [
+    {
+      "version": "8.1.3",
+      "date": "2026-10-13",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Centered match navigation and fourteen-day calendar paging",
+      "webAnnouncement": "Match navigation is easier to use: the right carousel arrow is centered, selected matches stay visible for 15 seconds, and calendar arrows browse two weeks at a time without opening the full schedule.",
+      "changes": [
+        "Aligns the right match-card carousel arrow with the true vertical midpoint while preserving the full-height waterfall and match-type Edit/Delete hit-area priority.",
+        "Extends selected-game idle reset from 6 to 15 seconds while preserving dialog and tab-inactive safeguards.",
+        "Adds accessible previous/next 14-day calendar paging controls without expanding the card, including support for browsing beyond the initial two-week grid.",
+        "Clicking elsewhere on the calendar card—including a match-day cell—expands to Full Schedule; choosing a match still opens the selected game."
+      ]
+    },
     {
       "version": "8.1.2",
       "date": "2026-10-13",
