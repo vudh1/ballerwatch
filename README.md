@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, Calendar sync, and quick answers into one installable app.
 
-**Current source version: 8.2.0**
+**Current source version: 8.2.1**
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
 
@@ -14,7 +14,7 @@ BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS leag
 - See RSVP capacity for pickup games; tap the capacity area to open the full-width roster sheet and RSVP from inside it.
 - **Share just the field:** the Share button sends the RATS-published Google Maps venue link (or a verified GPS/field-name lookup fallback) with no team names, match date, or kickoff summary; clipboard fallback copies the same link.
 - Browse a rolling match calendar and swipe between match cards; on desktop, the waterfall stays visually full-height while the Pickup/League Edit/Delete trigger keeps pointer priority over the carousel hit area.
-- **Follow your RATS teams in Standings:** swipe through a card for every tracked team and see its current-season division standings, with your team's row highlighted. Tap any team in a division to open the latest scored match history across indexed seasons. Rankings are calculated from published results and may differ from official tie-breakers.
+- **Follow RATS Standings as a card train:** swipe between individual full-width team cards or use subtle edge arrows. Each current-season division table highlights your team, and tapping another team opens its indexed scored match history. The compact table shows played, W-D-L, goal difference and points. Results-based rankings are provisional.
 - Use a real **Inbox** with Pickup / League / App filters, mark-all-read, swipe delete, and account-synced read state.
 - Choose account-level notification categories and keep the unread count synchronized to the installed app badge on supported devices.
 - Get allowed Web Push reminders and real schedule-change notifications.
@@ -34,6 +34,13 @@ Saturday synthetic pickup is shown simply as **Pickup** and has no RSVP/capacity
 A 22-second walkthrough with a short animated intro. Recorded from the app using synthetic sample data; game details, answers, and notifications are illustrative.
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/)
+
+## BallerWatch 8.2.1 — Minimal standings card train and faster results
+
+- **One card, one tracked team:** RATS standings use a full-width swipeable train, matching the main match-card motion and understated waterfall navigation on the left/right edges. Cards stay adjacent through dragging and snap into place; the tracked team's row remains bold green.
+- **Cleaner table:** The standalone glass card removes the nested panel and consolidates the table into Rank, Team, P, W-D-L, GD, Pts. Team names still open scored match-history details.
+- **2× index refresh frequency:** The encrypted RATS historical result/standings index now refreshes **every 12 hours** (previously 24 hours) when complete; a partial index continues retrying every 30 minutes. The league watcher still checks schedules every five minutes, and the visible PWA polls for data about every minute. Published results can appear only after the upstream RATS data and a successful index update.
+- **Data integrity:** Standings are a provisional 3–1–0 calculation from scored RATS fixtures, not necessarily the official RATS tie-breaker order.
 
 ## BallerWatch 8.2.0 — Team standings and match history
 
