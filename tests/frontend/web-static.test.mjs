@@ -719,7 +719,7 @@ test("installed app does not interrupt first-load hydration for a service-worker
   );
   assert.match(
     app,
-    /await Promise\.all\(\[\s*registerServiceWorker\(\)\.catch\(\(\) => null\),\s*loadConfig\(\),\s*loadBoard\(\),\s*loadCalendar\(\),\s*loadNotificationProfile\(\),\s*\]\);/,
+    /await Promise\.all\(\[\s*registerServiceWorker\(\)\.catch\(\(\) => null\),\s*loadConfig\(\),\s*loadBoard\(\),\s*loadCalendar\(\),\s*loadStandings\(\),\s*loadNotificationProfile\(\),\s*\]\);/,
   );
   assert.match(app, /initialLoadComplete = true/);
   assert.match(
@@ -1633,4 +1633,31 @@ test("Share sends only the Google Maps field URL, never the fixture summary", ()
   assert.doesNotMatch(share, /shareText|currentNextGame\.title/);
   assert.doesNotMatch(share, /title:\s*"BallerWatch game"|text:|GPS:/);
   assert.match(share, /const \{ url: maps, source \} = venueShareDetails\(currentNextGame\)/);
+});
+
+test("standings carousel highlights monitored teams and has accessible history drill-down", () => {
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
+
+  assert.match(html, /id="league-standings"/);
+  assert.match(html, /id="standings-viewport"/);
+  assert.match(html, /id="standings-previous"/);
+  assert.match(html, /id="standings-next"/);
+  assert.match(html, /id="team-history-dialog"/);
+  assert.match(html, /id="close-team-history"/);
+  assert.match(app, /function renderStandings\(/);
+  assert.match(app, /\.standings-track/);
+  assert.match(app, /setStandingsSlide\(standingsIndex \+ \(dx < 0 \? 1 : -1\)\)/);
+  assert.match(app, /row\.highlighted/);
+  assert.match(app, /button\.addEventListener\("click", \(\) => void openTeamHistory\(row\.name\)\)/);
+  assert.match(app, /encodeURIComponent\(teamName\)/);
+  assert.match(app, /loadStandings\(\)/);
+  assert.match(css, /\.standings-highlight/);
+  assert.match(css, /\.team-history-dialog/);
+  assert.match(worker, /url\.pathname === "\/web\/standings"/);
+  assert.match(worker, /url\.pathname === "\/web\/team-history"/);
+  assert.match(worker, /card\.rows\.some\(\(row\) => row\.name === teamName\)/);
+  assert.doesNotMatch(html, /PhoSaiGon|Third Touch FC/);
 });
