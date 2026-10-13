@@ -3173,7 +3173,7 @@ function renderStandings() {
   els.standingsViewport.append(track);
   const updated = new Date(standings.updatedAt || "");
   els.standingsUpdated.textContent =
-    `Calculated from published RATS results (3–1–0) · ${Number.isNaN(updated.getTime())
+    `RATS results · Provisional · ${Number.isNaN(updated.getTime())
       ? "Refresh pending"
       : `Updated ${new Intl.DateTimeFormat(undefined, {month: "short", day: "numeric",
         hour: "numeric", minute: "2-digit"}).format(updated)}`}`;
