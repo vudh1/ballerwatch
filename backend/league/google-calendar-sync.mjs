@@ -40,12 +40,17 @@ export async function postBridge(payload, { fetchImpl = globalThis.fetch } = {})
   const url = requiredEnv("GOOGLE_CALENDAR_WEBHOOK_URL");
   const secret = requiredEnv("GOOGLE_CALENDAR_WEBHOOK_SECRET");
 
-  if ((payload.updates || []).some((item) => item.oldKey)) {
-    if (await bridgeVersion(url, {fetchImpl}) < 2) {
+  const updates = payload.updates || [];
+  if (updates.some((item) => item.oldKey || item.type === "deleted")) {
+    const version = await bridgeVersion(url, {fetchImpl});
+    if (updates.some((item) => item.type === "deleted") && version < 6) {
       throw new Error(
-        "Calendar reschedule detected but deployed Apps Script bridge is v1; " +
-        "redeploy backend/league/google_apps_script/Code.gs before applying it",
+        "Calendar deletion needs Apps Script bridge v6; redeploy " +
+        "backend/league/google_apps_script/Code.gs before removing managed events",
       );
+    }
+    if (updates.some((item) => item.oldKey) && version < 2) {
+      throw new Error("Calendar reschedule needs Apps Script bridge v2 or newer.");
     }
   }
 
@@ -110,6 +115,11 @@ export async function syncCalendar({
       throw new Error(`Calendar bridge did not successfully apply ${item.key}`);
     }
     const match = item.match;
+    if (item.type === "deleted") {
+      delete state.appliedMatches[item.key];
+      console.log(`deleted BallerWatch-managed Calendar fixture ${item.key}`);
+      continue; // A deliberate removal is not a new-match notification.
+    }
     if (item.oldKey && item.oldKey !== item.key) {
       delete state.appliedMatches[item.oldKey];
     }
