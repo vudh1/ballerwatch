@@ -26,6 +26,7 @@ import { safeForExternalIntent, validatedAiIntent } from "../../shared/ai-intent
 import { answerFixtureQuestion } from "../../shared/fixture-ai.mjs";
 import { weeklyMatchBriefing } from "../../shared/match-briefing.mjs";
 import { answerRatsHistoryQuestion } from "../../shared/rats-history.mjs";
+import { buildLeagueStandings, buildLeagueTeamHistory } from "../../shared/league-standings.mjs";
 import { matchVenue } from "../../shared/venue-directory.mjs";
 import {
   applyFreePickupMatchOverride,
@@ -3555,6 +3556,59 @@ export default {
           { ok: false, error: "BallerWatch calendar data is temporarily unavailable." },
           { status: 503 },
         );
+      }
+    }
+
+    if (request.method === "GET" && url.pathname === "/web/standings") {
+      try {
+        const [snapshot, history] = await Promise.all([
+          loadSnapshot(env), loadRatsHistory(env),
+        ]);
+        const seasonId = cleanText(snapshot?.league?.seasonId, 40);
+        const standings = buildLeagueStandings(
+          history, seasonId, snapshot?.teams || [], localDate(),
+        );
+        return webJson(request, { ok: true, standings });
+      } catch {
+        return webJson(request, {
+          ok: false, error: "RATS standings are temporarily unavailable.",
+        }, { status: 503 });
+      }
+    }
+
+    if (request.method === "GET" && url.pathname === "/web/team-history") {
+      const teamName = cleanText(url.searchParams.get("team"), 120);
+      if (!teamName || teamName.length > 100) {
+        return webJson(request, { ok: false, error: "Choose a team from the standings." },
+          { status: 400 });
+      }
+      try {
+        const [snapshot, history] = await Promise.all([
+          loadSnapshot(env), loadRatsHistory(env),
+        ]);
+        const seasonId = cleanText(snapshot?.league?.seasonId, 40);
+        const standings = buildLeagueStandings(
+          history, seasonId, snapshot?.teams || [], localDate(),
+        );
+        // Public drill-down is limited to teams in the current monitored divisions.
+        const allowed = standings.cards.some((card) =>
+          card.rows.some((row) => row.name === teamName));
+        if (!allowed) {
+          return webJson(request, { ok: false, error: "Team is not in the current standings." },
+            { status: 404 });
+        }
+        const teamHistory = buildLeagueTeamHistory(
+          history, seasonId, teamName, 35, localDate(),
+        );
+        if (!teamHistory) {
+          return webJson(request, { ok: false, error: "Team history is not indexed yet." },
+            { status: 404 });
+        }
+        return webJson(request, { ok: true, history: teamHistory });
+      } catch {
+        return webJson(request, {
+          ok: false, error: "RATS match history is temporarily unavailable.",
+        }, { status: 503 });
       }
     }
 

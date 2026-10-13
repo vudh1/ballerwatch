@@ -147,6 +147,16 @@ const els = {
   calendarGrid: document.querySelector("#calendar-grid"),
   calendarGamePicker: document.querySelector("#calendar-game-picker"),
   calendarUpdated: document.querySelector("#calendar-updated"),
+  standingsViewport: document.querySelector("#standings-viewport"),
+  standingsPrevious: document.querySelector("#standings-previous"),
+  standingsNext: document.querySelector("#standings-next"),
+  standingsPosition: document.querySelector("#standings-position"),
+  standingsUpdated: document.querySelector("#standings-updated"),
+  teamHistoryDialog: document.querySelector("#team-history-dialog"),
+  teamHistoryTitle: document.querySelector("#team-history-title"),
+  teamHistoryNote: document.querySelector("#team-history-note"),
+  teamHistoryList: document.querySelector("#team-history-list"),
+  closeTeamHistory: document.querySelector("#close-team-history"),
   matchOverrideDialog: document.querySelector("#match-override-dialog"),
   closeMatchOverride: document.querySelector("#close-match-override"),
   matchOverrideTitle: document.querySelector("#match-override-title"),
@@ -169,6 +179,9 @@ let selectedCalendarDate = "";
 let selectedCalendarGameId = "";
 let calendarWindowStart = "";
 let calendarExpanded = false;
+let currentStandings = null;
+let standingsIndex = 0;
+let teamHistoryRequestId = 0;
 let confirmedRsvpDates = new Set();
 let waitlistedRsvpDates = new Set();
 let serviceWorkerRegistration = null;
@@ -1564,7 +1577,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=8.1.3", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=8.2.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -3009,6 +3022,260 @@ function renderCalendar(calendar) {
   window.requestAnimationFrame(syncSpotlightCardDimensions);
 }
 
+function standingsNumber(value) {
+  return Number.isFinite(Number(value)) ? String(Number(value)) : "—";
+}
+
+function standingsCell(tag, text, className = "") {
+  const element = document.createElement(tag);
+  if (className) element.className = className;
+  element.textContent = String(text ?? "");
+  return element;
+}
+
+function setStandingsSlide(index) {
+  const cards = currentStandings?.cards || [];
+  if (!cards.length) return;
+  standingsIndex = Math.max(0, Math.min(cards.length - 1, index));
+  const track = els.standingsViewport.querySelector(".standings-track");
+  if (track) track.style.transform = `translate3d(-${standingsIndex * 100}%, 0, 0)`;
+  els.standingsPosition.textContent = `${standingsIndex + 1} / ${cards.length}`;
+  els.standingsPrevious.disabled = standingsIndex === 0;
+  els.standingsNext.disabled = standingsIndex === cards.length - 1;
+  for (const [slideIndex, slide] of
+    [...els.standingsViewport.querySelectorAll(".standings-slide")].entries()) {
+    slide.setAttribute("aria-hidden", String(slideIndex !== standingsIndex));
+    slide.inert = slideIndex !== standingsIndex;
+  }
+}
+
+function renderStandings() {
+  const standings = currentStandings;
+  const cards = Array.isArray(standings?.cards) ? standings.cards : [];
+  els.standingsViewport.replaceChildren();
+
+  if (!cards.length) {
+    els.standingsViewport.append(standingsCell("p",
+      "No tracked RATS teams are configured yet.", "muted standings-message"));
+    els.standingsPosition.textContent = "—";
+    els.standingsPrevious.disabled = true;
+    els.standingsNext.disabled = true;
+    return;
+  }
+
+  const track = document.createElement("div");
+  track.className = "standings-track";
+  for (const card of cards) {
+    const slide = document.createElement("article");
+    slide.className = "standings-slide";
+    slide.setAttribute("aria-label", `${card.team} league standings`);
+
+    const meta = document.createElement("div");
+    meta.className = "standings-team-heading";
+    const group = document.createElement("div");
+    group.className = "standings-team-copy";
+    group.append(
+      standingsCell("strong", card.team, "standings-team-name"),
+      standingsCell("span", `${standings.season || "Current season"} · ${card.division || "Division pending"}`,
+        "standings-division"),
+    );
+    const tracked = Array.isArray(card.rows)
+      ? card.rows.find((row) => row.highlighted)
+      : null;
+    meta.append(group, standingsCell("span",
+      tracked ? `#${tracked.rank} / ${card.rows.length}` : "Pending",
+      "standings-rank"));
+    slide.append(meta);
+
+    if (!card.ready) {
+      slide.append(standingsCell("p", card.message || "Standings are not available yet.",
+        "muted standings-message"));
+      track.append(slide);
+      continue;
+    }
+
+    const scroll = document.createElement("div");
+    scroll.className = "standings-table-scroll";
+    const table = document.createElement("table");
+    table.className = "standings-table";
+    const caption = standingsCell("caption",
+      `${card.division} · ${standings.season} standings`);
+    caption.className = "screen-reader-only";
+    table.append(caption);
+    const thead = document.createElement("thead");
+    const header = document.createElement("tr");
+    for (const [text, description] of [
+      ["#", "Rank"], ["Team", "Team name"], ["P", "Played"],
+      ["W", "Wins"], ["D", "Draws"], ["L", "Losses"],
+      ["GD", "Goal difference"], ["Pts", "Points"],
+    ]) {
+      const cell = standingsCell("th", text);
+      cell.scope = "col";
+      cell.title = description;
+      header.append(cell);
+    }
+    thead.append(header);
+    table.append(thead);
+    const tbody = document.createElement("tbody");
+
+    for (const row of card.rows) {
+      const tr = document.createElement("tr");
+      if (row.highlighted) {
+        tr.className = "standings-highlight";
+        tr.setAttribute("aria-current", "true");
+      }
+      tr.append(standingsCell("td", row.rank));
+      const name = document.createElement("td");
+      name.className = "standings-name-cell";
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "standings-team-link";
+      button.textContent = row.name;
+      button.setAttribute("aria-label", `View ${row.name} match history`);
+      button.addEventListener("click", () => void openTeamHistory(row.name));
+      name.append(button);
+      tr.append(name);
+      for (const number of [row.played, row.wins, row.draws, row.losses,
+        row.goalDifference, row.points]) {
+        tr.append(standingsCell("td", standingsNumber(number)));
+      }
+      tbody.append(tr);
+    }
+    table.append(tbody);
+    scroll.append(table);
+    slide.append(scroll);
+    if (!card.hasResults) {
+      slide.append(standingsCell("p", "No scored league matches indexed for this division yet.",
+        "muted standings-message"));
+    } else {
+      slide.append(standingsCell("p", "Tap a team name to view scored match history.",
+        "standings-gesture-hint"));
+    }
+    track.append(slide);
+  }
+
+  els.standingsViewport.append(track);
+  const updated = new Date(standings.updatedAt || "");
+  els.standingsUpdated.textContent =
+    `Calculated from published RATS results (3–1–0) · ${Number.isNaN(updated.getTime())
+      ? "Refresh pending"
+      : `Updated ${new Intl.DateTimeFormat(undefined, {month: "short", day: "numeric",
+        hour: "numeric", minute: "2-digit"}).format(updated)}`}`;
+  setStandingsSlide(standingsIndex);
+}
+
+async function loadStandings() {
+  try {
+    const payload = await api("/web/standings");
+    if (!payload?.ok || !payload.standings) throw new Error("Standings unavailable");
+    const selectedTeam = currentStandings?.cards?.[standingsIndex]?.team;
+    currentStandings = payload.standings;
+    const index = currentStandings.cards?.findIndex((card) => card.team === selectedTeam) ?? -1;
+    standingsIndex = index >= 0 ? index : 0;
+    renderStandings();
+    return true;
+  } catch {
+    if (!currentStandings) {
+      els.standingsViewport.replaceChildren(standingsCell("p",
+        "Standings are unavailable. The RATS results index may still be updating.",
+        "muted standings-message"));
+      els.standingsUpdated.textContent = "RATS source currently unavailable";
+    }
+    return false;
+  }
+}
+
+function closeTeamHistory() {
+  teamHistoryRequestId += 1;
+  if (els.teamHistoryDialog.open) els.teamHistoryDialog.close();
+}
+
+async function openTeamHistory(teamName) {
+  const requestId = ++teamHistoryRequestId;
+  els.teamHistoryTitle.textContent = teamName;
+  els.teamHistoryNote.textContent = "Public RATS results archive";
+  els.teamHistoryList.replaceChildren(
+    standingsCell("p", "Loading match history…", "muted"));
+  if (!els.teamHistoryDialog.open) els.teamHistoryDialog.showModal();
+
+  try {
+    const payload = await api(`/web/team-history?team=${encodeURIComponent(teamName)}`);
+    if (requestId !== teamHistoryRequestId || !els.teamHistoryDialog.open) return;
+    if (!payload?.ok || !payload.history) throw new Error("History unavailable");
+    const history = payload.history;
+    els.teamHistoryNote.textContent =
+      `${history.indexedMatchCount} indexed scored matches · Showing latest ${history.matches.length}` +
+      (history.coverageComplete ? "" : " · Archive coverage incomplete");
+    els.teamHistoryList.replaceChildren();
+
+    if (!history.matches.length) {
+      els.teamHistoryList.append(standingsCell("p",
+        "No scored matches are indexed for this team yet.", "muted"));
+      return;
+    }
+
+    for (const match of history.matches) {
+      const item = document.createElement("div");
+      item.className = "team-history-match";
+      const detail = document.createElement("div");
+      detail.className = "team-history-match-detail";
+      detail.append(
+        standingsCell("span", `${match.season} · ${match.date}`,
+          "team-history-match-date"),
+        standingsCell("strong",
+          `${match.homeTeam} ${match.homeScore}–${match.awayScore} ${match.awayTeam}`,
+          "team-history-score"),
+      );
+      const result = standingsCell("span", match.result, "team-history-result");
+      result.dataset.result = match.result;
+      result.setAttribute("aria-label",
+        match.result === "W" ? "Win" : match.result === "D" ? "Draw" : "Loss");
+      item.append(detail, result);
+      els.teamHistoryList.append(item);
+    }
+  } catch {
+    if (requestId === teamHistoryRequestId && els.teamHistoryDialog.open) {
+      els.teamHistoryList.replaceChildren(standingsCell("p",
+        "Match history is unavailable right now.", "muted"));
+    }
+  }
+}
+
+function installStandingsSwipe() {
+  let startX = null;
+  let startY = null;
+  els.standingsViewport.addEventListener("touchstart", (event) => {
+    const touch = event.changedTouches?.[0];
+    if (!touch) return;
+    startX = touch.clientX;
+    startY = touch.clientY;
+  }, { passive: true });
+  els.standingsViewport.addEventListener("touchend", (event) => {
+    const touch = event.changedTouches?.[0];
+    if (!touch || startX === null || startY === null) return;
+    const dx = touch.clientX - startX;
+    const dy = touch.clientY - startY;
+    startX = null;
+    startY = null;
+    if (Math.abs(dx) >= 55 && Math.abs(dx) > Math.abs(dy) * 1.25) {
+      setStandingsSlide(standingsIndex + (dx < 0 ? 1 : -1));
+    }
+  }, { passive: true });
+  els.standingsViewport.addEventListener("touchcancel", () => {
+    startX = null;
+    startY = null;
+  });
+  els.standingsPrevious.addEventListener("click", () =>
+    setStandingsSlide(standingsIndex - 1));
+  els.standingsNext.addEventListener("click", () =>
+    setStandingsSlide(standingsIndex + 1));
+  els.closeTeamHistory.addEventListener("click", closeTeamHistory);
+  els.teamHistoryDialog.addEventListener("click", (event) => {
+    if (event.target === els.teamHistoryDialog) closeTeamHistory();
+  });
+  els.teamHistoryDialog.addEventListener("close", () => { teamHistoryRequestId += 1; });
+}
+
 async function loadCalendar() {
   try {
     const [payload] = await Promise.all([
@@ -3040,6 +3307,7 @@ async function refreshLiveData() {
     const [calendarOk, boardOk] = await Promise.all([
       loadCalendar(),
       loadBoard(),
+      loadStandings(),
     ]);
     await notificationProfileRefresh;
     setSystemState(calendarOk && boardOk ? "live" : "offline");
@@ -3713,6 +3981,7 @@ for (const [control, direction] of [[els.calendarPrevious, -1], [els.calendarNex
 
 installSpotlightSwipe();
 installSpotlightEdgeWaterfall();
+installStandingsSwipe();
 installInteractionFeedback();
 
 els.question.addEventListener("input", renderQuestionSuggestions);
@@ -4056,6 +4325,7 @@ const [, configOk, boardOk, calendarOk] = await Promise.all([
   loadConfig(),
   loadBoard(),
   loadCalendar(),
+  loadStandings(),
   loadNotificationProfile(),
 ]);
 setSystemState(configOk && boardOk && calendarOk ? "live" : "offline");
