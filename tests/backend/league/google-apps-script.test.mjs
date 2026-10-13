@@ -76,3 +76,45 @@ test("estimated league end description uses two-hour duration", () => {
   assert.match(source, /estimated two-hour duration/);
   assert.doesNotMatch(source, /estimated one-hour duration/);
 });
+
+test("explicit deletion removes only the tracked BallerWatch Calendar event", () => {
+  const bridge = loadBridge();
+  let removed = 0;
+  const saved = new Map([["rats_event_v2:deleted", "managed-event"]]);
+  const props = {
+    getProperty: (key) => saved.get(key) || null,
+    deleteProperty: (key) => saved.delete(key),
+  };
+  const calendar = {
+    getEventById: (id) => {
+      assert.equal(id, "managed-event");
+      return {deleteEvent: () => { removed += 1; }};
+    },
+  };
+  const result = bridge.applyUpdate_(calendar, props, {
+    type: "deleted", key: "v2:deleted",
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.action, "deleted");
+  assert.equal(removed, 1);
+  assert.equal(saved.size, 0);
+
+  const repeated = bridge.applyUpdate_(calendar, props, {
+    type: "deleted", key: "v2:deleted",
+  });
+  assert.equal(repeated.action, "already-absent");
+  assert.equal(removed, 1);
+});
+
+test("untracked Google Calendar events are never guessed and deleted", () => {
+  const bridge = loadBridge();
+  let lookedUp = 0;
+  const props = {getProperty: () => null};
+  const calendar = {getEventById: () => { lookedUp += 1; }};
+  const result = bridge.applyUpdate_(calendar, props, {
+    type: "deleted", key: "v2:untracked",
+    previous: {team: "Team Alpha", opponent: "Opponent"},
+  });
+  assert.equal(result.action, "already-absent");
+  assert.equal(lookedUp, 0);
+});
