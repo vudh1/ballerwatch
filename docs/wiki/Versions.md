@@ -50,6 +50,8 @@ Signed-in Inbox read/delete state is merged into the encrypted user profile so m
 
 ## Current development line
 
+- **8.1.3** — centers the match-card right arrow, extends the Next Game idle reset to 15 seconds, and adds previous/next 14-day calendar paging buttons that do not expand the card.
+
 - **8.1.2** — RSVP and capacity alerts respect a signed-in player's booking; explicit administrator deletions reconcile BallerWatch-managed RATS Google Calendar events after Apps Script bridge v6, while source outages never authorize deletion.
 The source ledger on `main` is authoritative for the newest reviewed version. The GitHub Releases page is authoritative for what has actually been published to production. A release or fix branch can therefore show a newer version before it is merged or promoted.
 - **7.0.5** — Pins the match-card Updated timestamp footer to the card itself so iPhone installed-web-app layout matches the website footer position.

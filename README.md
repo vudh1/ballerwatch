@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, Calendar sync, and quick answers into one installable app.
 
-**Current source version: 8.1.2**
+**Current source version: 8.1.3**
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
 
@@ -33,6 +33,12 @@ Saturday synthetic pickup is shown simply as **Pickup** and has no RSVP/capacity
 A 22-second walkthrough with a short animated intro. Recorded from the app using synthetic sample data; game details, answers, and notifications are illustrative.
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/)
+
+## BallerWatch 8.1.3 — Match and calendar navigation
+
+- **Centered match arrow:** the right-side carousel chevron now aligns with the actual vertical center of the match card; the waterfall still covers the full edge without taking clicks from the match-type Edit/Delete control.
+- **Longer viewing window:** selecting a different match shows it for 15 seconds before returning to Next Game, rather than 6 seconds. Open dialogs and hidden tabs defer the reset.
+- **Calendar page affordance:** Previous/Next arrows in the calendar header move between 14-day windows without expanding the calendar; previous navigation stops at the current starting date. Clicking elsewhere on the calendar card, including a date, expands Full Schedule. Date selection still updates the main match card.
 
 ## BallerWatch 8.1.2 — RSVP and Calendar reliability
 
