@@ -138,3 +138,39 @@ test("calendar gate applies manual league overrides before reconciliation", () =
   assert.notEqual(current.calendarFingerprint, "source-fingerprint");
   assert.equal("manualOverride" in current, false);
 });
+
+test("explicitly hidden league fixture is removed from Calendar plan", () => {
+  const game = match("v2:hidden");
+  const settings = {hiddenMatches: {"league:v2:hidden": {id: "league:v2:hidden"}}};
+  const feed = {teams: [{matches: [game]}]};
+  assert.deepEqual(applyCalendarOverrides(feed, settings).teams[0].matches, []);
+  const result = compare(
+    applyCalendarOverrides(feed, settings),
+    {appliedMatches: { "v2:hidden": {fingerprint: game.calendarFingerprint, match: game} }},
+    NOW,
+    settings,
+  );
+  assert.deepEqual(result.pending.map((item) => [item.type, item.key]), [
+    ["deleted", "v2:hidden"],
+  ]);
+  assert.deepEqual(result.missing, []);
+});
+
+test("missing upstream fixture never authorizes a Calendar deletion", () => {
+  const game = match("v2:missing");
+  const result = compare(
+    {teams: [{matches: []}]},
+    {appliedMatches: {"v2:missing": {fingerprint: "fp", match: game}}},
+    NOW,
+  );
+  assert.deepEqual(result.pending, []);
+  assert.equal(result.missing.length, 1);
+});
+
+test("restoring a hidden league match schedules a managed Calendar create", () => {
+  const game = match("v2:restored");
+  const feed = applyCalendarOverrides({teams: [{matches: [game]}]}, {});
+  const result = compare(feed, {appliedMatches: {}}, NOW, {});
+  assert.equal(result.pending[0].type, "new");
+  assert.equal(result.pending[0].key, "v2:restored");
+});
