@@ -150,22 +150,25 @@
       </div>
     </section>
 
-    <section class="card standings-card" id="league-standings" aria-label="Current season standings">
+    <section class="standings-card" id="league-standings" aria-label="Current season standings">
       <div class="section-heading standings-heading">
         <div>
           <p class="eyebrow">RATS LEAGUE</p>
           <h2>Standings</h2>
         </div>
-        <div class="standings-controls" role="group" aria-label="Choose tracked team standings">
-          <button class="standings-step" id="standings-previous" type="button"
+        <span class="standings-position" id="standings-position" aria-live="polite">—</span>
+      </div>
+      <div class="standings-rail">
+        <div id="standings-viewport" class="standings-viewport" aria-roledescription="carousel"
+          aria-label="Tracked team league standings">
+          <p class="muted standings-message">Loading current season standings…</p>
+        </div>
+        <div class="standings-controls" role="group" aria-label="Browse team standings">
+          <button class="standings-step standings-step-previous" id="standings-previous" type="button"
             aria-label="Previous tracked team" disabled><span aria-hidden="true">‹</span></button>
-          <span class="standings-position" id="standings-position" aria-live="polite">—</span>
-          <button class="standings-step" id="standings-next" type="button"
+          <button class="standings-step standings-step-next" id="standings-next" type="button"
             aria-label="Next tracked team" disabled><span aria-hidden="true">›</span></button>
         </div>
-      </div>
-      <div id="standings-viewport" class="standings-viewport" aria-live="off">
-        <p class="muted standings-message">Loading current season standings…</p>
       </div>
       <p class="standings-footnote" id="standings-updated">Standings based on published results</p>
     </section>
