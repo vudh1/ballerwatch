@@ -3151,7 +3151,8 @@ function renderStandings() {
       for (const number of [row.played,
         `${standingsNumber(row.wins)}-${standingsNumber(row.draws)}-${standingsNumber(row.losses)}`,
         row.goalDifference, row.points]) {
-        tr.append(standingsCell("td", standingsNumber(number)));
+        tr.append(standingsCell("td",
+          typeof number === "string" ? number : standingsNumber(number)));
       }
       tbody.append(tr);
     }
