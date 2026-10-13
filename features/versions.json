@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.2.0",
+  "currentVersion": "8.2.1",
   "releases": [
+    {
+      "version": "8.2.1",
+      "date": "2026-10-13",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Minimal standings card train and faster RATS result refresh",
+      "webAnnouncement": "The RATS standings now swipe as full match-style team cards with smooth train motion, subtle waterfall arrows, and a compact table. The indexed result refresh interval is now 12 hours instead of 24.",
+      "changes": [
+        "Transforms the nested standings UI into one full-width glass team card per carousel step, with match-like edge arrows, waterfall hover and fingertip-following drag animation.",
+        "Fixes carousel travel distance so adjacent cards remain connected instead of jumping by the width of the complete track, including on viewport resize.",
+        "Simplifies standings into a compact six-column table (rank, team, played, W-D-L, goal difference, points) while retaining highlighted tracked teams and tap-to-open history.",
+        "Halves complete RATS history/standings index refresh interval from 24 to 12 hours; partial-archive retry remains at 30 minutes and app polling remains once per minute.",
+        "Adds responsive and reduced-motion styles, accurate active-card sizing, and regression coverage."
+      ]
+    },
     {
       "version": "8.2.0",
       "date": "2026-10-13",
