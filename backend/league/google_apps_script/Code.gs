@@ -27,7 +27,7 @@ function doGet() {
   return json_({
     ok: true,
     service: 'rats-calendar-bridge',
-    version: 5,
+    version: 6,
     calendarPaired: Boolean(props.getProperty(TARGET_CALENDAR_KEY))
   });
 }
@@ -161,6 +161,9 @@ function pairCalendar_(props, marker) {
 }
 
 function applyUpdate_(calendar, props, item) {
+  if (item && item.type === 'deleted') {
+    return deleteTrackedMatch_(calendar, props, item);
+  }
   const match = item && item.match;
   if (!item || !item.key || !match || !match.start || !match.end) {
     return {ok: false, key: item && item.key, error: 'missing match fields'};
@@ -236,6 +239,30 @@ function applyUpdate_(calendar, props, item) {
   }
 
   return {ok: true, key: item.key, action: action};
+}
+
+// An administrator explicitly hid this BallerWatch card. Never delete an
+// untracked event based only on matching team names, time, or location.
+function deleteTrackedMatch_(calendar, props, item) {
+  const key = String(item.key || '');
+  if (!key || key.length > 300) {
+    return {ok: false, key: key, error: 'invalid tracking key'};
+  }
+  const propertyKey = TRACK_PREFIX + key;
+  const eventId = props.getProperty(propertyKey);
+  if (!eventId) return {ok: true, key: key, action: 'already-absent'};
+  try {
+    const event = calendar.getEventById(eventId);
+    if (event) event.deleteEvent();
+    props.deleteProperty(propertyKey);
+    return {ok: true, key: key, action: 'deleted'};
+  } catch (err) {
+    if (isAlreadyDeletedEventError_(err)) {
+      props.deleteProperty(propertyKey);
+      return {ok: true, key: key, action: 'already-absent'};
+    }
+    return {ok: false, key: key, error: 'tracked event deletion failed'};
+  }
 }
 
 function isAlreadyDeletedEventError_(err) {
