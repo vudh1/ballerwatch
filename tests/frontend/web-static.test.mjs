@@ -545,7 +545,7 @@ test("right match waterfall chevron centers on the full-height card", () => {
     "/* v7.0.26 full-height right waterfall with a reserved action hit zone */",
   )[1] || "";
   const alignment = css.split(
-    "/* v8.2.0 calendar paging stays compact, with a separate full-card expansion target. */",
+    "/* v8.1.3 calendar paging stays compact, with a separate full-card expansion target. */",
   )[1] || "";
 
   assert.match(waterfall, /\.spotlight-edge-next \{\s*top: 5\.75rem;/);
