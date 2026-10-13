@@ -141,6 +141,8 @@ const els = {
   deleteAllNotifications: document.querySelector("#delete-all-notifications"),
   testNotificationStatus: document.querySelector("#test-notification-status"),
   calendarCard: document.querySelector("#two-week-calendar"),
+  calendarPrevious: document.querySelector("#calendar-window-previous"),
+  calendarNext: document.querySelector("#calendar-window-next"),
   calendarTitle: document.querySelector("#calendar-title"),
   calendarGrid: document.querySelector("#calendar-grid"),
   calendarGamePicker: document.querySelector("#calendar-game-picker"),
@@ -201,7 +203,7 @@ const NOTIFICATION_DELETED_KEY = LOCAL_NOTIFICATION_DELETED_KEY;
 const QUESTION_HISTORY_KEY = "ballerwatch-question-history-v1";
 const LIVE_DATA_REFRESH_MS = 60_000;
 const APP_UPDATE_CHECK_MS = 5 * 60_000;
-const SPOTLIGHT_IDLE_RESET_MS = 6_000;
+const SPOTLIGHT_IDLE_RESET_MS = 15_000;
 const INTERACTION_VIBRATION_MS = 8;
 const INTRO_SESSION_KEY = "ballerwatch-intro-seen-v1";
 const MUSIC_ENABLED_KEY = "ballerwatch-music-enabled-v1";
@@ -2449,6 +2451,31 @@ function syncCalendarExpansionUi() {
   if (els.calendarTitle) {
     els.calendarTitle.textContent = calendarExpanded ? "Full Schedule" : "14-Day Calendar";
   }
+  syncCalendarWindowControls();
+}
+
+function syncCalendarWindowControls() {
+  const base = currentCalendar?.startDate || "";
+  const start = calendarWindowStart || base;
+  if (els.calendarPrevious) {
+    els.calendarPrevious.disabled = !base || calendarExpanded || start <= base;
+  }
+  if (els.calendarNext) {
+    els.calendarNext.disabled = !base || calendarExpanded;
+  }
+}
+
+function moveCalendarWindow(direction) {
+  if (!currentCalendar?.startDate || calendarExpanded || !direction) return false;
+  const base = currentCalendar.startDate;
+  const start = calendarWindowStart || base;
+  const candidate = addIsoDays(start, 14 * Math.sign(direction));
+  const nextStart = candidate < base ? base : candidate;
+  if (nextStart === start) return false;
+
+  calendarWindowStart = nextStart;
+  renderCalendarGrid();
+  return true;
 }
 
 function renderCalendarGrid() {
@@ -2468,7 +2495,8 @@ function renderCalendarGrid() {
     button.type = "button";
     button.className = "calendar-day";
     button.dataset.date = date;
-    button.disabled = games.length === 0;
+    // Empty days remain clickable to expand the calendar, without selecting a match.
+    button.setAttribute("aria-disabled", String(games.length === 0));
     button.setAttribute("aria-selected", String(date === selectedCalendarDate));
 
     const weekday = document.createElement("span");
@@ -2495,9 +2523,12 @@ function renderCalendarGrid() {
       button.append(weather);
     }
 
-    button.addEventListener("click", () => selectCalendarDate(date, { scrollToSpotlight: true }));
+    button.addEventListener("click", () => {
+      if (games.length) selectCalendarDate(date, { scrollToSpotlight: true });
+    });
     els.calendarGrid.append(button);
   }
+  syncCalendarWindowControls();
 }
 
 function ensureCalendarDateVisible(date) {
@@ -2916,6 +2947,7 @@ function renderCalendar(calendar) {
   els.calendarGrid.replaceChildren();
 
   if (!calendar?.startDate) {
+    syncCalendarWindowControls();
     els.calendarGamePicker.hidden = true;
     els.calendarUpdated.textContent = "Updated unavailable";
     return;
@@ -2990,6 +3022,7 @@ async function loadCalendar() {
     els.calendarGrid.replaceChildren();
     els.calendarGamePicker.hidden = true;
     els.calendarUpdated.textContent = "Calendar offline";
+    syncCalendarWindowControls();
     syncSpotlightEdgeControls();
     await loadNextGame();
     return false;
@@ -3661,11 +3694,22 @@ async function toggleWrongAnswerFeedback() {
 }
 
 function toggleCalendarExpandedFromEvent(event) {
-  if (event?.target?.closest?.("button, a, input, textarea, select, label")) return;
+  if (event?.target?.closest?.(".calendar-window-control, a, input, textarea, select, label")) return;
+  // Match-day and game choices still select matches, and now expand the schedule too.
+  if (event?.target?.closest?.(".calendar-day, .calendar-game-choice")) {
+    if (!calendarExpanded) setCalendarExpanded(true);
+    return;
+  }
   setCalendarExpanded(!calendarExpanded);
 }
 
 els.calendarCard?.addEventListener("click", toggleCalendarExpandedFromEvent);
+for (const [control, direction] of [[els.calendarPrevious, -1], [els.calendarNext, 1]]) {
+  control?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    moveCalendarWindow(direction);
+  });
+}
 
 installSpotlightSwipe();
 installSpotlightEdgeWaterfall();
