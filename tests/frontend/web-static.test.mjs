@@ -507,9 +507,55 @@ test("calendar selection reuses the main spotlight instead of a second detail pa
   assert.match(app, /scrollIntoView\(\{ behavior: "smooth"/);
 });
 
+test("calendar arrows page the 14-day grid without expanding the card", () => {
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
+
+  assert.match(html, /id="calendar-window-previous"[^>]*aria-label="Previous 14 days"/);
+  assert.match(html, /id="calendar-window-next"[^>]*aria-label="Next 14 days"/);
+  assert.match(html, /class="calendar-window-controls" role="group"/);
+  assert.match(app, /function moveCalendarWindow\(direction\)/);
+  assert.match(app, /addIsoDays\(start, 14 \* Math.sign\(direction\)\)/);
+  assert.match(app, /candidate < base \? base : candidate/);
+  assert.match(app, /calendarWindowStart = nextStart;\s*renderCalendarGrid\(\)/);
+  assert.match(app, /event.stopPropagation\(\);\s*moveCalendarWindow\(direction\)/);
+  assert.match(app, /calendarPrevious.disabled = !base \|\| calendarExpanded \|\| start <= base/);
+  assert.match(app, /calendarNext.disabled = !base \|\| calendarExpanded/);
+  assert.match(css, /\.calendar-window-control:focus-visible/);
+  assert.match(css, /\.calendar-card\.is-expanded \.calendar-window-controls \{\s*display: none;/);
+});
+
+test("calendar card expands on day clicks but pager clicks leave the view compact", () => {
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const handler = app.split("function toggleCalendarExpandedFromEvent(event) {")[1]
+    ?.split("\n}")[0] || "";
+
+  assert.match(handler, /\.calendar-window-control/);
+  assert.match(handler, /\.calendar-day, \.calendar-game-choice/);
+  assert.match(handler, /if \(!calendarExpanded\) setCalendarExpanded\(true\)/);
+  assert.match(handler, /setCalendarExpanded\(!calendarExpanded\)/);
+  assert.match(app, /button.setAttribute\("aria-disabled", String\(games.length === 0\)\)/);
+  assert.doesNotMatch(app, /button.disabled = games.length === 0/);
+});
+
+test("right match waterfall chevron centers on the full-height card", () => {
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
+  const waterfall = css.split(
+    "/* v7.0.26 full-height right waterfall with a reserved action hit zone */",
+  )[1] || "";
+  const alignment = css.split(
+    "/* v8.1.3 calendar paging stays compact, with a separate full-card expansion target. */",
+  )[1] || "";
+
+  assert.match(waterfall, /\.spotlight-edge-next \{\s*top: 5\.75rem;/);
+  assert.match(waterfall, /\.spotlight-edge-next::before \{\s*top: -5\.75rem;/);
+  assert.match(alignment, /\.spotlight-edge-next span \{\s*top: -2\.7rem;/);
+});
+
 test("selected spotlight returns to Next Game after idle interaction timeout", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
-  assert.match(app, /SPOTLIGHT_IDLE_RESET_MS = 6_000/);
+  assert.match(app, /SPOTLIGHT_IDLE_RESET_MS = 15_000/);
   assert.match(app, /function scheduleSpotlightIdleReset/);
   assert.match(app, /function resetSpotlightToNextGame/);
   assert.match(app, /selectedCalendarGameId = ""/);
