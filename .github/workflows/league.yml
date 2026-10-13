@@ -97,7 +97,8 @@ jobs:
         run: node ../backend/league/google-calendar-sync.mjs
 
       - name: Record league web notifications
-        if: steps.gate.outputs.should_run == 'true'
+        # Kickoff reminders must survive a failed or outdated Calendar bridge.
+        if: always() && steps.gate.outputs.should_run == 'true'
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
           BALLERWATCH_WEB_STATE_ROOT: ..
@@ -131,7 +132,7 @@ jobs:
           node backend/shared/runtime-state.mjs push weather
 
       - name: Signal installed web app
-        if: steps.gate.outputs.should_run == 'true'
+        if: always() && steps.gate.outputs.should_run == 'true'
         working-directory: .
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
