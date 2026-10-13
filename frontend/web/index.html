@@ -150,6 +150,26 @@
       </div>
     </section>
 
+    <section class="card standings-card" id="league-standings" aria-label="Current season standings">
+      <div class="section-heading standings-heading">
+        <div>
+          <p class="eyebrow">RATS LEAGUE</p>
+          <h2>Standings</h2>
+        </div>
+        <div class="standings-controls" role="group" aria-label="Choose tracked team standings">
+          <button class="standings-step" id="standings-previous" type="button"
+            aria-label="Previous tracked team" disabled><span aria-hidden="true">‹</span></button>
+          <span class="standings-position" id="standings-position" aria-live="polite">—</span>
+          <button class="standings-step" id="standings-next" type="button"
+            aria-label="Next tracked team" disabled><span aria-hidden="true">›</span></button>
+        </div>
+      </div>
+      <div id="standings-viewport" class="standings-viewport" aria-live="off">
+        <p class="muted standings-message">Loading current season standings…</p>
+      </div>
+      <p class="standings-footnote" id="standings-updated">Standings based on published results</p>
+    </section>
+
     <footer>
       <section class="card footer-install" id="install-card">
         <div class="footer-install-copy">
@@ -170,6 +190,22 @@
       </div>
     </footer>
   </main>
+
+  <dialog id="team-history-dialog" class="team-history-dialog"
+    aria-labelledby="team-history-title">
+    <div class="team-history-shell">
+      <div class="section-heading team-history-heading">
+        <div>
+          <p class="eyebrow">RATS MATCH HISTORY</p>
+          <h2 id="team-history-title">Team results</h2>
+        </div>
+        <button class="utility-button" id="close-team-history" type="button"
+          aria-label="Close team history">×</button>
+      </div>
+      <p class="standings-footnote" id="team-history-note"></p>
+      <div id="team-history-list" class="team-history-list" aria-live="polite"></div>
+    </div>
+  </dialog>
 
   <button class="chat-launcher" id="chat-launcher" type="button"
     aria-label="Open BallerWatch AI" aria-haspopup="dialog">
