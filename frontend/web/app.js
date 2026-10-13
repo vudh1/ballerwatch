@@ -3057,6 +3057,9 @@ function setStandingsSlide(index) {
     [...els.standingsViewport.querySelectorAll(".standings-slide")].entries()) {
     slide.setAttribute("aria-hidden", String(slideIndex !== standingsIndex));
     slide.inert = slideIndex !== standingsIndex;
+    if (slideIndex === standingsIndex) {
+      els.standingsViewport.style.height = `${slide.offsetHeight}px`;
+    }
   }
 }
 
@@ -3064,6 +3067,7 @@ function renderStandings() {
   const standings = currentStandings;
   const cards = Array.isArray(standings?.cards) ? standings.cards : [];
   els.standingsViewport.replaceChildren();
+  els.standingsViewport.style.removeProperty("height");
 
   if (!cards.length) {
     els.standingsViewport.append(standingsCell("p",
