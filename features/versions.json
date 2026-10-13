@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.1.1",
+  "currentVersion": "8.1.2",
   "releases": [
+    {
+      "version": "8.1.2",
+      "date": "2026-10-13",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Booking-aware reminders and deleted-match Calendar reconciliation",
+      "webAnnouncement": "Pickup RSVP and capacity reminders no longer nag signed-in players already confirmed. Deleting a RATS match card also reconciles its managed Google Calendar event after the Calendar bridge v6 update.",
+      "changes": [
+        "Filters pickup RSVP reminders and capacity nudges for confirmed users using authenticated device/account and encrypted RSVP rosters; waitlisted users do not receive duplicate RSVP prompts. One-hour kickoff reminders remain available.",
+        "Excludes personally irrelevant signup notifications from the signed-in Inbox and cached iPhone PWA Web Push presentation, including unread-badge totals.",
+        "Explicitly hidden league match cards generate tracked Google Calendar deletions; ordinary source outages or disappeared public matches never authorize a delete.",
+        "Reschedules or edits continue updating existing managed Calendar events instead of creating duplicates, and match hide/restore dispatches the corresponding watcher.",
+        "Requires Apps Script Calendar bridge v6 before tracked deletion, fails closed against older deployments, and adds synthetic privacy-safe unit tests."
+      ]
+    },
     {
       "version": "8.1.1",
       "date": "2026-10-09",
