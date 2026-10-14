@@ -1,7 +1,19 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.10.0",
+  "currentVersion": "8.10.2",
   "releases": [
+    {
+      "version": "8.10.2",
+      "date": "2026-10-14",
+      "type": "patch",
+      "source": "validation",
+      "title": "Protect V2 landscape navigation from iPhone safe-area insets",
+      "changes": [
+        "Apply left/right safe-area padding to the entire V2 grid, protecting the desktop-style navigation rail and header when an iPhone turns to landscape. Preserve the existing V1 layout and both install identities.",
+        "Expose environment-backed safe-area CSS tokens so browser tests can inject asymmetric notch/home-indicator insets even when device emulation reports zero hardware insets.",
+        "Add Chromium/WebKit landscape assertions for the navigation rail, settings control and overflow, plus a source regression. Rotate shell assets and release through the same validated promotion and Worker-to-Pages process."
+      ]
+    },
     {
       "version": "8.10.0",
       "date": "2026-10-14",

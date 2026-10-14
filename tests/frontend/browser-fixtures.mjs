@@ -34,7 +34,7 @@ export function fixtureResponse(pathname, method = "GET") {
   }
   if (method !== "GET") throw new Error(`Unexpected synthetic mutation: ${method} ${pathname}`);
   const responses = {
-    "/web/config": { ok: true, version: "8.10.0", push: { ready: false } },
+    "/web/config": { ok: true, version: "8.10.2", push: { ready: false } },
     "/web/calendar": { ok: true, calendar: fixtureCalendar },
     "/web/next-game": { ok: true, game: fixtureGame },
     "/web/standings": { ok: true, standings: fixtureStandings },
