@@ -58,6 +58,7 @@ export function buildScoutingIndex({
     updatedAt: String(history?.updatedAt || ""),
     generatedAt,
     today,
+    monitoredTeams: monitored,
     standings,
     reports,
   };
