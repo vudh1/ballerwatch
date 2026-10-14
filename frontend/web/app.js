@@ -1239,7 +1239,7 @@ function renderReleaseStatus(release) {
   if (release.updateAvailable) {
     els.releaseVersionSummary.textContent = `Production ${production} → Available ${source}`;
     els.releaseTitleSummary.textContent = release.title || "";
-    els.promoteRelease.textContent = "App update";
+    els.promoteRelease.textContent = "Update app";
     els.promoteRelease.disabled = false;
   } else {
     els.releaseVersionSummary.textContent = `Production ${production} · Up to date`;
@@ -1312,7 +1312,7 @@ async function promoteProductionRelease() {
       return;
     }
     els.promoteRelease.disabled = false;
-    els.promoteRelease.textContent = "App update";
+    els.promoteRelease.textContent = "Update app";
     els.promoteReleaseStatus.textContent = error.message;
   }
 }
@@ -2665,45 +2665,35 @@ function syncSpotlightEdgeControls() {
   els.spotlightNext.disabled = !adjacentCalendarSelection(1);
 }
 
+// Match and standings cards share one pointer-distance waterfall behavior.
+// Edge hit zones stay separate so buttons and team names retain click priority.
+function bindCardEdgeWaterfall(control, direction) {
+  if (!control) return;
+  const reset = () => {
+    control.style.setProperty("--edge-opacity", "0.10");
+    control.style.setProperty("--edge-arrow-opacity", "0");
+  };
+  control.addEventListener("pointermove", (event) => {
+    const rect = control.getBoundingClientRect();
+    if (!rect.width) return;
+    const local = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
+    const fromBorder = direction < 0 ? local : rect.width - local;
+    const eased = Math.pow(1 - fromBorder / rect.width, 2);
+    control.style.setProperty("--edge-opacity", (0.10 + 0.88 * eased).toFixed(3));
+    control.style.setProperty("--edge-arrow-opacity",
+      Math.max(0, (eased - 0.22) / 0.78).toFixed(3));
+  });
+  control.addEventListener("pointerleave", reset);
+  control.addEventListener("blur", reset);
+  control.addEventListener("focus", () => {
+    control.style.setProperty("--edge-opacity", "0.92");
+    control.style.setProperty("--edge-arrow-opacity", "1");
+  });
+  reset();
+}
 function installSpotlightEdgeWaterfall() {
-  const controls = [
-    [els.spotlightPrevious, -1],
-    [els.spotlightNext, 1],
-  ];
-
-  for (const [control, direction] of controls) {
-    if (!control) continue;
-
-    const reset = () => {
-      control.style.setProperty("--edge-opacity", "0.10");
-      control.style.setProperty("--edge-arrow-opacity", "0");
-    };
-
-    control.addEventListener("pointermove", (event) => {
-      const rect = control.getBoundingClientRect();
-      if (!rect.width) return;
-      const local = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
-      const fromBorder = direction < 0 ? local : rect.width - local;
-      const strength = 1 - (fromBorder / rect.width);
-      const eased = Math.max(0, Math.min(1, strength * strength));
-      control.style.setProperty(
-        "--edge-opacity",
-        (0.10 + (0.88 * eased)).toFixed(3),
-      );
-      control.style.setProperty(
-        "--edge-arrow-opacity",
-        Math.max(0, (eased - 0.22) / 0.78).toFixed(3),
-      );
-    });
-
-    control.addEventListener("pointerleave", reset);
-    control.addEventListener("blur", reset);
-    control.addEventListener("focus", () => {
-      control.style.setProperty("--edge-opacity", "0.92");
-      control.style.setProperty("--edge-arrow-opacity", "1");
-    });
-    reset();
-  }
+  bindCardEdgeWaterfall(els.spotlightPrevious, -1);
+  bindCardEdgeWaterfall(els.spotlightNext, 1);
 }
 
 function isSpotlightInteractiveTarget(target) {
@@ -3328,7 +3318,7 @@ function buildScoutOverview(scout) {
       : "—", "W – D – L"),
     scoutDataCell("LAST 10 WINS", scout.recentTen?.weightedWinPct == null
       ? "—" : `${scout.recentTen.weightedWinPct}%`,
-      `${scout.recentTen?.games || 0} games · 11v11 weighted`),
+      `${scout.recentTen?.games || 0} games · Division & format weighted`),
     scoutDataCell("ALL-TIME", scoutingRecordText(scout.overall),
       `${scout.overall?.games || 0} indexed games`),
     scoutDataCell("AVG GOAL DIFF", scout.overall?.goalDifferencePerGame == null
@@ -3392,8 +3382,8 @@ function buildScoutOverview(scout) {
     "A win scores more against an opponent with a stronger record against other teams. " +
     "Draws are adjusted too. Direct games against this team are excluded when assessing an opponent. " +
     "Only each team's latest ten scored matches are used, across all indexed seasons and formats. " +
-    "A verified 11v11 game counts 1.25× a verified 8v8 game; older games with unknown format count 1×. " +
-    "Small samples are smoothed. Teams are ranked against their current division peers using all available history. " +
+    "A verified 11v11 game counts 1.25× an 8v8 game; past seasons use D1 > D2a > D2b > D2c > D3 weights. " +
+    "Unlabeled divisions use neutral strength. Small samples are smoothed against current division peers. " +
     "This is an experimental form index, not betting odds or a prediction.",
     "scout-method-text"));
   if (!scout.archiveComplete) how.append(standingsCell("p",
@@ -3672,25 +3662,7 @@ function installStandingsSwipe() {
     [els.standingsPrevious, -1], [els.standingsNext, 1],
   ]) {
     control.addEventListener("click", () => setStandingsSlide(standingsIndex + direction));
-    const clear = () => {
-      control.style.setProperty("--standings-edge-opacity", "0.10");
-      control.style.setProperty("--standings-arrow-opacity", "0");
-    };
-    control.addEventListener("pointermove", (event) => {
-      const rect = control.getBoundingClientRect();
-      if (!rect.width) return;
-      const fromBorder = direction < 0
-        ? event.clientX - rect.left
-        : rect.right - event.clientX;
-      const strength = Math.max(0, 1 - Math.max(0, fromBorder) / rect.width);
-      control.style.setProperty("--standings-edge-opacity",
-        (0.1 + 0.85 * strength * strength).toFixed(3));
-      control.style.setProperty("--standings-arrow-opacity",
-        Math.max(0, (strength * strength - 0.22) / 0.78).toFixed(3));
-    });
-    control.addEventListener("pointerleave", clear);
-    control.addEventListener("blur", clear);
-    clear();
+    bindCardEdgeWaterfall(control, direction);
   }
 
   window.addEventListener("resize", () => {
