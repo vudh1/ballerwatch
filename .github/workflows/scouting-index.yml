@@ -1,0 +1,50 @@
+name: Refresh RATS scouting cache
+
+on:
+  schedule:
+    - cron: '7 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# The regular league failover job edits the same encrypted runtime branch.
+concurrency:
+  group: ballerwatch-league
+  cancel-in-progress: false
+
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: production
+          fetch-depth: 1
+
+      - name: Pull encrypted league state
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: node backend/shared/runtime-state.mjs pull league
+
+      - name: Refresh published RATS scores (hourly)
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: node backend/league/history.mjs
+
+      - name: Prepare compact encrypted scouting report
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: node backend/league/scouting-index.mjs
+
+      - name: Publish encrypted current scouting snapshot
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: node backend/shared/runtime-state.mjs push league
+
+      - name: Remove local runtime data
+        if: always()
+        run: |
+          node backend/shared/runtime-state.mjs clean league
+          rm -rf .runtime
