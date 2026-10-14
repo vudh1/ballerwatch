@@ -14,7 +14,7 @@ function prepared() {
     archiveComplete: true,
   });
   return {
-    schemaVersion: 3,
+    schemaVersion: 2,
     standings: { matchups: {
       fixture: {
         team: "Third Touch FC", opponent: "Sitting Ducks",
