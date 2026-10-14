@@ -3233,11 +3233,14 @@ function renderStandings() {
       matchUpdatedText(standings.updatedAt) || "Updated pending",
       "match-update-credit standings-card-updated");
     freshness.title = "RATS published results · Provisional league standings";
+    const footer = document.createElement("div");
+    footer.className = "bw-card-footer standings-card-footer";
+    footer.append(freshness);
 
     if (!card.ready) {
       slide.append(standingsCell("p", card.message || "Standings are not available yet.",
         "muted standings-message"));
-      slide.append(freshness);
+      slide.append(footer);
       track.append(slide);
       continue;
     }
@@ -3300,7 +3303,7 @@ function renderStandings() {
       slide.append(standingsCell("p", "No scored league matches indexed for this division yet.",
         "muted standings-message"));
     }
-    slide.append(freshness);
+    slide.append(footer);
     track.append(slide);
   }
 
