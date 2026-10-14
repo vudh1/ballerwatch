@@ -20,7 +20,7 @@ function normalizedDivision(team) {
   // clearly identified 8v8 division into the corresponding 11v11 results.
   const label = [team?.leagueName, team?.day, team?.gender, team?.divisionLabel]
     .map((part) => String(part || "")).join(" ");
-  const format = /\\b8\\s*(?:v|vs|x|on)\\s*8\\b/i.test(label) ? "8v8" : "11v11";
+  const format = /\b8\s*(?:v|vs|x|on)\s*8\b/i.test(label) ? "8v8" : "11v11";
   return [team?.day, team?.gender, team?.division, format]
     .map((part) => String(part || "").trim().toLowerCase())
     .join("|");
