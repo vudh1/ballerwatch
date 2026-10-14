@@ -310,6 +310,10 @@ try {
           const keys = await page.evaluate(() => caches.keys());
           assert.ok(keys.some((key) => /^ballerwatch-v\d/.test(key) && !key.startsWith("ballerwatch-v2-")));
           assert.ok(keys.some((key) => key.startsWith("ballerwatch-v2-") && key.endsWith("-shell")));
+          // The synthetic fixtures point to 2099; offline restoration correctly
+          // rejects a cache that is not anchored to the current local day.
+          // Make the fixture current before testing service-worker offline use.
+          await alignSyntheticCalendarCacheToToday(page);
           await context.unrouteAll({ behavior: "wait" });
           await context.setOffline(true);
           await page.reload({ waitUntil: "domcontentloaded" });
