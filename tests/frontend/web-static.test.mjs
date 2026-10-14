@@ -2033,7 +2033,7 @@ test("safe stale-branch cleanup requires the release, exact PR head and matching
   assert.match(workflow, /workflow_run\.conclusion == 'success'/);
   assert.match(workflow, /production_sha.*released_sha/);
   assert.match(workflow, /DEPLOYED_SHA.*released_sha/);
-  assert.match(workflow, /main\|production\|runtime-state\|release\/8\.9\.1/);
+  assert.match(workflow, /main\|production\|runtime-state\|release\/8\.9\.0/);
   assert.match(workflow, /head\.sha/);
   assert.match(workflow, /merged_at != null/);
   assert.match(workflow, /"\$live" != "\$sha"/);
