@@ -11,11 +11,11 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="BallerWatch">
   <title>BallerWatch</title>
-  <link rel="manifest" href="./manifest.webmanifest?v=8.4.0">
-  <link rel="icon" href="./icon.svg?v=8.4.0" type="image/svg+xml">
-  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=8.4.0">
-  <script src="./launch-prepaint.js?v=8.4.0"></script>
-  <link rel="stylesheet" href="./styles.css?v=8.4.0">
+  <link rel="manifest" href="./manifest.webmanifest?v=8.5.0">
+  <link rel="icon" href="./icon.svg?v=8.5.0" type="image/svg+xml">
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=8.5.0">
+  <script src="./launch-prepaint.js?v=8.5.0"></script>
+  <link rel="stylesheet" href="./styles.css?v=8.5.0">
 </head>
 <body>
   <div class="launch-intro" id="launch-intro" aria-hidden="true">
@@ -35,7 +35,7 @@
   <main class="shell">
     <header class="hero">
       <div class="brand-lockup">
-        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=8.4.0" alt=""></div>
+        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=8.5.0" alt=""></div>
         <div>
           <p class="eyebrow">SOCCER AT A GLANCE</p>
           <h1>BallerWatch</h1>
@@ -102,6 +102,7 @@
             </div>
           </div>
           <p class="next-game-meta" id="next-game-meta"></p>
+          <p class="next-game-form" id="next-game-form" hidden></p>
           <p class="next-game-location muted" id="next-game-location"></p>
           <div class="next-game-weather" id="next-game-weather" hidden></div>
           <div class="next-game-capacity" id="next-game-capacity" role="button" tabindex="0"
@@ -126,8 +127,7 @@
       </section>
     </div>
 
-    <div class="calendar-carousel" id="calendar-carousel">
-      <section class="card calendar-card" id="two-week-calendar" aria-expanded="false">
+    <section class="card calendar-card" id="two-week-calendar" aria-expanded="false">
         <div class="section-heading calendar-heading">
           <div>
             <p class="eyebrow">MATCH DAYS</p>
@@ -139,18 +139,7 @@
         <div class="calendar-card-footer">
           <p class="calendar-updated calendar-update-credit" id="calendar-updated">Updated pending</p>
         </div>
-      </section>
-      <div class="calendar-window-controls" role="group" aria-label="Browse 14-day calendar windows">
-        <button class="calendar-window-control" id="calendar-window-previous" type="button"
-          aria-label="Previous 14 days" title="Previous 14 days" disabled>
-          <span aria-hidden="true">‹</span>
-        </button>
-        <button class="calendar-window-control" id="calendar-window-next" type="button"
-          aria-label="Next 14 days" title="Next 14 days" disabled>
-          <span aria-hidden="true">›</span>
-        </button>
-      </div>
-    </div>
+    </section>
 
     <section class="standings-card" id="league-standings" aria-label="Current season standings">
       <div class="standings-rail">
@@ -552,6 +541,6 @@
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=8.4.0"></script>
+  <script type="module" src="./app.js?v=8.5.0"></script>
 </body>
 </html>

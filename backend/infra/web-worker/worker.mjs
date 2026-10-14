@@ -26,7 +26,7 @@ import { safeForExternalIntent, validatedAiIntent } from "../../shared/ai-intent
 import { answerFixtureQuestion } from "../../shared/fixture-ai.mjs";
 import { weeklyMatchBriefing } from "../../shared/match-briefing.mjs";
 import { answerRatsHistoryQuestion } from "../../shared/rats-history.mjs";
-import { buildLeagueStandings, buildLeagueTeamHistory } from "../../shared/league-standings.mjs";
+import { buildLeagueStandings, buildLeagueTeamHistory, buildTeamRecentForm } from "../../shared/league-standings.mjs";
 import { matchVenue } from "../../shared/venue-directory.mjs";
 import {
   applyFreePickupMatchOverride,
@@ -2837,6 +2837,25 @@ export function webCalendarDetails(
   };
 }
 
+/** Attach only public, scored-history summaries to league fixtures; never infer
+ * unrecorded results. Missing archive data must not hide the match itself. */
+export function withLeagueRecentForm(game, history, today = localDate(), cache = new Map()) {
+  if (!game || game.kind !== "league" || !history?.seasons) return game;
+  const formFor = (name) => {
+    if (!name) return null;
+    const key = name.trim().toLowerCase();
+    if (!cache.has(key)) cache.set(key, buildTeamRecentForm(history, name, today));
+    return cache.get(key);
+  };
+  return { ...game, teamForm: formFor(game.team), opponentForm: formFor(game.opponent) };
+}
+function withCalendarRecentForms(calendar, history, today) {
+  if (!history?.seasons || !calendar?.games?.length) return calendar;
+  const cache = new Map();
+  return { ...calendar, games: calendar.games.map((game) =>
+    withLeagueRecentForm(game, history, today, cache)) };
+}
+
 async function loadWebWeather(env) {
   try {
     const encrypted = await githubFile(env, "state/weather.json", "runtime-state");
@@ -2984,6 +3003,8 @@ export function webNextGameDetails(snapshot, now = new Date()) {
     date: next.date,
     dateLabel: formatDate(next.date),
     title: `${team} vs ${opponent}`,
+    team,
+    opponent,
     startTime,
     endTime,
     time,
@@ -3541,14 +3562,19 @@ export default {
     }
     if (request.method === "GET" && url.pathname === "/web/calendar") {
       try {
-        const [snapshot, weather, venues] = await Promise.all([
+        const [snapshot, weather, venues, history] = await Promise.all([
           loadSnapshot(env),
           loadWebWeather(env),
           loadRatsVenues(env),
+          loadRatsHistory(env).catch(() => null),
         ]);
+        const today = localDate();
         return webJson(request, {
           ok: true,
-          calendar: webCalendarDetails(snapshot, weather, 14, localDate(), new Date(), venues),
+          calendar: withCalendarRecentForms(
+            webCalendarDetails(snapshot, weather, 14, today, new Date(), venues),
+            history, today,
+          ),
         });
       } catch {
         return webJson(
@@ -3614,10 +3640,13 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/web/next-game") {
       try {
-        const [snapshot, venues] = await Promise.all([loadSnapshot(env), loadRatsVenues(env)]);
+        const [snapshot, venues, history] = await Promise.all([
+          loadSnapshot(env), loadRatsVenues(env), loadRatsHistory(env).catch(() => null),
+        ]);
         return webJson(request, {
           ok: true,
-          game: withCachedVenue(webNextGameDetails(snapshot), venues),
+          game: withLeagueRecentForm(withCachedVenue(webNextGameDetails(snapshot), venues),
+            history, localDate()),
         });
       } catch {
         return webJson(

@@ -114,6 +114,7 @@ const els = {
   nextGameMenuCancel: document.querySelector("#next-game-menu-cancel"),
   nextGameMenuTitle: document.querySelector("#next-game-menu-title"),
   nextGameMeta: document.querySelector("#next-game-meta"),
+  nextGameForm: document.querySelector("#next-game-form"),
   nextGameLocation: document.querySelector("#next-game-location"),
   nextGameCapacity: document.querySelector("#next-game-capacity"),
   nextGameCapacityLabel: document.querySelector("#next-game-capacity-label"),
@@ -141,9 +142,6 @@ const els = {
   deleteAllNotifications: document.querySelector("#delete-all-notifications"),
   testNotificationStatus: document.querySelector("#test-notification-status"),
   calendarCard: document.querySelector("#two-week-calendar"),
-  calendarCarousel: document.querySelector("#calendar-carousel"),
-  calendarPrevious: document.querySelector("#calendar-window-previous"),
-  calendarNext: document.querySelector("#calendar-window-next"),
   calendarTitle: document.querySelector("#calendar-title"),
   calendarGrid: document.querySelector("#calendar-grid"),
   calendarGamePicker: document.querySelector("#calendar-game-picker"),
@@ -177,7 +175,6 @@ let currentCalendar = null;
 let currentBoardEntries = [];
 let selectedCalendarDate = "";
 let selectedCalendarGameId = "";
-let calendarWindowStart = "";
 let calendarExpanded = false;
 let currentStandings = null;
 let standingsIndex = 0;
@@ -1577,7 +1574,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=8.4.0", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=8.5.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -2134,6 +2131,7 @@ function spotlightModel(game, label = "NEXT GAME") {
       title: "No upcoming game",
       type: "None",
       meta: "No pickup or RATS game is currently published.",
+      form: "",
       location: "",
       capacityText: "",
       capacityPercent: 0,
@@ -2185,6 +2183,12 @@ function spotlightModel(game, label = "NEXT GAME") {
       .filter(Boolean)
       .join(" • "),
     location: locationParts.join(" • "),
+    form: game.kind === "league" && (game.teamForm || game.opponentForm)
+      ? "Weighted win % · Last 10 scored · " + [
+        game.teamForm ? `${game.team || "Our team"}: ${game.teamForm.weightedWinPct}% (${game.teamForm.games})` : "",
+        game.opponentForm ? `${game.opponent || "Opponent"}: ${game.opponentForm.weightedWinPct}% (${game.opponentForm.games})` : "",
+      ].filter(Boolean).join(" · ")
+      : "",
     capacityText,
     capacityPercent,
     spotsText,
@@ -2235,6 +2239,8 @@ function applySpotlightModel(targets, game, label = "NEXT GAME") {
   targets.title.textContent = model.title;
   targets.type.textContent = model.type;
   targets.meta.textContent = model.meta;
+  targets.form.textContent = model.form;
+  targets.form.hidden = !model.form;
   targets.location.textContent = model.location;
   targets.capacity.hidden = !model.capacityText;
   targets.capacityLabel.textContent = model.capacityText;
@@ -2264,6 +2270,7 @@ function currentSpotlightTargets() {
     type: els.nextGameType,
     menuTrigger: els.nextGameMenuTrigger,
     meta: els.nextGameMeta,
+    form: els.nextGameForm,
     location: els.nextGameLocation,
     capacity: els.nextGameCapacity,
     capacityLabel: els.nextGameCapacityLabel,
@@ -2321,6 +2328,7 @@ function buildSpotlightTrainCard(game) {
       type: role("next-game-type"),
       menuTrigger: role("next-game-menu-trigger"),
       meta: role("next-game-meta"),
+      form: role("next-game-form"),
       location: role("next-game-location"),
       capacity: role("next-game-capacity"),
       capacityLabel: role("next-game-capacity-label"),
@@ -2454,8 +2462,7 @@ function calendarVisibleDates() {
     return Array.from({ length: days }, (_, index) => addIsoDays(base, index));
   }
 
-  const start = calendarWindowStart || base;
-  return Array.from({ length: 14 }, (_, index) => addIsoDays(start, index));
+  return Array.from({ length: 14 }, (_, index) => addIsoDays(base, index));
 }
 
 function syncCalendarExpansionUi() {
@@ -2464,230 +2471,6 @@ function syncCalendarExpansionUi() {
   if (els.calendarTitle) {
     els.calendarTitle.textContent = calendarExpanded ? "Full Schedule" : "14-Day Calendar";
   }
-  syncCalendarWindowControls();
-}
-
-function syncCalendarWindowControls() {
-  const base = currentCalendar?.startDate || "";
-  const start = calendarWindowStart || base;
-  if (els.calendarPrevious) {
-    els.calendarPrevious.disabled = !base || calendarExpanded || start <= base;
-  }
-  if (els.calendarNext) {
-    els.calendarNext.disabled = !base || calendarExpanded;
-  }
-}
-
-function moveCalendarWindow(direction) {
-  if (!currentCalendar?.startDate || calendarExpanded || !direction) return false;
-  const base = currentCalendar.startDate;
-  const start = calendarWindowStart || base;
-  const candidate = addIsoDays(start, 14 * Math.sign(direction));
-  const nextStart = candidate < base ? base : candidate;
-  if (nextStart === start) return false;
-
-  calendarWindowStart = nextStart;
-  renderCalendarGrid();
-  return true;
-}
-
-function calendarWindowPreview(direction) {
-  const base = currentCalendar?.startDate || "";
-  const start = calendarWindowStart || base;
-  if (!base || calendarExpanded) return null;
-  const candidate = addIsoDays(start, 14 * direction);
-  const nextStart = candidate < base ? base : candidate;
-  if (nextStart === start) return null;
-
-  const preview = els.calendarCard.cloneNode(true);
-  preview.removeAttribute("id");
-  preview.classList.add("calendar-train-preview");
-  preview.setAttribute("aria-hidden", "true");
-  preview.inert = true;
-  for (const element of preview.querySelectorAll("[id]")) element.removeAttribute("id");
-  const grid = preview.querySelector(".calendar-grid");
-  grid.replaceChildren();
-  const byDate = new Map();
-  for (const game of currentCalendar.games || []) {
-    const list = byDate.get(game.date) || [];
-    list.push(game);
-    byDate.set(game.date, list);
-  }
-  for (let day = 0; day < 14; day += 1) {
-    const date = addIsoDays(nextStart, day);
-    const games = byDate.get(date) || [];
-    const element = document.createElement("div");
-    element.className = "calendar-day calendar-train-day";
-    element.append(
-      standingsCell("span", dateDisplay(date, { weekday: "short" }), "calendar-weekday"),
-      standingsCell("strong", dateDisplay(date, { day: "numeric" }), "calendar-number"),
-      standingsCell("span",
-        games.length > 1 ? String(games.length) : games.length ? "•" : "",
-        games.length ? "calendar-signal has-game" : "calendar-signal"),
-    );
-    if (games.length) {
-      const weatherGame = [...games].sort(
-        (a, b) => gameWeatherRank(b) - gameWeatherRank(a),
-      )[0];
-      element.append(standingsCell("span",
-        weatherGame.weather
-          ? `${weatherGlyph(weatherGame.weather.weatherCode)} ${weatherGame.weather.rainProbability ?? "—"}%`
-          : "⚽", "calendar-mini-weather"));
-    }
-    grid.append(element);
-  }
-  return preview;
-}
-
-/** Like the match train, the next 14-day card stays adjacent while dragging. */
-function installCalendarTrain() {
-  const stage = els.calendarCarousel;
-  const current = els.calendarCard;
-  let start = null;
-  let train = null;
-  let settling = false;
-  let suppressClick = false;
-
-  const reset = () => {
-    if (train?.preview) train.preview.remove();
-    train = null;
-    start = null;
-    settling = false;
-    current.classList.remove("is-train-dragging", "is-train-settling");
-    current.style.removeProperty("transform");
-  };
-
-  const prepare = (direction) => {
-    if (train?.direction === direction) return train;
-    if (train?.preview) train.preview.remove();
-    train = null;
-    const preview = calendarWindowPreview(direction);
-    if (!preview) return null;
-    const width = current.getBoundingClientRect().width;
-    const distance = width;
-    const offset = direction * distance;
-    preview.style.left = `${current.offsetLeft}px`;
-    preview.style.top = `${current.offsetTop}px`;
-    preview.style.width = `${width}px`;
-    preview.style.height = `${current.getBoundingClientRect().height}px`;
-    preview.style.transform = `translate3d(${offset}px, 0, 0)`;
-    stage.append(preview);
-    current.classList.add("is-train-dragging");
-    preview.classList.add("is-train-dragging");
-    train = { direction, preview, distance, offset };
-    return train;
-  };
-
-  const settle = (commit = false) => {
-    if (settling) return;
-    settling = true;
-    const active = train;
-    current.classList.remove("is-train-dragging");
-    current.classList.add("is-train-settling");
-    active?.preview.classList.remove("is-train-dragging");
-    active?.preview.classList.add("is-train-settling");
-    current.style.transform = commit && active
-      ? `translate3d(${-active.direction * active.distance}px, 0, 0)`
-      : "translate3d(0, 0, 0)";
-    if (active?.preview) active.preview.style.transform = commit
-      ? "translate3d(0, 0, 0)"
-      : `translate3d(${active.offset}px, 0, 0)`;
-
-    window.setTimeout(() => {
-      if (commit && active) moveCalendarWindow(active.direction);
-      reset();
-    }, 270);
-  };
-
-  const edgeStep = (direction) => {
-    if (settling || calendarExpanded) return;
-    if (!prepare(direction)) return;
-    window.requestAnimationFrame(() => settle(true));
-  };
-
-  for (const [control, direction] of [
-    [els.calendarPrevious, -1], [els.calendarNext, 1],
-  ]) {
-    control.addEventListener("click", (event) => {
-      event.stopPropagation();
-      edgeStep(direction);
-    });
-    const clear = () => {
-      control.style.setProperty("--edge-opacity", "0.10");
-      control.style.setProperty("--edge-arrow-opacity", "0");
-    };
-    control.addEventListener("pointermove", (event) => {
-      const rect = control.getBoundingClientRect();
-      if (!rect.width) return;
-      const fromBorder = direction < 0
-        ? event.clientX - rect.left : rect.right - event.clientX;
-      const strength = Math.max(0, 1 - Math.max(0, fromBorder) / rect.width);
-      const eased = strength * strength;
-      control.style.setProperty("--edge-opacity", (0.1 + 0.88 * eased).toFixed(3));
-      control.style.setProperty("--edge-arrow-opacity",
-        Math.max(0, (eased - 0.22) / 0.78).toFixed(3));
-    });
-    control.addEventListener("pointerleave", clear);
-    control.addEventListener("blur", clear);
-    control.addEventListener("focus", () => {
-      control.style.setProperty("--edge-opacity", "0.92");
-      control.style.setProperty("--edge-arrow-opacity", "1");
-    });
-    clear();
-  }
-
-  current.addEventListener("pointerdown", (event) => {
-    if (settling || event.button !== 0 ||
-        event.target.closest(".calendar-game-choice, a, input, textarea, select")) return;
-    start = { id: event.pointerId, x: event.clientX, y: event.clientY };
-  });
-
-  current.addEventListener("pointermove", (event) => {
-    if (!start || start.id !== event.pointerId || settling) return;
-    const dx = event.clientX - start.x;
-    const dy = event.clientY - start.y;
-    if (!start.dragging) {
-      if (Math.abs(dx) < 8) return;
-      if (Math.abs(dx) <= Math.abs(dy) * 1.1) {
-        start = null;
-        return;
-      }
-      start.dragging = true;
-      current.setPointerCapture(event.pointerId);
-    }
-    event.preventDefault();
-    const active = prepare(dx < 0 ? 1 : -1);
-    const movement = active
-      ? Math.max(-active.distance, Math.min(active.distance, dx))
-      : dx * 0.18;
-    current.style.transform = `translate3d(${movement}px, 0, 0)`;
-    if (active) {
-      active.preview.style.transform = `translate3d(${active.offset + movement}px, 0, 0)`;
-    }
-  });
-
-  const finish = (event, cancelled = false) => {
-    if (!start || start.id !== event.pointerId || settling) return;
-    const dx = event.clientX - start.x;
-    const dy = event.clientY - start.y;
-    if (!start.dragging) {
-      start = null;
-      return;
-    }
-    suppressClick = true;
-    window.setTimeout(() => { suppressClick = false; }, 0);
-    const commit = !cancelled && Math.abs(dx) >= 56 &&
-      Math.abs(dx) > Math.abs(dy) * 1.2 && Boolean(train);
-    settle(commit);
-  };
-  current.addEventListener("pointerup", (event) => finish(event));
-  current.addEventListener("pointercancel", (event) => finish(event, true));
-  current.addEventListener("click", (event) => {
-    if (!suppressClick) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-  }, true);
-  window.addEventListener("resize", () => { if (!settling && train) reset(); });
 }
 
 function renderCalendarGrid() {
@@ -2740,29 +2523,6 @@ function renderCalendarGrid() {
     });
     els.calendarGrid.append(button);
   }
-  syncCalendarWindowControls();
-}
-
-function ensureCalendarDateVisible(date) {
-  if (!currentCalendar?.startDate || calendarExpanded || !date) return false;
-
-  const base = currentCalendar.startDate;
-  let start = calendarWindowStart || base;
-  let end = addIsoDays(start, 13);
-
-  while (date > end) {
-    start = addIsoDays(start, 7);
-    end = addIsoDays(start, 13);
-  }
-  while (date < start && start > base) {
-    const candidate = addIsoDays(start, -7);
-    start = candidate < base ? base : candidate;
-  }
-
-  if (start === calendarWindowStart) return false;
-  calendarWindowStart = start;
-  renderCalendarGrid();
-  return true;
 }
 
 function cancelSpotlightIdleReset() {
@@ -2780,7 +2540,6 @@ function resetSpotlightToNextGame() {
 
   selectedCalendarGameId = "";
   selectedCalendarDate = nextGame.date || "";
-  ensureCalendarDateVisible(selectedCalendarDate);
   renderCalendarGrid();
   renderCalendarGamePicker(
     games.filter((game) => game.date === selectedCalendarDate),
@@ -2812,7 +2571,6 @@ function selectCalendarDate(date, { scrollToSpotlight = false } = {}) {
   if (!games.length) return;
 
   selectedCalendarDate = date;
-  ensureCalendarDateVisible(date);
   for (const button of els.calendarGrid.querySelectorAll(".calendar-day")) {
     button.setAttribute("aria-selected", String(button.dataset.date === date));
   }
@@ -3159,14 +2917,9 @@ function renderCalendar(calendar) {
   els.calendarGrid.replaceChildren();
 
   if (!calendar?.startDate) {
-    syncCalendarWindowControls();
-    els.calendarGamePicker.hidden = true;
+      els.calendarGamePicker.hidden = true;
     els.calendarUpdated.textContent = "Updated unavailable";
     return;
-  }
-
-  if (!calendarWindowStart || calendarWindowStart < calendar.startDate) {
-    calendarWindowStart = calendar.startDate;
   }
 
   const updated = new Date(calendar.updatedAt || "");
@@ -3193,7 +2946,6 @@ function renderCalendar(calendar) {
     selectedCalendarDate = "";
   }
 
-  ensureCalendarDateVisible(selectedCalendarDate);
   syncCalendarExpansionUi();
   renderCalendarGrid();
 
@@ -3511,8 +3263,8 @@ function buildScoutOverview(scout) {
   meter.append(fill);
   quality.append(meter);
   quality.append(standingsCell("p", scout.quality
-    ? `#${scout.quality.rank} of ${scout.quality.total} scored teams · ${scout.quality.games} current-season matches${scout.quality.games < 3 ? " · Early sample" : ""}`
-    : "Not enough scored division games for a rating yet.",
+    ? `#${scout.quality.rank} of ${scout.quality.total} division teams · ${scout.quality.games} of last 10 scored games${scout.quality.games < 4 ? " · Early sample" : ""}`
+    : "No indexed scored matches across seasons for this team yet.",
     "scout-quality-caption"));
   overview.append(quality);
 
@@ -3522,6 +3274,9 @@ function buildScoutOverview(scout) {
     scoutDataCell("CURRENT SEASON", scout.current
       ? `${scout.current.wins}–${scout.current.draws}–${scout.current.losses}`
       : "—", "W – D – L"),
+    scoutDataCell("LAST 10 WINS", scout.recentTen?.weightedWinPct == null
+      ? "—" : `${scout.recentTen.weightedWinPct}%`,
+      `${scout.recentTen?.games || 0} games · 11v11 weighted`),
     scoutDataCell("ALL-TIME", scoutingRecordText(scout.overall),
       `${scout.overall?.games || 0} indexed games`),
     scoutDataCell("AVG GOAL DIFF", scout.overall?.goalDifferencePerGame == null
@@ -3584,8 +3339,10 @@ function buildScoutOverview(scout) {
   how.append(howSummary, standingsCell("p",
     "A win scores more against an opponent with a stronger record against other teams. " +
     "Draws are adjusted too. Direct games against this team are excluded when assessing an opponent. " +
-    "Small samples are smoothed; scores compare only teams with scored games in the same current-season division. " +
-    "This is an experimental, results-based index, not betting odds or a prediction.",
+    "Only each team's latest ten scored matches are used, across all indexed seasons and formats. " +
+    "A verified 11v11 game counts 1.25× a verified 8v8 game; older games with unknown format count 1×. " +
+    "Small samples are smoothed. Teams are ranked against their current division peers using all available history. " +
+    "This is an experimental form index, not betting odds or a prediction.",
     "scout-method-text"));
   if (!scout.archiveComplete) how.append(standingsCell("p",
     "Archive coverage is incomplete, so older format records and rankings may change.",
@@ -3803,8 +3560,7 @@ async function loadCalendar() {
     els.calendarGrid.replaceChildren();
     els.calendarGamePicker.hidden = true;
     els.calendarUpdated.textContent = "Calendar offline";
-    syncCalendarWindowControls();
-    syncSpotlightEdgeControls();
+      syncSpotlightEdgeControls();
     await loadNextGame();
     return false;
   }
@@ -4476,7 +4232,7 @@ async function toggleWrongAnswerFeedback() {
 }
 
 function toggleCalendarExpandedFromEvent(event) {
-  if (event?.target?.closest?.(".calendar-window-control, a, input, textarea, select, label")) return;
+  if (event?.target?.closest?.("a, input, textarea, select, label")) return;
   // Match-day and game choices still select matches, and now expand the schedule too.
   if (event?.target?.closest?.(".calendar-day, .calendar-game-choice")) {
     if (!calendarExpanded) setCalendarExpanded(true);
@@ -4486,7 +4242,6 @@ function toggleCalendarExpandedFromEvent(event) {
 }
 
 els.calendarCard?.addEventListener("click", toggleCalendarExpandedFromEvent);
-installCalendarTrain();
 
 installSpotlightSwipe();
 installSpotlightEdgeWaterfall();

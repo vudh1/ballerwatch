@@ -18,6 +18,7 @@ import {
   webNextGameDetails,
   webSafeSnapshot,
   withCachedVenue,
+  withLeagueRecentForm,
 } from "../../../../backend/infra/web-worker/worker.mjs";
 
 test("web snapshot strips private pickup roster and owner settings", () => {
@@ -1038,4 +1039,31 @@ test("signed-in Ask AI answers only the current user's RSVP status", () => {
   assert.match(personalPickupAnswer(snapshot,date,""),/Set your RSVP name/);
   assert.match(personalPickupAnswer({...snapshot,pickupPrivate:{events:{}}},date,"Example User"),
     /can't verify your reservation/);
+});
+
+test("league match cards receive public last-ten form without making pickup results look scored", () => {
+  const history = {
+    seasons: [{
+      seasonId: "fall-2026", label: "Fall 2026",
+      teams: ["Alpha", "Beta"].map(name => ({
+        name, day: "Tue", gender: "Coed", division: "1", leagueName: "11v11",
+      })),
+      matches: [{
+        date: "2026-10-01", homeTeam: "Alpha", awayTeam: "Beta",
+        homeScore: 3, awayScore: 0,
+      }],
+    }],
+  };
+  const match = withLeagueRecentForm({kind: "league", team: "Alpha", opponent: "Beta"},
+    history, "2026-10-13");
+  assert.equal(match.teamForm.weightedWinPct, 100);
+  assert.equal(match.teamForm.games, 1);
+  assert.equal(match.opponentForm.weightedWinPct, 0);
+  assert.equal(match.opponentForm.games, 1);
+  assert.deepEqual(withLeagueRecentForm({kind:"pickup"},history,"2026-10-13"),
+    {kind:"pickup"});
+  const noScores = withLeagueRecentForm({kind:"league",team:"Alpha",opponent:"Beta"},
+    {seasons:[]}, "2026-10-13");
+  assert.equal(noScores.teamForm, null);
+  assert.equal(noScores.opponentForm, null);
 });

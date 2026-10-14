@@ -1,7 +1,24 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.4.0",
+  "currentVersion": "8.5.0",
   "releases": [
+    {
+      "version": "8.5.0",
+      "date": "2026-10-13",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Weighted last-ten form across seasons and match-card scouting",
+      "webAnnouncement": "Opponent Scout now considers the last ten indexed scored games across all seasons, weighting 11v11 higher than 8v8. League match cards show both sides' historical weighted win percentages; calendar returns to simple 14-day tap-to-expand, and standings cards swipe edge-to-edge without gaps.",
+      "changes": [
+        "Replaces current-season-only opponent strength with the most recent ten indexed scored results per team across all RATS seasons, not restricted to the current format, with 11v11 outcomes worth 1.25 times 8v8 results and unknown old-format games counted neutrally.",
+        "Calculates opponents' own last-ten weighted records using matches against other teams, excludes matches against the rated team, and ranks opponent-adjusted form against the team's current-division peers, with missing/early samples disclosed.",
+        "Attack and defense rates in Opponent Scout now use each team's latest ten scored results across seasons/formats; all-time scored records and individual 8v8/11v11 totals remain accessible.",
+        "Displays a small last-ten weighted win percentage for each team and its opponent in league match cards, using read-only public historical results and leaving pickup cards unchanged. Percentages with absent scored history remain unavailable rather than treated as 0%.",
+        "Reverts Match Days calendar to the original static 14-day view and tap-to-expand full schedule, removing calendar swipe, page arrows, and waterfall navigation.",
+        "Removes the 12px gap between team-standings carousel cards to match the seamless adjacent motion of the main match-card train.",
+        "Adds synthetic regression tests for weighted cross-season results, 10-game limits, early/missing history, league/Pickup API enrichment, and the restored calendar UI."
+      ]
+    },
     {
       "version": "8.4.0",
       "date": "2026-10-13",

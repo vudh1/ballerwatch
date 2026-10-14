@@ -5,6 +5,7 @@ import {
   buildLeagueStandings,
   buildLeagueTeamHistory,
   buildTeamScout,
+  buildTeamRecentForm,
 } from "../../../backend/shared/league-standings.mjs";
 
 function archive() {
@@ -124,11 +125,11 @@ test("no recorded score does not imply a 0-0 draw", () => {
 
 test("attacking/defending rankings use per-game rates in the correct direction", () => {
   const data = archive();
-  // Third Touch: 3 GF in two matches, 1 GA -> 1.5 and 0.5 goals/game.
+  // Third Touch: 5 GF in three indexed matches across Fall 2025 and Fall 2026.
   const view = buildLeagueStandings(data, "fall-2026", ["Third Touch FC"], "2026-10-13");
   const stats = buildTeamScout(data, "fall-2026", "Third Touch FC", "2026-10-13");
-  assert.deepEqual(stats.attack, { rank: 1, total: 3, perGame: 1.5, goals: 3 });
-  assert.deepEqual(stats.defense, { rank: 1, total: 3, perGame: 0.5, goals: 1 });
+  assert.deepEqual(stats.attack, { rank: 1, total: 3, perGame: 1.67, goals: 5, games: 3 });
+  assert.deepEqual(stats.defense, { rank: 1, total: 3, perGame: 0.33, goals: 1, games: 3 });
   assert.equal(stats.previousSeason, null);
   assert.equal(stats.previousSeasonLabel, "Summer 2026");
   assert.equal(stats.archiveComplete, false);
@@ -166,15 +167,16 @@ test("previous season placement is calculated only from that season's division",
   });
 });
 
-test("unscored current division leaves ranking stats unavailable", () => {
+test("current-season scores may be absent but past-season attack/defense stats remain available", () => {
   const data = archive();
   for (const match of data.seasons[1].matches) {
     match.homeScore = null;
     match.awayScore = null;
   }
   const stats = buildTeamScout(data, "fall-2026", "Third Touch FC", "2026-10-13");
-  assert.equal(stats.attack, null);
-  assert.equal(stats.defense, null);
+  assert.equal(stats.attack?.games, 1);
+  assert.equal(stats.defense?.games, 1);
+  assert.equal(stats.quality?.games, 1);
 });
 
 test("opponent strength rewards quality victories without using head-to-head as opponent form", () => {
@@ -261,4 +263,63 @@ test("8v8 and 11v11 leagues never share a table or scouting-opponent sample", ()
   assert.deepEqual(cards.map(card=>card.rows.map(row=>row.name)),
     [["Eight A","Eight B"],["Eleven A","Eleven B"]]);
   assert.equal(buildTeamScout(data,"fall-2026","Eight A","2026-10-13").quality.total,2);
+});
+
+test("last-ten form combines earlier 11v11 with a new 8v8 season and weights 11v11 wins", () => {
+  const teams=(leagueName)=>["Club","Opponent"].map(name=>({
+    name,day:"Saturday",gender:"Coed",division:"1",leagueName
+  }));
+  const older=Array.from({length:9},(_,i)=>({
+    date:`2025-06-${String(i+1).padStart(2,"0")}`,
+    homeTeam:"Club",awayTeam:"Opponent",homeScore:2,awayScore:1,
+  }));
+  const data={updatedAt:"2026-10-13",coverage:{complete:true},seasons:[
+    {seasonId:"summer-2025",label:"Summer 2025",
+      teams:teams("Summer 11v11"),matches:older},
+    {seasonId:"fall-2026",label:"Fall 2026",
+      teams:teams("Fall 8v8"),matches:[
+        {date:"2026-10-09",homeTeam:"Club",awayTeam:"Opponent",homeScore:0,awayScore:1},
+      ]},
+  ]};
+  const scout=buildTeamScout(data,"fall-2026","Club","2026-10-13");
+  assert.equal(scout.currentFormat,"8v8");
+  assert.equal(scout.current.losses,1);
+  assert.equal(scout.quality.games,10);
+  assert.equal(scout.quality.wins,9);
+  assert.ok(scout.quality.index > 0);
+  assert.equal(scout.recentTen.games,10);
+  assert.equal(scout.formats["11v11"].wins,9);
+  assert.equal(scout.formats["8v8"].losses,1);
+  assert.ok(scout.attack.games === 10 && scout.defense.games === 10);
+  const form=buildTeamRecentForm(data,"Club","2026-10-13");
+  assert.equal(form.games,10);
+  // Nine 11v11 wins have more say than the one 8v8 loss.
+  assert.equal(form.weightedWinPct,92);
+});
+
+test("last-ten window ignores older results while preserving all-time history", () => {
+  const data={updatedAt:"2026-10-13",coverage:{complete:true},seasons:[{
+    seasonId:"fall-2026",label:"Fall 2026",
+    teams:["Club","Opponent"].map(name=>({name,day:"Tue",gender:"Men",division:"2",
+      leagueName:"11v11"})),
+    matches:Array.from({length:15},(_,i)=>({
+      date:`2026-09-${String(i+1).padStart(2,"0")}`,
+      homeTeam:"Club",awayTeam:"Opponent",
+      homeScore:i < 5 ? 0 : 2,awayScore:1,
+    })),
+  }]};
+  const scout=buildTeamScout(data,"fall-2026","Club","2026-10-13");
+  assert.equal(scout.overall.games,15);
+  assert.equal(scout.quality.games,10);
+  assert.equal(scout.quality.wins,10);
+  assert.equal(buildTeamRecentForm(data,"Club","2026-10-13").weightedWinPct,100);
+  assert.equal(scout.attack.games,10);
+});
+
+test("no indexed results are displayed as unavailable, not zero-percent losses", () => {
+  const data=archive();
+  assert.equal(buildTeamRecentForm(data,"Nonexistent","2026-10-13"),null);
+  const match=buildTeamScout(data,"fall-2026","Third Touch FC","2025-01-01");
+  assert.equal(match.quality,null);
+  assert.equal(match.recentTen,null);
 });
