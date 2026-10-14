@@ -1792,3 +1792,24 @@ test("cold-start work and card measurements stay bounded regardless of full sche
   assert.match(app, /const calendarOk = await loadCalendar\(\)\.catch/);
   assert.match(worker, /const pendingJsonLoads = new Map\(\)/);
 });
+
+test("repeated scouting requests do not starve public match data", () => {
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
+
+  assert.match(worker, /createBoundedLoadCache\(\{ maxEntries: 55 \}\)/);
+  assert.match(worker, /publicReadCache\.get\("rats-history", 120_000/);
+  assert.match(worker, /loadRatsHistoryUncached\(env\)/);
+  assert.match(worker, /publicReadCache\.get\("public-snapshot", 20_000/);
+  assert.match(worker, /publicReadCache\.get\(\s*[\x60]scout:/);
+  assert.match(worker, /publicReadCache\.get\(\s*[\x60]standings:/);
+  assert.doesNotMatch(worker, /cachedJson\("rats-history-v1"/);
+  assert.match(worker, /loadWebWeather\(env\)\.catch\(\(\) => null\)/);
+  assert.match(worker, /loadRatsVenues\(env\)\.catch/);
+  assert.match(app, /const recentScoutReports = new Map\(\)/);
+  assert.match(app, /SCOUT_REPORT_REUSE_MS = 3 \* 60_000/);
+  assert.match(app, /SCOUT_REPORT_STALE_MS = 15 \* 60_000/);
+  assert.match(app, /Last synced · /);
+  assert.match(app, /recentScoutReports\.size > 20/);
+  assert.match(app, /currentCalendar\) \{\s*els\.calendarUpdated\.textContent = "Last synced/);
+});
