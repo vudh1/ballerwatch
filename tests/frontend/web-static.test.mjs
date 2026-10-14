@@ -1634,7 +1634,7 @@ test("standings carousel highlights monitored teams and has accessible history d
   assert.match(app, /\.standings-track/);
   assert.match(app, /setStandingsSlide\(originalIndex \+ step\)/);
   assert.match(app, /row\.highlighted/);
-  assert.match(app, /button\.addEventListener\("click", \(\) => void openTeamHistory\(row\.name\)\)/);
+  assert.match(app, /button\.addEventListener\("click", \(\) => void openTeamHistory\(/);
   assert.match(app, /encodeURIComponent\(teamName\)/);
   assert.match(app, /loadStandings\(\)/);
   assert.match(css, /\.standings-highlight/);
@@ -1667,7 +1667,7 @@ test("standings uses adjacent-card drag train and minimal table, preserving team
   assert.match(css, /--standings-train-gap: 12px/);
   assert.match(css, /\.standings-step-next::before/);
   assert.match(app, /\["W-D-L", "Wins, draws, losses"\]/);
-  assert.match(app, /openTeamHistory\(row\.name\)/);
+  assert.match(app, /openTeamHistory\(\s*row\.name, card\.divisionKey/);
 });
 
 test("calendar no longer includes a page carousel, waterfall controls, or train previews", () => {
@@ -1728,7 +1728,7 @@ test("match card shows only the monitored team's compact weighted win rate", () 
   assert.match(html, /id="next-game-form" hidden/);
   assert.match(app, /function monitoredWinForm\(game\)/);
   assert.match(app, /formatMonitoredWin\(monitoredWinForm\(game\)\)/);
-  assert.match(app, /Win \$\{form\.weightedWinPct\}%/);
+  assert.match(app, /Win ~\$\{form\.winPct\}%/);
   assert.doesNotMatch(app, /Weighted win % · Last 10 scored/);
   assert.doesNotMatch(app, /game\.opponentForm/);
   assert.match(app, /form: role\("next-game-form"\)/);
@@ -1807,9 +1807,29 @@ test("repeated scouting requests do not starve public match data", () => {
   assert.match(worker, /loadWebWeather\(env\)\.catch\(\(\) => null\)/);
   assert.match(worker, /loadRatsVenues\(env\)\.catch/);
   assert.match(app, /const recentScoutReports = new Map\(\)/);
-  assert.match(app, /SCOUT_REPORT_REUSE_MS = 3 \* 60_000/);
-  assert.match(app, /SCOUT_REPORT_STALE_MS = 15 \* 60_000/);
+  assert.match(app, /SCOUT_REPORT_REUSE_MS = 15 \* 60_000/);
+  assert.match(app, /SCOUT_REPORT_STALE_MS = 60 \* 60_000/);
   assert.match(app, /Last synced · /);
-  assert.match(app, /recentScoutReports\.size > 20/);
+  assert.match(app, /recentScoutReports\.size > 35/);
   assert.match(app, /currentCalendar\) \{\s*els\.calendarUpdated\.textContent = "Last synced/);
+});
+
+test("division-scoped scout requests warm in background and avoid overlapping worker fetches", () => {
+  const app = fs.readFileSync("frontend/web/app.js","utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs","utf8");
+  const standings = fs.readFileSync("backend/shared/league-standings.mjs","utf8");
+  assert.match(app, /pendingScoutReports = new Map\(\)/);
+  assert.match(app, /function scoutReportKey\(teamName, division/);
+  assert.match(app, /async function prefetchScoutReports\(standings\)/);
+  assert.match(app, /scoutPrefetchInFlight/);
+  assert.match(app, /if \(failures >= 2\) \{ complete = false; break; \}/);
+  assert.match(app, /await fetchScoutReport\(choice\.team, choice\.division\)/);
+  assert.match(app, /currentStandings\.updatedAt/);
+  assert.match(app, /encodeURIComponent\(division\)/);
+  assert.match(worker, /url\.searchParams\.get\("division"\)/);
+  assert.match(worker, /card\.divisionKey === division/);
+  assert.match(worker, /buildLeagueTeamHistory\(/);
+  assert.match(standings, /export function buildMatchupEstimate\(/);
+  assert.match(app, /Conservative estimated win chance|Estimated win chance/);
+  assert.doesNotMatch(app, /11v11-weighted.*form\.wins/);
 });
