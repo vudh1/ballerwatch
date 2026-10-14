@@ -1807,17 +1807,28 @@ async function loadScoutingIndex(env) {
   return publicReadCache.get("prebuilt-scout-index-v2", 90_000,
     async () => {
       const local = await kvJsonGet(env, "snapshot:scout-index").catch(() => null);
-      if (local?.schemaVersion === 1 && local.standings?.cards &&
-          local.reports && typeof local.reports === "object") return local;
-      const envelope = await githubRawJsonFile(
-        env, "league/state/scout-index.json", "runtime-state",
-      );
-      const index = await decryptState(envelope, env);
-      if (index?.schemaVersion !== 1 || !index.standings?.cards ||
-          !index.reports || typeof index.reports !== "object") {
-        throw new Error("Scouting projection is not ready.");
+      const valid = (value) => value?.schemaVersion === 1 &&
+        Array.isArray(value.standings?.cards) &&
+        value.reports && typeof value.reports === "object";
+      // KV can lag behind hourly GitHub-published snapshots; trust it for
+      // immediate fast reads, but refresh from canonical encrypted state once old.
+      if (valid(local) &&
+          Date.now() - Date.parse(local.generatedAt || "") < 95 * 60_000) return local;
+      try {
+        const envelope = await githubRawJsonFile(
+          env, "league/state/scout-index.json", "runtime-state",
+        );
+        const index = await decryptState(envelope, env);
+        if (!valid(index)) throw new Error("Scouting projection is not ready.");
+        if (env.BALLERWATCH_STATE) {
+          await kvJsonPut(env, "snapshot:scout-index", index).catch(() => {});
+        }
+        return index;
+      } catch (error) {
+        // The last good index is still better than live-scanning all seasons.
+        if (valid(local) && transientPublicLoadError(error)) return local;
+        throw error;
       }
-      return index;
     },
     { staleMs: 6 * 60 * 60_000, transientError: transientPublicLoadError },
   );
