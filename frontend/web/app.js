@@ -3208,17 +3208,18 @@ function renderStandings() {
   for (const card of cards) {
     const slide = document.createElement("article");
     slide.className = "standings-slide";
+    slide.classList.add("bw-card-frame");
     slide.setAttribute("role", "group");
     slide.setAttribute("aria-roledescription", "slide");
     slide.setAttribute("aria-label", `${card.team} league standings`);
 
     const meta = document.createElement("div");
-    meta.className = "standings-team-heading";
+    meta.className = "standings-team-heading bw-card-heading";
     const group = document.createElement("div");
     group.className = "standings-team-copy";
     group.append(
       standingsCell("p", "LEAGUE STANDINGS", "eyebrow"),
-      standingsCell("h2", card.team, "standings-team-name"),
+      standingsCell("h2", card.team, "standings-team-name bw-card-title"),
       standingsCell("span", `${standings.season || "Current season"} · ${card.division || "Division pending"}`,
         "standings-division"),
     );
