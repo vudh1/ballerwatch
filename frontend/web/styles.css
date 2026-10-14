@@ -6067,3 +6067,266 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
     transform: scale(1);
   }
 }
+
+/* v8.8 — true shared waterfall. The same masks, blur, gradient, arrow token,
+ * hit width and easing apply to both match and standings on desktop. */
+@media (hover: hover) and (pointer: fine) {
+  .standings-rail .carousel-waterfall-edge {
+    position: absolute;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    top: 0;
+    bottom: 0;
+    height: auto;
+    width: min(5.75rem, 20%);
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    overflow: hidden;
+    transform: none;
+    color: rgba(248, 250, 252, 0.92);
+  }
+  .standings-rail .standings-step-previous {
+    left: 0;
+    justify-content: flex-start;
+    padding-left: 0.7rem;
+    border-radius: 32px 0 0 32px;
+  }
+  .standings-rail .standings-step-next {
+    right: 0;
+    justify-content: flex-end;
+    padding-right: 0.7rem;
+    border-radius: 0 32px 32px 0;
+  }
+  :is(.spotlight-carousel, .standings-rail) .carousel-waterfall-edge::before {
+    opacity: var(--edge-opacity, 0.10);
+    -webkit-backdrop-filter: blur(13px) saturate(160%);
+    backdrop-filter: blur(13px) saturate(160%);
+    transition: opacity 90ms linear;
+    pointer-events: none;
+  }
+  .standings-rail .carousel-waterfall-edge::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transform: none;
+  }
+  :is(.spotlight-carousel, .standings-rail)
+  .carousel-waterfall-edge:is(.spotlight-edge-previous, .standings-step-previous)::before {
+    background: linear-gradient(90deg,
+      rgba(186, 230, 253, 0.30) 0%,
+      rgba(125, 211, 252, 0.19) 18%,
+      rgba(96, 165, 250, 0.09) 44%,
+      rgba(96, 165, 250, 0.025) 68%,
+      transparent 100%);
+    -webkit-mask-image: linear-gradient(90deg, #000 0%, rgba(0, 0, 0, 0.86) 36%, transparent 100%);
+    mask-image: linear-gradient(90deg, #000 0%, rgba(0, 0, 0, 0.86) 36%, transparent 100%);
+  }
+  :is(.spotlight-carousel, .standings-rail)
+  .carousel-waterfall-edge:is(.spotlight-edge-next, .standings-step-next)::before {
+    background: linear-gradient(270deg,
+      rgba(186, 230, 253, 0.30) 0%,
+      rgba(125, 211, 252, 0.19) 18%,
+      rgba(96, 165, 250, 0.09) 44%,
+      rgba(96, 165, 250, 0.025) 68%,
+      transparent 100%);
+    -webkit-mask-image: linear-gradient(270deg, #000 0%, rgba(0, 0, 0, 0.86) 36%, transparent 100%);
+    mask-image: linear-gradient(270deg, #000 0%, rgba(0, 0, 0, 0.86) 36%, transparent 100%);
+  }
+  :is(.spotlight-carousel, .standings-rail) .carousel-waterfall-edge span,
+  :is(.spotlight-carousel, .standings-rail) .carousel-waterfall-edge:not(:disabled):is(:hover, :focus-visible) span {
+    position: relative;
+    z-index: 1;
+    opacity: var(--edge-arrow-opacity, 0);
+    font-size: 2rem;
+    font-weight: 400;
+    line-height: 1;
+    text-shadow: 0 0 10px rgba(191, 219, 254, 0.78),
+      0 3px 14px rgba(0, 0, 0, 0.46);
+  }
+  .standings-rail .carousel-waterfall-edge span {
+    display: grid;
+    place-items: center;
+    width: 2.15rem;
+    height: 2.8rem;
+    transform: scale(0.9);
+    transition: opacity 150ms ease, transform 180ms ease;
+  }
+  .standings-rail .carousel-waterfall-edge:not(:disabled):hover span,
+  .standings-rail .carousel-waterfall-edge:not(:disabled):focus-visible span {
+    transform: scale(1);
+  }
+  .standings-rail .carousel-waterfall-edge:disabled {
+    pointer-events: none;
+    opacity: 0;
+  }
+}
+/* Allow native vertical scrolling while recognizing horizontal card swipes.
+ * No text selection/callout on team buttons during the active iOS gesture. */
+.standings-viewport,
+.standings-slide,
+.standings-team-link {
+  touch-action: pan-y;
+}
+.standings-team-link {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.standings-track {
+  transition: transform 220ms cubic-bezier(0.22, 0.68, 0.15, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .standings-track,
+  .standings-rail .carousel-waterfall-edge::before,
+  .standings-rail .carousel-waterfall-edge span {
+    transition: none;
+  }
+}
+
+/* Searchable glass selection panels used by RSVP identities and monitored teams. */
+.settings-choice-field { position: relative; display: grid; gap: 0.48rem; min-width: 0; }
+.settings-choice { position: relative; min-width: 0; }
+.settings-choice-trigger {
+  display: flex;
+  width: 100%;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  padding: 0.72rem 0.88rem;
+  border: 1px solid rgba(148, 210, 196, 0.25);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(33, 71, 69, 0.49), rgba(9, 26, 35, 0.72));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: #e8fff2;
+  font-weight: 600;
+  text-align: left;
+}
+.settings-choice-trigger:is(:hover, :focus-visible, .is-open) {
+  border-color: rgba(74, 222, 128, 0.59);
+  background: linear-gradient(135deg, rgba(34, 102, 82, 0.54), rgba(10, 34, 41, 0.82));
+}
+.settings-choice-trigger:focus-visible,
+.settings-choice-option:focus-visible,
+.settings-choice-chip button:focus-visible {
+  outline: 2px solid #86efac;
+  outline-offset: 2px;
+}
+.settings-choice-trigger .choice-chevron {
+  color: #86efac;
+  font-size: 1.4rem;
+  font-weight: 400;
+  transition: transform 160ms ease;
+}
+.settings-choice-trigger.is-open .choice-chevron { transform: rotate(180deg); }
+.settings-choice-popover {
+  position: relative;
+  z-index: 5;
+  margin-top: 0.5rem;
+  padding: 0.7rem;
+  border: 1px solid rgba(148, 210, 196, 0.28);
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(14, 43, 46, 0.99), rgba(7, 22, 34, 0.98));
+  box-shadow: 0 16px 35px rgba(0, 8, 12, 0.25), inset 0 1px 0 rgba(255,255,255,0.06);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  backdrop-filter: blur(20px) saturate(150%);
+  animation: settings-choices-in 150ms ease-out;
+}
+@keyframes settings-choices-in {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.settings-choice-popover .choice-search-label {
+  display: block;
+  margin-bottom: 0.38rem;
+  color: #bdd3ce;
+  font-size: var(--type-caption);
+  font-weight: 700;
+}
+.settings-choice-popover input[type="search"] {
+  width: 100%;
+  min-height: 2.7rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid rgba(148, 210, 196, 0.27);
+  border-radius: 12px;
+  outline-offset: 2px;
+  background: rgba(1, 15, 23, 0.60);
+  color: #f8fafc;
+}
+.settings-choice-options {
+  display: grid;
+  gap: 0.18rem;
+  max-height: 16rem;
+  margin-top: 0.55rem;
+  padding: 0.16rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.settings-choice-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  min-height: 2.6rem;
+  width: 100%;
+  padding: 0.63rem 0.74rem;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #dbe8e9;
+  text-align: left;
+  font-size: var(--type-body);
+  font-weight: 550;
+}
+.settings-choice-option:hover,
+.settings-choice-option:focus-visible { background: rgba(34, 197, 94, 0.12); }
+.settings-choice-option[aria-selected="true"] {
+  color: #bbf7d0;
+  background: rgba(34, 197, 94, 0.13);
+}
+.settings-choice-mark {
+  color: #86efac;
+  font-size: 1.08rem;
+  font-weight: 800;
+}
+.settings-choice-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.38rem;
+  margin-top: 0.45rem;
+}
+.settings-choice-chips:empty { display: none; }
+.settings-choice-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  gap: 0.3rem;
+  padding: 0.22rem 0.35rem 0.22rem 0.6rem;
+  border: 1px solid rgba(134, 239, 172, 0.21);
+  border-radius: 999px;
+  background: rgba(34, 197, 94, 0.11);
+  color: #d0f9e0;
+  font-size: 0.76rem;
+}
+.settings-choice-chip > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.settings-choice-chip button {
+  min-width: 1.5rem;
+  min-height: 1.5rem;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(134, 239, 172, 0.12);
+  color: #ddfbe4;
+  font-size: 1rem;
+}
+.settings-choice-empty { padding: 0.75rem; color: #a7bbc1; font-size: var(--type-small); }
+.settings-choice-popover .choice-hint { margin: 0.48rem 0 0.1rem; font-size: var(--type-caption); }
+@media (prefers-reduced-motion: reduce) {
+  .settings-choice-popover { animation: none; }
+  .settings-choice-trigger .choice-chevron { transition: none; }
+}
