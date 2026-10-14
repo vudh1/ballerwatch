@@ -30,7 +30,7 @@ Documentation-only edits, behavior-preserving refactors, tests, formatting, and 
 
 ## What “Update app” does
 
-An administrator pressing **Settings → App update** requests the existing validated production-promotion workflow. It does not directly overwrite the live app.
+An administrator pressing **Settings → App** requests the existing validated production-promotion workflow. It does not directly overwrite the live app.
 
 The release then moves through:
 
@@ -50,6 +50,7 @@ Signed-in Inbox read/delete state is merged into the encrypted user profile so m
 
 ## Current development line
 
+- **8.8.0** — exact shared masked waterfall on match/standings cards; touch-first iPhone standings flicks that do not open scouting; authenticated searchable RSVP-name and multi-team chip selectors; hourly indexed team directory; scouting-aware BallerWatch AI with published W/D/L and attack/defense facts; review-guided pickup-versus-league intent fix; independent privacy-safe regression checks.
 - **8.7.0** — matched match/standings waterfall navigation and refined typography; App labels and RSVP-style top-right scouting X; division-weighted historical form (D1 > D2a > D2b > D2c > D3, unknown neutral), recent form and head-to-head; rounded provisional win/draw/loss; only versioned encrypted precomputed scouting GETs, no archive scans on page load.
 - **8.6.1** — restores missing encrypted prebuilt scouting index at release/bootstrap; bulk background report preloading; bounded public GET timeouts; session-only last-good public calendar recovery; live status decoupled from optional reads; inline post-jersey monitored win chance and matching League Standings heading color.
 
