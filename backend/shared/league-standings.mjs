@@ -1,9 +1,9 @@
 /**
  * Derives public, results-based standings for each monitored RATS division.
  *
- * Uses the already-encrypted RATS season archive after decryption at the edge.
+ * Runs on the independent encrypted scouting-index builder, not a GET request.
  * No user or private roster data enters the public standings payload.
- * Added in v8.2.0.
+ * Added in v8.2.0; division-aware model revised in v8.7.0.
  */
 import { completedHistoryMatches, historyTeamKey, normalizeHistoryTeamName } from "./rats-history.mjs";
 
@@ -239,6 +239,30 @@ function matchPoints(scored, conceded) {
 // usable at a neutral weight rather than being treated as missing history.
 const FORMAT_WEIGHTS = Object.freeze({ "8v8": 1, "11v11": 1.25, unknown: 1 });
 const FORM_WINDOW = 10;
+// Historical division tiers are ordinal context, not league-published ratings.
+// An unlabeled division is neutral; a bare D2 uses the D2b midpoint.
+const DIVISION_WEIGHTS = Object.freeze({
+  "1": 1.30, "2a": 1.18, "2b": 1.10, "2c": 1.03,
+  "2": 1.10, "3": 0.90,
+});
+export function divisionStrengthMultiplier(team) {
+  if (!team) return 1;
+  const raw = [team.divisionLabel, team.division, team.leagueName]
+    .map((part) => String(part || "").trim());
+  for (const part of raw) {
+    const explicit = /(?:^|[^a-z0-9])(?:d|division)[\\s_-]*([123])\\s*([abc])?(?=$|[^a-z0-9])/i.exec(part);
+    if (explicit) return DIVISION_WEIGHTS[explicit[1] + (explicit[2] || "").toLowerCase()] || 1;
+    // The official division metadata sometimes contains just "2a" or "1".
+    if (/^[123](?:[abc])?$/i.test(part)) return DIVISION_WEIGHTS[part.toLowerCase()] || 1;
+  }
+  return 1;
+}
+function indexedMatchWeight(history, match, teamName) {
+  const season = seasonData(history, match.seasonId);
+  const team = matchingTeam(season?.teams || [], teamName);
+  const format = leagueFormat(team);
+  return FORMAT_WEIGHTS[format] * divisionStrengthMultiplier(team);
+}
 // Both caches are keyed by a public archive/results instance. WeakMap references
 // do not retain older archives when the encrypted runtime index is refreshed.
 // Reusing the ordered results avoids a full 2023–present sort for every match card.
@@ -294,18 +318,26 @@ function lastTeamGames(matches, teamName, excludeKey = "", limit = FORM_WINDOW) 
 }
 function weightedRecentRecord(history, entries) {
   let weightedWins = 0, weightedDraws = 0, totalWeight = 0;
-  for (const entry of entries) {
+  let levelSum = 0, recencySum = 0;
+  for (const [index, entry] of entries.entries()) {
     const scored = entry.isHome ? entry.match.homeScore : entry.match.awayScore;
     const conceded = entry.isHome ? entry.match.awayScore : entry.match.homeScore;
     const team = entry.isHome ? entry.match.homeTeam : entry.match.awayTeam;
-    const weight = FORMAT_WEIGHTS[matchFormatFromArchive(history, entry.match, team)];
-    totalWeight += weight;
-    if (scored > conceded) weightedWins += weight;
-    else if (scored === conceded) weightedDraws += weight;
+    const weight = indexedMatchWeight(history, entry.match, team);
+    const recency = Math.pow(0.94, index);
+    totalWeight += weight * recency;
+    levelSum += divisionStrengthMultiplier(matchingTeam(
+      seasonData(history, entry.match.seasonId)?.teams || [], team,
+    )) * recency;
+    recencySum += recency;
+    if (scored > conceded) weightedWins += weight * recency;
+    else if (scored === conceded) weightedDraws += weight * recency;
   }
   return { games: entries.length,
     weightedWinPct: totalWeight
       ? Math.round(100 * weightedWins / totalWeight) : null,
+    drawRate: totalWeight ? weightedDraws / totalWeight : 0.2,
+    divisionLevel: recencySum ? levelSum / recencySum : 1,
     // A draw counts as half a win only for the form/strength model.
     form: totalWeight
       ? (weightedWins + 0.5 * weightedDraws + 0.5) / (totalWeight + 1) : 0.5,
@@ -321,25 +353,26 @@ function weightedQualityIndex(history, matches, teamName) {
   let weightedScore = 0;
   let wins = 0, draws = 0, losses = 0;
   let weightedWins = 0, totalWeight = 0;
-  let opponentStrength = 0, qualityWins = 0;
+  let opponentStrength = 0, qualityWins = 0, maximumScore = 0;
   for (const entry of entries) {
     const match = entry.match;
     const scored = entry.isHome ? match.homeScore : match.awayScore;
     const conceded = entry.isHome ? match.awayScore : match.homeScore;
     const format = matchFormatFromArchive(history, match, teamName);
-    const weight = FORMAT_WEIGHTS[format];
+    const weight = indexedMatchWeight(history, match, teamName);
     const strength = opponentFormExcludingTeam(history, matches, entry.opponent, teamName);
     const outcome = scored > conceded ? 1 : scored === conceded ? 0.5 : 0;
     if (outcome === 1) { wins++; weightedWins += weight; qualityWins += strength; }
     else if (outcome === 0.5) draws++;
     else losses++;
     totalWeight += weight;
+    maximumScore += weight * 1.25;
     opponentStrength += strength;
     weightedScore += outcome * weight * (0.75 + 0.5 * strength);
   }
-  // Divide by the strongest possible ten-match weighted outcome, keeping
-  // the result within 0–100. 11v11 wins count more than 8v8 wins.
-  const index = Math.round(100 * weightedScore / (entries.length * 1.25 * 1.25));
+  // Normalize by the observed competition mix; a D1 game can influence a
+  // mixed-division ten-game window more than a D3 game, without breaking 0–100.
+  const index = Math.round(100 * weightedScore / maximumScore);
   return {
     index: Math.max(0, Math.min(100, index)),
     games: entries.length, wins, draws, losses,
@@ -365,15 +398,15 @@ function qualityRanking(history, season, team, today) {
     total: peers.length,
     lastGames: FORM_WINDOW,
     provisional: true,
-    method: "Last ten indexed scored matches across all seasons and formats. 11v11 games receive 1.25× weight; 8v8 and unverified legacy games 1×. Wins against opponents with stronger recent records against others count more. Opponents' games against the rated team are excluded; early records are smoothed. Not betting odds.",
+    method: "Last ten indexed scored matches across seasons. Format and published division tier (D1 > D2a > D2b > D2c > D3) adjust historical impact; unknown tiers are neutral. Wins against strong opponents count more. Direct meetings are excluded when assessing opponent form; thin samples are smoothed. Experimental, not betting odds.",
   };
 }
 
 /**
- * A conservative, explicitly non-betting matchup indicator. Raw 2/2 wins
- * must not imply 100% against an unknown opponent. Reuse the same ten scored
- * games per side, shrink thin samples toward a neutral baseline and use up to
- * five actual prior meetings as a bounded additional signal.
+ * Provisional three-outcome estimate from the last ten scored matches on
+ * each side. Reweight older seasons by verified format, division tier, and
+ * recency; limit head-to-head influence and smooth small samples. The values
+ * are not empirically calibrated odds and must not be displayed as exact.
  */
 export function buildMatchupEstimate(history, teamName, opponentName, today = "9999-12-31") {
   if (!teamName || !opponentName ||
@@ -384,36 +417,44 @@ export function buildMatchupEstimate(history, teamName, opponentName, today = "9
   if (!ours.length && !theirs.length) return null;
   const teamForm = weightedRecentRecord(history, ours);
   const opponentForm = weightedRecentRecord(history, theirs);
-  // The recent records are smoothed for a draw-equivalent neutral pseudo-game.
-  const rawEdge = (teamForm.form - opponentForm.form) / 2;
   const observed = Math.min(1, (ours.length + theirs.length) / (2 * FORM_WINDOW));
-  const formEstimate = 0.5 + rawEdge * observed;
+  // Division strength adds context beyond W/D/L: identical records against
+  // D1 competition carry more evidence than identical results against D3.
+  const formEdge = (teamForm.form - opponentForm.form) * 0.75;
+  const divisionEdge = (teamForm.divisionLevel - opponentForm.divisionLevel) * 0.18;
+  let share = 0.5 + (formEdge + divisionEdge) * observed;
 
   const meetings = lastTeamGames(
     matches, teamName, "", Number.MAX_SAFE_INTEGER,
   ).filter((entry) => entry.opponentKey === historyTeamKey(opponentName)).slice(0, 5);
-  let h2hWins = 0, h2hDraws = 0, h2hWeight = 0;
-  for (const entry of meetings) {
-    const home = entry.isHome;
-    const scored = home ? entry.match.homeScore : entry.match.awayScore;
-    const conceded = home ? entry.match.awayScore : entry.match.homeScore;
-    const format = matchFormatFromArchive(history, entry.match, teamName);
-    const weight = FORMAT_WEIGHTS[format] || 1;
-    h2hWeight += weight;
-    if (scored > conceded) h2hWins += weight;
-    else if (scored === conceded) h2hDraws += weight;
+  let points = 0, meetingWeight = 0, meetingDraws = 0;
+  for (const [index, entry] of meetings.entries()) {
+    const scored = entry.isHome ? entry.match.homeScore : entry.match.awayScore;
+    const conceded = entry.isHome ? entry.match.awayScore : entry.match.homeScore;
+    const weight = indexedMatchWeight(history, entry.match, teamName) * Math.pow(0.85, index);
+    meetingWeight += weight;
+    if (scored > conceded) points += weight;
+    else if (scored === conceded) { points += weight * 0.5; meetingDraws += weight; }
   }
-  const headToHead = (h2hWins + 0.5 * h2hDraws + 1) / (h2hWeight + 2);
-  const influence = Math.min(0.25, meetings.length * 0.05);
-  const estimate = formEstimate * (1 - influence) + headToHead * influence;
-  // Coarse 5-point increments communicate uncertainty, not false precision.
-  const pct = Math.max(15, Math.min(85, Math.round(estimate * 20) * 5));
+  const headToHead = (points + 1) / (meetingWeight + 2);
+  const influence = Math.min(0.22, meetings.length * 0.045);
+  share = Math.max(0.13, Math.min(0.87,
+    share * (1 - influence) + headToHead * influence));
+  // A draw is a separate result, not half a win probability. Regularize
+  // towards a 20% draw baseline because ten games cannot calibrate odds.
+  const observedDrawRate = (teamForm.drawRate + opponentForm.drawRate) / 2;
+  const drawShare = Math.max(0.12, Math.min(0.34,
+    0.20 + (observedDrawRate - 0.20) * 0.5 * observed +
+    (meetingWeight ? ((meetingDraws / meetingWeight) - 0.2) * influence * 0.2 : 0)));
+  const winPct = Math.round((1 - drawShare) * share * 20) * 5;
+  const drawPct = Math.round(drawShare * 20) * 5;
+  const lossPct = 100 - winPct - drawPct;
   return {
-    team: teamName, opponent: opponentName, winPct: pct,
+    team: teamName, opponent: opponentName, winPct, drawPct, lossPct,
     teamGames: ours.length, opponentGames: theirs.length,
     headToHeadGames: meetings.length,
     sampleLimited: ours.length < 5 || theirs.length < 5,
-    method: "Conservative estimated chance using last ten 11v11-weighted scored games for both teams, neutral small-sample shrinkage, and up to five weighted head-to-head results. Not bookmaker odds.",
+    method: "Provisional W/D/L estimate using last ten scored matches across seasons, recency, 11v11 format, D1–D3 division tiers and up to five head-to-head games. Three outcomes sum to 100%. Uncalibrated; not bookmaker odds.",
   };
 }
 
