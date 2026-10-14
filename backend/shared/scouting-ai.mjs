@@ -87,9 +87,15 @@ export function answerScoutingQuestion(question, index, { contextTeams = [] } = 
   const mentioned = [...new Map(candidates.filter((row) => containsName(raw, row.team))
     .map((row) => [key(row.team), row.team])).values()]
     .sort((a, b) => b.length - a.length);
-  const names = mentioned.length ? mentioned : (Array.isArray(contextTeams) ? contextTeams : [])
-    .map(String).filter((name) => candidates.some((row) => key(row.team) === key(name)))
-    .slice(0, 2);
+  // Context is only reused for an explicit follow-up. "Next matchup" must
+  // not inherit the unrelated team from an earlier historical query.
+  const contextualFollowup = /\b(?:their|they|them|that team|this team|same team|its|those teams|what about)\b/i.test(raw) &&
+    !/\b(?:next|upcoming)\b/i.test(raw);
+  const names = mentioned.length ? mentioned : contextualFollowup
+    ? (Array.isArray(contextTeams) ? contextTeams : [])
+      .map(String).filter((name) => candidates.some((row) => key(row.team) === key(name)))
+      .slice(0, 2)
+    : [];
   const namedMatchups = matchups.filter((match) =>
     containsName(raw, match.team) && containsName(raw, match.opponent));
   const wantsChance = /\b(?:win|chance|probability|odds|predict|likely|matchup|head.to.head)\b/i.test(raw);
