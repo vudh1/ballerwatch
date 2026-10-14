@@ -72,7 +72,7 @@ test("Home Screen install card is removed in standalone mode and notifications u
 test("Home Screen install prompt uses the same card layout system as dashboard cards", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const css = fs.readFileSync("frontend/web/styles.css", "utf8");
-  assert.match(html, /class="card footer-install" id="install-card"/);
+  assert.match(html, /class="card footer-install bw-card-frame" id="install-card"/);
   assert.match(html, /class="footer-install-copy"/);
   assert.match(css, /\.footer-install\.card \{[\s\S]*padding:\s*clamp/);
   assert.match(css, /\.footer-install\.card \{[\s\S]*border-radius:\s*30px/);
@@ -956,7 +956,7 @@ test("v5.5 dashboard matches the iPhone-first demo direction", () => {
   const css = fs.readFileSync("frontend/web/styles.css", "utf8");
 
   assert.match(html, /Pickup \+ RATS monitor/);
-  assert.match(html, /<h2 id="calendar-title">14-Day Calendar<\/h2>/);
+  assert.match(html, /<h2 class="bw-card-title" id="calendar-title">14-Day Calendar<\/h2>/);
   assert.match(html, /id="chat-launcher"/);
   assert.match(html, /<h2>BallerWatch AI<\/h2>/);
   assert.match(html, /id="next-game-capacity"/);
@@ -1288,7 +1288,7 @@ test("match type pill opens a touch-safe Edit/Delete action sheet and freshness 
   assert.match(css, /\.spotlight-content \{[\s\S]*padding-bottom:\s*2\.2rem/);
   assert.match(
     html,
-    /id="next-game-hint"><\/p>\s*<\/div>\s*<div class="match-card-footer">\s*<p class="match-update-credit" id="next-game-updated"><\/p>/,
+    /id="next-game-hint"><\/p>\s*<\/div>\s*<div class="match-card-footer bw-card-footer">\s*<p class="match-update-credit" id="next-game-updated"><\/p>/,
   );
   assert.match(css, /\.spotlight-card \{[\s\S]*--spotlight-card-inset:\s*clamp\(1\.35rem, 4vw, 1\.8rem\);[\s\S]*padding:\s*var\(--spotlight-card-inset\)/);
   assert.match(css, /\.match-card-footer \{[\s\S]*position:\s*absolute;[\s\S]*right:\s*var\(--spotlight-card-inset[\s\S]*bottom:\s*0\.45rem;[\s\S]*left:\s*var\(--spotlight-card-inset[\s\S]*min-height:\s*0;[\s\S]*padding-top:\s*0\.42rem/);
@@ -1302,7 +1302,7 @@ test("calendar weather freshness sits in a subtle card footer without page water
   const css = fs.readFileSync("frontend/web/styles.css", "utf8");
   assert.match(
     html,
-    /<div class="calendar-card-footer">\s*<p class="calendar-updated calendar-update-credit" id="calendar-updated">Updated pending<\/p>/,
+    /<div class="calendar-card-footer bw-card-footer">\s*<p class="calendar-updated calendar-update-credit" id="calendar-updated">Updated pending<\/p>/,
   );
   assert.match(css, /\.calendar-card-footer \{[\s\S]*position:\s*absolute;[\s\S]*bottom:\s*0\.42rem;[\s\S]*border-top:\s*0;/);
   assert.match(css, /\.calendar-card-footer \.calendar-update-credit \{[\s\S]*font-size:\s*0\.56rem;/);
