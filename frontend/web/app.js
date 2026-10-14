@@ -3479,6 +3479,32 @@ async function prefetchScoutReports(standings) {
   }
 }
 
+function cachedDivisionScoutFallback(teamName, division = "") {
+  // A history fetch failure must not erase the public standings already
+  // loaded successfully for the same team and division.
+  const card = (currentStandings?.cards || []).find((candidate) =>
+    candidate.ready &&
+    (!division || candidate.divisionKey === division || candidate.division === division) &&
+    (candidate.rows || []).some((row) => soccerNameKey(row.name) === soccerNameKey(teamName)));
+  const row = card?.rows?.find((item) => soccerNameKey(item.name) === soccerNameKey(teamName));
+  if (!row) return null;
+  const section = document.createElement("section");
+  section.className = "scout-fallback";
+  section.append(standingsCell("p",
+    "Full scouting history is temporarily unavailable. Current division results:",
+    "scout-format-note"));
+  const items = document.createElement("div");
+  items.className = "scout-snapshot";
+  items.append(
+    scoutDataCell("LEAGUE RANK", `#${row.rank} / ${card.rows.length}`),
+    scoutDataCell("W – D – L", `${row.wins}–${row.draws}–${row.losses}`,
+      `${row.played} games`),
+    scoutDataCell("GOAL DIFF", String(row.goalDifference)),
+  );
+  section.append(items);
+  return section;
+}
+
 function closeTeamHistory() {
   teamHistoryRequestId += 1;
   if (els.teamHistoryDialog.open) els.teamHistoryDialog.close();
@@ -3566,6 +3592,8 @@ async function openTeamHistory(teamName, division = "") {
         ? "This team is no longer in the current indexed standings."
         : "Unable to load this team's scouting report. Please try again.";
       els.teamScoutOverview.replaceChildren(standingsCell("p", unavailable, "muted"));
+      const fallback = cachedDivisionScoutFallback(teamName, division);
+      if (fallback) els.teamScoutOverview.append(fallback);
       els.teamHistoryList.replaceChildren();
     }
   }
