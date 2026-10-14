@@ -114,6 +114,7 @@ const els = {
   nextGameMenuCancel: document.querySelector("#next-game-menu-cancel"),
   nextGameMenuTitle: document.querySelector("#next-game-menu-title"),
   nextGameMeta: document.querySelector("#next-game-meta"),
+  nextGameForm: document.querySelector("#next-game-form"),
   nextGameLocation: document.querySelector("#next-game-location"),
   nextGameCapacity: document.querySelector("#next-game-capacity"),
   nextGameCapacityLabel: document.querySelector("#next-game-capacity-label"),
@@ -2130,6 +2131,7 @@ function spotlightModel(game, label = "NEXT GAME") {
       title: "No upcoming game",
       type: "None",
       meta: "No pickup or RATS game is currently published.",
+      form: "",
       location: "",
       capacityText: "",
       capacityPercent: 0,
@@ -2181,6 +2183,12 @@ function spotlightModel(game, label = "NEXT GAME") {
       .filter(Boolean)
       .join(" • "),
     location: locationParts.join(" • "),
+    form: game.kind === "league" && (game.teamForm || game.opponentForm)
+      ? "Weighted win % · Last 10 scored · " + [
+        game.teamForm ? `${game.team || "Our team"}: ${game.teamForm.weightedWinPct}% (${game.teamForm.games})` : "",
+        game.opponentForm ? `${game.opponent || "Opponent"}: ${game.opponentForm.weightedWinPct}% (${game.opponentForm.games})` : "",
+      ].filter(Boolean).join(" · ")
+      : "",
     capacityText,
     capacityPercent,
     spotsText,
@@ -2231,6 +2239,8 @@ function applySpotlightModel(targets, game, label = "NEXT GAME") {
   targets.title.textContent = model.title;
   targets.type.textContent = model.type;
   targets.meta.textContent = model.meta;
+  targets.form.textContent = model.form;
+  targets.form.hidden = !model.form;
   targets.location.textContent = model.location;
   targets.capacity.hidden = !model.capacityText;
   targets.capacityLabel.textContent = model.capacityText;
@@ -2260,6 +2270,7 @@ function currentSpotlightTargets() {
     type: els.nextGameType,
     menuTrigger: els.nextGameMenuTrigger,
     meta: els.nextGameMeta,
+    form: els.nextGameForm,
     location: els.nextGameLocation,
     capacity: els.nextGameCapacity,
     capacityLabel: els.nextGameCapacityLabel,
@@ -2317,6 +2328,7 @@ function buildSpotlightTrainCard(game) {
       type: role("next-game-type"),
       menuTrigger: role("next-game-menu-trigger"),
       meta: role("next-game-meta"),
+      form: role("next-game-form"),
       location: role("next-game-location"),
       capacity: role("next-game-capacity"),
       capacityLabel: role("next-game-capacity-label"),
@@ -3251,8 +3263,8 @@ function buildScoutOverview(scout) {
   meter.append(fill);
   quality.append(meter);
   quality.append(standingsCell("p", scout.quality
-    ? `#${scout.quality.rank} of ${scout.quality.total} scored teams · ${scout.quality.games} current-season matches${scout.quality.games < 3 ? " · Early sample" : ""}`
-    : "Not enough scored division games for a rating yet.",
+    ? `#${scout.quality.rank} of ${scout.quality.total} division teams · ${scout.quality.games} of last 10 scored games${scout.quality.games < 4 ? " · Early sample" : ""}`
+    : "No indexed scored matches across seasons for this team yet.",
     "scout-quality-caption"));
   overview.append(quality);
 
@@ -3262,6 +3274,9 @@ function buildScoutOverview(scout) {
     scoutDataCell("CURRENT SEASON", scout.current
       ? `${scout.current.wins}–${scout.current.draws}–${scout.current.losses}`
       : "—", "W – D – L"),
+    scoutDataCell("LAST 10 WINS", scout.recentTen?.weightedWinPct == null
+      ? "—" : `${scout.recentTen.weightedWinPct}%`,
+      `${scout.recentTen?.games || 0} games · 11v11 weighted`),
     scoutDataCell("ALL-TIME", scoutingRecordText(scout.overall),
       `${scout.overall?.games || 0} indexed games`),
     scoutDataCell("AVG GOAL DIFF", scout.overall?.goalDifferencePerGame == null
@@ -3324,8 +3339,10 @@ function buildScoutOverview(scout) {
   how.append(howSummary, standingsCell("p",
     "A win scores more against an opponent with a stronger record against other teams. " +
     "Draws are adjusted too. Direct games against this team are excluded when assessing an opponent. " +
-    "Small samples are smoothed; scores compare only teams with scored games in the same current-season division. " +
-    "This is an experimental, results-based index, not betting odds or a prediction.",
+    "Only each team's latest ten scored matches are used, across all indexed seasons and formats. " +
+    "A verified 11v11 game counts 1.25× a verified 8v8 game; older games with unknown format count 1×. " +
+    "Small samples are smoothed. Teams are ranked against their current division peers using all available history. " +
+    "This is an experimental form index, not betting odds or a prediction.",
     "scout-method-text"));
   if (!scout.archiveComplete) how.append(standingsCell("p",
     "Archive coverage is incomplete, so older format records and rankings may change.",
