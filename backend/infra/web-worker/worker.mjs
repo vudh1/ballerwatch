@@ -3605,10 +3605,19 @@ export default {
           loadSnapshot(env), loadRatsHistory(env),
         ]);
         const seasonId = cleanText(snapshot?.league?.seasonId, 40);
+        const today = localDate();
+        const fixtureList = leagueMatches(snapshot)
+          .filter((game) => String(game?.date || "") >= today)
+          .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+          .slice(0, 25);
+        const pairingKey = fixtureList.map((game) =>
+          `${game.team}/${game.opponent}`).join(";");
         const standings = await publicReadCache.get(
-          `standings:${history.updatedAt}:${seasonId}:${localDate()}:${(snapshot?.teams || []).join("|")}`,
+          `standings-form:${history.updatedAt}:${seasonId}:${today}:${(snapshot?.teams || []).join("|")}:${pairingKey}`,
           90_000,
-          () => buildLeagueStandings(history, seasonId, snapshot?.teams || [], localDate()),
+          () => buildLeagueStandings(
+            history, seasonId, snapshot?.teams || [], today, fixtureList,
+          ),
         );
         return webJson(request, { ok: true, standings });
       } catch {
@@ -3620,7 +3629,8 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/web/team-history") {
       const teamName = cleanText(url.searchParams.get("team"), 120);
-      if (!teamName || teamName.length > 100) {
+      const division = cleanText(url.searchParams.get("division"), 150);
+      if (!teamName || teamName.length > 100 || division.length > 140) {
         return webJson(request, { ok: false, error: "Choose a team from the standings." },
           { status: 400 });
       }
@@ -3636,15 +3646,18 @@ export default {
         );
         // Public drill-down is limited to teams in the current monitored divisions.
         const allowed = standings.cards.some((card) =>
+          (!division || card.divisionKey === division || card.division === division) &&
           card.rows.some((row) => row.name === teamName));
         if (!allowed) {
           return webJson(request, { ok: false, error: "Team is not in the current standings." },
             { status: 404 });
         }
         const teamHistory = await publicReadCache.get(
-          `scout:${history.updatedAt}:${seasonId}:${localDate()}:${teamName}`,
+          `scout:${history.updatedAt}:${seasonId}:${localDate()}:${teamName}:${division}`,
           5 * 60_000,
-          () => buildLeagueTeamHistory(history, seasonId, teamName, 35, localDate()),
+          () => buildLeagueTeamHistory(
+            history, seasonId, teamName, 35, localDate(), division,
+          ),
         );
         if (!teamHistory) {
           return webJson(request, { ok: false, error: "Team history is not indexed yet." },

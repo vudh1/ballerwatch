@@ -6,6 +6,7 @@ import {
   buildLeagueTeamHistory,
   buildTeamScout,
   buildTeamRecentForm,
+  buildMatchupEstimate,
 } from "../../../backend/shared/league-standings.mjs";
 
 function archive() {
@@ -334,4 +335,73 @@ test("tracked standings cards carry only their own optional recent form", () => 
   assert.ok(Number.isFinite(view.cards[0].recentForm.weightedWinPct));
   assert.equal(Object.hasOwn(view.cards[0], "opponentForm"), false);
   assert.equal(view.cards[0].rows.some((row) => Object.hasOwn(row, "recentForm")), false);
+});
+
+test("duplicate Sitting Ducks names resolve only within the selected division", () => {
+  const data = archive();
+  data.seasons[1].teams.push({
+    name: "Sitting Ducks", day: "Wednesday", gender: "Coed",
+    division: "1", leagueName: "Coed 8v8",
+  }, {
+    name: "Sitting Ducks", day: "Tuesday", gender: "Men",
+    division: "2", leagueName: "Men 11v11",
+  });
+  data.seasons[1].matches.push({
+    date: "2026-10-12", homeTeam: "Sitting Ducks", awayTeam: "Third Touch FC",
+    homeScore: 1, awayScore: 0,
+  });
+  assert.equal(buildLeagueTeamHistory(
+    data, "fall-2026", "Sitting Ducks", 35, "2026-10-13",
+  ), null);
+  const cards = buildLeagueStandings(
+    data, "fall-2026", ["Third Touch FC", "PhoSaiGon"], "2026-10-13",
+  ).cards;
+  const men = cards[0].divisionKey;
+  const report = buildLeagueTeamHistory(
+    data, "fall-2026", "Sitting Ducks", 35, "2026-10-13", men,
+  );
+  assert.equal(report.team, "Sitting Ducks");
+  assert.equal(report.scout.division, "Tuesday Men D-2");
+  assert.equal(report.scout.quality.games, 1);
+  assert.equal(buildLeagueTeamHistory(
+    data, "fall-2026", "Sitting Ducks", 35, "2026-10-13", "invalid|division",
+  ), null);
+});
+
+test("conservative matchup estimate shrinks 2/2 raw wins and includes head-to-head", () => {
+  const data = {updatedAt:"2026-10-13T12:00:00Z",seasons:[{
+    seasonId:"fall-2026",label:"Fall 2026",
+    teams:["Monitored","Opponent","Third"].map(name=>({
+      name,day:"Tuesday",gender:"Men",division:"1",leagueName:"11v11",
+    })),
+    matches:[
+      {date:"2026-10-01",homeTeam:"Monitored",awayTeam:"Third",homeScore:2,awayScore:0},
+      {date:"2026-10-03",homeTeam:"Monitored",awayTeam:"Opponent",homeScore:3,awayScore:1},
+      {date:"2026-10-05",homeTeam:"Opponent",awayTeam:"Third",homeScore:2,awayScore:0},
+    ],
+  }]};
+  const estimate=buildMatchupEstimate(data,"Monitored","Opponent","2026-10-13");
+  assert.ok(estimate.winPct > 50 && estimate.winPct < 100);
+  assert.equal(estimate.teamGames,2);
+  assert.equal(estimate.headToHeadGames,1);
+  assert.equal(estimate.sampleLimited,true);
+  const noH2H = structuredClone(data);
+  noH2H.seasons[0].matches.splice(1,1);
+  assert.equal(buildMatchupEstimate(noH2H,"Monitored","Opponent","2026-10-13")
+    .headToHeadGames,0);
+  assert.equal(buildMatchupEstimate(data,"Ghost","Unknown","2026-10-13"),null);
+});
+
+test("standings attaches next fixture matchup estimates separately from live calendar", () => {
+  const data=archive();
+  const view=buildLeagueStandings(
+    data,"fall-2026",["Third Touch FC"],"2026-10-13",
+    [{team:"Third Touch FC",opponent:"Other A"}],
+  );
+  const estimate=Object.values(view.matchups)[0];
+  assert.ok(estimate);
+  assert.equal(estimate.team,"Third Touch FC");
+  assert.equal(estimate.opponent,"Other A");
+  assert.ok(estimate.winPct >= 15 && estimate.winPct <= 85);
+  assert.equal(Object.keys(view.matchups).length,1);
 });

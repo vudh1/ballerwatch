@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, Calendar sync, and quick answers into one installable app.
 
-**Current source version: 8.5.3**
+**Current source version: 8.5.4**
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
 
@@ -34,6 +34,13 @@ Saturday synthetic pickup is shown simply as **Pickup** and has no RSVP/capacity
 A 22-second walkthrough with a short animated intro. Recorded from the app using synthetic sample data; game details, answers, and notifications are illustrative.
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/)
+
+## BallerWatch 8.5.4 — Reliable scouting and a conservative matchup estimate
+
+- **Sitting Ducks / repeated team names:** Scouting requests now carry the selected RATS division key; the Worker checks that team and division belong to the displayed league standings and resolves the corresponding current-season roster entry. Two teams with the same displayed name in different divisions no longer cause an ambiguous-history 404.
+- **Fast cached scouting:** When league standings first load, the app sequentially warms up to 28 team reports without blocking match/calendar display. The on-page cache shares in-flight work across taps and background fetches, reuses verified reports, checks the source update stamp on the normal 60-second standings refresh, and stops prefetch after consecutive upstream errors. On temporary server faults, previously loaded public reports can still display as last-synced data.
+- **More grounded match chance:** The league match card shows only the monitored team's **Win ~XX%** estimate, not the raw fraction of wins. The estimate weighs both clubs' most recent ten scored games (11v11 games 1.25×) and up to five recorded head-to-head matches, shrinks small samples toward 50%, rounds to five-point increments, and limits displayed estimates to 15–85%. It is a provisional comparison, **not bookmaker odds or a guaranteed outcome**. If neither team has scored games, the percentage remains hidden.
+- **No regression to match availability:** The expensive RATS index stays on the optional standings/scouting route. The fast calendar route remains independent of it, so historical-results outages should not blank the last known match/calendar.
 
 ## BallerWatch 8.5.3 — Reliable scouting and public fixtures
 

@@ -182,8 +182,11 @@ let teamHistoryRequestId = 0;
 // Read-only reports are memoized on this page only. Never persist to a device
 // or refetch a large archive-derived report for every repeated team tap.
 const recentScoutReports = new Map();
-const SCOUT_REPORT_REUSE_MS = 3 * 60_000;
-const SCOUT_REPORT_STALE_MS = 15 * 60_000;
+const pendingScoutReports = new Map();
+const SCOUT_REPORT_REUSE_MS = 15 * 60_000;
+const SCOUT_REPORT_STALE_MS = 60 * 60_000;
+let scoutPrefetchVersion = "";
+let scoutPrefetchInFlight = false;
 let confirmedRsvpDates = new Set();
 let waitlistedRsvpDates = new Set();
 let serviceWorkerRegistration = null;
@@ -1581,7 +1584,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=8.5.3", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=8.5.4", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -2131,19 +2134,21 @@ function matchUpdatedText(value) {
   }).format(date)}`;
 }
 
+function soccerNameKey(name) {
+  return String(name || "").toLowerCase().replace(/[^a-z0-9]+/g, " ")
+    .replace(/\\b(?:fc|sc)\\b$/g, "").trim();
+}
+
 function monitoredWinForm(game) {
-  if (game?.kind !== "league" || !game.team) return null;
-  const nameKey = (name) => String(name || "").toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ").replace(/\b(?:fc|sc)\b$/g, "").trim();
-  const tracked = (currentStandings?.cards || []).find(
-    (card) => card.ready && nameKey(card.team) === nameKey(game.team),
-  );
-  const form = tracked?.recentForm;
-  return form?.games > 0 && Number.isFinite(form.weightedWinPct) ? form : null;
+  if (game?.kind !== "league" || !game.team || !game.opponent) return null;
+  const estimate = Object.values(currentStandings?.matchups || {}).find((value) =>
+    soccerNameKey(value.team) === soccerNameKey(game.team) &&
+    soccerNameKey(value.opponent) === soccerNameKey(game.opponent));
+  return Number.isFinite(estimate?.winPct) ? estimate : null;
 }
 
 function formatMonitoredWin(form) {
-  return form ? `Win ${form.weightedWinPct}%` : "";
+  return form ? `Win ~${form.winPct}%` : "";
 }
 
 function spotlightModel(game, label = "NEXT GAME") {
@@ -2260,7 +2265,7 @@ function applySpotlightModel(targets, game, label = "NEXT GAME") {
   targets.form.hidden = !model.form;
   if (model.form) {
     const form = monitoredWinForm(game);
-    targets.form.title = `${game.team} · ${form.wins} wins in ${form.games} scored matches · 11v11-weighted`;
+    targets.form.title = `${game.team} vs ${game.opponent} · Estimated win chance from last ${form.teamGames}/${form.opponentGames} scored games and ${form.headToHeadGames} head-to-head · Not bookmaker odds`;
   } else {
     targets.form.removeAttribute("title");
   }
@@ -3192,7 +3197,9 @@ function renderStandings() {
       button.className = "standings-team-link";
       button.textContent = row.name;
       button.setAttribute("aria-label", `View ${row.name} match history`);
-      button.addEventListener("click", () => void openTeamHistory(row.name));
+      button.addEventListener("click", () => void openTeamHistory(
+        row.name, card.divisionKey || card.division,
+      ));
       name.append(button);
       tr.append(name);
       for (const number of [row.played,
@@ -3223,8 +3230,12 @@ async function loadStandings() {
     const payload = await api("/web/standings", {retryNetwork: true});
     if (!payload?.ok || !payload.standings) throw new Error("Standings unavailable");
     const selectedTeam = currentStandings?.cards?.[standingsIndex]?.team;
-    // Preserve scroll/drag position when a 60-second API poll returns unchanged data.
-    if (JSON.stringify(currentStandings) === JSON.stringify(payload.standings)) return true;
+    // Refresh the preload check once per minute; the unchanged archive is not
+    // needlessly re-fetched for every team.
+    if (JSON.stringify(currentStandings) === JSON.stringify(payload.standings)) {
+      void prefetchScoutReports(currentStandings).catch(() => null);
+      return true;
+    }
     currentStandings = payload.standings;
     // Scouting is optional: update the tiny badge only after standings arrive.
     // Match/calendar cards remain usable if results history is offline.
@@ -3234,7 +3245,7 @@ async function loadStandings() {
       els.nextGameForm.hidden = !form;
       if (form) {
         els.nextGameForm.title =
-          `${currentNextGame.team} · ${form.wins} wins in ${form.games} scored matches · 11v11-weighted`;
+          `${currentNextGame.team} vs ${currentNextGame.opponent} · Estimated win chance from last ${form.teamGames}/${form.opponentGames} scored games and ${form.headToHeadGames} head-to-head · Not bookmaker odds`;
       } else {
         els.nextGameForm.removeAttribute("title");
       }
@@ -3243,6 +3254,7 @@ async function loadStandings() {
     const index = currentStandings.cards?.findIndex((card) => card.team === selectedTeam) ?? -1;
     standingsIndex = index >= 0 ? index : 0;
     renderStandings();
+    void prefetchScoutReports(currentStandings).catch(() => null);
     return true;
   } catch {
     if (!currentStandings) {
@@ -3392,50 +3404,137 @@ function buildScoutOverview(scout) {
   return overview;
 }
 
+function scoutReportKey(teamName, division = "") {
+  return `${soccerNameKey(teamName)}|${division}`;
+}
+
+async function fetchScoutReport(teamName, division = "") {
+  const key = scoutReportKey(teamName, division);
+  const previous = recentScoutReports.get(key);
+  if (previous && Date.now() - previous.at < SCOUT_REPORT_REUSE_MS &&
+      (!currentStandings?.updatedAt ||
+        previous.history.updatedAt === currentStandings.updatedAt)) {
+    return { history: previous.history, usingSavedReport: false };
+  }
+  if (pendingScoutReports.has(key)) return pendingScoutReports.get(key);
+  const promise = (async () => {
+    const endpoint = `/web/team-history?team=${encodeURIComponent(teamName)}` +
+      (division ? `&division=${encodeURIComponent(division)}` : "");
+    const payload = await api(endpoint, { retryNetwork: true });
+    if (!payload?.ok || !payload.history) throw new Error("History unavailable");
+    const history = payload.history;
+    recentScoutReports.delete(key);
+    recentScoutReports.set(key, { at: Date.now(), history });
+    if (recentScoutReports.size > 35) {
+      recentScoutReports.delete(recentScoutReports.keys().next().value);
+    }
+    return { history, usingSavedReport: false };
+  })();
+  pendingScoutReports.set(key, promise);
+  try {
+    return await promise;
+  } finally {
+    if (pendingScoutReports.get(key) === promise) pendingScoutReports.delete(key);
+  }
+}
+
+async function prefetchScoutReports(standings) {
+  if (!standings?.cards?.length || scoutPrefetchInFlight) return;
+  // The one-minute standings refresh checks the archive version. No new HTTP
+  // requests are necessary if the source timestamp has not changed.
+  const stamp = String(standings.updatedAt || "");
+  const generation = `${stamp}|${standings.cards.map((c) => c.divisionKey).join("|")}`;
+  if (generation === scoutPrefetchVersion) return;
+  scoutPrefetchInFlight = true;
+  let failures = 0;
+  let complete = true;
+  try {
+    const seen = new Set();
+    const choices = standings.cards.filter((card) => card.ready)
+      .flatMap((card) => (card.rows || []).map((row) => ({
+        team: row.name, division: card.divisionKey || card.division,
+      })));
+    for (const choice of choices.slice(0, 28)) {
+      if (document.hidden) { complete = false; break; }
+      const key = scoutReportKey(choice.team, choice.division);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const cached = recentScoutReports.get(key);
+      if (cached?.history?.updatedAt === stamp &&
+          Date.now() - cached.at < SCOUT_REPORT_REUSE_MS) continue;
+      try {
+        await fetchScoutReport(choice.team, choice.division);
+        failures = 0;
+      } catch {
+        failures += 1;
+        // Stop after two consecutive failures instead of exhausting the Worker
+        // with requests that cannot succeed while its upstream is unavailable.
+        if (failures >= 2) { complete = false; break; }
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, 450));
+    }
+    if (complete) scoutPrefetchVersion = generation;
+  } finally {
+    scoutPrefetchInFlight = false;
+  }
+}
+
+function cachedDivisionScoutFallback(teamName, division = "") {
+  // A history fetch failure must not erase the public standings already
+  // loaded successfully for the same team and division.
+  const card = (currentStandings?.cards || []).find((candidate) =>
+    candidate.ready &&
+    (!division || candidate.divisionKey === division || candidate.division === division) &&
+    (candidate.rows || []).some((row) => soccerNameKey(row.name) === soccerNameKey(teamName)));
+  const row = card?.rows?.find((item) => soccerNameKey(item.name) === soccerNameKey(teamName));
+  if (!row) return null;
+  const section = document.createElement("section");
+  section.className = "scout-fallback";
+  section.append(standingsCell("p",
+    "Full scouting history is temporarily unavailable. Current division results:",
+    "scout-format-note"));
+  const items = document.createElement("div");
+  items.className = "scout-snapshot";
+  items.append(
+    scoutDataCell("LEAGUE RANK", `#${row.rank} / ${card.rows.length}`),
+    scoutDataCell("W – D – L", `${row.wins}–${row.draws}–${row.losses}`,
+      `${row.played} games`),
+    scoutDataCell("GOAL DIFF", String(row.goalDifference)),
+  );
+  section.append(items);
+  return section;
+}
+
 function closeTeamHistory() {
   teamHistoryRequestId += 1;
   if (els.teamHistoryDialog.open) els.teamHistoryDialog.close();
 }
 
-async function openTeamHistory(teamName) {
+async function openTeamHistory(teamName, division = "") {
   const requestId = ++teamHistoryRequestId;
   els.teamHistoryTitle.textContent = teamName;
   els.teamHistoryNote.textContent = "Public RATS results archive";
-  els.teamScoutOverview.replaceChildren(
-    standingsCell("p", "Loading scouting report…", "muted"));
-  els.teamHistoryList.replaceChildren();
+  const key = scoutReportKey(teamName, division);
+  const cached = recentScoutReports.get(key);
+  if (!cached) {
+    els.teamScoutOverview.replaceChildren(
+      standingsCell("p", "Loading scouting report…", "muted"));
+    els.teamHistoryList.replaceChildren();
+  }
   if (!els.teamHistoryDialog.open) els.teamHistoryDialog.showModal();
 
   try {
-    const cached = recentScoutReports.get(teamName);
-    let usingSavedReport = false;
     let history;
-    if (cached && Date.now() - cached.at < SCOUT_REPORT_REUSE_MS) {
+    let usingSavedReport = false;
+    try {
+      ({ history } = await fetchScoutReport(teamName, division));
+    } catch (networkError) {
+      if (!cached || Date.now() - cached.at >= SCOUT_REPORT_STALE_MS ||
+          [400, 401, 403, 404].includes(networkError?.status)) throw networkError;
       history = cached.history;
-    } else {
-      try {
-        const payload = await api(`/web/team-history?team=${encodeURIComponent(teamName)}`,
-          {retryNetwork: true});
-        if (!payload?.ok || !payload.history) throw new Error("History unavailable");
-        history = payload.history;
-      } catch (networkError) {
-        // On a brief API outage, an explicitly labelled prior report is better
-        // than blanking the entire sheet; never hide access/404 errors this way.
-        if (!cached || Date.now() - cached.at >= SCOUT_REPORT_STALE_MS ||
-            [400, 401, 403, 404].includes(networkError?.status)) throw networkError;
-        history = cached.history;
-        usingSavedReport = true;
-      }
+      usingSavedReport = true;
     }
     if (requestId !== teamHistoryRequestId || !els.teamHistoryDialog.open) return;
-    // A report is only cached after the server returns a validated payload.
-    if (!usingSavedReport) {
-      recentScoutReports.delete(teamName);
-      recentScoutReports.set(teamName, { at: Date.now(), history });
-      if (recentScoutReports.size > 20) {
-        recentScoutReports.delete(recentScoutReports.keys().next().value);
-      }
-    }
     const updated = new Date(history.updatedAt || "");
     els.teamHistoryNote.textContent =
       `${usingSavedReport ? "Last synced · " : ""}${history.indexedMatchCount} scored matches` +
@@ -3493,6 +3592,8 @@ async function openTeamHistory(teamName) {
         ? "This team is no longer in the current indexed standings."
         : "Unable to load this team's scouting report. Please try again.";
       els.teamScoutOverview.replaceChildren(standingsCell("p", unavailable, "muted"));
+      const fallback = cachedDivisionScoutFallback(teamName, division);
+      if (fallback) els.teamScoutOverview.append(fallback);
       els.teamHistoryList.replaceChildren();
     }
   }

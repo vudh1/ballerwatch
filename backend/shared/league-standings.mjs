@@ -38,12 +38,20 @@ function seasonData(history, seasonId) {
     .find((season) => season.seasonId === seasonId) || null;
 }
 
-function matchingTeam(teams, name) {
-  const exact = teams.filter((team) =>
+function matchingTeam(teams, name, division = "") {
+  // RATS can reuse an exact club name in multiple divisions. Resolve the
+  // explicitly selected standings division rather than treating it as a
+  // missing team, while rejecting genuinely ambiguous unscoped requests.
+  const candidates = (Array.isArray(teams) ? teams : []);
+  const scoped = division
+    ? candidates.filter((team) =>
+      normalizedDivision(team) === division || displayDivision(team) === division)
+    : candidates;
+  const exact = scoped.filter((team) =>
     normalizeHistoryTeamName(team?.name) === normalizeHistoryTeamName(name));
   if (exact.length === 1) return exact[0];
   if (exact.length > 1) return null;
-  const alias = teams.filter((team) => historyTeamKey(team?.name) === historyTeamKey(name));
+  const alias = scoped.filter((team) => historyTeamKey(team?.name) === historyTeamKey(name));
   return alias.length === 1 ? alias[0] : null;
 }
 
@@ -138,7 +146,9 @@ function trackedTeamStats(history, seasonId, team, rows, today) {
 }
 
 /** Current-season cards deliberately never fall back to a previous season. */
-export function buildLeagueStandings(history, seasonId, monitoredTeams = [], today = "9999-12-31") {
+export function buildLeagueStandings(
+  history, seasonId, monitoredTeams = [], today = "9999-12-31", fixtures = [],
+) {
   const season = seasonData(history, seasonId);
   const teams = Array.isArray(season?.teams) ? season.teams : [];
   const tracked = [...new Set(
@@ -154,6 +164,18 @@ export function buildLeagueStandings(history, seasonId, monitoredTeams = [], tod
     source: "RATS public results archive",
     method: "Calculated: 3 points per win, 1 per draw; ranked by points, goal difference, goals for",
     official: false,
+    // Only the upcoming monitored-team pairings. Results are computed from
+    // the already-shared archive/index, never on the calendar fast path.
+    matchups: (Array.isArray(fixtures) ? fixtures : []).slice(0, 25)
+      .filter((game) => tracked.some((name) =>
+        historyTeamKey(name) === historyTeamKey(game?.team)))
+      .reduce((items, game) => {
+        const key = [historyTeamKey(game.team), historyTeamKey(game.opponent)].join("|");
+        if (items[key]) return items;
+        const result = buildMatchupEstimate(history, game.team, game.opponent, today);
+        if (result) items[key] = result;
+        return items;
+      }, {}),
     cards: tracked.map((name) => {
       const team = matchingTeam(teams, name);
       if (!team) {
@@ -168,6 +190,7 @@ export function buildLeagueStandings(history, seasonId, monitoredTeams = [], tod
       return {
         team: team.name,
         division: displayDivision(team),
+        divisionKey: normalizedDivision(team),
         ready: true,
         rows: rows.map((row) => ({
           ...row,
@@ -346,6 +369,54 @@ function qualityRanking(history, season, team, today) {
   };
 }
 
+/**
+ * A conservative, explicitly non-betting matchup indicator. Raw 2/2 wins
+ * must not imply 100% against an unknown opponent. Reuse the same ten scored
+ * games per side, shrink thin samples toward a neutral baseline and use up to
+ * five actual prior meetings as a bounded additional signal.
+ */
+export function buildMatchupEstimate(history, teamName, opponentName, today = "9999-12-31") {
+  if (!teamName || !opponentName ||
+      historyTeamKey(teamName) === historyTeamKey(opponentName)) return null;
+  const matches = allIndexedScoredMatches(history, today);
+  const ours = lastTeamGames(matches, teamName);
+  const theirs = lastTeamGames(matches, opponentName);
+  if (!ours.length && !theirs.length) return null;
+  const teamForm = weightedRecentRecord(history, ours);
+  const opponentForm = weightedRecentRecord(history, theirs);
+  // The recent records are smoothed for a draw-equivalent neutral pseudo-game.
+  const rawEdge = (teamForm.form - opponentForm.form) / 2;
+  const observed = Math.min(1, (ours.length + theirs.length) / (2 * FORM_WINDOW));
+  const formEstimate = 0.5 + rawEdge * observed;
+
+  const meetings = lastTeamGames(
+    matches, teamName, "", Number.MAX_SAFE_INTEGER,
+  ).filter((entry) => entry.opponentKey === historyTeamKey(opponentName)).slice(0, 5);
+  let h2hWins = 0, h2hDraws = 0, h2hWeight = 0;
+  for (const entry of meetings) {
+    const home = entry.isHome;
+    const scored = home ? entry.match.homeScore : entry.match.awayScore;
+    const conceded = home ? entry.match.awayScore : entry.match.homeScore;
+    const format = matchFormatFromArchive(history, entry.match, teamName);
+    const weight = FORMAT_WEIGHTS[format] || 1;
+    h2hWeight += weight;
+    if (scored > conceded) h2hWins += weight;
+    else if (scored === conceded) h2hDraws += weight;
+  }
+  const headToHead = (h2hWins + 0.5 * h2hDraws + 1) / (h2hWeight + 2);
+  const influence = Math.min(0.25, meetings.length * 0.05);
+  const estimate = formEstimate * (1 - influence) + headToHead * influence;
+  // Coarse 5-point increments communicate uncertainty, not false precision.
+  const pct = Math.max(15, Math.min(85, Math.round(estimate * 20) * 5));
+  return {
+    team: teamName, opponent: opponentName, winPct: pct,
+    teamGames: ours.length, opponentGames: theirs.length,
+    headToHeadGames: meetings.length,
+    sampleLimited: ours.length < 5 || theirs.length < 5,
+    method: "Conservative estimated chance using last ten 11v11-weighted scored games for both teams, neutral small-sample shrinkage, and up to five weighted head-to-head results. Not bookmaker odds.",
+  };
+}
+
 /** Public, last-ten weighted win record for a team appearing in a fixture. */
 export function buildTeamRecentForm(history, teamName, today = "9999-12-31") {
   if (!teamName || !String(teamName).trim()) return null;
@@ -418,9 +489,11 @@ function addRecord(record, scored, conceded) {
 }
 
 /** A read-only, opponent-aware snapshot rendered only when a standings team is tapped. */
-export function buildTeamScout(history, currentSeasonId, teamName, today = "9999-12-31") {
+export function buildTeamScout(
+  history, currentSeasonId, teamName, today = "9999-12-31", division = "",
+) {
   const current = seasonData(history, currentSeasonId);
-  const team = matchingTeam(Array.isArray(current?.teams) ? current.teams : [], teamName);
+  const team = matchingTeam(Array.isArray(current?.teams) ? current.teams : [], teamName, division);
   if (!team) return null;
   const seasonRows = divisionStandings(current, team, today);
   const currentRank = seasonRows.find((row) =>
@@ -470,9 +543,11 @@ export function buildTeamScout(history, currentSeasonId, teamName, today = "9999
 }
 
 /** Returns only completed public games; no score means the game is omitted. */
-export function buildLeagueTeamHistory(history, currentSeasonId, teamName, limit = 35, today = "9999-12-31") {
+export function buildLeagueTeamHistory(
+  history, currentSeasonId, teamName, limit = 35, today = "9999-12-31", division = "",
+) {
   const current = seasonData(history, currentSeasonId);
-  const team = matchingTeam(Array.isArray(current?.teams) ? current.teams : [], teamName);
+  const team = matchingTeam(Array.isArray(current?.teams) ? current.teams : [], teamName, division);
   if (!team) return null;
   const target = historyTeamKey(team.name);
   const matches = lastTeamGames(
@@ -487,7 +562,7 @@ export function buildLeagueTeamHistory(history, currentSeasonId, teamName, limit
     indexedMatchCount: matches.length,
     coverageComplete: history?.coverage?.complete === true,
     updatedAt: String(history?.updatedAt || ""),
-    scout: buildTeamScout(history, currentSeasonId, team.name, today),
+    scout: buildTeamScout(history, currentSeasonId, team.name, today, division),
     matches: matches.slice(0, Math.min(50, Math.max(1, limit))).map((match) => {
       const isHome = historyTeamKey(match.homeTeam) === target;
       const scored = isHome ? match.homeScore : match.awayScore;
