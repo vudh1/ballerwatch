@@ -1800,7 +1800,7 @@ test("repeated scouting requests do not starve public match data", () => {
   assert.match(worker, /createBoundedLoadCache\(\{ maxEntries: 55 \}\)/);
   assert.match(worker, /publicReadCache\.get\("rats-history", 120_000/);
   assert.match(worker, /loadRatsHistoryUncached\(env\)/);
-  assert.match(worker, /publicReadCache\.get\("public-snapshot", 20_000/);
+  assert.match(worker, /publicReadCache\.get\("public-snapshot", 90_000/);
   assert.match(worker, /prebuilt-scout-index-v1/);
   assert.match(worker, /scoutingProjectionCurrent\(index, snapshot\)/);
   assert.match(worker, /index\.reports\[key\]/);
