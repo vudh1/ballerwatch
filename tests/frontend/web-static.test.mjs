@@ -2127,3 +2127,15 @@ test("optional weather and venue lookups cannot block the main calendar", () => 
   assert.match(worker, /safe\.league\?\.updatedAt \|\| safe\.pickup\?\.updatedAt/);
   assert.doesNotMatch(route, /Promise\.all\(\[\s*loadSnapshot\(env\),\s*loadWebWeather\(env\)/);
 });
+
+test("public GET timeout covers the full response body, not only headers", () => {
+  const client = fs.readFileSync("frontend/web/lib/client.js", "utf8");
+  const request = client.split("export async function requestJson(")[1] || "";
+  const fetchAt = request.indexOf("await fetch(API_ORIGIN + path");
+  const bodyAt = request.indexOf("await response.json()");
+  const deadlineClearedAt = request.indexOf("clearTimeout(deadline)");
+  assert.ok(fetchAt >= 0 && bodyAt > fetchAt && deadlineClearedAt > bodyAt);
+  assert.match(request, /if \(controller\.signal\.aborted\) throw error/);
+  assert.match(request, /timeoutMs = 8_000/);
+});
+
