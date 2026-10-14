@@ -1658,7 +1658,9 @@ test("standings uses adjacent-card drag train and minimal table, preserving team
   assert.match(app, /els\.standingsViewport\.clientWidth \+ gap/);
   assert.match(app, /standingsIndex \* standingsStepWidth\(\)/);
   assert.doesNotMatch(app, /standingsIndex \* 100/);
-  assert.match(app, /viewport\.setPointerCapture\(event\.pointerId\)/);\n  assert.match(app, /touchmove/);\n  assert.match(app, /passive: false/);
+  assert.match(app, /viewport\.setPointerCapture\(event\.pointerId\)/);
+  assert.match(app, /touchmove/);
+  assert.match(app, /passive: false/);
   assert.match(app, /"pointermove"/);
   assert.match(app, /"pointercancel"/);
   assert.match(app, /is-train-dragging/);
