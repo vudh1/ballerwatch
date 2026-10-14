@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.9.0",
+  "currentVersion": "8.9.1",
   "releases": [
+    {
+      "version": "8.9.1",
+      "date": "2026-10-14",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Exact waterfall parity for standings and match cards",
+      "webAnnouncement": "BallerWatch 8.9.1 fixes the standings carousel's overly bright, solid blue navigation edge. Match and standings now share the exact translucent masked waterfall, backdrop blur, responsive hover opacity and arrow behavior. No changes to scouting data or notifications.",
+      "changes": [
+        "Fix the actual DOM-selector mismatch: standings arrows are nested inside .standings-controls, not direct children of .standings-rail. Apply the shared waterfall rule to the real control-group children and retain accessible group semantics.",
+        "Remove earlier standings-only pseudo-element gradients and the hover rule forcing 0.9 opacity; prevent the solid cyan strip seen in the user recording.",
+        "Share the identical masked transparent gradient, blur, arrow reveal, distance-based opacity calculation, disabled state and reduced-motion behavior between standings and match navigation. Preserve match-type edit button priority and mobile swipe handling.",
+        "Add a regression that verifies the actual nested HTML structure, shared CSS selector coverage and absence of conflicting legacy opacity rules.",
+        "Rotate the PWA service worker cache and assets for 8.9.1; release using the existing validation, Worker readiness, and GitHub Pages gates."
+      ]
+    },
     {
       "version": "8.9.0",
       "date": "2026-10-14",
