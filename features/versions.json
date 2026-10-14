@@ -17,7 +17,7 @@
         "Ground BallerWatch AI scouting, strength, form, attack, defense, current-season, all-time and precomputed matchup prediction questions in the hourly report index; handle ambiguous club divisions without fabricating scores or calibrated odds.",
         "Fix review-observed mixed dated pickup/RSVP/opponent intent so league fixture questions no longer return pickup capacity; explicitly state when pickup has no opposing team and allow authenticated users to ask their own RSVP display name.",
         "Add privacy-safe regression tests for scouting Q&A, name suggestions, picker roles, iPhone swipe handling, mixed fixture questions and 3-way estimates; schedule these in the existing six-hour AI feedback review.",
-        "Bump encrypted scouting snapshot schema, client PWA cache and documentation; retain existing production validation, secret, notification and Calendar gates."
+        "Extend the existing encrypted scouting snapshot schema compatibly with public team choices, rotate client PWA cache and update documentation; retain existing production validation, secret, notification and Calendar gates."
       ]
     },
     {
