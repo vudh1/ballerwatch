@@ -2275,6 +2275,13 @@ function applySpotlightModel(targets, game, label = "NEXT GAME") {
     targets.form.removeAttribute("title");
   }
   targets.location.textContent = model.location;
+  const estimate = monitoredWinForm(game);
+  if (estimate) {
+    targets.location.title =
+      `Provisional result estimate · Win ~${estimate.winPct}% · Draw ~${estimate.drawPct}% · Loss ~${estimate.lossPct}%. Last ${estimate.teamGames}/${estimate.opponentGames} scored games plus ${estimate.headToHeadGames} prior meetings; not calibrated odds.`;
+  } else {
+    targets.location.removeAttribute("title");
+  }
   targets.capacity.hidden = !model.capacityText;
   targets.capacityLabel.textContent = model.capacityText;
   targets.capacitySpots.textContent = model.spotsText;
