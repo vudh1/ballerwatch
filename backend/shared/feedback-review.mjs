@@ -21,6 +21,7 @@ export function historyIntentLabel(intent) {
     league_teams: "league-team",
     rats_history: "RATS-history",
     league_fixture: "league fixture",
+    league_scout: "prepared scouting",
     briefing: "weekly briefing",
     feature_request: "feature-request",
   };
@@ -50,6 +51,9 @@ export function feedbackQuestionShape(question) {
   if (/\b(?:time|when|start|kickoff|kick off)\b/.test(timingText)) add("time");
   if (/\b(?:where|field|location|address|venue)\b/.test(lower)) add("venue");
   if (/\b(?:weather|rain|temperature|forecast)\b/.test(lower)) add("weather");
+  if (/\b(?:scout|scouting|form|predict|prediction|win chance|defense|attack|quality score)\b/.test(lower)) {
+    add("scouting/prediction");
+  }
   if (/\b(?:record|wins?|losses?|draws?|all[- ]time|historical|history)\b/.test(lower)) {
     add("historical record");
   }
@@ -75,6 +79,8 @@ export function negativeFeedbackProjection(event = {}) {
       `A ${historyIntentLabel(event.intent)} answer about ${feedbackQuestionShape(event.question)} was explicitly marked wrong.`,
     reason: String(event?.intent || "") === "rats_history"
       ? "Check RATS archive coverage, score parsing, season discovery, and team matching; no user text is copied into the review projection."
-      : "Deterministic privacy-safe feedback fingerprint; no user text is copied into the review projection.",
+      : String(event?.intent || "") === "league_scout"
+        ? "Check prepared projection freshness, team/fixture disambiguation, division weights and probability labels. No raw user text is copied."
+        : "Deterministic privacy-safe feedback fingerprint; no user text is copied into the review projection.",
   };
 }
