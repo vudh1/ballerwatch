@@ -13,8 +13,9 @@ function containsName(question, name) {
   return Boolean(needle && (" " + key(question) + " ").includes(" " + needle + " "));
 }
 export function isScoutingQuestion(question) {
-  return /\b(?:scout(?:ing)?|strength|stronger|strongest|form|win(?:ning)? (?:chance|probability|rate|percentage)|odds|predict(?:ion|ed)?|likely to win|attack(?:ing)?|defen(?:se|ce|sive)|quality score|opponent.adjusted|last (?:five|5|ten|10) (?:games|matches)|draw (?:chance|probability)|loss (?:chance|probability))\b/i
-    .test(String(question || ""));
+  const text = String(question || "");
+  return /\b(?:scout(?:ing)?|strength|stronger|strongest|form|performance|win(?:ning)?\s+(?:chance|probability|rate|percentage)|odds|predict(?:ion|ed)?|likely to win|attack(?:ing)?|defen(?:se|ce|sive)|quality score|opponent.adjusted|last\s+(?:five|5|ten|10)\s+(?:games|matches)|draw\s+(?:chance|probability)|loss\s+(?:chance|probability)|team rankings?)\b/i
+    .test(text) || /\bcompare\b.{0,80}\b(?:teams?|clubs?|form|attack|defense|scoring)\b/i.test(text);
 }
 function reportRows(index) {
   const rows = [];
