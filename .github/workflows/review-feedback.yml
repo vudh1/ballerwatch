@@ -44,3 +44,5 @@ jobs:
           tests/backend/shared/fixture-ai.test.mjs
           tests/backend/shared/match-briefing.test.mjs
           tests/backend/shared/feedback-review.test.mjs
+          tests/backend/shared/scouting-ai.test.mjs
+          tests/backend/infra/web-worker/settings-choice.test.mjs
