@@ -36,7 +36,7 @@ test("the hourly projection includes quick standings, forecasts and full scout p
     history: history(), league, teams: ["Tracked FC"], today: "2026-10-13",
     generatedAt: "2026-10-13T17:00:00Z",
   });
-  assert.equal(index.schemaVersion, 3);
+  assert.equal(index.schemaVersion, 2);
   assert.deepEqual(index.teamOptions, ["Sitting Ducks", "Tracked FC"]);
   assert.equal(index.seasonId, "fall-2026");
   assert.equal(index.updatedAt, "2026-10-13T16:00:00Z");
