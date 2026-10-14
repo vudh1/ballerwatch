@@ -1800,27 +1800,24 @@ async function loadRatsHistoryUncached(env) {
   return history;
 }
 
-// The large archive is read and ranked by the separate hourly Actions job.
-// Each Worker request only parses the compact encrypted projection.
+// The large archive is read and ranked by a separate hourly Actions job.
+// Prefer the encrypted state already projected into KV before making any
+// GitHub API request. Scouting requests never scan raw archive history.
 async function loadScoutingIndex(env) {
-  return publicReadCache.get("prebuilt-scout-index-v1", 90_000,
+  return publicReadCache.get("prebuilt-scout-index-v2", 90_000,
     async () => {
-      try {
-        const envelope = await githubRawJsonFile(
-          env, "league/state/scout-index.json", "runtime-state",
-        );
-        const value = await decryptState(envelope, env);
-        if (value?.schemaVersion === 1 && value.standings?.cards &&
-            value.reports && typeof value.reports === "object") return value;
-      } catch (error) {
-        // During the first index run the projection may not exist yet. Only
-        // that specific missing-file case is allowed to fall back to the
-        // historical calculation; other nontransient errors fail closed.
-        const missing = /\b404\b|not found/i.test(String(error?.message || ""));
-        if (!missing && !transientPublicLoadError(error)) throw error;
+      const local = await kvJsonGet(env, "snapshot:scout-index").catch(() => null);
+      if (local?.schemaVersion === 1 && local.standings?.cards &&
+          local.reports && typeof local.reports === "object") return local;
+      const envelope = await githubRawJsonFile(
+        env, "league/state/scout-index.json", "runtime-state",
+      );
+      const index = await decryptState(envelope, env);
+      if (index?.schemaVersion !== 1 || !index.standings?.cards ||
+          !index.reports || typeof index.reports !== "object") {
+        throw new Error("Scouting projection is not ready.");
       }
-      const cached = await kvJsonGet(env, "snapshot:scout-index").catch(() => null);
-      return cached?.schemaVersion === 1 ? cached : null;
+      return index;
     },
     { staleMs: 6 * 60 * 60_000, transientError: transientPublicLoadError },
   );
@@ -3665,6 +3662,27 @@ export default {
       }
     }
 
+    // Bulk read is deliberately optional and compact compared with history
+    // calculation. The browser preloads this after the calendar is usable;
+    // subsequent team taps read its local copy without a network round trip.
+    if (request.method === "GET" && url.pathname === "/web/scouting-reports") {
+      try {
+        const [snapshot, index] = await Promise.all([
+          loadSnapshot(env), loadScoutingIndex(env),
+        ]);
+        if (!scoutingProjectionCurrent(index, snapshot)) {
+          return webJson(request, { ok: true, ready: false, reports: {} });
+        }
+        return webJson(request, {
+          ok: true, ready: true, updatedAt: index.updatedAt,
+          reports: index.reports,
+        });
+      } catch {
+        // This optional request must not affect fixtures or count as an outage.
+        return webJson(request, { ok: true, ready: false, reports: {} });
+      }
+    }
+
     if (request.method === "GET" && url.pathname === "/web/team-history") {
       const teamName = cleanText(url.searchParams.get("team"), 120);
       const division = cleanText(url.searchParams.get("division"), 150);
@@ -3689,7 +3707,7 @@ export default {
           const report = index.reports[key];
           if (report) return webJson(request, { ok: true, history: report });
           return webJson(request, {
-            ok: false, error: "Scouting report has not been indexed for this team yet.",
+            ok: false, error: "The precomputed scouting report is still refreshing.",
           }, { status: 503 });
         }
 
