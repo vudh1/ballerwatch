@@ -2067,13 +2067,18 @@ test("cached calendar renders its real Updated timestamp without false reconnect
   const startup = app.split('document.documentElement.classList.toggle("is-standalone"')[1] || "";
   const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
   assert.match(cacheRestore, /renderCalendar\(stored\.calendar\)/);
-  assert.doesNotMatch(cacheRestore, /Last synced|Reconnecting|setSystemState\("stale"\)/);
+  assert.doesNotMatch(cacheRestore, /els\.calendarUpdated\.textContent = "Last synced|setSystemState\("stale"\)/);
   assert.match(getCalendar, /if \(!next\?\.startDate \|\| !Array\.isArray\(next\.games\)\)/);
   assert.match(getCalendar, /JSON\.stringify\(next\) !== JSON\.stringify\(currentCalendar\)/);
   assert.match(getCalendar, /else \{\s*els\.calendarUpdated\.textContent = matchUpdatedText\(next\.updatedAt\)/);
   assert.match(getCalendar, /if \(currentCalendar\) \{\s*els\.calendarUpdated\.textContent = "Last synced · Reconnecting"/);
   assert.match(startup, /setSystemState\("checking"\)/);
   assert.match(startup, /restorePublicCalendar\(\)/);
+  assert.ok(startup.indexOf("restorePublicCalendar();") <
+    startup.indexOf("const calendarOk = await loadCalendar()"));
+  assert.ok(startup.indexOf("const calendarOk = await loadCalendar()") <
+    startup.indexOf("void registerServiceWorker().catch"));
+  assert.match(startup, /initialLoadComplete = true;\s*\/\/ Refresh\/install the service worker/);
   assert.doesNotMatch(startup.split("const calendarOk = await loadCalendar")[0], /setSystemState\("stale"\)/);
   assert.match(worker, /url\.pathname === "\/web\/calendar"[\s\S]*?webCalendarDetails\(snapshot, weather/);
   assert.doesNotMatch(worker, /buildMatchupEstimate\(|tuneScoutingWeights\(|buildLeagueStandings\(/);
