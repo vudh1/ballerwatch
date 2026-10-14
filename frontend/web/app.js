@@ -3590,9 +3590,8 @@ async function loadCalendar() {
   try {
     // The personal RSVP lookup is independent of the public schedule.
     // An auth/profile failure must never blank an otherwise valid calendar.
-    // Never block public fixtures on a slow private RSVP/account lookup.
-    // That independent result can update the badge when it arrives.
-    void loadRsvpStatus().catch(() => false);
+    // Public fixtures get the first API slot; the private RSVP refresh is
+    // independent and runs after the schedule request completes.
     const payload = await api("/web/calendar", {retryNetwork: true});
     const next = payload.calendar || null;
     // Keep the active card, scroll position and expensive layout untouched
@@ -3611,6 +3610,8 @@ async function loadCalendar() {
     els.calendarUpdated.textContent = "Calendar temporarily unavailable";
     await loadNextGame();
     return false;
+  } finally {
+    void loadRsvpStatus().catch(() => false);
   }
 }
 
@@ -4637,14 +4638,15 @@ renderNotificationPreferences();
 setSystemState("checking");
 // The first match card and schedule must not wait for optional history,
 // notification preferences or service worker update checks.
-const calendarReady = loadCalendar();
-void Promise.allSettled([
-  registerServiceWorker(), loadConfig(), loadBoard(),
-  loadStandings(), loadNotificationProfile(),
-]);
-const calendarOk = await calendarReady.catch(() => false);
+// Avoid a burst of optional API requests competing with the first schedule
+// request. Install/update can proceed while the schedule hydrates.
+void registerServiceWorker().catch(() => null);
+const calendarOk = await loadCalendar().catch(() => false);
 setSystemState(calendarOk ? "live" : currentCalendar ? "stale" : "offline");
 initialLoadComplete = true;
+void Promise.allSettled([
+  loadConfig(), loadBoard(), loadStandings(), loadNotificationProfile(),
+]);
 void updatePushStatus();
 if (ownerToken()) void syncCurrentPushRegistration();
 
