@@ -3876,7 +3876,9 @@ function retainVerifiedFixtureDetails(next, previous) {
     games: next.games.map((game) => {
       const last = priorById.get(game.id);
       if (!last || game.date !== last.date || game.location !== last.location ||
-          game.sourceUpdatedAt !== last.sourceUpdatedAt) return game;
+          game.sourceUpdatedAt !== last.sourceUpdatedAt ||
+          game.overrideActive !== last.overrideActive ||
+          game.overrideUpdatedAt !== last.overrideUpdatedAt) return game;
       return {
         ...game,
         weather: game.weather || last.weather || null,
