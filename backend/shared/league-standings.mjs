@@ -107,35 +107,7 @@ function previousSeasonId(seasonId) {
   return `${SEASON_NAMES[previousIndex]}-${year}`;
 }
 
-function rankedGoalRate(rows, teamName, field, ascending = false) {
-  const scored = rows.filter((row) => row.played > 0);
-  if (!scored.length) return null;
-  const ordered = [...scored].sort((a, b) => {
-    const left = a[field] / a.played;
-    const right = b[field] / b.played;
-    return (ascending ? left - right : right - left) ||
-      a.name.localeCompare(b.name);
-  });
-  const chosen = ordered.find((row) =>
-    normalizeHistoryTeamName(row.name) === normalizeHistoryTeamName(teamName));
-  if (!chosen) return null;
-  // Ties share ranks: alphabetical sorting only stabilizes display order.
-  const rate = chosen[field] / chosen.played;
-  const better = ordered.filter((row) => {
-    const comparison = row[field] / row.played;
-    return ascending ? comparison < rate : comparison > rate;
-  }).length;
-  return {
-    rank: better + 1,
-    total: scored.length,
-    perGame: Math.round(rate * 100) / 100,
-    goals: chosen[field],
-  };
-}
-
 function trackedTeamStats(history, seasonId, team, rows, today) {
-  const attack = rankedGoalRate(rows, team.name, "goalsFor");
-  const defense = rankedGoalRate(rows, team.name, "goalsAgainst", true);
   const priorId = previousSeasonId(seasonId);
   const prior = seasonData(history, priorId);
   const previousTeam = matchingTeam(
@@ -159,8 +131,6 @@ function trackedTeamStats(history, seasonId, team, rows, today) {
   }
 
   return {
-    attack,
-    defense,
     previousSeason,
     previousSeasonLabel: seasonLabel(priorId),
     archiveComplete: history?.coverage?.complete === true,
@@ -359,6 +329,38 @@ export function buildTeamRecentForm(history, teamName, today = "9999-12-31") {
     weightedWinPct: model.weightedWinPct, formWindow: FORM_WINDOW };
 }
 
+function recentGoalRanking(history, season, team, today, which) {
+  const matches = allIndexedScoredMatches(history, today);
+  const members = (season?.teams || []).filter((member) =>
+    normalizedDivision(member) === normalizedDivision(team));
+  const ranked = members.map((member) => {
+    const entries = lastTeamGames(matches, member.name);
+    if (!entries.length) return null;
+    let goals = 0, weightedGoals = 0, totalWeight = 0;
+    for (const entry of entries) {
+      const match = entry.match;
+      const home = entry.isHome;
+      const scored = home ? match.homeScore : match.awayScore;
+      const conceded = home ? match.awayScore : match.homeScore;
+      const amount = which === "attack" ? scored : conceded;
+      const weight = FORMAT_WEIGHTS[matchFormatFromArchive(history, match, member.name)];
+      goals += amount;
+      weightedGoals += amount * weight;
+      totalWeight += weight;
+    }
+    return { name: member.name, games: entries.length, goals,
+      rate: weightedGoals / totalWeight };
+  }).filter(Boolean);
+  const mine = ranked.find((member) =>
+    normalizeHistoryTeamName(member.name) === normalizeHistoryTeamName(team.name));
+  if (!mine) return null;
+  const better = ranked.filter((member) => which === "attack"
+    ? member.rate > mine.rate : member.rate < mine.rate).length;
+  return { rank: better + 1, total: ranked.length,
+    perGame: Math.round(100 * mine.rate) / 100,
+    goals: mine.goals, games: mine.games };
+}
+
 function emptyRecord() {
   return { games: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0,
     goalsAgainst: 0, goalDifference: 0, goalsForPerGame: null,
@@ -425,8 +427,8 @@ export function buildTeamScout(history, currentSeasonId, teamName, today = "9999
       losses: currentRank.losses, rank: currentRank.rank, teams: seasonRows.length,
     } : null,
     quality: qualityRanking(history, current, team, today),
-    attack: rankings.attack,
-    defense: rankings.defense,
+    attack: recentGoalRanking(history, current, team, today, "attack"),
+    defense: recentGoalRanking(history, current, team, today, "defense"),
     previousSeason: rankings.previousSeason,
     previousSeasonLabel: rankings.previousSeasonLabel,
     overall: finishRecord(all),
