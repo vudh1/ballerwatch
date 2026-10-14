@@ -12,19 +12,19 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
 
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   assert.match(html, /manifest\.webmanifest/);
-  assert.match(html, /apple-touch-icon\.png\?v=8\.6\.1/);
+  assert.match(html, /apple-touch-icon\.png\?v=8\.7\.0/);
   assert.match(html, /class="brand-icon"/);
-  assert.match(html, /icon\.svg\?v=8\.6\.1/);
+  assert.match(html, /icon\.svg\?v=8\.7\.0/);
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=8\.6\.1/);
-  assert.match(html, /app\.js\?v=8\.6\.1/);
+  assert.match(html, /styles\.css\?v=8\.7\.0/);
+  assert.match(html, /app\.js\?v=8\.7\.0/);
 
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v8-6-1-shell/);
+  assert.match(sw, /ballerwatch-v8-7-0-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -93,7 +93,7 @@ test("promotion watches Worker and Pages then refreshes the open PWA", () => {
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=8\.6\.1/);
+  assert.match(app, /sw\.js\?v=8\.7\.0/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -826,7 +826,7 @@ test("page uses a soccer-pitch backdrop with readable translucent cards", () => 
   assert.match(icon, /A soccer pitch with a soccer ball/);
   assert.match(icon, /<circle cx="256" cy="256" r="54"\/>/);
   assert.match(icon, /translate\(347 344\)/);
-  assert.match(manifest, /icon\.svg\?v=8\.6\.1/);
+  assert.match(manifest, /icon\.svg\?v=8\.7\.0/);
   assert.match(css, /\.card,[\s\S]*\.footer-install \{[\s\S]*rgba\(6, 18, 22, 0\.57\)/);
   assert.match(css, /\.spotlight-card \{[\s\S]*rgba\(4, 16, 22, 0\.72\)/);
   assert.match(css, /backdrop-filter:\s*blur\(24px\) saturate\(135%\)/);
@@ -859,7 +859,7 @@ test("notification center supports filters, synced read state, and account prefe
   assert.match(worker, /runtime\(user\): sync notification profile/);
   assert.match(css, /\.notification-filters \{/);
   assert.match(css, /\.notification-preferences \{/);
-  assert.match(html, /<span>App update<\/span>/);
+  assert.match(html, /<span>App<\/span>/);
   assert.match(css, /\.notification-preference-options \{[\s\S]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/);
   assert.match(app, /ownerToken\(\) \? loadNotificationProfile\(\{ migrateLocal: false \}\)/);
   assert.match(app, /loadNotificationProfile\(\{ migrateLocal: false \}\)/);
@@ -1238,7 +1238,7 @@ test("admin Settings presents production rollout only as an app update", () => {
 
   assert.match(html, /id="release-management"/);
   assert.match(html, /id="promote-release"/);
-  assert.match(html, />App update</);
+  assert.match(html, /<h3 class="settings-subheading">App<\/h3>/);
   assert.match(html, /validated app-update workflow/);
   assert.match(app, /function renderReleaseStatus/);
   assert.match(app, /async function loadReleaseStatus/);
@@ -1246,7 +1246,7 @@ test("admin Settings presents production rollout only as an app update", () => {
   assert.match(app, /\/web\/user\/release-status/);
   assert.match(app, /\/web\/user\/promote-release/);
   assert.match(app, /Production \$\{production\} → Available \$\{source\}/);
-  assert.match(app, /promoteRelease\.textContent = "App update"/);
+  assert.match(app, /promoteRelease\.textContent = "Update app"/);
   assert.match(app, /Start the BallerWatch \$\{version\} app update/);
   assert.match(app, /normal validation and release gates will still apply/);
   assert.doesNotMatch(app, /Promote BallerWatch|Promotion requested|Requesting production promotion|Promotion is still deploying/);
@@ -1350,7 +1350,7 @@ test("cinematic launch owns first paint, stays session-scoped, and is reduced-mo
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
 
   assert.match(html, /<html lang="en" class="launch-intro-pending">/);
-  assert.match(html, /<script src="\.\/launch-prepaint\.js\?v=8\.6\.1"><\/script>[\s\S]*<link rel="stylesheet"/);
+  assert.match(html, /<script src="\.\/launch-prepaint\.js\?v=8\.7\.0"><\/script>[\s\S]*<link rel="stylesheet"/);
   assert.match(html, /id="launch-intro" aria-hidden="true">/);
   assert.doesNotMatch(html, /id="launch-intro"[^>]*\shidden/);
   assert.match(html, /class="launch-intro-word-main">BallerWatch<\/span>/);
@@ -1371,7 +1371,7 @@ test("cinematic launch owns first paint, stays session-scoped, and is reduced-mo
   assert.match(css, /@keyframes ballerwatch-intro-shine/);
   assert.match(css, /\.launch-intro\.is-active \{[\s\S]*pointer-events:\s*auto/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.launch-intro \{[\s\S]*display:\s*none !important/);
-  assert.match(sw, /\.\/launch-prepaint\.js\?v=8\.6\.1/);
+  assert.match(sw, /\.\/launch-prepaint\.js\?v=8\.7\.0/);
   assert.doesNotMatch([html, gate, app, css].join("\n"), /Netflix/i);
 });
 
@@ -1641,7 +1641,7 @@ test("standings carousel highlights monitored teams and has accessible history d
   assert.match(css, /\.team-history-dialog/);
   assert.match(worker, /url\.pathname === "\/web\/standings"/);
   assert.match(worker, /url\.pathname === "\/web\/team-history"/);
-  assert.match(worker, /card\.rows\.some\(\(row\) => row\.name === teamName\)/);
+  assert.match(worker, /candidate\.rows\.some\(\(row\) => row\.name === teamName\)/);
   assert.doesNotMatch(html, /PhoSaiGon|Third Touch FC/);
 });
 
@@ -1666,8 +1666,20 @@ test("standings uses adjacent-card drag train and minimal table, preserving team
   assert.match(css, /\.standings-track\.is-train-dragging \{ transition: none;/);
   assert.match(css, /--standings-train-gap: 12px/);
   assert.match(css, /\.standings-step-next::before/);
+  assert.match(app, /function bindCardEdgeWaterfall\(/);
+  assert.match(app, /bindCardEdgeWaterfall\(control, direction\)/);
+  assert.match(css, /\.standings-rail \.standings-step:not\(:disabled\)::before/);
   assert.match(app, /\["W-D-L", "Wins, draws, losses"\]/);
   assert.match(app, /openTeamHistory\(\s*row\.name, card\.divisionKey/);
+});
+
+test("scouting sheet uses RSVP close control style at the true right edge", () => {
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
+  assert.match(html, /class="icon-button" id="close-team-history"/);
+  assert.match(html, /class="icon-button" id="close-rsvp-roster"/);
+  assert.match(css, /\.team-history-heading \{[\s\S]*?padding-right: 0;/);
+  assert.match(css, /\.team-history-heading #close-team-history \{[\s\S]*?margin-left: auto;/);
 });
 
 test("calendar no longer includes a page carousel, waterfall controls, or train previews", () => {
@@ -1801,10 +1813,10 @@ test("repeated scouting requests do not starve public match data", () => {
   assert.match(worker, /publicReadCache\.get\("rats-history", 120_000/);
   assert.match(worker, /loadRatsHistoryUncached\(env\)/);
   assert.match(worker, /publicReadCache\.get\("public-snapshot", 90_000/);
-  assert.match(worker, /prebuilt-scout-index-v2/);
+  assert.match(worker, /prebuilt-scout-index-v3/);
   assert.match(worker, /scoutingProjectionCurrent\(index, snapshot\)/);
   assert.match(worker, /index\.reports\[key\]/);
-  assert.match(worker, /standings-fallback:/);
+  assert.doesNotMatch(worker, /standings-fallback:|scout-fallback:|buildLeagueStandings\(|buildLeagueTeamHistory\(/);
   assert.doesNotMatch(worker, /cachedJson\("rats-history-v1"/);
   assert.match(worker, /loadWebWeather\(env\)\.catch\(\(\) => null\)/);
   assert.match(worker, /loadRatsVenues\(env\)\.catch/);

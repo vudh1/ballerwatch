@@ -5934,3 +5934,136 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
 .standings-slide .eyebrow {
   color: rgba(191, 219, 254, 0.72);
 }
+
+/* v8.7.0: shared sports-card typography, affordances and accessible scout close. */
+:root {
+  --type-section: 1.1875rem;
+  --type-body: 0.90625rem;
+  --type-body-strong: 0.96875rem;
+  --card-surface-line: rgba(188, 214, 205, 0.18);
+}
+.card,
+.standings-slide {
+  border-color: var(--card-surface-line);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 18px 44px rgba(0, 9, 12, 0.18);
+}
+.card .eyebrow,
+.standings-slide .eyebrow {
+  font-size: var(--type-caption);
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  color: rgba(191, 219, 254, 0.78);
+}
+.calendar-card h2,
+.standings-slide .standings-team-name {
+  font-size: clamp(1.3rem, 3.5vw, 1.65rem);
+  font-weight: 800;
+  letter-spacing: -0.032em;
+  line-height: 1.16;
+}
+.standings-division,
+.next-game-meta,
+.next-game-location,
+.standings-card-updated {
+  font-variant-numeric: tabular-nums;
+}
+.team-history-heading {
+  padding-right: 0;
+  align-items: flex-start;
+}
+.team-history-heading > div:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.team-history-heading #close-team-history {
+  flex: 0 0 auto;
+  margin-left: auto;
+  min-width: 2.35rem;
+  min-height: 2.35rem;
+  padding: 0.45rem 0.7rem;
+  font-size: 1rem;
+  align-self: flex-start;
+}
+/* Use the match-card opacity and arrow tokens on the standings train too. */
+@media (hover: hover) and (pointer: fine) {
+  .standings-rail .standings-step {
+    top: 0;
+    bottom: 0;
+    width: clamp(2rem, 7vw, 3.3rem);
+    height: auto;
+    padding: 0;
+    transform: none;
+    border: 0;
+    border-radius: 27px;
+    background: transparent;
+    overflow: visible;
+    z-index: 4;
+  }
+  .standings-rail .standings-step::before {
+    top: 0;
+    height: 100%;
+    width: min(5.5rem, 22vw);
+    transform: none;
+    opacity: var(--edge-opacity, 0.10);
+    -webkit-backdrop-filter: blur(7px) saturate(150%);
+    backdrop-filter: blur(7px) saturate(150%);
+    transition: opacity 170ms ease;
+    pointer-events: none;
+  }
+  .standings-rail .standings-step-previous::before,
+  .spotlight-edge-previous::before {
+    background: linear-gradient(90deg,
+      rgba(125, 211, 252, 0.20) 0%,
+      rgba(96, 165, 250, 0.08) 42%, transparent 100%);
+  }
+  .standings-rail .standings-step-next::before,
+  .spotlight-edge-next::before {
+    background: linear-gradient(270deg,
+      rgba(125, 211, 252, 0.20) 0%,
+      rgba(96, 165, 250, 0.08) 42%, transparent 100%);
+  }
+  .standings-rail .standings-step span {
+    display: grid;
+    place-items: center;
+    width: 2.15rem;
+    height: 2.8rem;
+    opacity: var(--edge-arrow-opacity, 0);
+    text-shadow: 0 0 10px rgba(191, 219, 254, 0.78);
+    transform: scale(0.9);
+    transition: opacity 150ms ease, transform 180ms ease;
+  }
+  .spotlight-edge-control:not(:disabled)::before,
+  .spotlight-edge-control:not(:disabled):is(:hover, :focus-visible)::before,
+  .standings-rail .standings-step:not(:disabled)::before,
+  .standings-rail .standings-step:not(:disabled):is(:hover, :focus-visible)::before {
+    opacity: var(--edge-opacity, 0.10);
+  }
+  .spotlight-edge-control:not(:disabled) span,
+  .spotlight-edge-control:not(:disabled):is(:hover, :focus-visible) span,
+  .standings-rail .standings-step:not(:disabled) span,
+  .standings-rail .standings-step:not(:disabled):is(:hover, :focus-visible) span {
+    opacity: var(--edge-arrow-opacity, 0);
+  }
+  .standings-rail .standings-step:disabled {
+    pointer-events: none;
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .standings-rail .standings-step::before,
+  .standings-rail .standings-step span {
+    transition: none;
+  }
+}
+
+/* Let the shared gradient, rather than a second mask, fade to transparency. */
+@media (hover: hover) and (pointer: fine) {
+  .standings-rail .standings-step::before {
+    mask-image: none;
+    -webkit-mask-image: none;
+  }
+  .standings-rail .standings-step:not(:disabled):is(:hover, :focus-visible) span {
+    transform: scale(1);
+  }
+}

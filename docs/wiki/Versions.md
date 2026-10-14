@@ -50,6 +50,7 @@ Signed-in Inbox read/delete state is merged into the encrypted user profile so m
 
 ## Current development line
 
+- **8.7.0** — matched match/standings waterfall navigation and refined typography; App labels and RSVP-style top-right scouting X; division-weighted historical form (D1 > D2a > D2b > D2c > D3, unknown neutral), recent form and head-to-head; rounded provisional win/draw/loss; only versioned encrypted precomputed scouting GETs, no archive scans on page load.
 - **8.6.1** — restores missing encrypted prebuilt scouting index at release/bootstrap; bulk background report preloading; bounded public GET timeouts; session-only last-good public calendar recovery; live status decoupled from optional reads; inline post-jersey monitored win chance and matching League Standings heading color.
 
 - **8.6.0** — hourly independent encrypted scouting index, compact Worker read-only retrieval, no per-team browser prefetch flood, better transient public snapshot reuse and corrected offline status handling. Existing ten-game weighted strength/scoring and matchup calculations are preserved.

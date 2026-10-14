@@ -1,7 +1,23 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.6.1",
+  "currentVersion": "8.7.0",
   "releases": [
+    {
+      "version": "8.7.0",
+      "date": "2026-10-14",
+      "type": "minor",
+      "source": "user-reported",
+      "title": "Unified sports cards and division-aware instant scouting",
+      "webAnnouncement": "BallerWatch 8.7 brings matching waterfall navigation and polished typography across cards, a right-aligned scouting close button, clearer App controls, and division-aware historical form. Prepared reports now include provisional win/draw/loss forecasts without recalculating history when cards open.",
+      "changes": [
+        "Share waterfall edge pointer behavior and refreshed native-font typography across match and standings cards, preserving card-button priority and reduced-motion support.",
+        "Change visible App update labels to App in settings and notification preferences, and align the scouting-report top-right X with the RSVP roster close button.",
+        "Account for historical D1 > D2a > D2b > D2c > D3 strengths, 11v11 versus 8v8, recency, opponent form and up to five prior meetings in the scouting model; treat unlabeled divisions neutrally.",
+        "Publish rounded provisional match win/draw/loss estimates that sum to 100% but are explicitly not calibrated betting odds; preserve compact monitored-team win text.",
+        "Serve public standings and team-history only from the version-2 encrypted hourly scouting projection, without calculating historical games on user GET requests; retain last-synced client snapshots when refresh is incomplete.",
+        "Rotate versioned PWA shell assets and extend synthetic regression coverage without sending push notifications or touching Google Calendar."
+      ]
+    },
     {
       "version": "8.6.1",
       "date": "2026-10-13",

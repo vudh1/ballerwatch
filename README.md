@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, Calendar sync, and quick answers into one installable app.
 
-**Current source version: 8.6.1**
+**Current source version: 8.7.0**
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
 
@@ -34,6 +34,15 @@ Saturday synthetic pickup is shown simply as **Pickup** and has no RSVP/capacity
 A 22-second walkthrough with a short animated intro. Recorded from the app using synthetic sample data; game details, answers, and notifications are illustrative.
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/)
+
+## BallerWatch 8.7.0 — Unified sports cards and prepared division-aware scouting
+
+- **Matching edge navigation:** Match and standings cards now use one pointer-distance waterfall animation, consistent edge fading and arrow cues, with card contents and actions retaining click priority. The dark soccer-glass design has a shared type scale, borders, and numerical hierarchy using the existing native font stack.
+- **Simpler App controls:** Notification and Settings labels now say **App**; the scouting dialog's top-right close X matches the RSVP roster control.
+- **Division-aware cross-season results:** Historical form recognizes published D1, D2a, D2b, D2c, and D3 levels, weights verified 11v11 results above 8v8, and applies recency. Unspecified divisions receive neutral weight. Current-division standings are not changed by historical multipliers.
+- **More cautious three-outcome previews:** Scouting projections store a provisional win/draw/loss estimate for each monitored fixture, respecting recent results, opponent quality, division context, and up to five prior meetings. Each outcome is rounded to 5% steps and the three add to 100%. Estimates are **not calibrated odds**; the match card continues to show the monitored team's compact **Win ~XX%**, with all three percentages available in its accessible location tooltip.
+- **No historical calculations on public page requests:** `/web/standings` and `/web/team-history` now only read an independently generated, versioned and encrypted scouting projection. Failed projections respond as temporarily unavailable instead of rebuilding the whole history on GET; the browser keeps already loaded last-synced cards. The hourly refresh workflow remains notification-silent and separate from match/calendar routes.
+- **Release protection:** Old scouting projections are rejected by schema version and rebuilt through the release-triggered background workflow; source-only tests are synthetic and never send Web Push or mutate Google Calendar.
 
 ## BallerWatch 8.6.1 — Scout-index bootstrap and resilient loading
 

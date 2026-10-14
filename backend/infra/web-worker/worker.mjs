@@ -26,7 +26,7 @@ import { safeForExternalIntent, validatedAiIntent } from "../../shared/ai-intent
 import { answerFixtureQuestion } from "../../shared/fixture-ai.mjs";
 import { weeklyMatchBriefing } from "../../shared/match-briefing.mjs";
 import { answerRatsHistoryQuestion } from "../../shared/rats-history.mjs";
-import { buildLeagueStandings, buildLeagueTeamHistory } from "../../shared/league-standings.mjs";
+// Scouting projections are built by scheduled Actions, never inside a GET.
 import { createBoundedLoadCache } from "../../shared/bounded-load-cache.mjs";
 import { matchVenue } from "../../shared/venue-directory.mjs";
 import {
@@ -1591,7 +1591,7 @@ async function syncDerivedRuntimeFile(env, path, raw) {
     if (value) await kvJsonPut(env, "snapshot:rats-history", value);
   } else if (path === "league/state/scout-index.json") {
     const value = await decryptState(parsed, env);
-    if (value?.schemaVersion === 1) await kvJsonPut(env, "snapshot:scout-index", value);
+    if (value?.schemaVersion === 2) await kvJsonPut(env, "snapshot:scout-index", value);
   } else if (path === "state/user.json") {
     const userState = await userStateDocument(env, parsed);
     if (userState.settings) {
@@ -1804,10 +1804,10 @@ async function loadRatsHistoryUncached(env) {
 // Prefer the encrypted state already projected into KV before making any
 // GitHub API request. Scouting requests never scan raw archive history.
 async function loadScoutingIndex(env) {
-  return publicReadCache.get("prebuilt-scout-index-v2", 90_000,
+  return publicReadCache.get("prebuilt-scout-index-v3", 90_000,
     async () => {
       const local = await kvJsonGet(env, "snapshot:scout-index").catch(() => null);
-      const valid = (value) => value?.schemaVersion === 1 &&
+      const valid = (value) => value?.schemaVersion === 2 &&
         Array.isArray(value.standings?.cards) &&
         value.reports && typeof value.reports === "object";
       // KV can lag behind hourly GitHub-published snapshots; trust it for
@@ -3655,17 +3655,11 @@ export default {
         if (scoutingProjectionCurrent(index, snapshot)) {
           return webJson(request, { ok: true, standings: index.standings });
         }
-        // During the very first hourly index after an upgrade, keep old
-        // standings accessible. Normal operation never calculates on GET.
-        const history = await loadRatsHistory(env);
-        const seasonId = cleanText(snapshot?.league?.seasonId, 40);
-        const today = localDate();
-        const standings = await publicReadCache.get(
-          `standings-fallback:${history.updatedAt}:${seasonId}:${today}:${(snapshot?.teams || []).join("|")}`,
-          5 * 60_000,
-          () => buildLeagueStandings(history, seasonId, snapshot?.teams || [], today),
-        );
-        return webJson(request, { ok: true, standings });
+        // Missing or mismatched projections are reported as unavailable
+        // instead of rebuilding years of historical results during a GET.
+        return webJson(request, {
+          ok: false, error: "Prepared standings are refreshing. Last synced data remains visible.",
+        }, { status: 503 });
       } catch {
         return webJson(request, {
           ok: false, error: "RATS standings are temporarily unavailable.",
@@ -3722,32 +3716,11 @@ export default {
           }, { status: 503 });
         }
 
-        // Preserve pre-index backwards compatibility without impacting the
-        // fast calendar or next-game endpoints. This path retires once the
-        // first independent hourly projection is published.
-        const history = await loadRatsHistory(env);
-        const seasonId = cleanText(snapshot?.league?.seasonId, 40);
-        const standings = buildLeagueStandings(
-          history, seasonId, snapshot?.teams || [], localDate(),
-        );
-        const allowed = standings.cards.some((card) =>
-          (!division || card.divisionKey === division || card.division === division) &&
-          card.rows.some((row) => row.name === teamName));
-        if (!allowed) {
-          return webJson(request, { ok: false, error: "Team is not in the current standings." },
-            { status: 404 });
-        }
-        const report = await publicReadCache.get(
-          `scout-fallback:${history.updatedAt}:${seasonId}:${localDate()}:${teamName}:${division}`,
-          5 * 60_000,
-          () => buildLeagueTeamHistory(
-            history, seasonId, teamName, 35, localDate(), division,
-          ),
-        );
-        if (report) return webJson(request, { ok: true, history: report });
+        // Never index raw RATS seasons when a user opens a team. The
+        // independent encrypted scouting job is the only model publisher.
         return webJson(request, {
-          ok: false, error: "Team history is not indexed yet.",
-        }, { status: 404 });
+          ok: false, error: "Prepared scouting reports are refreshing. Please try again later.",
+        }, { status: 503 });
       } catch (error) {
         console.warn("Public scout read failed", String(error?.name || "Error").slice(0, 36));
         return webJson(request, {
