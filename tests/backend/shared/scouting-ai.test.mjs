@@ -107,3 +107,27 @@ test("a follow-up can reuse validated team context without inventing an opponent
   assert.match(answer.reply, /Defense \(last 10\)/);
   assert.equal(answerScoutingQuestion("Show the win chance for an unpublished match", index).ok, false);
 });
+
+test("BallerWatch AI reports only published out-of-sample scouting metrics", () => {
+  const index = prepared();
+  index.model = {
+    modelVersion: 1,
+    status: "baseline-retained",
+    evaluatedGames: 140,
+    trainedFolds: 4,
+    nextSeasonBrier: 0.616,
+    baselineNextSeasonBrier: 0.615,
+    qualityNextSeasonCorrelation: 0.23,
+    qualityTeamPairs: 26,
+  };
+  const answer = answerScoutingQuestion("How accurate is the scouting model?", index);
+  assert.equal(answer.ok, true);
+  assert.match(answer.reply, /baseline retained/);
+  assert.match(answer.reply, /140 scored fixtures/);
+  assert.match(answer.reply, /0.616/);
+  assert.match(answer.reply, /0.615 baseline/);
+  assert.match(answer.reply, /correlation: 0.23/);
+  const missing = answerScoutingQuestion("Scouting model calibration?", prepared());
+  assert.equal(missing.ok, true);
+  assert.match(missing.reply, /validation sample is not yet available/);
+});
