@@ -7,6 +7,11 @@ on:
   workflow_run:
     workflows: ["Validate code"]
     types: [completed]
+  # A merged release itself also starts a bounded self-check if workflow_run
+  # notifications were skipped while other PR validation runs completed.
+  push:
+    branches: [main]
+    paths: [".github/workflows/complete-8-11-0.yml"]
 
 permissions:
   contents: read
@@ -21,9 +26,9 @@ jobs:
     # A successful validation event may originate on a PR, but the step
     # below independently compares the validated SHA to the exact current
     # main SHA and the release ledger. Do not skip at job level.
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'push' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 9
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
@@ -33,7 +38,8 @@ jobs:
       - name: Require validated current BallerWatch 8.11.0 ledger
         id: candidate
         env:
-          VALIDATED_SHA: ${{ github.event.workflow_run.head_sha }}
+          VALIDATED_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          PROMOTION_EVENT: ${{ github.event_name }}
           GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
         shell: bash
         run: |
@@ -47,6 +53,20 @@ jobs:
             exit 0
           fi
           test -n "$GH_TOKEN" || { echo "::error::RELEASE_GITHUB_TOKEN missing"; exit 1; }
+          # A main push precedes CI completion. Never dispatch unless GitHub
+          # confirms an actual successful Validate code run for this exact SHA.
+          if [ "$PROMOTION_EVENT" = "push" ]; then
+            passed=false
+            for attempt in $(seq 1 28); do
+              count="$(gh api -X GET "/repos/$GITHUB_REPOSITORY/actions/workflows/validate.yml/runs" -f head_sha="$head_sha" -f status=completed -f per_page=20 --jq '[.workflow_runs[] | select(.conclusion == "success")] | length')"
+              if [ "$count" -ge 1 ]; then passed=true; break; fi
+              sleep 12
+            done
+            if [ "$passed" != "true" ]; then
+              echo "::error::No successful validation run for the exact 8.11.0 main SHA."
+              exit 1
+            fi
+          fi
           if gh release view v8.11.0 --repo "$GITHUB_REPOSITORY" --json isDraft --jq '.isDraft' 2>/dev/null | grep -qx false; then
             echo "Published v8.11.0 already exists. No duplicate promotion."
             echo "dispatch=false" >> "$GITHUB_OUTPUT"
