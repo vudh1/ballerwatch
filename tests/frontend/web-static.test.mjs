@@ -1641,7 +1641,7 @@ test("standings carousel highlights monitored teams and has accessible history d
   assert.match(css, /\.team-history-dialog/);
   assert.match(worker, /url\.pathname === "\/web\/standings"/);
   assert.match(worker, /url\.pathname === "\/web\/team-history"/);
-  assert.match(worker, /card\.rows\.some\(\(row\) => row\.name === teamName\)/);
+  assert.match(worker, /candidate\.rows\.some\(\(row\) => row\.name === teamName\)/);
   assert.doesNotMatch(html, /PhoSaiGon|Third Touch FC/);
 });
 
