@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, Calendar sync, and quick answers into one installable app.
 
-**Current source version: 8.4.0**
+**Current source version: 8.5.0**
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
 
@@ -34,6 +34,14 @@ Saturday synthetic pickup is shown simply as **Pickup** and has no RSVP/capacity
 A 22-second walkthrough with a short animated intro. Recorded from the app using synthetic sample data; game details, answers, and notifications are illustrative.
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/)
+
+## BallerWatch 8.5.0 — Cross-season weighted form and cleaner navigation
+
+- **Last ten scored matches, not just current season:** Opponent Scout now uses each team's most recent **10 indexed results**, across RATS seasons and **8v8 + 11v11**. A team newly playing 8v8 can draw on its older 11v11 record. Verified 11v11 games count **1.25×** 8v8 games; games lacking reliable format metadata count neutrally rather than disappearing. Older-than-ten results still contribute to the separate all-time/format totals.
+- **Opponent-adjusted form:** Win/draw results are weighted by the *other team's* recent scored record against third parties, excluding direct games with the featured team, and smoothed for small samples. Current-division rankings compare each club's **cross-season last-ten index**, rather than only results this season. This is an experimental strength index, not win odds. Attack and defense rankings likewise use last ten scored matches across formats and seasons.
+- **Match-card preview:** RATS **league** fixture cards show a compact last-ten **weighted win percentage** for both listed teams when the encrypted RATS archive has scored results. The rate is weighted wins divided by weighted games (draws are not counted as wins); this is historic form, **not** the chance of winning the upcoming fixture. Pickup cards do not show it. If a team has no index coverage, omit its percentage.
+- **Simpler 14-day schedule:** The Match Days card no longer has a carousel, waterfall arrows, or its own swipe navigation. Tapping the 14-day card opens the full published schedule, tapping again collapses; selecting a day still controls the spotlight match card.
+- **Standings:** The league team card train now has **no gap** between cards, matching the main match-card train.
 
 ## BallerWatch 8.4.0 — On-demand opponent scouting and hourly scores
 
