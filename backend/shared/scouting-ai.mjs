@@ -81,7 +81,7 @@ function matchupAnswer(match) {
 export function answerScoutingQuestion(question, index, { contextTeams = [] } = {}) {
   if (!isScoutingQuestion(question)) return null;
   const raw = String(question || "").slice(0, 600);
-  if (/\b(?:backtest|accuracy|calibrat|training|model (?:performance|weights))\b/i.test(raw)) {
+  if (/\b(?:backtest(?:ing)?|accuracy|calibrat\w*|train(?:ing|ed)?|model (?:performance|weights))\b/i.test(raw)) {
     const calibration = index?.model;
     if (!calibration || !calibration.evaluatedGames) {
       return { ok: true, intent: "league_scout",
