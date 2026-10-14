@@ -615,7 +615,7 @@ test("web Live status requires successful runtime-backed reads", () => {
   const config = app.match(/async function loadConfig\(\)[\s\S]*?\n}\n/)?.[0] || "";
   const online = app.match(/window\.addEventListener\("online"[\s\S]*?\n}\);/)?.[0] || "";
 
-  assert.match(refresh, /const \[calendarOk\] = await Promise\.all/);
+  assert.match(refresh, /const calendarOk = await loadCalendar\(\)/);
   assert.match(refresh, /calendarOk \? "live" : currentCalendar \? "stale" : "offline"/);
   assert.doesNotMatch(config, /setSystemState\("live"\)/);
   assert.match(online, /setSystemState\("checking"\)/);
@@ -863,7 +863,7 @@ test("notification center supports filters, synced read state, and account prefe
   assert.match(css, /\.notification-preference-options \{[\s\S]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/);
   assert.match(app, /const notificationProfileRefresh = ownerToken\(\)/);
   assert.match(app, /loadNotificationProfile\(\{ migrateLocal: false \}\)/);
-  assert.match(app, /const \[calendarOk\] = await Promise\.all/);
+  assert.match(app, /const calendarOk = await loadCalendar\(\)/);
   assert.match(app, /notificationProfileRefresh\.catch\(\(\) => false\)/);
   assert.match(app, /Synced when active for @/);
 });
@@ -1641,7 +1641,7 @@ test("standings carousel highlights monitored teams and has accessible history d
   assert.match(css, /\.team-history-dialog/);
   assert.match(worker, /url\.pathname === "\/web\/standings"/);
   assert.match(worker, /url\.pathname === "\/web\/team-history"/);
-  assert.match(worker, /card\.rows\.some\(\(row\) => row\.name === teamName\)/);
+  assert.match(worker, /card\.rows\.some\(row => row\.name === teamName\)/);
   assert.doesNotMatch(html, /PhoSaiGon|Third Touch FC/);
 });
 
