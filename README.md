@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, Calendar sync, and quick answers into one installable app.
 
-**Current source version: 8.5.2**
+**Current source version: 8.5.3**
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
 
@@ -34,6 +34,13 @@ Saturday synthetic pickup is shown simply as **Pickup** and has no RSVP/capacity
 A 22-second walkthrough with a short animated intro. Recorded from the app using synthetic sample data; game details, answers, and notifications are illustrative.
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/)
+
+## BallerWatch 8.5.3 — Reliable scouting and public fixtures
+
+- **Scouting doesn't reindex history for every tap:** A bounded Cloudflare Worker cache keeps the same decrypted RATS results object and its indexed games for a short time, coalesces concurrent reads, and caches each team's compiled opponent report by data revision. The PWA also reuses recent scouting reports in memory instead of repeatedly making the same expensive API call.
+- **Safe, clearly marked stale fallback:** When a temporary network/server error interrupts a previously successful public snapshot, the Worker may reuse a recent cached result; missing, purged or invalid canonical runtime state still fails closed. A previously opened scouting sheet can show **Last synced** for up to 15 minutes while reconnection is attempted.
+- **Core schedule resilience:** Weather and venue enrichment failures no longer cause public calendar requests to fail. The existing primary match and calendar cards retain their last valid data rather than blanking during transient API faults.
+- **Validation:** Synthetic single-flight, cache bounds, transient error classification and public API independence tests. No production notifications or Calendar mutations.
 
 ## BallerWatch 8.5.2 — Faster match data and compact win rate
 
