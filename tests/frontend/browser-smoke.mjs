@@ -201,9 +201,11 @@ try {
         await page.locator("#guest-teams-trigger").click();
         await page.locator("#guest-teams-search").fill("Fixture FC");
         await page.locator('#guest-teams-options [role="option"]').first().click();
+        page.on("console", (message) => console.log("Guest browser console:", message.type(), message.text()));
         await page.locator("#guest-settings-form button[type=submit]").click();
         const diagnostic = await page.evaluate(() => ({
           location: location.pathname + location.search,
+          navigation: performance.getEntriesByType("navigation").map(x => x.type),
           form: document.querySelector("#guest-settings-form")?.outerHTML.slice(0, 500),
           valid: document.querySelector("#guest-settings-form")?.checkValidity(),
           status: document.querySelector("#guest-settings-status")?.textContent,
