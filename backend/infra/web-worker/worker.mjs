@@ -26,7 +26,10 @@ import { safeForExternalIntent, validatedAiIntent } from "../../shared/ai-intent
 import { answerFixtureQuestion } from "../../shared/fixture-ai.mjs";
 import { weeklyMatchBriefing } from "../../shared/match-briefing.mjs";
 import { answerRatsHistoryQuestion } from "../../shared/rats-history.mjs";
-import { buildLeagueStandings, buildLeagueTeamHistory } from "../../shared/league-standings.mjs";
+import {
+  buildLeagueStandings, buildLeagueTeamHistory,
+  standingsFromScoutingSnapshot, teamHistoryFromScoutingSnapshot,
+} from "../../shared/league-standings.mjs";
 import { createBoundedLoadCache } from "../../shared/bounded-load-cache.mjs";
 import { matchVenue } from "../../shared/venue-directory.mjs";
 import {
@@ -1589,6 +1592,9 @@ async function syncDerivedRuntimeFile(env, path, raw) {
   } else if (path === "league/state/history.json") {
     const value = await decryptState(parsed, env);
     if (value) await kvJsonPut(env, "snapshot:rats-history", value);
+  } else if (path === "league/state/scouting.json") {
+    const value = await decryptState(parsed, env);
+    if (value?.schemaVersion === 1) await kvJsonPut(env, "snapshot:rats-scouting", value);
   } else if (path === "state/user.json") {
     const userState = await userStateDocument(env, parsed);
     if (userState.settings) {
@@ -1606,7 +1612,8 @@ async function runtimeFilePut(env, path, raw) {
   if (!env.BALLERWATCH_STATE) throw new Error("Runtime KV is unavailable.");
   if (!RUNTIME_FILE_PATHS.has(path)) throw new Error("Runtime-state path is not allowed.");
   const text = String(raw || "");
-  const maxLength = path === "league/state/history.json" ? 10_000_000 : 500_000;
+  const maxLength = ["league/state/history.json", "league/state/scouting.json"].includes(path)
+    ? 10_000_000 : 500_000;
   if (!text || text.length > maxLength) throw new Error("Invalid runtime-state payload.");
   await env.BALLERWATCH_STATE.put(runtimeKey(path), text);
   await syncDerivedRuntimeFile(env, path, text);
@@ -1763,6 +1770,35 @@ export function withCachedVenue(game, directory) {
   };
 }
 
+async function loadRatsScouting(env) {
+  return publicReadCache.get("rats-scouting-projection", 120_000,
+    () => loadRatsScoutingUncached(env), {
+      staleMs: 12 * 60 * 60_000,
+      transientError: transientPublicLoadError,
+    });
+}
+
+async function loadRatsScoutingUncached(env) {
+  if (env.BALLERWATCH_STATE) {
+    const cached = await kvJsonGet(env, "snapshot:rats-scouting").catch(() => null);
+    if (cached?.schemaVersion === 1) return cached;
+    const raw = await runtimeFileGet(env, "league/state/scouting.json").catch(() => null);
+    if (raw) {
+      const value = await decryptState(JSON.parse(raw), env);
+      if (value?.schemaVersion === 1) {
+        await kvJsonPut(env, "snapshot:rats-scouting", value).catch(() => null);
+        return value;
+      }
+    }
+  }
+  const encrypted = await githubRawJsonFile(env, "league/state/scouting.json", "runtime-state");
+  const scouting = await decryptState(encrypted, env);
+  if (!scouting || scouting.schemaVersion !== 1) {
+    throw new Error("Public scouting projection is not available yet.");
+  }
+  return scouting;
+}
+
 async function loadRatsHistory(env) {
   return publicReadCache.get("rats-history", 120_000, () => loadRatsHistoryUncached(env), {
     staleMs: 10 * 60_000, transientError: transientPublicLoadError,
@@ -1798,7 +1834,7 @@ async function loadRatsHistoryUncached(env) {
 
 async function loadSnapshot(env) {
   return publicReadCache.get("public-snapshot", 20_000, () => loadSnapshotUncached(env), {
-    staleMs: 3 * 60_000, transientError: transientPublicLoadError,
+    staleMs: 6 * 60 * 60_000, transientError: transientPublicLoadError,
   });
 }
 
@@ -3601,28 +3637,25 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/web/standings") {
       try {
-        const [snapshot, history] = await Promise.all([
-          loadSnapshot(env), loadRatsHistory(env),
+        // The hourly scorer does all archive work off-request. Do not
+        // decrypt or traverse the historical archive in this public route.
+        const [snapshot, projection] = await Promise.all([
+          loadSnapshot(env), loadRatsScouting(env),
         ]);
         const seasonId = cleanText(snapshot?.league?.seasonId, 40);
         const today = localDate();
-        const fixtureList = leagueMatches(snapshot)
-          .filter((game) => String(game?.date || "") >= today)
-          .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+        const fixtures = leagueMatches(snapshot)
+          .filter(game => String(game?.date || "") >= today)
+          .sort((a,b) => String(a.date).localeCompare(String(b.date)))
           .slice(0, 25);
-        const pairingKey = fixtureList.map((game) =>
-          `${game.team}/${game.opponent}`).join(";");
-        const standings = await publicReadCache.get(
-          `standings-form:${history.updatedAt}:${seasonId}:${today}:${(snapshot?.teams || []).join("|")}:${pairingKey}`,
-          90_000,
-          () => buildLeagueStandings(
-            history, seasonId, snapshot?.teams || [], today, fixtureList,
-          ),
+        const standings = standingsFromScoutingSnapshot(
+          projection, seasonId, snapshot?.teams || [], fixtures,
         );
+        if (!standings) throw new Error("Scouting snapshot season not ready.");
         return webJson(request, { ok: true, standings });
       } catch {
         return webJson(request, {
-          ok: false, error: "RATS standings are temporarily unavailable.",
+          ok: false, error: "Last published standings are temporarily unavailable.",
         }, { status: 503 });
       }
     }
@@ -3631,45 +3664,36 @@ export default {
       const teamName = cleanText(url.searchParams.get("team"), 120);
       const division = cleanText(url.searchParams.get("division"), 150);
       if (!teamName || teamName.length > 100 || division.length > 140) {
-        return webJson(request, { ok: false, error: "Choose a team from the standings." },
-          { status: 400 });
+        return webJson(request, {ok:false,error:"Choose a team from standings."},
+          {status:400});
       }
       try {
-        const [snapshot, history] = await Promise.all([
-          loadSnapshot(env), loadRatsHistory(env),
+        const [snapshot, projection] = await Promise.all([
+          loadSnapshot(env), loadRatsScouting(env),
         ]);
         const seasonId = cleanText(snapshot?.league?.seasonId, 40);
-        const standings = await publicReadCache.get(
-          `standings:${history.updatedAt}:${seasonId}:${localDate()}:${(snapshot?.teams || []).join("|")}`,
-          90_000,
-          () => buildLeagueStandings(history, seasonId, snapshot?.teams || [], localDate()),
+        const standings = standingsFromScoutingSnapshot(
+          projection, seasonId, snapshot?.teams || [],
         );
-        // Public drill-down is limited to teams in the current monitored divisions.
-        const allowed = standings.cards.some((card) =>
+        const allowed = (standings?.cards || []).some(card =>
           (!division || card.divisionKey === division || card.division === division) &&
-          card.rows.some((row) => row.name === teamName));
+          card.rows.some(row => row.name === teamName));
         if (!allowed) {
-          return webJson(request, { ok: false, error: "Team is not in the current standings." },
-            { status: 404 });
+          return webJson(request, {
+            ok:false, error:"Team is not in the selected division.",
+          }, {status:404});
         }
-        const teamHistory = await publicReadCache.get(
-          `scout:${history.updatedAt}:${seasonId}:${localDate()}:${teamName}:${division}`,
-          5 * 60_000,
-          () => buildLeagueTeamHistory(
-            history, seasonId, teamName, 35, localDate(), division,
-          ),
+        const history = teamHistoryFromScoutingSnapshot(
+          projection, seasonId, teamName, division,
         );
-        if (!teamHistory) {
-          return webJson(request, { ok: false, error: "Team history is not indexed yet." },
-            { status: 404 });
-        }
-        return webJson(request, { ok: true, history: teamHistory });
-      } catch (error) {
-        // Diagnostic class only: never log decrypted archive/roster or user tokens.
-        console.warn("Public scout read failed", String(error?.name || "Error").slice(0, 36));
+        if (!history) return webJson(request, {
+          ok:false,error:"The last published team report is unavailable.",
+        }, {status:404});
+        return webJson(request, {ok:true,history});
+      } catch {
         return webJson(request, {
-          ok: false, error: "RATS match history is temporarily unavailable.",
-        }, { status: 503 });
+          ok:false,error:"Last published scouting report temporarily unavailable.",
+        }, {status:503});
       }
     }
 
