@@ -1468,6 +1468,7 @@ async function loadGuestTeamOptions() {
 }
 async function saveGuestSettings(event) {
   event.preventDefault();
+  console.debug("Guest save handler entered");
   const before = JSON.stringify(guestProfile.teams);
   const next = {name: els.guestName.value, teams: guestSelector().getValues()};
   if (!saveGuestProfile(localStorage, next)) {
@@ -4976,6 +4977,7 @@ els.settingsButton.addEventListener("click", openSettings);
 els.musicToggle?.addEventListener("click", () => void toggleMusic());
 els.closeSettings.addEventListener("click", () => els.settingsDialog.close());
 els.ownerLoginForm.addEventListener("submit", loginOwnerDevice);
+console.debug("Guest save listeners attaching");
 els.guestSettingsForm.addEventListener("submit", saveGuestSettings);
 // The guest save button must work even when an unrelated protected form has
 // missing required password fields inside the same settings dialog.
