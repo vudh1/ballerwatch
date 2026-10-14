@@ -2837,25 +2837,6 @@ export function webCalendarDetails(
   };
 }
 
-/** Attach only public, scored-history summaries to league fixtures; never infer
- * unrecorded results. Missing archive data must not hide the match itself. */
-export function withLeagueRecentForm(game, history, today = localDate(), cache = new Map()) {
-  if (!game || game.kind !== "league" || !history?.seasons) return game;
-  const formFor = (name) => {
-    if (!name) return null;
-    const key = name.trim().toLowerCase();
-    if (!cache.has(key)) cache.set(key, buildTeamRecentForm(history, name, today));
-    return cache.get(key);
-  };
-  return { ...game, teamForm: formFor(game.team), opponentForm: formFor(game.opponent) };
-}
-function withCalendarRecentForms(calendar, history, today) {
-  if (!history?.seasons || !calendar?.games?.length) return calendar;
-  const cache = new Map();
-  return { ...calendar, games: calendar.games.map((game) =>
-    withLeagueRecentForm(game, history, today, cache)) };
-}
-
 async function loadWebWeather(env) {
   try {
     const encrypted = await githubFile(env, "state/weather.json", "runtime-state");
@@ -3562,19 +3543,17 @@ export default {
     }
     if (request.method === "GET" && url.pathname === "/web/calendar") {
       try {
-        const [snapshot, weather, venues, history] = await Promise.all([
+        // Public fixtures must not wait for history archive decrypt/scan.
+        // Optional last-ten form comes from /web/standings independently.
+        const [snapshot, weather, venues] = await Promise.all([
           loadSnapshot(env),
           loadWebWeather(env),
           loadRatsVenues(env),
-          loadRatsHistory(env).catch(() => null),
         ]);
         const today = localDate();
         return webJson(request, {
           ok: true,
-          calendar: withCalendarRecentForms(
-            webCalendarDetails(snapshot, weather, 14, today, new Date(), venues),
-            history, today,
-          ),
+          calendar: webCalendarDetails(snapshot, weather, 14, today, new Date(), venues),
         });
       } catch {
         return webJson(
@@ -3640,13 +3619,12 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/web/next-game") {
       try {
-        const [snapshot, venues, history] = await Promise.all([
-          loadSnapshot(env), loadRatsVenues(env), loadRatsHistory(env).catch(() => null),
+        const [snapshot, venues] = await Promise.all([
+          loadSnapshot(env), loadRatsVenues(env),
         ]);
         return webJson(request, {
           ok: true,
-          game: withLeagueRecentForm(withCachedVenue(webNextGameDetails(snapshot), venues),
-            history, localDate()),
+          game: withCachedVenue(webNextGameDetails(snapshot), venues),
         });
       } catch {
         return webJson(
