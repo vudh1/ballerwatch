@@ -1,7 +1,24 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.2.1",
+  "currentVersion": "8.3.0",
   "releases": [
+    {
+      "version": "8.3.0",
+      "date": "2026-10-13",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "League-stat visualizations and matching card-train navigation",
+      "webAnnouncement": "League standings cards now use the same LEAGUE STANDINGS title style as match cards and show attacking, defending and previous-season ranking bars. The calendar also slides between 14-day windows like a match-card train, with matching desktop waterfall arrows.",
+      "changes": [
+        "Moves the LEAGUE STANDINGS eyebrow inside each tracked-team glass card, with that team's name as the main title and aligned typography.",
+        "Increases league-table text size and narrows the Played column without sacrificing team-history actions or the tracked-team highlight.",
+        "Adds accessible attack and defense rankings calculated from goals per played match, plus prior-season placement when the immediately preceding season is indexed.",
+        "Shows compact ranking bars with honest no-data states and labels them as results-derived provisional rankings, not official RATS tie-breakers.",
+        "Turns the 14-day calendar into a neighboring-card train with pointer-drag/swipe and matching match-card waterfall edge affordances on desktop, preserving day-click expansion and season window paging.",
+        "Allows mobile standings swipes to begin over interactive team rows while preserving tap-to-open histories.",
+        "Adds automated tests for ranking calculations, absent historical coverage and navigation behavior."
+      ]
+    },
     {
       "version": "8.2.1",
       "date": "2026-10-13",
