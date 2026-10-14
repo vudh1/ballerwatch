@@ -515,15 +515,16 @@ test("calendar arrows page the 14-day grid without expanding the card", () => {
   assert.match(html, /id="calendar-window-previous"[^>]*aria-label="Previous 14 days"/);
   assert.match(html, /id="calendar-window-next"[^>]*aria-label="Next 14 days"/);
   assert.match(html, /class="calendar-window-controls" role="group"/);
+  assert.match(html, /id="calendar-carousel"/);
   assert.match(app, /function moveCalendarWindow\(direction\)/);
   assert.match(app, /addIsoDays\(start, 14 \* Math.sign\(direction\)\)/);
   assert.match(app, /candidate < base \? base : candidate/);
   assert.match(app, /calendarWindowStart = nextStart;\s*renderCalendarGrid\(\)/);
-  assert.match(app, /event.stopPropagation\(\);\s*moveCalendarWindow\(direction\)/);
+  assert.match(app, /event.stopPropagation\(\);\s*edgeStep\(direction\)/);
   assert.match(app, /calendarPrevious.disabled = !base \|\| calendarExpanded \|\| start <= base/);
   assert.match(app, /calendarNext.disabled = !base \|\| calendarExpanded/);
   assert.match(css, /\.calendar-window-control:focus-visible/);
-  assert.match(css, /\.calendar-card\.is-expanded \.calendar-window-controls \{\s*display: none;/);
+  assert.match(css, /\.calendar-carousel \.calendar-card\.is-expanded ~ \.calendar-window-controls/);
 });
 
 test("calendar card expands on day clicks but pager clicks leave the view compact", () => {
@@ -1685,4 +1686,38 @@ test("standings uses adjacent-card drag train and minimal table, preserving team
   assert.match(css, /\.standings-step-next::before/);
   assert.match(app, /\["W-D-L", "Wins, draws, losses"\]/);
   assert.match(app, /openTeamHistory\(row\.name\)/);
+});
+
+test("calendar moves as a connected neighboring 14-day card without hijacking day taps", () => {
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
+  assert.match(html, /class="calendar-carousel" id="calendar-carousel"/);
+  assert.match(app, /function calendarWindowPreview\(direction\)/);
+  assert.match(app, /function installCalendarTrain\(\)/);
+  assert.match(app, /const preview = els\.calendarCard\.cloneNode\(true\)/);
+  assert.match(app, /current\.setPointerCapture\(event\.pointerId\)/);
+  assert.match(app, /active\.preview\.style\.transform =/);
+  assert.match(app, /if \(commit && active\) moveCalendarWindow\(active\.direction\)/);
+  assert.match(app, /event\.stopImmediatePropagation\(\)/);
+  assert.match(app, /installCalendarTrain\(\)/);
+  assert.match(css, /\.calendar-carousel \.calendar-train-preview \{/);
+  assert.match(css, /\.calendar-carousel \.calendar-window-control::before/);
+  assert.match(css, /\.calendar-carousel \.calendar-grid,\s*\.calendar-carousel \.calendar-game-picker/);
+});
+
+test("league statistics use visible rankings and an honest unavailable state", () => {
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
+  assert.doesNotMatch(html, /<h2>Standings<\/h2>/);
+  assert.match(app, /standingsCell\("p", "LEAGUE STANDINGS", "eyebrow"\)/);
+  assert.match(app, /function buildStandingStats\(stats\)/);
+  assert.match(app, /standingRankBar\("Attack", stats\.attack/);
+  assert.match(app, /standingRankBar\("Defense", stats\.defense/);
+  assert.match(app, /stats\.previousSeason/);
+  assert.match(app, /role", "img"/);
+  assert.match(css, /\.standings-stats-chart/);
+  assert.match(css, /\.standings-table th:nth-child\(3\),\s*\.standings-table td:nth-child\(3\) \{ width: 5%; \}/);
+  assert.match(css, /\.standings-table \{\s*font-size: clamp\(0\.79rem/);
 });
