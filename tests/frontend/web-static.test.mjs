@@ -1670,7 +1670,7 @@ test("standings uses adjacent-card drag train and minimal table, preserving team
   assert.match(css, /\.standings-step-next::before/);
   assert.match(app, /function bindCardEdgeWaterfall\(/);
   assert.match(app, /bindCardEdgeWaterfall\(control, direction\)/);
-  assert.match(css, /\.standings-rail \.standings-step:not\(:disabled\)::before/);
+  assert.match(css, /:is\(\.spotlight-carousel, \.standings-rail\) > \.carousel-waterfall-edge::before/);
   assert.match(app, /\["W-D-L", "Wins, draws, losses"\]/);
   assert.match(app, /openTeamHistory\(\s*row\.name, card\.divisionKey/);
 });
@@ -1716,7 +1716,8 @@ test("team stats appear only after team-history API load; standings show no 1/2 
   assert.doesNotMatch(html, /id="standings-position"/);
   assert.doesNotMatch(html, /id="standings-updated"/);
   assert.match(html, /id="team-scout-overview"/);
-  assert.match(app, /slide\.append\(freshness\)/);
+  assert.match(app, /footer\.append\(freshness\)/);
+  assert.match(app, /slide\.append\(footer\)/);
   assert.match(app, /"match-update-credit standings-card-updated"/);
   assert.doesNotMatch(app, /els\.standingsPosition/);
   assert.doesNotMatch(app, /els\.standingsUpdated/);
@@ -1937,4 +1938,67 @@ test("AI scouting is grounded in a prepared model, never raw history on question
   assert.match(model, /match\.winPct/);
   assert.match(model, /not calibrated betting odds/);
   assert.match(app, /What is the win chance for the next monitored matchup/);
+});
+
+
+test("all dashboard cards share one title, kicker and pinned footer contract", () => {
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  assert.match(css, /--bw-card-title-size: clamp\(1\.24rem, 3\.2vw, 1\.57rem\)/);
+  assert.match(css, /\.card h2,[\s\S]*\.standings-slide h2,[\s\S]*\.spotlight-card h2/);
+  assert.match(css, /\.bw-card-frame \.bw-card-title \{/);
+  assert.match(css, /\.standings-track \{ align-items: stretch; \}/);
+  assert.match(css, /\.bw-card-footer \{[\s\S]*margin-top: auto;/);
+  assert.match(css, /\.standings-slide \.bw-card-footer \.match-update-credit\.standings-card-updated/);
+  assert.match(html, /class="card next-game-card spotlight-card bw-card-frame"/);
+  assert.match(html, /class="card calendar-card bw-card-frame"/);
+  assert.match(html, /class="match-card-footer bw-card-footer"/);
+  assert.match(html, /class="calendar-card-footer bw-card-footer"/);
+  assert.match(app, /slide\.classList\.add\("bw-card-frame"\)/);
+  assert.match(app, /footer\.className = "bw-card-footer standings-card-footer"/);
+  assert.match(app, /footer\.append\(freshness\)/);
+  assert.match(app, /slide\.append\(footer\)/);
+  assert.match(html, /class="bw-card-title" id="next-game-title"/);
+  assert.match(html, /class="bw-card-title" id="calendar-title"/);
+  assert.ok(css.indexOf("/* BallerWatch card contract v1") >
+    css.indexOf("/* v8.7.0: shared sports-card typography"));
+});
+
+test("exactly one canonical waterfall effect owns both opacity and transparency", () => {
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
+  const contract = css.split("/* The *only* waterfall visual contract")[1] || "";
+  assert.match(contract, /:is\(\.spotlight-carousel, \.standings-rail\) > \.carousel-waterfall-edge::before/);
+  assert.match(contract, /opacity: var\(--edge-opacity, var\(--bw-edge-background-alpha\)\)/);
+  assert.match(contract, /-webkit-backdrop-filter: var\(--bw-edge-blur\)/);
+  assert.match(contract, /transition: opacity 90ms linear/);
+  assert.match(contract, /rgba\(186, 230, 253, 0\.30\) 0%/);
+  assert.match(contract, /mask-image: linear-gradient\(270deg/);
+  assert.match(contract, /mask-image: linear-gradient\(90deg/);
+  assert.match(contract, /top: 5\.75rem;[\s\S]*overflow: visible;/);
+  assert.doesNotMatch(css, /\/\* v8\.8 — true shared waterfall/);
+  assert.doesNotMatch(css, /\/\* Use the match-card opacity and arrow tokens/);
+});
+
+test("scouting predictions are tuned only by the encrypted background index worker", () => {
+  const indexer = fs.readFileSync("backend/league/scouting-index.mjs", "utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
+  const tuner = fs.readFileSync("backend/shared/scout-calibration.mjs", "utf8");
+  const standings = fs.readFileSync("backend/shared/league-standings.mjs", "utf8");
+  assert.match(indexer, /tuneScoutingWeights\(history, seasonId\)/);
+  assert.match(indexer, /calibration\.weights/);
+  assert.match(indexer, /model: calibration/);
+  assert.match(standings, /forecastFromFeatures\(homeFeatures, awayFeatures, meetingFeatures, weights\)/);
+  assert.match(tuner, /season\.seasonId !== currentSeasonId/);
+  assert.match(tuner, /walkForwardBrier/);
+  assert.match(tuner, /promoted \? selection\.weights : DEFAULT_SCOUT_WEIGHTS/);
+  assert.doesNotMatch(worker, /tuneScoutingWeights|forecastFromFeatures|buildMatchupEstimate/);
+});
+
+test("README links old version history rather than duplicating dozens of release notes", () => {
+  const readme = fs.readFileSync("README.md", "utf8");
+  const headings = [...readme.matchAll(/^## BallerWatch \d/gm)];
+  assert.equal(headings.length, 0);
+  assert.match(readme, /GitHub Releases/);
+  assert.match(readme, /Card design system/);
 });
