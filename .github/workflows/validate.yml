@@ -64,8 +64,32 @@ jobs:
       - name: Enforce public-repository privacy
         run: node scripts/privacy-audit.mjs
 
+      - name: Build both static production routes
+        run: node scripts/build-web.mjs
+
       - name: Validate Apps Script syntax
         run: |
           cp backend/league/google_apps_script/Code.gs /tmp/ballerwatch-calendar-bridge.mjs
           node --check /tmp/ballerwatch-calendar-bridge.mjs
+
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Install pinned browser test runner
+        run: npm install --prefix /tmp/ballerwatch-browser --no-save playwright@1.56.1
+
+      - name: Install Chromium and WebKit
+        run: node /tmp/ballerwatch-browser/node_modules/playwright/cli.js install --with-deps chromium webkit
+
+      - name: Build V1 and V2 production assets
+        run: node scripts/build-web.mjs
+
+      - name: Verify V1 and V2 with synthetic browser data
+        env:
+          BALLERWATCH_PLAYWRIGHT_MODULE: /tmp/ballerwatch-browser/node_modules/playwright
+          BALLERWATCH_WEB_ROOT: /tmp/ballerwatch-web-build
+        run: node tests/frontend/browser-smoke.mjs
 

@@ -1,0 +1,153 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import vm from "node:vm";
+import test from "node:test";
+import { SCENE, scenePose } from "../../frontend/web/v2/scene-config.mjs";
+
+const read = (name) => fs.readFileSync(`frontend/web/${name}`, "utf8");
+
+test("ball contact, curved flight, goalkeeper and upper-corner impact stay synchronized", () => {
+  const contact = scenePose(SCENE.contact);
+  assert.equal(contact.kick, 0);
+  assert.deepEqual({ x: contact.ball.x, y: contact.ball.y }, SCENE.ball.start);
+  assert.equal(contact.dive, 0);
+  const middle = scenePose((SCENE.contact + SCENE.flightEnd) / 2);
+  assert.ok(middle.ball.x > SCENE.ball.start.x);
+  assert.ok(middle.ball.y < (SCENE.ball.start.y + SCENE.ball.corner.y) / 2);
+  assert.ok(middle.ball.scale < contact.ball.scale);
+  assert.ok(middle.ball.rotation > 0);
+  assert.equal(scenePose(SCENE.diveStart).dive, 0);
+  assert.equal(scenePose(SCENE.diveEnd).dive, 1);
+  const goal = scenePose(SCENE.flightEnd);
+  assert.deepEqual({ x: goal.ball.x, y: goal.ball.y }, SCENE.ball.corner);
+  assert.ok(scenePose(0.87).netPulse > 0);
+  assert.equal(scenePose(0.92).reveal, 0);
+  assert.equal(scenePose(1).reveal, 1);
+});
+
+test("every pose reverses exactly with scroll, clamps input and stays finite", () => {
+  const steps = Array.from({ length: 101 }, (_, index) => index / 100);
+  const forward = steps.map((progress) => scenePose(progress));
+  const reverse = steps.toReversed().map((progress) => scenePose(progress)).toReversed();
+  assert.deepEqual(reverse, forward);
+  for (const pose of forward) {
+    assert.ok(Number.isFinite(pose.ball.x) && Number.isFinite(pose.ball.y));
+    assert.ok(pose.reveal >= 0 && pose.reveal <= 1);
+  }
+  assert.deepEqual(scenePose(-1), scenePose(0));
+  assert.deepEqual(scenePose(5), scenePose(1));
+  assert.deepEqual(scenePose(NaN), scenePose(0));
+});
+
+test("V2 installation identity is distinct and every icon is locally available", () => {
+  const v1 = JSON.parse(read("manifest.webmanifest"));
+  const v2 = JSON.parse(read("v2/manifest.webmanifest"));
+  assert.equal(v1.start_url, "/ballerwatch/");
+  assert.equal(v2.start_url, "/ballerwatch/v2/");
+  assert.equal(v2.scope, "/ballerwatch/v2/");
+  assert.notEqual(v1.id, v2.id);
+  assert.equal(v2.display, "standalone");
+  for (const icon of v2.icons) {
+    assert.ok(fs.existsSync(path.resolve("frontend/web/v2", icon.src)));
+  }
+});
+
+test("V2 retains every functional controller hook and loads exactly one shared controller", () => {
+  const v1 = read("index.html");
+  const v2 = read("v2/index.html");
+  const ids = (html) => [...html.matchAll(/\sid="([^"]+)"/g)].map((match) => match[1]);
+  assert.equal(new Set(ids(v2)).size, ids(v2).length);
+  for (const id of ids(v1).filter((id) => id !== "launch-intro")) {
+    assert.ok(ids(v2).includes(id), `Missing shared hook: ${id}`);
+  }
+  assert.equal([...v2.matchAll(/src="\.\.\/app\.js\?v=/g)].length, 1);
+  assert.doesNotMatch(read("v2/app.js") + read("v2/timeline.js"), /fetch\(|setInterval\(/);
+  assert.match(v2, /viewport-fit=cover/);
+  assert.match(v2, /apple-mobile-web-app-capable/);
+  assert.match(v2, /id="skip-intro" type="button"/);
+  assert.match(read("v2/prepaint.js"), /2500/);
+});
+
+test("V2 presentation keys are isolated while the original V1 keys are preserved", () => {
+  for (const [pathname, expected] of [["/ballerwatch/", "old-v1"], ["/ballerwatch/v2/", "ballerwatch:v2:music"]]) {
+    const context = vm.createContext({ window: { location: { pathname } } });
+    vm.runInContext(read("lib/experience.js").replaceAll("export ", ""), context);
+    assert.equal(vm.runInContext('experienceKey("old-v1", "music")', context), expected);
+  }
+  assert.match(read("lib/client.js"), /SESSION_TOKEN_KEY = "ballerwatch-owner-token"/);
+  assert.match(read("lib/client.js"), /cache: "no-store"/);
+  assert.doesNotMatch(read("v2/timeline.js"), /localStorage|fetch\(|setInterval/);
+});
+
+function workerHarness(version) {
+  const listeners = {};
+  const removed = [];
+  const keys = [
+    "ballerwatch-v8-8-0-shell", "ballerwatch-v2-v8-8-0-shell",
+    "ballerwatch-device-state-v1", "ballerwatch-v2-device-state-v1", "unrelated-app",
+  ];
+  const files = [];
+  const scope = `https://example.com/ballerwatch/${version === 2 ? "v2/" : ""}`;
+  const context = vm.createContext({
+    URL, Response, Request, console,
+    fetch: async () => { throw new Error("offline"); },
+    caches: {
+      keys: async () => keys,
+      delete: async (key) => { removed.push(key); return true; },
+      open: async () => ({
+        addAll: async (list) => { files.push(...list); },
+        match: async (url) => String(url).endsWith("index.html") ? new Response(`V${version}`) : null,
+      }),
+    },
+    self: {
+      location: new URL(`${scope}sw.js`),
+      addEventListener: (type, callback) => { listeners[type] = callback; },
+      skipWaiting() {},
+      clients: { claim: async () => {} },
+    },
+  });
+  vm.runInContext(read("sw.js"), context);
+  return { listeners, removed, files, scope, context };
+}
+
+test("both workers cache complete local shells and delete only their own obsolete shells", async () => {
+  for (const version of [1, 2]) {
+    const worker = workerHarness(version);
+    let task;
+    worker.listeners.install({ waitUntil: (promise) => { task = promise; } });
+    await task;
+    for (const name of worker.files) {
+      const url = new URL(name, worker.scope);
+      const file = path.join("frontend/web", url.pathname.replace("/ballerwatch/", ""));
+      assert.ok(fs.existsSync(file), `Missing V${version} precache file: ${name}`);
+    }
+    worker.listeners.activate({ waitUntil: (promise) => { task = promise; } });
+    await task;
+    assert.deepEqual(worker.removed, [version === 1 ? "ballerwatch-v8-8-0-shell" : "ballerwatch-v2-v8-8-0-shell"]);
+  }
+});
+
+test("offline navigation is route-specific and missing scripts never receive HTML", async () => {
+  for (const version of [1, 2]) {
+    const worker = workerHarness(version);
+    let task;
+    const fire = (url, mode) => worker.listeners.fetch({
+      request: { method: "GET", url, mode },
+      respondWith: (promise) => { task = promise; },
+    });
+    // Request objects are needed only for network-first construction.
+    worker.context.Request = class { constructor(request) { Object.assign(this, request); } };
+    fire(worker.scope, "navigate");
+    assert.equal(await (await task).text(), `V${version}`);
+    fire(`${worker.scope}missing.js`, "cors");
+    assert.equal((await task).type, "error");
+    if (version === 1) {
+      task = null;
+      fire(`${worker.scope}v2/`, "navigate");
+      assert.equal(task, null);
+    }
+    assert.equal(vm.runInContext('safeAppUrl("https://evil.example/")', worker.context), worker.scope);
+    assert.equal(vm.runInContext('safeAppUrl("/ballerwatch/")', worker.context), worker.scope);
+  }
+});

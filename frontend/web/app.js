@@ -1,7 +1,8 @@
 /**
  * Copyright © 2026 BallerWatch. All rights reserved.
  *
- * BallerWatch 7 PWA shell. Network/session and notification persistence are
+ * Shared V1/V2 PWA controller (v8.10.0 coexistence baseline). Network/session
+ * and notification persistence are
  * split into focused modules so app.js can concentrate on view orchestration.
  */
 import {
@@ -27,6 +28,7 @@ import {
   saveLocalNotificationIds,
 } from "./lib/notification-state.js";
 import { createSettingsChoice } from "./lib/settings-choice.js";
+import { experienceKey, isV2 } from "./lib/experience.js";
 
 const els = {
   launchIntro: document.querySelector("#launch-intro"),
@@ -220,14 +222,14 @@ const OWNER_TOKEN_KEY = SESSION_TOKEN_KEY;
 const OWNER_USERNAME_KEY = SESSION_USERNAME_KEY;
 const NOTIFICATION_READ_KEY = LOCAL_NOTIFICATION_READ_KEY;
 const NOTIFICATION_DELETED_KEY = LOCAL_NOTIFICATION_DELETED_KEY;
-const QUESTION_HISTORY_KEY = "ballerwatch-question-history-v1";
+const QUESTION_HISTORY_KEY = experienceKey("ballerwatch-question-history-v1", "questions");
 const LIVE_DATA_REFRESH_MS = 60_000;
-const PUBLIC_CALENDAR_CACHE_KEY = "ballerwatch-public-calendar-session-v1";
+const PUBLIC_CALENDAR_CACHE_KEY = experienceKey("ballerwatch-public-calendar-session-v1", "public-calendar");
 const APP_UPDATE_CHECK_MS = 5 * 60_000;
 const SPOTLIGHT_IDLE_RESET_MS = 15_000;
 const INTERACTION_VIBRATION_MS = 8;
 const INTRO_SESSION_KEY = "ballerwatch-intro-seen-v1";
-const MUSIC_ENABLED_KEY = "ballerwatch-music-enabled-v1";
+const MUSIC_ENABLED_KEY = experienceKey("ballerwatch-music-enabled-v1", "music");
 const LAUNCH_INTRO_VISIBLE_MS = 2_250;
 const LAUNCH_INTRO_FADE_MS = 420;
 const AMBIENT_PHRASE_MS = 6_400;
@@ -1657,7 +1659,13 @@ async function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return null;
 
   let refreshing = false;
+  let previousController = navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
+    const nextController = navigator.serviceWorker.controller;
+    const firstClaim = !previousController || (isV2 &&
+      !new URL(previousController.scriptURL).pathname.endsWith("/v2/sw.js"));
+    previousController = nextController;
+    if (firstClaim) return;
     if (refreshing) return;
     if (!initialLoadComplete) {
       appRefreshDeferred = true;
@@ -1667,7 +1675,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=8.9.2", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=8.10.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -4598,10 +4606,10 @@ els.form.addEventListener("submit", async (event) => {
   els.answer.textContent = "Thinking…";
   try {
     // Avoid carrying stale conversation identifiers into a later session.
-    const contextAt = Number(sessionStorage.getItem("ballerwatch-ai-context-at") || 0);
+    const contextAt = Number(sessionStorage.getItem(experienceKey("ballerwatch-ai-context-at", "ai-context-at")) || 0);
     if (!contextAt || Date.now() - contextAt > 20 * 60 * 1000) {
       for (const key of ["ballerwatch-last-date", "ballerwatch-last-match-key",
-        "ballerwatch-last-rats-teams"]) sessionStorage.removeItem(key);
+        "ballerwatch-last-rats-teams"]) sessionStorage.removeItem(experienceKey(key, key.replace("ballerwatch-", "")));
     }
     const payload = await api("/web/ask", {
       method: "POST",
@@ -4609,12 +4617,12 @@ els.form.addEventListener("submit", async (event) => {
       body: JSON.stringify({
         question,
         context: {
-          lastDate: sessionStorage.getItem("ballerwatch-last-date") || "",
-          lastMatchKey: sessionStorage.getItem("ballerwatch-last-match-key") || "",
+          lastDate: sessionStorage.getItem(experienceKey("ballerwatch-last-date", "last-date")) || "",
+          lastMatchKey: sessionStorage.getItem(experienceKey("ballerwatch-last-match-key", "last-match-key")) || "",
           lastHistoryTeams: (() => {
             try {
               const value = JSON.parse(
-                sessionStorage.getItem("ballerwatch-last-rats-teams") || "[]",
+                sessionStorage.getItem(experienceKey("ballerwatch-last-rats-teams", "last-rats-teams")) || "[]",
               );
               return Array.isArray(value) ? value.slice(0, 2) : [];
             } catch {
@@ -4659,16 +4667,16 @@ els.form.addEventListener("submit", async (event) => {
     els.answer.classList.remove("answer-feedback-pending", "answer-feedback-sent");
     els.answerFeedbackStatus.hidden = true;
     els.answerFeedbackStatus.textContent = "";
-    sessionStorage.setItem("ballerwatch-ai-context-at", String(Date.now()));
-    if (payload.lastDate) sessionStorage.setItem("ballerwatch-last-date", payload.lastDate);
+    sessionStorage.setItem(experienceKey("ballerwatch-ai-context-at", "ai-context-at"), String(Date.now()));
+    if (payload.lastDate) sessionStorage.setItem(experienceKey("ballerwatch-last-date", "last-date"), payload.lastDate);
     if (payload.intent === "league_fixture" && payload.lastMatchKey) {
-      sessionStorage.setItem("ballerwatch-last-match-key", payload.lastMatchKey);
+      sessionStorage.setItem(experienceKey("ballerwatch-last-match-key", "last-match-key"), payload.lastMatchKey);
     } else {
-      sessionStorage.removeItem("ballerwatch-last-match-key");
+      sessionStorage.removeItem(experienceKey("ballerwatch-last-match-key", "last-match-key"));
     }
     if (Array.isArray(payload.historyTeams) && payload.historyTeams.length) {
       sessionStorage.setItem(
-        "ballerwatch-last-rats-teams",
+        experienceKey("ballerwatch-last-rats-teams", "last-rats-teams"),
         JSON.stringify(payload.historyTeams.slice(0, 2)),
       );
     }

@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="en" class="v2">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#080f14">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://ballerwatch-web.vudhone.workers.dev; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; upgrade-insecure-requests">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="BallerWatch V2">
+  <meta name="description" content="Your next match. Your club. Your game. A new BallerWatch experience over the same trusted soccer data.">
+  <title>BallerWatch V2 — Your matchday</title>
+  <link rel="manifest" href="./manifest.webmanifest?v=8.10.0">
+  <link rel="icon" href="../icon.svg?v=8.10.0" type="image/svg+xml">
+  <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png?v=8.10.0">
+  <script src="./prepaint.js?v=8.10.0"></script>
+  <link rel="stylesheet" href="../styles.css?v=8.10.0">
+  <link rel="stylesheet" href="./styles.css?v=8.10.0">
+</head>
+<body>
+  <a class="v2-skip-link" href="#matchday-heading">Skip to matchday</a>
+  <section id="soccer-intro" class="soccer-intro" aria-label="Interactive soccer introduction">
+    <div id="soccer-stage" class="soccer-stage">
+      <div class="intro-topline"><a href="../" class="v2-wordmark" aria-label="BallerWatch V1">BW<span> / V2</span></a><button id="skip-intro" type="button">Skip intro <span aria-hidden="true">↗</span></button></div>
+      <div id="scene-scene-content" class="scene-content">
+        <div class="scene-copy"><p id="scene-phase" class="eyebrow">01 / THE BUILD-UP</p><h1 id="scene-headline"><span>Every game starts</span><span>with a moment.</span></h1></div>
+        <svg id="soccer-scene" class="soccer-scene" viewBox="0 0 1440 900" aria-hidden="true" focusable="false">
+          <defs>
+            <linearGradient id="kit" x2="1" y2="1"><stop stop-color="#dfff95"/><stop offset="1" stop-color="#83ad3b"/></linearGradient>
+            <linearGradient id="keeper-kit" x2="1" y2="1"><stop stop-color="#d5a27a"/><stop offset="1" stop-color="#70452d"/></linearGradient>
+            <radialGradient id="ball-shade" cx=".3" cy=".25"><stop stop-color="#fff"/><stop offset="1" stop-color="#a4b2b7"/></radialGradient>
+            <pattern id="net-grid" width="18" height="18" patternUnits="userSpaceOnUse"><path d="M18 0H0V18" fill="none" stroke="#e3efeb" stroke-opacity=".38" stroke-width="1"/></pattern>
+          </defs>
+          <g id="scene-world">
+            <image href="./assets/stadium.svg" x="-1000" y="0" width="3400" height="900"/>
+            <g id="scene-goal"><path d="m1000 380 310-15 35 230-330 9Z" fill="#061214" fill-opacity=".62"/><g id="scene-net"><path d="m1000 380 310-15 35 230-330 9Z" fill="url(#net-grid)"/><path d="m1000 380 30 28 280-15M1030 408l15 185M1310 365l-6 228" fill="none" stroke="#d9e6e1" stroke-opacity=".25"/></g><path d="m1015 604-15-224 310-15 35 230" fill="none" stroke="#dce8e2" stroke-width="7" stroke-linecap="round"/><path d="m1015 604 330-9" stroke="#94aaa4" stroke-width="2"/></g>
+            <g id="scene-keeper" transform="translate(1120 570)">
+              <ellipse cx="0" cy="35" rx="46" ry="9" fill="#000" opacity=".2"/>
+              <g stroke-linecap="round" stroke-linejoin="round"><path d="m-10-5-20 47-17 13M13-5l25 42 24 11" fill="none" stroke="#17222d" stroke-width="19"/><path d="M-13-62Q-57-86-112-115M12-62Q38-75 59-111" fill="none" stroke="url(#keeper-kit)" stroke-width="17"/><path d="m-112-115-8-5M59-111l3-8" stroke="#e7eadb" stroke-width="14"/><path d="m-17-75 35 1 7 65-45 3Z" fill="url(#keeper-kit)"/><circle cy="-97" r="16" fill="#99735a"/><path d="M-14-104q14-21 29 0" fill="#16212a"/></g>
+            </g>
+            <ellipse cx="380" cy="750" rx="68" ry="12" fill="#000" opacity=".3"/>
+            <g id="scene-player" transform="translate(350 605)">
+              <g id="scene-player-body"><path d="m-5 15-25 61 10 58" fill="none" stroke="#171f27" stroke-width="24" stroke-linecap="round"/><path d="m-22 130 27 8" stroke="#e4ecd8" stroke-width="13" stroke-linecap="round"/><path d="m-7-82-27 33-29 6M24-81l27 26 23-18" fill="none" stroke="#95765c" stroke-width="15" stroke-linecap="round"/><path d="m-15-98 43 5 11 87-52 6Z" fill="url(#kit)"/><path d="M1-90 8-8" stroke="#f0ffd4" stroke-opacity=".35" stroke-width="3"/><path d="m-13-4 51-2-1 32-45-1Z" fill="#111c24"/><path d="m1-103 3-17" stroke="#95765c" stroke-width="16"/><circle cx="8" cy="-139" r="21" fill="#a37e61"/><path d="M-12-144q3-32 36-17l7 17-15-10-26 15Z" fill="#131d24"/><path d="M6-70h14l-11 28" stroke="#17281b" stroke-width="4" fill="none"/></g>
+              <g id="scene-shooting-leg"><path d="m13 18 32 57 35 56" fill="none" stroke="#171f27" stroke-width="23" stroke-linecap="round"/><path d="m78 129 28 2" stroke="#d6ff75" stroke-width="14" stroke-linecap="round"/></g>
+            </g>
+            <g id="scene-grass" opacity="0" fill="#bed895"><path d="m430 739-28-24 9 21Zm0 0 36-13-20 24Zm0 0-6-38-9 23Zm0 0 42 20-32-5Z"/></g>
+            <g id="scene-ball" transform="translate(477 741)"><circle r="20" fill="url(#ball-shade)"/><path d="m-4-10 11 1 5 9-7 8-11-3-3-10ZM-19-5l5-9 3 4-5 8ZM14-14l4 5-2 7-4-2ZM-11 14l8 5 6-3-5-6ZM14 9l3 4-8 5-1-6Z" fill="#1b2a32"/><circle r="19" fill="none" stroke="#e5efe8" stroke-opacity=".4"/></g>
+          </g>
+        </svg>
+        <div id="scene-flash" class="scene-flash"></div>
+        <div class="intro-bottomline"><p><span class="scroll-glyph" aria-hidden="true">↓</span> Scroll to play <span class="intro-reverse">· Reverse to rewind</span></p><span>THE GAME, CLOSER.</span></div>
+        <div class="scene-progress" aria-hidden="true"><span id="scene-progress"></span></div>
+      </div>
+    </div>
+  </section>
+  <main id="matchday-app" class="v2-shell" inert>
+    <aside class="v2-sidebar" aria-label="BallerWatch navigation">
+      <a class="v2-wordmark" href="./">BW<span> / V2</span></a>
+      <p class="sidebar-caption">YOUR GAME.<br>ALL IN ONE PLACE.</p>
+      <nav class="desktop-nav" aria-label="Main">
+        <button data-v2-target="matchday" aria-controls="panel-matchday" aria-current="page" type="button"><span aria-hidden="true">◉</span> Matchday</button>
+        <button data-v2-target="schedule" aria-controls="panel-schedule" type="button"><span aria-hidden="true">▦</span> Schedule</button>
+        <button data-v2-target="club" aria-controls="panel-club" type="button"><span aria-hidden="true">⚑</span> Club</button>
+      </nav>
+      <div class="sidebar-bottom"><span class="v2-edition">THE MATCHDAY EDITION</span><a href="../">Open V1 ↗</a></div>
+    </aside>
+    <div class="v2-content">
+      <header class="v2-header">
+        <a class="mobile-wordmark v2-wordmark" href="./">BW<span> / V2</span></a>
+        <p class="v2-header-label">BALLERWATCH <span>/ YOUR SOCCER HQ</span></p>
+      <div class="hero-actions">
+        <button class="utility-button" id="settings-button" type="button"
+          aria-label="Open settings" aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/>
+            <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.09a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3v-4h.04A1.7 1.7 0 0 0 4.6 8.94a1.7 1.7 0 0 0-.34-1.88L4.2 7l2.83-2.83.06.06a1.7 1.7 0 0 0 1.88.34A1.7 1.7 0 0 0 10 3.01V3h4v.01a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06L19.8 7l-.06.06a1.7 1.7 0 0 0-.34 1.88 1.7 1.7 0 0 0 1.56 1.03H21v4h-.04A1.7 1.7 0 0 0 19.4 15Z"/>
+          </svg>
+        </button>
+        <button class="bell-button utility-button" id="notification-bell" type="button"
+          aria-label="Open notifications" aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>
+          </svg>
+          <span class="notification-badge" id="notification-badge" hidden>0</span>
+        </button>
+      </div>
+
+      </header>
+      <section class="v2-static-welcome"><p class="eyebrow">WELCOME TO V2</p><p>Your game. At your pace.</p><span>The cinematic is paused for your motion preference. Your matchday is ready below.</span></section>
+      <section id="panel-matchday" data-v2-panel="matchday" class="v2-panel">
+        <div class="v2-page-heading"><div><p class="eyebrow">THE BEAUTIFUL GAME, ORGANIZED.</p><h2 id="matchday-heading" tabindex="-1">Your matchday<span>.</span></h2></div><div class="system-line"><span class="system-dot" aria-hidden="true"></span><span id="system-status">Connecting…</span></div></div>
+        <div class="v2-match-grid">
+          <div class="v2-editorial"><div class="pitch-art" aria-hidden="true"></div><div class="editorial-top"><span>01 / GAME ON</span><span aria-hidden="true">↗</span></div><div class="editorial-copy"><p>Less planning.<br><em>More playing.</em></p><span>Pickup & league. One place to be ready.</span></div><span class="editorial-caption">SEE YOU ON THE PITCH.</span></div>
+    <div class="spotlight-carousel" id="spotlight-carousel">
+      <button class="spotlight-edge-control carousel-waterfall-edge spotlight-edge-previous" id="spotlight-previous"
+        type="button" aria-label="Previous game" disabled>
+        <span aria-hidden="true">‹</span>
+      </button>
+      <button class="spotlight-edge-control carousel-waterfall-edge spotlight-edge-next" id="spotlight-next"
+        type="button" aria-label="Next game" disabled>
+        <span aria-hidden="true">›</span>
+      </button>
+      <section class="card next-game-card spotlight-card bw-card-frame" id="next-game-card">
+        <div class="spotlight-content">
+          <div class="section-heading bw-card-heading">
+            <div>
+              <p class="eyebrow" id="spotlight-label">NEXT GAME</p>
+              <h2 class="bw-card-title" id="next-game-title">Loading…</h2>
+            </div>
+            <div class="match-card-menu-wrap">
+              <button class="status-dot match-card-menu-trigger" id="next-game-menu-trigger"
+                type="button" aria-haspopup="dialog" aria-expanded="false">
+                <span id="next-game-type">Upcoming</span>
+              </button>
+              <dialog class="match-card-action-dialog" id="next-game-menu"
+                aria-labelledby="next-game-menu-title">
+                <div class="match-card-action-shell">
+                  <p class="eyebrow">MATCH</p>
+                  <h3 id="next-game-menu-title">Match actions</h3>
+                  <div class="match-card-action-buttons">
+                    <button id="next-game-menu-edit" type="button">Edit</button>
+                    <button class="match-card-menu-delete" id="next-game-menu-delete"
+                      type="button">Delete</button>
+                    <button class="secondary" id="next-game-menu-cancel" type="button">Cancel</button>
+                  </div>
+                </div>
+              </dialog>
+            </div>
+          </div>
+          <p class="next-game-meta" id="next-game-meta"></p>
+          <p class="next-game-form" id="next-game-form" hidden></p>
+          <p class="next-game-location muted" id="next-game-location"></p>
+          <div class="next-game-weather" id="next-game-weather" hidden></div>
+          <div class="next-game-capacity" id="next-game-capacity" role="button" tabindex="0"
+            aria-haspopup="dialog" aria-expanded="false" aria-label="View pickup RSVP roster and RSVP" hidden>
+            <div class="next-game-capacity-row">
+              <span class="next-game-capacity-label" id="next-game-capacity-label"></span>
+              <span class="next-game-capacity-spots" id="next-game-capacity-spots"></span>
+            </div>
+            <div class="next-game-capacity-track" aria-hidden="true">
+              <span class="next-game-capacity-fill" id="next-game-capacity-fill"></span>
+            </div>
+          </div>
+          <div class="button-row next-game-actions" id="next-game-actions" hidden>
+            <a class="button-link" id="next-game-directions" target="_blank" rel="noopener">Directions</a>
+            <button class="secondary" id="next-game-share" type="button">Share</button>
+          </div>
+          <p class="hint" id="next-game-hint"></p>
+        </div>
+        <div class="match-card-footer bw-card-footer">
+          <p class="match-update-credit" id="next-game-updated"></p>
+        </div>
+      </section>
+    </div>
+
+
+        </div>
+        <div class="v2-section-label"><span>THE REST OF YOUR GAME</span><span>02 — 04</span></div>
+        <div class="v2-shortcuts">
+          <button data-v2-target="schedule" type="button"><span class="shortcut-number">02 / PLAN AHEAD</span><strong>Your schedule</strong><span>Every kickoff, in view. <b aria-hidden="true">↗</b></span></button>
+          <button data-v2-target="club" type="button"><span class="shortcut-number">03 / KNOW YOUR CLUB</span><strong>The bigger picture</strong><span>Standings, form & opponents. <b aria-hidden="true">↗</b></span></button>
+          <button id="v2-ai" type="button"><span class="shortcut-number">04 / MATCH INTELLIGENCE</span><strong>Ask BallerWatch</strong><span>Your game, explained. <b aria-hidden="true">↗</b></span></button>
+        </div>
+      </section>
+      <section id="panel-schedule" data-v2-panel="schedule" class="v2-panel" hidden>
+        <div class="v2-page-heading"><div><p class="eyebrow">MAKE ROOM FOR THE GAME.</p><h2 tabindex="-1">The schedule<span>.</span></h2><p class="muted">Pick a day. Find your next kickoff.</p></div></div>
+    <section class="card calendar-card bw-card-frame" id="two-week-calendar" aria-expanded="false">
+        <div class="section-heading calendar-heading bw-card-heading">
+          <div>
+            <p class="eyebrow">MATCH DAYS</p>
+            <h2 class="bw-card-title" id="calendar-title">14-Day Calendar</h2>
+          </div>
+        </div>
+        <div class="calendar-grid" id="calendar-grid" aria-label="Two-week game calendar"></div>
+        <div class="calendar-game-picker" id="calendar-game-picker" hidden></div>
+        <div class="calendar-card-footer bw-card-footer">
+          <p class="calendar-updated calendar-update-credit" id="calendar-updated">Updated pending</p>
+        </div>
+    </section>
+
+
+      </section>
+      <section id="panel-club" data-v2-panel="club" class="v2-panel" hidden>
+        <div class="v2-page-heading"><div><p class="eyebrow">KNOW WHERE YOU STAND.</p><h2 tabindex="-1">Your club<span>.</span></h2><p class="muted">Swipe teams. Tap a rival to explore their form.</p></div></div>
+    <section class="standings-card" id="league-standings" aria-label="Current season standings">
+      <div class="standings-rail">
+        <div id="standings-viewport" class="standings-viewport" aria-roledescription="carousel"
+          aria-label="Tracked team league standings">
+          <p class="muted standings-message">Loading current season standings…</p>
+        </div>
+        <div class="standings-controls" role="group" aria-label="Browse team standings">
+          <button class="standings-step carousel-waterfall-edge standings-step-previous" id="standings-previous" type="button"
+            aria-label="Previous tracked team" disabled><span aria-hidden="true">‹</span></button>
+          <button class="standings-step carousel-waterfall-edge standings-step-next" id="standings-next" type="button"
+            aria-label="Next tracked team" disabled><span aria-hidden="true">›</span></button>
+        </div>
+      </div>
+    </section>
+
+
+      </section>
+      <section class="v2-experience-tools" aria-label="V2 experience">
+        <button id="replay-intro" type="button">↻ Replay the moment</button><a href="../">Open original BallerWatch ↗</a>
+        <details><summary>V2 offline storage</summary><p>Clear only this version’s frontend files. Your sign-in, account, notifications and V1 stay available.</p><button id="clear-v2-caches" type="button">Clear V2 frontend cache</button><p id="v2-cache-status" role="status"></p></details>
+        <p id="motion-note" role="status" hidden>Reduced motion is enabled on your device. The cinematic stays paused; all matchday features are available.</p>
+      </section>
+    <footer>
+      <section class="card footer-install bw-card-frame" id="install-card">
+        <div class="footer-install-copy">
+          <p class="eyebrow">INSTALL</p>
+          <strong>Home Screen app</strong>
+          <p id="install-copy">Add BallerWatch V2 to your iPhone Home Screen for quick access and notifications.</p>
+        </div>
+        <button class="secondary compact-button" id="install-help" type="button">How to install</button>
+      </section>
+      <div class="footer-links">
+        <span id="version">BallerWatch</span>
+        <span>•</span>
+        <a href="https://github.com/vudh1/ballerwatch">GitHub</a>
+        <span>•</span>
+        <a href="https://github.com/vudh1/ballerwatch/wiki">Wiki</a>
+        <span>•</span>
+        <span class="copyright">© 2026 BallerWatch. All rights reserved.</span>
+      </div>
+    </footer>
+
+    </div>
+  </main>
+  <nav class="v2-bottom-nav" aria-label="Mobile navigation">
+    <button data-v2-target="matchday" aria-controls="panel-matchday" aria-current="page" type="button"><span aria-hidden="true">◉</span>Matchday</button>
+    <button data-v2-target="schedule" aria-controls="panel-schedule" type="button"><span aria-hidden="true">▦</span>Schedule</button>
+    <button data-v2-target="club" aria-controls="panel-club" type="button"><span aria-hidden="true">⚑</span>Club</button>
+    <button id="v2-inbox" type="button" aria-haspopup="dialog"><span aria-hidden="true">▱</span>Inbox</button>
+  </nav>
+  <dialog id="team-history-dialog" class="team-history-dialog"
+    aria-labelledby="team-history-title">
+    <div class="team-history-shell">
+      <div class="section-heading team-history-heading">
+        <div>
+          <p class="eyebrow">OPPONENT SCOUT</p>
+          <h2 id="team-history-title">Team results</h2>
+        </div>
+        <button class="icon-button" id="close-team-history" type="button"
+          aria-label="Close scouting report">×</button>
+      </div>
+      <p class="standings-footnote" id="team-history-note"></p>
+      <div id="team-scout-overview" class="team-scout-overview" aria-live="polite">
+        <p class="muted">Loading team scouting stats…</p>
+      </div>
+      <div id="team-history-list" class="team-history-list" aria-live="polite"></div>
+    </div>
+  </dialog>
+
+  <button class="chat-launcher" id="chat-launcher" type="button"
+    aria-label="Open BallerWatch AI" aria-haspopup="dialog">
+    <svg viewBox="0 0 32 32" aria-hidden="true">
+      <rect x="5" y="8" width="22" height="17" rx="7"/>
+      <path d="M11 25 8 29v-6"/>
+      <circle cx="12" cy="16" r="1.5"/>
+      <circle cx="20" cy="16" r="1.5"/>
+      <path d="M12 21h8"/>
+      <path d="M16 4v4"/>
+      <circle cx="16" cy="3.5" r="1.5"/>
+    </svg>
+  </button>
+
+  <dialog id="chat-dialog" class="chat-dialog">
+    <div class="dialog-shell chat-dialog-shell">
+      <div class="section-heading chat-dialog-heading">
+        <div class="chat-dialog-title">
+          <span class="chat-dialog-bot" aria-hidden="true">
+            <svg viewBox="0 0 32 32">
+              <rect x="5" y="8" width="22" height="17" rx="7"/>
+              <circle cx="12" cy="16" r="1.5"/>
+              <circle cx="20" cy="16" r="1.5"/>
+              <path d="M12 21h8"/>
+              <path d="M16 4v4"/>
+              <circle cx="16" cy="3.5" r="1.5"/>
+            </svg>
+          </span>
+          <div>
+            <p class="eyebrow">YOUR MATCH ANALYST</p>
+            <h2>BallerWatch AI</h2>
+          </div>
+        </div>
+        <button class="icon-button" id="close-chat" type="button" aria-label="Close chat">×</button>
+      </div>
+      <form id="question-form">
+        <label class="sr-only" for="question">Question</label>
+        <div class="question-row">
+          <div class="question-input-wrap">
+            <input id="question" name="question" maxlength="600" autocomplete="off"
+              placeholder="Ask about opponents, fields, history…" role="combobox"
+              aria-autocomplete="list" aria-expanded="false" aria-controls="question-suggestions" required>
+            <div class="question-suggestions" id="question-suggestions" role="listbox" hidden></div>
+          </div>
+          <button type="submit">Ask</button>
+        </div>
+      </form>
+      <div class="answer" id="answer" hidden></div>
+      <div class="answer-feedback-controls">
+        <p class="answer-feedback-status" id="answer-feedback-status" hidden></p>
+      </div>
+      <p class="hint chat-dialog-hint">Ask follow-ups about the same match. Answers use published match data and prepared scouting reports, never invented predictions. Type <strong>/</strong> for commands. Double-click an answer, or press and hold it on touch, to mark or unmark it as wrong.</p>
+    </div>
+  </dialog>
+
+  <dialog id="rsvp-roster-dialog" class="rsvp-roster-dialog">
+    <div class="dialog-shell rsvp-roster-shell">
+      <div class="section-heading rsvp-roster-heading">
+        <div>
+          <p class="eyebrow">PICKUP RSVP</p>
+          <h2 id="rsvp-roster-title">RSVP roster</h2>
+        </div>
+        <button class="icon-button" id="close-rsvp-roster" type="button"
+          aria-label="Close RSVP roster">×</button>
+      </div>
+      <p class="rsvp-roster-summary" id="rsvp-roster-summary">Loading RSVP names…</p>
+      <section class="rsvp-roster-group" id="rsvp-roster-confirmed">
+        <div class="rsvp-roster-group-heading">
+          <strong>Confirmed</strong>
+          <span id="rsvp-roster-confirmed-count"></span>
+        </div>
+        <ol class="rsvp-roster-list" id="rsvp-roster-confirmed-list"></ol>
+      </section>
+      <section class="rsvp-roster-group" id="rsvp-roster-waitlist" hidden>
+        <div class="rsvp-roster-group-heading">
+          <strong>Waitlist</strong>
+          <span id="rsvp-roster-waitlist-count"></span>
+        </div>
+        <ol class="rsvp-roster-list" id="rsvp-roster-waitlist-list"></ol>
+      </section>
+      <div class="rsvp-roster-actions">
+        <a class="button-link pickup-rsvp-link rsvp-roster-rsvp" id="rsvp-roster-rsvp"
+          target="_blank" rel="noopener" hidden>RSVP</a>
+        <button class="secondary rsvp-roster-sign-in" id="rsvp-roster-sign-in"
+          type="button" hidden>Sign in to view names</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="notification-dialog" class="notification-dialog">
+    <div class="dialog-shell">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">NOTIFICATIONS</p>
+          <h2>Inbox</h2>
+        </div>
+        <div class="dialog-actions">
+          <label class="push-compact" aria-label="Push notifications">
+            <span class="switch-state" id="bell-push-status">Off</span>
+            <span class="switch switch-compact">
+              <input id="bell-push-toggle" type="checkbox" role="switch">
+              <span class="switch-track" aria-hidden="true">
+                <span class="switch-thumb"></span>
+              </span>
+            </span>
+          </label>
+          <button class="icon-button" id="refresh-board" type="button" aria-label="Refresh notifications">↻</button>
+          <button class="icon-button" id="close-notifications" type="button" aria-label="Close notifications">×</button>
+        </div>
+      </div>
+      <div class="notification-toolbar">
+        <div class="notification-filters" role="group" aria-label="Filter notifications">
+          <button class="notification-filter is-active" type="button"
+            data-notification-filter="all" aria-pressed="true">All</button>
+          <button class="notification-filter" type="button"
+            data-notification-filter="pickup" aria-pressed="false">Pickup</button>
+          <button class="notification-filter" type="button"
+            data-notification-filter="league" aria-pressed="false">League</button>
+          <button class="notification-filter" type="button"
+            data-notification-filter="version" aria-pressed="false">App</button>
+        </div>
+        <button class="subtle-action" id="mark-all-notifications-read"
+          type="button">Mark all read</button>
+      </div>
+
+      <section class="notification-preferences" id="notification-preferences">
+        <div class="notification-preferences-heading">
+          <strong>Notify me about</strong>
+          <span class="hint" id="notification-sync-status">Sign in to sync notification preferences.</span>
+        </div>
+        <div class="notification-preference-options">
+          <label>
+            <input id="notification-pref-pickup" type="checkbox" checked>
+            <span>Pickup</span>
+          </label>
+          <label>
+            <input id="notification-pref-league" type="checkbox" checked>
+            <span>League</span>
+          </label>
+          <label>
+            <input id="notification-pref-version" type="checkbox" checked>
+            <span>App</span>
+          </label>
+        </div>
+      </section>
+
+      <div class="notification-test-row">
+        <button class="subtle-action" id="test-notification" type="button">Send test</button>
+        <button class="subtle-action subtle-danger" id="delete-all-notifications" type="button">Delete all</button>
+        <span class="hint" id="test-notification-status"></span>
+      </div>
+      <div id="board" class="board">
+        <p class="muted">Loading updates…</p>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="notification-reader" class="notification-reader">
+    <div class="notification-reader-shell">
+      <div class="notification-reader-header">
+        <button class="icon-button" id="close-notification-reader" type="button"
+          aria-label="Back to notifications">←</button>
+        <span>Notification</span>
+      </div>
+      <article class="notification-reader-content">
+        <h2 id="notification-reader-title">BallerWatch update</h2>
+        <time id="notification-reader-time"></time>
+        <p id="notification-reader-body"></p>
+      </article>
+    </div>
+  </dialog>
+
+  <dialog id="settings-dialog" class="settings-dialog">
+    <div class="dialog-shell">
+      <div class="section-heading settings-heading">
+        <div>
+          <p class="eyebrow">SETTINGS</p>
+          <h2>User settings</h2>
+        </div>
+        <div class="settings-header-actions">
+          <button class="icon-button music-icon-toggle" id="music-toggle" type="button"
+            aria-label="Turn music on" aria-pressed="false" title="Music off">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path class="music-speaker" d="M4 9v6h4l5 4V5L8 9H4Z"/>
+              <path class="music-wave music-wave-one" d="M16 9.5a4 4 0 0 1 0 5"/>
+              <path class="music-wave music-wave-two" d="M18.5 7a7 7 0 0 1 0 10"/>
+              <path class="music-slash" d="M5 4 20 19"/>
+            </svg>
+          </button>
+          <button class="icon-button" id="close-settings" type="button"
+            aria-label="Close settings">×</button>
+        </div>
+        <span class="sr-only" id="music-status" aria-live="polite">Music is off on this device.</span>
+      </div>
+
+      <section id="settings-login-view">
+        <p class="muted">Sign in to manage your private BallerWatch settings on this device.</p>
+        <form id="owner-login-form" class="settings-form">
+          <label for="owner-login-username">Username</label>
+          <input id="owner-login-username" type="text" autocomplete="username"
+            maxlength="32" value="admin" placeholder="Username" required>
+          <label for="owner-login-password">Password</label>
+          <input id="owner-login-password" type="password" autocomplete="current-password"
+            maxlength="200" placeholder="Password" required>
+          <button type="submit">Sign in</button>
+        </form>
+        <p class="hint" id="owner-login-status"></p>
+        <p class="privacy-note">The existing BallerWatch account is <strong>admin</strong>. Password recovery is performed from <strong>Reset web user password</strong> and now targets a username.</p>
+      </section>
+
+      <section id="settings-owner-view" hidden>
+        <p class="settings-account-summary" id="current-user-summary"></p>
+        <form id="owner-settings-form" class="settings-form">
+          <div class="settings-choice-field">
+            <label id="owner-name-label" for="owner-name-trigger">Pickup RSVP name</label>
+            <div class="settings-choice" id="rsvp-choice">
+              <button class="settings-choice-trigger" id="owner-name-trigger" type="button"
+                aria-haspopup="listbox" aria-expanded="false" aria-controls="owner-name-options">
+                <span id="owner-name-display">Choose your RSVP name</span>
+                <span class="choice-chevron" aria-hidden="true">⌄</span>
+              </button>
+              <div class="settings-choice-popover" id="owner-name-popover" hidden>
+                <label for="owner-name-search" class="choice-search-label">Find a name</label>
+                <input type="search" id="owner-name-search" placeholder="Search RSVP names…" autocomplete="off">
+                <div class="settings-choice-options" id="owner-name-options" role="listbox"
+                  aria-label="Pickup RSVP names"></div>
+                <p class="hint choice-hint">Can't find yourself? Search a name to use it.</p>
+              </div>
+            </div>
+            <input id="owner-name" type="hidden" maxlength="120">
+          </div>
+
+          <div id="owner-team-settings" class="settings-choice-field">
+            <label for="owner-teams-trigger">League teams to monitor</label>
+            <div class="settings-choice" id="teams-choice">
+              <button class="settings-choice-trigger" id="owner-teams-trigger" type="button"
+                aria-haspopup="listbox" aria-expanded="false" aria-controls="owner-teams-options">
+                <span id="owner-teams-display">Choose monitored teams</span>
+                <span class="choice-chevron" aria-hidden="true">⌄</span>
+              </button>
+              <div class="settings-choice-chips" id="owner-teams-chips" aria-label="Selected league teams"></div>
+              <div class="settings-choice-popover" id="owner-teams-popover" hidden>
+                <label for="owner-teams-search" class="choice-search-label">Find league teams</label>
+                <input type="search" id="owner-teams-search" placeholder="Search teams…" autocomplete="off">
+                <div class="settings-choice-options" id="owner-teams-options" role="listbox"
+                  aria-label="League teams" aria-multiselectable="true"></div>
+                <p class="hint choice-hint">Select multiple teams. You can add a team not yet indexed.</p>
+              </div>
+            </div>
+            <textarea id="owner-teams" rows="1" maxlength="1200" hidden></textarea>
+            <p class="hint">Shared app setting. Changes take effect on the next league refresh.</p>
+          </div>
+
+          <button type="submit">Save changes</button>
+        </form>
+        <p class="hint" id="owner-settings-status"></p>
+
+        <section id="user-management" hidden>
+          <div class="settings-divider"></div>
+          <h3 class="settings-subheading">Users</h3>
+          <div class="settings-user-list" id="user-list"></div>
+          <form id="user-create-form" class="settings-form">
+            <label for="user-create-username">New username</label>
+            <input id="user-create-username" maxlength="32" autocomplete="off"
+              placeholder="teammate" required>
+            <div class="settings-choice-field">
+              <label for="user-create-name-trigger">Pickup RSVP name</label>
+              <div class="settings-choice" id="user-name-choice">
+                <button class="settings-choice-trigger" id="user-create-name-trigger" type="button"
+                  aria-haspopup="listbox" aria-expanded="false" aria-controls="user-create-name-options">
+                  <span id="user-create-name-display">Choose RSVP name</span>
+                  <span class="choice-chevron" aria-hidden="true">⌄</span>
+                </button>
+                <div class="settings-choice-popover" id="user-create-name-popover" hidden>
+                  <label for="user-create-name-search" class="choice-search-label">Find a name</label>
+                  <input type="search" id="user-create-name-search" placeholder="Search RSVP names…" autocomplete="off">
+                  <div class="settings-choice-options" id="user-create-name-options" role="listbox"
+                    aria-label="New user's RSVP name"></div>
+                </div>
+              </div>
+              <input id="user-create-name" type="hidden" maxlength="120">
+            </div>
+            <label for="user-create-password">Initial password</label>
+            <input id="user-create-password" type="password" minlength="12" maxlength="200"
+              autocomplete="new-password" placeholder="At least 12 characters" required>
+            <button type="submit">Add user</button>
+          </form>
+          <p class="hint" id="user-create-status"></p>
+        </section>
+
+        <section id="deleted-match-management" hidden>
+          <div class="settings-divider"></div>
+          <h3 class="settings-subheading">Deleted matches</h3>
+          <div class="deleted-match-list" id="deleted-match-list"></div>
+          <p class="hint">Delete only hides a match from BallerWatch. The RSVP/RATS source and Google Calendar are not deleted.</p>
+        </section>
+
+        <section id="release-management" hidden>
+          <div class="settings-divider"></div>
+          <h3 class="settings-subheading">App</h3>
+          <div class="release-status-row">
+            <div>
+              <strong id="release-version-summary">Checking versions…</strong>
+              <span id="release-title-summary"></span>
+            </div>
+            <button id="promote-release" type="button" disabled>Checking…</button>
+          </div>
+          <p class="hint" id="promote-release-status">
+            Runs the existing validated app-update workflow. No GitHub token is exposed to the app.
+          </p>
+        </section>
+
+        <div class="settings-divider"></div>
+        <form id="owner-password-form" class="settings-form">
+          <label for="owner-password-new">User sign-in password</label>
+          <input id="owner-password-new" type="password" autocomplete="new-password"
+            minlength="12" maxlength="200" placeholder="At least 12 characters" required>
+          <label for="owner-password-confirm">Confirm password</label>
+          <input id="owner-password-confirm" type="password" autocomplete="new-password"
+            minlength="12" maxlength="200" placeholder="Repeat user password" required>
+          <button type="submit">Set or change password</button>
+        </form>
+        <p class="hint" id="owner-password-status"></p>
+        <p class="privacy-note">Password recovery and first-time bootstrap are handled by the repository's <strong>Reset web user password</strong> GitHub Action. The plaintext password is never written to runtime state or workflow logs.</p>
+        <button class="subtle-action" id="owner-disconnect" type="button">Disconnect this device</button>
+        <button class="subtle-action" id="owner-revoke" type="button">Sign out all my devices</button>
+      </section>
+    </div>
+  </dialog>
+
+  <dialog id="match-override-dialog" class="match-override-dialog">
+    <div class="dialog-shell match-override-shell">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">MANUAL OVERRIDE</p>
+          <h2 id="match-override-title">Edit selected match</h2>
+        </div>
+        <button class="icon-button" id="close-match-override" type="button"
+          aria-label="Close match editor">×</button>
+      </div>
+      <p class="muted" id="match-override-copy">
+        Manual values take priority over the discovered match until you reset them.
+      </p>
+      <form id="match-override-form" class="settings-form">
+        <label for="match-override-date">Date</label>
+        <input id="match-override-date" type="date" required>
+
+        <div class="match-override-time-grid">
+          <div>
+            <label for="match-override-start">Start time</label>
+            <input id="match-override-start" type="time">
+          </div>
+          <div>
+            <label for="match-override-end">End time</label>
+            <input id="match-override-end" type="time">
+          </div>
+        </div>
+
+        <label for="match-override-location">Location</label>
+        <input id="match-override-location" maxlength="240"
+          placeholder="Field or venue">
+
+        <div class="match-override-actions">
+          <button class="secondary" id="match-override-reset"
+            type="button">Reset</button>
+          <button class="secondary" id="match-override-cancel" type="button">Cancel</button>
+          <button type="submit">Save</button>
+        </div>
+      </form>
+      <p class="hint" id="match-override-status"></p>
+      <p class="privacy-note">Administrator only. Overrides are stored encrypted and keep the original source match identity, so Reset can return to discovered data.</p>
+    </div>
+  </dialog>
+
+  <dialog id="install-dialog">
+    <form method="dialog">
+      <h2>Install on iPhone</h2>
+      <ol>
+        <li>Open this page in Safari.</li>
+        <li>Tap the Share button.</li>
+        <li>Choose <strong>Add to Home Screen</strong>.</li>
+        <li>Open BallerWatch V2 from the new Home Screen icon.</li>
+        <li>Open the notification bell and turn <strong>Push notifications</strong> on.</li>
+      </ol>
+      <p class="muted">iPhone Web Push requires the site to be opened as a Home Screen web app.</p>
+      <button>Done</button>
+    </form>
+  </dialog>
+
+
+  <script type="module" src="../app.js?v=8.10.0"></script>
+  <script type="module" src="./app.js?v=8.10.0"></script>
+</body>
+</html>
