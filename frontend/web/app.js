@@ -3233,6 +3233,7 @@ async function loadStandings() {
       } else {
         els.nextGameForm.removeAttribute("title");
       }
+      window.requestAnimationFrame(syncSpotlightCardDimensions);
     }
     const index = currentStandings.cards?.findIndex((card) => card.team === selectedTeam) ?? -1;
     standingsIndex = index >= 0 ? index : 0;
