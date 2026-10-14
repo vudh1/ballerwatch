@@ -1,7 +1,24 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.5.0",
+  "currentVersion": "8.5.1",
   "releases": [
+    {
+      "version": "8.5.1",
+      "date": "2026-10-13",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Reliable opponent scouting, resilient match data and restored card spacing",
+      "webAnnouncement": "Opponent Scout requests now reuse indexed history rather than repeatedly scanning all seasons. Match and standings cards have subtle separated train gaps again; standings show each tracked team's rank in a match-style pill and a simple Updated time. Temporary server errors no longer erase last-synced match data.",
+      "changes": [
+        "Indexes public scored RATS results by team and snapshot once per Worker request, rather than repeatedly scanning and sorting the full archive for opponent-adjusted last-ten calculations, historical records, and league match-card win percentages.",
+        "Adds safe, bounded GET retries on network and temporary 502/503/504 failures and prevents transient runtime or personal notification failures from clearing last-synced calendar, next-game and Inbox data.",
+        "Initial web hydration now tolerates individual optional-service failures; the Live indicator follows public calendar readiness, while a temporary disconnection with a synced schedule is labeled Last synced rather than falsely showing Offline.",
+        "Restores a visible 12px gap between adjacent match and league-standings train cards, including independently rounded full-width standings slides; schedule remains the non-carousel 14-day expand/collapse card.",
+        "Shows the monitored team's current division rank as a small top-right match-style status pill, distinct from the removed carousel count.",
+        "Formats the per-card standings footer with the same short Updated local-time display as the match and schedule cards, with the provisional RATS source retained as accessible explanatory text.",
+        "Improves scouting error copy and adds privacy-safe offline regression checks for indexes, card geometry, rank position, timestamp display, retries, and startup."
+      ]
+    },
     {
       "version": "8.5.0",
       "date": "2026-10-13",

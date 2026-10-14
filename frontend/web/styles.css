@@ -1878,7 +1878,7 @@ textarea {
 
 /* v5.3.3 connected-card carousel swipe */
 .spotlight-carousel {
-  --spotlight-train-gap: 0px;
+  --spotlight-train-gap: 12px;
   position: relative;
   margin: 0.9rem 0;
   overflow: hidden;
@@ -5242,7 +5242,7 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
 }
 
 .standings-track {
-  --standings-train-gap: 0px;
+  --standings-train-gap: 12px;
   display: flex;
   align-items: flex-start;
   gap: var(--standings-train-gap);
@@ -5814,12 +5814,7 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
   .scout-quality-meter span { transition: none; }
 }
 
-/* v8.5.0 — match-aligned standings train, simple calendar and opponent form. */
-.standings-track { gap: 0; }
-.standings-slide { border-radius: 0; border-left: 0; border-right: 0; }
-.standings-slide:first-child { border-radius: 24px 0 0 24px; }
-.standings-slide:last-child { border-radius: 0 24px 24px 0; }
-.standings-viewport { border-radius: 24px; }
+/* v8.5.0 — simple calendar and opponent form. */
 .calendar-card { touch-action: auto; }
 .next-game-form {
   grid-area: form;
@@ -5846,8 +5841,55 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
 }
 .scout-quality-caption { line-height: 1.45; }
 @media (max-width: 560px) {
-  .standings-slide { border-radius: 0; }
-  .standings-slide:first-child { border-radius: 23px 0 0 23px; }
-  .standings-slide:last-child { border-radius: 0 23px 23px 0; }
   .next-game-form { font-size: 0.73rem; }
+}
+
+/* v8.5.1: distinct connected-card train spacing and match-style rank badge. */
+.spotlight-carousel { --spotlight-train-gap: 12px; }
+.standings-track { --standings-train-gap: 12px; gap: var(--standings-train-gap); }
+.standings-slide,
+.standings-slide:first-child,
+.standings-slide:last-child {
+  border: 1px solid rgba(191, 219, 254, 0.13);
+  border-radius: 25px;
+}
+.standings-viewport { border-radius: 25px; }
+.standings-team-heading {
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-right: 0.15rem;
+}
+.standings-team-copy { min-width: 0; flex: 1 1 auto; }
+.standings-slide .status-dot.standings-rank {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.95rem;
+  margin-top: 0.1rem;
+  padding: 0.38rem 0.66rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.10);
+  color: rgba(240, 249, 255, 0.94);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.standings-slide .match-update-credit.standings-card-updated {
+  margin-top: auto;
+  padding-top: 0.9rem;
+  text-align: right;
+}
+@media (max-width: 560px) {
+  .standings-slide,
+  .standings-slide:first-child,
+  .standings-slide:last-child { border-radius: 23px; }
+  .standings-slide .status-dot.standings-rank {
+    min-height: 1.85rem;
+    padding: 0.34rem 0.52rem;
+    font-size: 0.64rem;
+  }
 }

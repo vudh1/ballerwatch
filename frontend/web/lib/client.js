@@ -56,8 +56,11 @@ export async function requestJson(path, options = {}) {
       const networkFailure =
         error instanceof TypeError ||
         /load failed|failed to fetch/i.test(String(error?.message || ""));
-      if (!retryNetwork || !networkFailure || attempt === attempts - 1) throw error;
-      await new Promise((resolve) => setTimeout(resolve, 250));
+      const safeGet = String(requestOptions.method || "GET").toUpperCase() === "GET";
+      const temporaryGatewayError = [502, 503, 504].includes(error?.status);
+      if (!retryNetwork || !safeGet || !(networkFailure || temporaryGatewayError) ||
+          attempt === attempts - 1) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 400));
     }
   }
 
