@@ -5,8 +5,10 @@
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import http from "node:http";
+import https from "node:https";
+import os from "node:os";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { fixtureResponse } from "./browser-fixtures.mjs";
 
@@ -16,7 +18,14 @@ const root = path.resolve(process.env.BALLERWATCH_WEB_ROOT || "frontend/web");
 const screenshotDir = process.env.BALLERWATCH_SCREENSHOT_DIR || "";
 if (screenshotDir) fs.mkdirSync(screenshotDir, { recursive: true });
 const mime = { ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".webmanifest": "application/manifest+json" };
-const server = http.createServer((request, response) => {
+const certificateDir = fs.mkdtempSync(path.join(os.tmpdir(), "ballerwatch-test-tls-"));
+const certificate = path.join(certificateDir, "certificate.pem");
+const key = path.join(certificateDir, "key.pem");
+execFileSync("openssl", ["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-keyout", key,
+  "-out", certificate, "-subj", "/CN=localhost", "-addext", "subjectAltName=DNS:localhost,IP:127.0.0.1", "-days", "1"], { stdio: "ignore" });
+// Match production HTTPS: WebKit correctly upgrades insecure local assets under
+// the shipped CSP. The ephemeral self-signed certificate never leaves this test.
+const server = https.createServer({ key: fs.readFileSync(key), cert: fs.readFileSync(certificate) }, (request, response) => {
   const url = new URL(request.url, "http://localhost");
   if (!url.pathname.startsWith("/ballerwatch/")) {
     response.writeHead(404).end();
@@ -38,11 +47,11 @@ const server = http.createServer((request, response) => {
   } catch { response.writeHead(404).end(); }
 });
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
-const origin = `http://127.0.0.1:${server.address().port}`;
+const origin = `https://127.0.0.1:${server.address().port}`;
 let scenarios = 0;
 
 async function prepare(browser, options = {}) {
-  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, ...options });
+  const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1440, height: 1000 }, ...options });
   const calls = [];
   const errors = [];
   const controls = { offlineApi: false, optionalFailure: false, animationFailure: false, scriptFailure: false };
@@ -50,12 +59,15 @@ async function prepare(browser, options = {}) {
     const request = route.request();
     const url = new URL(request.url());
     if (url.hostname === "ballerwatch-web.vudhone.workers.dev") {
+      const headers = { "access-control-allow-origin": origin,
+        "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type, authorization" };
+      if (request.method() === "OPTIONS") { await route.fulfill({ status: 204, headers }); return; }
       calls.push({ path: url.pathname, method: request.method(), authorization: request.headers().authorization || "" });
       if (controls.offlineApi || (controls.optionalFailure && ["/web/standings", "/web/board", "/web/config"].includes(url.pathname))) {
         await route.abort();
         return;
       }
-      await route.fulfill({ contentType: "application/json", body: JSON.stringify(fixtureResponse(url.pathname, request.method())) });
+      await route.fulfill({ headers, contentType: "application/json", body: JSON.stringify(fixtureResponse(url.pathname, request.method())) });
     } else if (controls.animationFailure && url.pathname.endsWith("/stadium.svg")) {
       await route.abort();
     } else if (controls.scriptFailure && /\/v2\/(?:app|timeline)\.js$/.test(url.pathname)) {
@@ -107,7 +119,7 @@ try {
     const shell = process.env.BALLERWATCH_CHROMIUM_SHELL === "1";
     const browser = await playwright[engine].launch({ headless: true, ...(engine === "chromium" ? {
       ...(shell ? {} : { channel: "chromium" }),
-      args: ["--no-sandbox", "--disable-gpu", ...(shell ? ["--disable-blink-features=Badging"] : [])],
+      args: ["--no-sandbox", "--disable-gpu", "--allow-insecure-localhost", "--ignore-certificate-errors", ...(shell ? ["--disable-blink-features=Badging"] : [])],
     } : {}) });
     try {
       await scenario(`${engine}: critical data loads during a reversible scroll intro; natural goal reveal`, async () => {
@@ -254,7 +266,7 @@ try {
         await scenario("chromium: two service-worker scopes coexist, offline routes stay correct and cache clearing preserves V1", async () => {
           const { context, page, errors } = await prepare(browser, { reducedMotion: "reduce" });
           await ready(page, "");
-          await page.evaluate(() => navigator.serviceWorker.ready);
+          await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
           await ready(page);
           await page.waitForFunction(() => navigator.serviceWorker.controller?.scriptURL.includes("/v2/sw.js"));
           const registrations = await page.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).map((r) => r.scope).sort());
@@ -271,6 +283,7 @@ try {
           await page.goto(`${origin}/ballerwatch/`, { waitUntil: "domcontentloaded" });
           assert.equal(await page.locator(".brand-lockup h1").textContent(), "BallerWatch");
           await context.route("**ballerwatch-web.vudhone.workers.dev/**", (route) => route.fulfill({
+            headers: { "access-control-allow-origin": origin },
             contentType: "application/json", body: JSON.stringify(fixtureResponse(new URL(route.request().url()).pathname)),
           }));
           await context.setOffline(false);
@@ -289,4 +302,7 @@ try {
     } finally { await browser.close(); }
   }
   console.log(`Browser validation passed: ${scenarios} scenarios.`);
-} finally { await new Promise((resolve) => server.close(resolve)); }
+} finally {
+  await new Promise((resolve) => server.close(resolve));
+  fs.rmSync(certificateDir, { recursive: true, force: true });
+}
