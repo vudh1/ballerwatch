@@ -4977,6 +4977,12 @@ els.musicToggle?.addEventListener("click", () => void toggleMusic());
 els.closeSettings.addEventListener("click", () => els.settingsDialog.close());
 els.ownerLoginForm.addEventListener("submit", loginOwnerDevice);
 els.guestSettingsForm.addEventListener("submit", saveGuestSettings);
+// The guest save button must work even when an unrelated protected form has
+// missing required password fields inside the same settings dialog.
+els.guestSettingsForm.querySelector('button[type="submit"]').addEventListener("click", (event) => {
+  event.preventDefault();
+  void saveGuestSettings(event);
+});
 els.ownerSettingsForm.addEventListener("submit", saveOwnerSettings);
 els.ownerPasswordForm.addEventListener("submit", saveOwnerPassword);
 els.userCreateForm.addEventListener("submit", createManagedUser);
