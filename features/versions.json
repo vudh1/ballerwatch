@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.10.2",
+  "currentVersion": "8.11.0",
   "releases": [
+    {
+      "version": "8.11.0",
+      "date": "2026-10-14",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Three-way match forecast and live V2 background soccer",
+      "webAnnouncement": "BallerWatch 8.11.0 shows a three-way win/tie/loss forecast as an RSVP-style horizontal bar on match cards, and V2 keeps its cards and navigation in front of an interactive scroll-reversible soccer stadium. The player shooting now wears #10. Scouting benchmarking remains offline and gated by historical validation.",
+      "changes": [
+        "Render a precomputed monitored-team win / tie / opponent win bar on both V1 and V2 cards; probabilities sum to 100% and require no extra request.",
+        "Make the V2 soccer scene a reversible native-scroll background beneath immediately usable shared matchday cards; card grid rises on initial scroll and reduced-motion preferences still skip animation.",
+        "Change SVG shooting player to number 10; preserve V2 iPhone landscape safe-area protection from v8.10.2.",
+        "Add a read-only weekly scouting replay against league prior, goal difference, Elo and champion baselines with an untouched holdout, aggregate metrics and no private data output. Do not change serving models without evidence.",
+        "Preserve independent encrypted scouting projection, fast cached-calendar launch, existing alerts, RSVP and authentication."
+      ]
+    },
     {
       "version": "8.10.2",
       "date": "2026-10-14",
