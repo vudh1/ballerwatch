@@ -1,7 +1,23 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.5.3",
+  "currentVersion": "8.5.4",
   "releases": [
+    {
+      "version": "8.5.4",
+      "date": "2026-10-13",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Fast reliable scouting and honest matchup win estimates",
+      "webAnnouncement": "Opponent scouting uses background, source-aware caching and resolves teams in the chosen division. The league match card now shows a conservative estimated Win ~% that accounts for recent results and head-to-head rather than raw small-sample win percentage.",
+      "changes": [
+        "Resolve duplicate public team names, including a team playing in more than one division or format, by sending the specific standings division to the existing validated team-history API and using it to scope the archived team lookup.",
+        "Prefetch a bounded set of public team reports sequentially in the visible app, reuse page-memory reports and in-flight requests, and recheck source version on the existing 60-second standings poll to avoid repeated heavy archive work; stop background prefetch after repeated upstream errors.",
+        "Keep previously confirmed read-only scouting reports available during temporary HTTP 5xx failures, without treating authorization or not-found errors as stale data.",
+        "Replace the raw weighted last-ten win fraction with a conservative fixture-specific estimated win chance for the monitored team. Combine each team's last ten scored games (11v11 weighted), sample-size shrinkage and up to five previous head-to-head results. Cap the 5-point rounded estimate at 15–85% and distinguish it from bookmaker odds.",
+        "Compute and cache upcoming monitored-team matchup estimates with the already indexed public RATS results in the standings response, preserving independent fast calendar and match routes.",
+        "Add synthetic regression cases for two-team duplicate-name divisions, mixed history, small-sample shrinkage, head-to-head and background report de-duplication."
+      ]
+    },
     {
       "version": "8.5.3",
       "date": "2026-10-13",
