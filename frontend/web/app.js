@@ -141,6 +141,7 @@ const els = {
   deleteAllNotifications: document.querySelector("#delete-all-notifications"),
   testNotificationStatus: document.querySelector("#test-notification-status"),
   calendarCard: document.querySelector("#two-week-calendar"),
+  calendarCarousel: document.querySelector("#calendar-carousel"),
   calendarPrevious: document.querySelector("#calendar-window-previous"),
   calendarNext: document.querySelector("#calendar-window-next"),
   calendarTitle: document.querySelector("#calendar-title"),
@@ -3066,6 +3067,61 @@ function setStandingsSlide(index) {
   }
 }
 
+function standingRankBar(label, rank, detail, supporting = "") {
+  const metric = document.createElement("div");
+  metric.className = "standings-stat";
+  const header = document.createElement("div");
+  header.className = "standings-stat-heading";
+  header.append(standingsCell("span", label), standingsCell("strong",
+    rank ? `#${rank.rank} / ${rank.total}` : "—"));
+  metric.append(header);
+  const track = document.createElement("div");
+  track.className = "standings-stat-track";
+  track.setAttribute("role", "img");
+  track.setAttribute("aria-label", rank
+    ? `${label}: rank ${rank.rank} of ${rank.total}. ${detail}`
+    : `${label}: ranking unavailable.`);
+  const fill = document.createElement("span");
+  fill.className = "standings-stat-fill";
+  if (!rank) metric.classList.add("is-unavailable");
+  // The bars encode rank, not goal counts: more filled means a better rank.
+  fill.style.width = rank ? `${Math.round(
+    100 * (rank.total - rank.rank + 1) / rank.total,
+  )}%` : "0%";
+  track.append(fill);
+  metric.append(track, standingsCell("span", supporting || detail, "standings-stat-detail"));
+  return metric;
+}
+
+function buildStandingStats(stats) {
+  const container = document.createElement("section");
+  container.className = "standings-stats";
+  container.setAttribute("aria-label", "Team league statistics");
+  container.append(standingsCell("p", "TEAM STATS", "eyebrow standings-stats-label"));
+  const chart = document.createElement("div");
+  chart.className = "standings-stats-chart";
+  chart.append(
+    standingRankBar("Attack", stats.attack,
+      stats.attack ? `${stats.attack.perGame} goals scored/game` : "No scored games"),
+    standingRankBar("Defense", stats.defense,
+      stats.defense ? `${stats.defense.perGame} goals conceded/game` : "No scored games"),
+    standingRankBar(
+      stats.previousSeason?.label || stats.previousSeasonLabel || "Last season",
+      stats.previousSeason,
+      stats.previousSeason
+        ? `${stats.previousSeason.division} · ${stats.previousSeason.matches} games`
+        : "Prior season not indexed for this team",
+    ),
+  );
+  container.append(chart);
+  const note = standingsCell("p",
+    "Bars show placement within each division · Scored games only" +
+    (stats.archiveComplete ? "" : " · Partial archive"),
+    "standings-stats-note");
+  container.append(note);
+  return container;
+}
+
 function renderStandings() {
   const standings = currentStandings;
   const cards = Array.isArray(standings?.cards) ? standings.cards : [];
@@ -3095,7 +3151,8 @@ function renderStandings() {
     const group = document.createElement("div");
     group.className = "standings-team-copy";
     group.append(
-      standingsCell("strong", card.team, "standings-team-name"),
+      standingsCell("p", "LEAGUE STANDINGS", "eyebrow"),
+      standingsCell("h2", card.team, "standings-team-name"),
       standingsCell("span", `${standings.season || "Current season"} · ${card.division || "Division pending"}`,
         "standings-division"),
     );
@@ -3170,6 +3227,7 @@ function renderStandings() {
       slide.append(standingsCell("p", "No scored league matches indexed for this division yet.",
         "muted standings-message"));
     }
+    if (card.hasResults && card.stats) slide.append(buildStandingStats(card.stats));
     track.append(slide);
   }
 
