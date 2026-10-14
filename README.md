@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, Calendar sync, and quick answers into one installable app.
 
-**Current source version: 8.5.4**
+**Current source version: 8.6.0**
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
 
@@ -34,6 +34,15 @@ Saturday synthetic pickup is shown simply as **Pickup** and has no RSVP/capacity
 A 22-second walkthrough with a short animated intro. Recorded from the app using synthetic sample data; game details, answers, and notifications are illustrative.
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/)
+
+## BallerWatch 8.6.0 — Independent hourly scouting and reliable public match cards
+
+- **Why the 0–100 scouting score looks different:** The opponent-adjusted score is an experimental recent-form index, **not a 100% win probability**. It now shrinks toward 50 for small samples rather than letting two wins imply a proven 100/100. Strong opponents still count more, and head-to-head affects the separate *Win ~%* matchup estimate.
+- **Last 10, across formats and seasons:** Attack, defense, goals per game, and average goal difference now use the latest ten indexed scored games. Verified 11v11 results count 1.25×, 8v8 and legacy unclassified games 1×. All-time W/D/L and format records remain available in the history sheet.
+- **Separate hourly scorer:** A production GitHub Action runs at minute 17 of each hour, updating the public RATS history when due and writing an **encrypted** precomputed scouting snapshot for standings, team histories and scheduled matchups. The action also runs immediately after v8.6.0 production promotion. Browser activity does not trigger calculations.
+- **Public availability:** Standings and team-history API routes now read only the published projection and return quickly instead of decrypting and scanning all RATS seasons per team tap. The browser does not prefetch all teams every minute. The independent public calendar is not held up by optional scouting, board, or account calls.
+- **Honest last-sync state:** A temporary calendar failure keeps last-known match data visible; the next successful response clears the stale footer even if fixtures are unchanged. Cached read-only data can still be stale during upstream outages; the app cannot guarantee service during an actual source or network outage.
+- **Privacy:** The prebuilt projection contains only published league/team/score facts and is stored as a hardened encrypted runtime-state envelope, not published in the repository source.
 
 ## BallerWatch 8.5.4 — Reliable scouting and a conservative matchup estimate
 
