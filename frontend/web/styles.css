@@ -5915,3 +5915,22 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
 @media (max-width: 560px) {
   .next-game-form { font-size: 0.72rem; padding: 0.28rem 0.55rem; }
 }
+
+/* v8.6.1: a single inline win estimate follows jersey color, rather than
+ * consuming its own row/pill in the match-card grid. */
+.spotlight-content {
+  grid-template-areas:
+    "heading heading"
+    "meta meta"
+    "location weather"
+    "capacity capacity"
+    "actions actions"
+    "hint hint";
+}
+.next-game-form { display: none !important; }
+.standings-slide .standings-team-name {
+  color: #f8fafc;
+}
+.standings-slide .eyebrow {
+  color: rgba(191, 219, 254, 0.72);
+}
