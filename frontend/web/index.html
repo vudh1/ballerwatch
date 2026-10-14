@@ -126,39 +126,35 @@
       </section>
     </div>
 
-    <section class="card calendar-card" id="two-week-calendar" aria-expanded="false">
-      <div class="section-heading calendar-heading">
-        <div>
-          <p class="eyebrow">MATCH DAYS</p>
-          <h2 id="calendar-title">14-Day Calendar</h2>
+    <div class="calendar-carousel" id="calendar-carousel">
+      <section class="card calendar-card" id="two-week-calendar" aria-expanded="false">
+        <div class="section-heading calendar-heading">
+          <div>
+            <p class="eyebrow">MATCH DAYS</p>
+            <h2 id="calendar-title">14-Day Calendar</h2>
+          </div>
         </div>
-        <div class="calendar-window-controls" role="group" aria-label="Browse 14-day calendar windows">
-          <button class="calendar-window-control" id="calendar-window-previous" type="button"
-            aria-label="Previous 14 days" title="Previous 14 days" disabled>
-            <span aria-hidden="true">‹</span>
-          </button>
-          <button class="calendar-window-control" id="calendar-window-next" type="button"
-            aria-label="Next 14 days" title="Next 14 days" disabled>
-            <span aria-hidden="true">›</span>
-          </button>
+        <div class="calendar-grid" id="calendar-grid" aria-label="Two-week game calendar"></div>
+        <div class="calendar-game-picker" id="calendar-game-picker" hidden></div>
+        <div class="calendar-card-footer">
+          <p class="calendar-updated calendar-update-credit" id="calendar-updated">Updated pending</p>
         </div>
+      </section>
+      <div class="calendar-window-controls" role="group" aria-label="Browse 14-day calendar windows">
+        <button class="calendar-window-control" id="calendar-window-previous" type="button"
+          aria-label="Previous 14 days" title="Previous 14 days" disabled>
+          <span aria-hidden="true">‹</span>
+        </button>
+        <button class="calendar-window-control" id="calendar-window-next" type="button"
+          aria-label="Next 14 days" title="Next 14 days" disabled>
+          <span aria-hidden="true">›</span>
+        </button>
       </div>
-      <div class="calendar-grid" id="calendar-grid" aria-label="Two-week game calendar"></div>
-      <div class="calendar-game-picker" id="calendar-game-picker" hidden></div>
-      <div class="calendar-card-footer">
-        <p class="calendar-updated calendar-update-credit" id="calendar-updated">Updated pending</p>
-      </div>
-    </section>
+    </div>
 
     <section class="standings-card" id="league-standings" aria-label="Current season standings">
-      <div class="section-heading standings-heading">
-        <div>
-          <p class="eyebrow">RATS LEAGUE</p>
-          <h2>Standings</h2>
-        </div>
-        <span class="standings-position" id="standings-position" aria-live="polite">—</span>
-      </div>
       <div class="standings-rail">
+        <span class="standings-position" id="standings-position" aria-live="polite">—</span>
         <div id="standings-viewport" class="standings-viewport" aria-roledescription="carousel"
           aria-label="Tracked team league standings">
           <p class="muted standings-message">Loading current season standings…</p>
