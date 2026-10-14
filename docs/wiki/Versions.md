@@ -50,6 +50,8 @@ Signed-in Inbox read/delete state is merged into the encrypted user profile so m
 
 ## Current development line
 
+- **8.6.1** — restores missing encrypted prebuilt scouting index at release/bootstrap; bulk background report preloading; bounded public GET timeouts; session-only last-good public calendar recovery; live status decoupled from optional reads; inline post-jersey monitored win chance and matching League Standings heading color.
+
 - **8.6.0** — hourly independent encrypted scouting index, compact Worker read-only retrieval, no per-team browser prefetch flood, better transient public snapshot reuse and corrected offline status handling. Existing ten-game weighted strength/scoring and matchup calculations are preserved.
 
 - **8.5.4** — scoped duplicate-name scouting so teams such as Sitting Ducks resolve within the selected division, shared on-page prefetch cache with source-aware refresh and outage fallbacks, and a conservative matchup-specific win estimate using each side's last 10 scored games plus historic head-to-head instead of misleading raw 100% from two wins.
