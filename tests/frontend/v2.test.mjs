@@ -40,6 +40,19 @@ test("every pose reverses exactly with scroll, clamps input and stays finite", (
   assert.deepEqual(scenePose(NaN), scenePose(0));
 });
 
+test("upper-corner shot narrowly clears the outstretched glove", () => {
+  const distances = Array.from({ length: 61 }, (_, index) => {
+    const pose = scenePose(0.78 + index / 1000);
+    const angle = pose.keeper.rotation * Math.PI / 180;
+    // SVG glove center is (-120, -120) with a 7-unit radius.
+    const gloveX = pose.keeper.x - 120 * Math.cos(angle) + 120 * Math.sin(angle);
+    const gloveY = pose.keeper.y - 120 * Math.sin(angle) - 120 * Math.cos(angle);
+    return Math.hypot(pose.ball.x - gloveX, pose.ball.y - gloveY) - (20 * pose.ball.scale + 7);
+  });
+  assert.ok(Math.min(...distances) > 3, "The ball must not intersect the glove");
+  assert.ok(Math.min(...distances) < 16, "The save attempt should be a near miss");
+});
+
 test("V2 installation identity is distinct and every icon is locally available", () => {
   const v1 = JSON.parse(read("manifest.webmanifest"));
   const v2 = JSON.parse(read("v2/manifest.webmanifest"));

@@ -56,7 +56,7 @@ function render() {
     set("ball", `translate(${pose.ball.x} ${pose.ball.y}) scale(${pose.ball.scale}) rotate(${pose.ball.rotation})`);
     set("shooting-leg", `rotate(${pose.kick} 13 18)`);
     set("player-body", `translate(${-pose.kick * 0.12} 0) rotate(${-pose.kick * 0.05})`);
-    set("keeper", `translate(${1120 + pose.dive * 56} ${570 - pose.dive * 48}) rotate(${pose.dive * 64})`);
+    set("keeper", `translate(${pose.keeper.x} ${pose.keeper.y}) rotate(${pose.keeper.rotation})`);
     set("net", `translate(${pose.netPulse * 9} ${pose.netPulse * 3}) scale(${1 + pose.netPulse * 0.025} 1)`);
     elements.grass.style.opacity = String(pose.grass);
     elements.flash.style.opacity = String(pose.impactFlash);
