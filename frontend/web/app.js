@@ -182,8 +182,11 @@ let teamHistoryRequestId = 0;
 // Read-only reports are memoized on this page only. Never persist to a device
 // or refetch a large archive-derived report for every repeated team tap.
 const recentScoutReports = new Map();
-const SCOUT_REPORT_REUSE_MS = 3 * 60_000;
-const SCOUT_REPORT_STALE_MS = 15 * 60_000;
+const pendingScoutReports = new Map();
+const SCOUT_REPORT_REUSE_MS = 15 * 60_000;
+const SCOUT_REPORT_STALE_MS = 60 * 60_000;
+let scoutPrefetchVersion = "";
+let scoutPrefetchInFlight = false;
 let confirmedRsvpDates = new Set();
 let waitlistedRsvpDates = new Set();
 let serviceWorkerRegistration = null;
@@ -2131,19 +2134,21 @@ function matchUpdatedText(value) {
   }).format(date)}`;
 }
 
+function soccerNameKey(name) {
+  return String(name || "").toLowerCase().replace(/[^a-z0-9]+/g, " ")
+    .replace(/\\b(?:fc|sc)\\b$/g, "").trim();
+}
+
 function monitoredWinForm(game) {
-  if (game?.kind !== "league" || !game.team) return null;
-  const nameKey = (name) => String(name || "").toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ").replace(/\b(?:fc|sc)\b$/g, "").trim();
-  const tracked = (currentStandings?.cards || []).find(
-    (card) => card.ready && nameKey(card.team) === nameKey(game.team),
-  );
-  const form = tracked?.recentForm;
-  return form?.games > 0 && Number.isFinite(form.weightedWinPct) ? form : null;
+  if (game?.kind !== "league" || !game.team || !game.opponent) return null;
+  const estimate = Object.values(currentStandings?.matchups || {}).find((value) =>
+    soccerNameKey(value.team) === soccerNameKey(game.team) &&
+    soccerNameKey(value.opponent) === soccerNameKey(game.opponent));
+  return Number.isFinite(estimate?.winPct) ? estimate : null;
 }
 
 function formatMonitoredWin(form) {
-  return form ? `Win ${form.weightedWinPct}%` : "";
+  return form ? `Win ~${form.winPct}%` : "";
 }
 
 function spotlightModel(game, label = "NEXT GAME") {
@@ -2260,7 +2265,7 @@ function applySpotlightModel(targets, game, label = "NEXT GAME") {
   targets.form.hidden = !model.form;
   if (model.form) {
     const form = monitoredWinForm(game);
-    targets.form.title = `${game.team} · ${form.wins} wins in ${form.games} scored matches · 11v11-weighted`;
+    targets.form.title = `${game.team} vs ${game.opponent} · Estimated win chance from last ${form.teamGames}/${form.opponentGames} scored games and ${form.headToHeadGames} head-to-head · Not bookmaker odds`;
   } else {
     targets.form.removeAttribute("title");
   }
@@ -3192,7 +3197,9 @@ function renderStandings() {
       button.className = "standings-team-link";
       button.textContent = row.name;
       button.setAttribute("aria-label", `View ${row.name} match history`);
-      button.addEventListener("click", () => void openTeamHistory(row.name));
+      button.addEventListener("click", () => void openTeamHistory(
+        row.name, card.divisionKey || card.division,
+      ));
       name.append(button);
       tr.append(name);
       for (const number of [row.played,
@@ -3234,7 +3241,7 @@ async function loadStandings() {
       els.nextGameForm.hidden = !form;
       if (form) {
         els.nextGameForm.title =
-          `${currentNextGame.team} · ${form.wins} wins in ${form.games} scored matches · 11v11-weighted`;
+          `${currentNextGame.team} vs ${currentNextGame.opponent} · Estimated win chance from last ${form.teamGames}/${form.opponentGames} scored games and ${form.headToHeadGames} head-to-head · Not bookmaker odds`;
       } else {
         els.nextGameForm.removeAttribute("title");
       }
