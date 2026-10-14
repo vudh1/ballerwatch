@@ -245,6 +245,7 @@ try {
         instance.controls.offlineApi = true;
         await instance.page.reload();
         await instance.page.waitForFunction(() => document.querySelector("#next-game-title").textContent.includes("October 15"));
+        await instance.page.waitForFunction(() => document.querySelector("#system-status").textContent === "Last synced");
         assert.equal(await instance.page.locator("#system-status").textContent(), "Last synced");
         await instance.context.close();
       });
