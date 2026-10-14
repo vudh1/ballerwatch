@@ -37,6 +37,7 @@ test("the hourly projection includes quick standings, forecasts and full scout p
     generatedAt: "2026-10-13T17:00:00Z",
   });
   assert.equal(index.schemaVersion, 2);
+  assert.deepEqual(index.teamOptions, ["Sitting Ducks", "Tracked FC"]);
   assert.equal(index.seasonId, "fall-2026");
   assert.equal(index.updatedAt, "2026-10-13T16:00:00Z");
   assert.deepEqual(index.monitoredTeams, ["Tracked FC"]);
@@ -59,4 +60,5 @@ test("empty current-season archive cannot produce fictitious scouting history", 
   });
   assert.equal(index.standings.cards[0].ready, false);
   assert.deepEqual(index.reports, {});
+  assert.deepEqual(index.teamOptions, ["Tracked FC"]);
 });

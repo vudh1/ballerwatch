@@ -24,6 +24,7 @@ import { historyIntentLabel, negativeFeedbackProjection } from "../../shared/fee
 import { classifyIndexedIntent } from "../../shared/intent-index.mjs";
 import { safeForExternalIntent, validatedAiIntent } from "../../shared/ai-intent-privacy.mjs";
 import { answerFixtureQuestion } from "../../shared/fixture-ai.mjs";
+import { answerScoutingQuestion, isScoutingQuestion } from "../../shared/scouting-ai.mjs";
 import { weeklyMatchBriefing } from "../../shared/match-briefing.mjs";
 import { answerRatsHistoryQuestion } from "../../shared/rats-history.mjs";
 // Scouting projections are built by scheduled Actions, never inside a GET.
@@ -1804,7 +1805,7 @@ async function loadRatsHistoryUncached(env) {
 // Prefer the encrypted state already projected into KV before making any
 // GitHub API request. Scouting requests never scan raw archive history.
 async function loadScoutingIndex(env) {
-  return publicReadCache.get("prebuilt-scout-index-v3", 90_000,
+  return publicReadCache.get("prebuilt-scout-index-v4", 90_000,
     async () => {
       const local = await kvJsonGet(env, "snapshot:scout-index").catch(() => null);
       const valid = (value) => value?.schemaVersion === 2 &&
@@ -2345,6 +2346,29 @@ function cleanPrivateRosterList(entries = []) {
     .map(({ _order, ...entry }) => entry);
 }
 
+/**
+ * Settings-only options. RSVP names originate in encrypted private rosters,
+ * are exposed ONLY through authenticated /web/user/selection-options, and
+ * must never be included in the public schedule, standings or AI replies.
+ */
+export function privateRsvpNameOptions(snapshot, today = "9999-12-31") {
+  const names = new Map();
+  const dates = Object.entries(snapshot?.pickupPrivate?.events || {})
+    .filter(([date]) => date >= today)
+    .sort(([left], [right]) => left.localeCompare(right));
+  for (const [, event] of dates) {
+    const players = Array.isArray(event?.players) ? event.players : [];
+    const waitlist = Array.isArray(event?.waitlist) ? event.waitlist : [];
+    for (const entry of [...players, ...waitlist]) {
+      const name = cleanText(entry?.name, 120).replace(/\s+/g, " ").trim();
+      if (!name || name.length < 2 || names.size >= 150) continue;
+      const unique = name.toLowerCase();
+      if (!names.has(unique)) names.set(unique, name);
+    }
+  }
+  return [...names.values()].sort((a, b) => a.localeCompare(b));
+}
+
 export function pickupRsvpRosterView(snapshot, date) {
   const safeDate = cleanText(date, 20);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(safeDate)) {
@@ -2538,6 +2562,8 @@ export function directIntent(text) {
   const clean = cleanText(text, 600);
   const lower = clean.toLowerCase();
 
+  if (/\b(?:what(?:'s| is)|show|tell me)\b.*\bmy\s+(?:pickup\s+)?rsvp\s+name\b/.test(lower) ||
+      /\b(?:which|what)\s+(?:pickup\s+)?rsvp\s+name\s+(?:am i|is mine)\b/.test(lower)) return "my_rsvp_name";
   if (/^\/?version\b/.test(lower)) return "version";
   if (/^\/?help\b/.test(lower)) return "help";
   if (
@@ -2568,6 +2594,10 @@ export function directIntent(text) {
   const gameSpecific =
     /\b(?:game|games|match|matches|play|playing|soccer|jersey|kit|uniform|color|colour|wear|opponent|who)\b/.test(lower);
 
+  // League fixtures can mention an RSVP or opponent in the same dated
+  // sentence. Never silently answer a named league match with pickup counts.
+  const leagueContext = /\b(?:league|rats|opponent|versus|vs\.?)\b/.test(lower);
+  if (hasExplicitDate && leagueContext && !/\bpickup\b/.test(lower)) return "date_games";
   if (hasExplicitDate && rsvpSpecific) return "pickup_status";
   if (hasExplicitDate && (gameSpecific || pickupSpecific)) return "date_games";
   if (
@@ -3169,6 +3199,18 @@ async function webAnswer(env, question, context = {}) {
     .filter(Boolean)
     .slice(0, 2);
 
+  // Scouting and matchup questions always use published model snapshots,
+  // never the generic intent classifier, raw RATS archive or invented odds.
+  if (isScoutingQuestion(text)) {
+    try {
+      const index = await loadScoutingIndex(env);
+      return answerScoutingQuestion(text, index, { contextTeams: lastHistoryTeams });
+    } catch {
+      return { ok: false, intent: "league_scout",
+        error: "Prepared scouting data is temporarily unavailable; no live calculations were attempted." };
+    }
+  }
+
   if (preliminaryIntent === "rats_history") {
     return webHistoryAnswer(env, text, lastHistoryTeams, context?.lastDate);
   }
@@ -3226,7 +3268,12 @@ async function webAnswer(env, question, context = {}) {
 
   let reply = "";
   let lastDate = safeContext.lastDate || "";
-  if (intent === "version") reply = `BallerWatch v${snapshot.version}`;
+  if (intent === "my_rsvp_name") {
+    if (!userAuthorized) return { ok: false, intent, error: "Sign in to view your pickup RSVP name." };
+    reply = userRsvpName ? "Your saved pickup RSVP name is " + userRsvpName + "."
+      : "You have not selected a pickup RSVP name yet. Choose one in Settings.";
+  }
+  else if (intent === "version") reply = `BallerWatch v${snapshot.version}`;
   else if (intent === "briefing") {
     const today = localDate();
     const digest = weeklyMatchBriefing({
@@ -3248,6 +3295,9 @@ async function webAnswer(env, question, context = {}) {
       "• what games are this week / next week?",
       "• what's my next game?",
       "• what's the all-time record for Team Name?",
+      "• scout Sitting Ducks / how is their recent form?",
+      "• what is the win/draw/loss chance for our next opponent?",
+      "• compare Team A and Team B's attack and defense",
       "• have Team A and Team B played before?",
       "• brief me on this week",
       "• which pickup is filling up?",
@@ -3261,6 +3311,7 @@ async function webAnswer(env, question, context = {}) {
     reply = snapshot.teams.length
       ? `Monitoring ${snapshot.teams.length} league team${snapshot.teams.length === 1 ? "" : "s"}:\n${snapshot.teams.map(x => `• ${x}`).join("\n")}`
       : "No league teams are currently configured.";
+    reply += "\nChoose additional teams from the searchable multi-select in Settings.";
   } else if (intent === "today_games") {
     reply = todayGames(snapshot);
     lastDate = localDate();
@@ -3290,6 +3341,9 @@ async function webAnswer(env, question, context = {}) {
       reply = personalPickupAnswer(rawSnapshot, requested, userRsvpName);
     } else {
       reply = pickupStatus(snapshot, requested);
+      if (/\b(?:opponent|versus|vs\.?)\b/i.test(text) && /\bpickup\b/i.test(text)) {
+        reply += "\nPickup is a session, not a published team-versus-team fixture; no opposing team is listed.";
+      }
     }
     lastDate = requested;
   }
@@ -4099,6 +4153,29 @@ export default {
           { status },
         );
       }
+    }
+
+    // Selection catalog is lazy, authenticated and name-only. The public
+    // team directory is indexed hourly; RSVP options come from private state.
+    if (request.method === "GET" && userRoute(url.pathname, "selection-options")) {
+      const account = await resolveOwnerCapability(env, bearerToken(request)).catch(() => null);
+      if (!account) return webJson(request,
+        { ok: false, error: "User sign-in is required." }, { status: 401 });
+      const [snapshotResult, indexResult] = await Promise.allSettled([
+        loadSnapshot(env), loadScoutingIndex(env),
+      ]);
+      const names = snapshotResult.status === "fulfilled"
+        ? privateRsvpNameOptions(snapshotResult.value, localDate()) : [];
+      const selected = indexResult.status === "fulfilled"
+        ? indexResult.value.monitoredTeams || [] : [];
+      const indexed = indexResult.status === "fulfilled"
+        ? indexResult.value.teamOptions || [] : [];
+      const teams = [...new Map([...selected, ...indexed]
+        .filter((name) => typeof name === "string" && name.trim())
+        .map((name) => [name.trim().toLowerCase(), name.trim()])).values()];
+      teams.sort((a, b) => a.localeCompare(b));
+      return webJson(request, { ok: true, names, teams,
+        partial: snapshotResult.status !== "fulfilled" || indexResult.status !== "fulfilled" });
     }
 
     if (

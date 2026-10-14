@@ -26,6 +26,7 @@ import {
   normalizedNotificationProfile,
   saveLocalNotificationIds,
 } from "./lib/notification-state.js";
+import { createSettingsChoice } from "./lib/settings-choice.js";
 
 const els = {
   launchIntro: document.querySelector("#launch-intro"),
@@ -255,6 +256,9 @@ const BASE_QUESTION_COMPLETIONS = [
   "What games are next week?",
   "What league teams are you monitoring?",
   "What is the RATS record for a team?",
+  "Scout Sitting Ducks",
+  "What is the win chance for the next monitored matchup?",
+  "Compare two teams' recent attack and defense",
   "Have two RATS teams played each other before?",
   "When do we play PhoSaiGon?",
   "Where is Supermokh FC vs PhoSaiGon?",
@@ -1109,6 +1113,17 @@ async function openRsvpRoster() {
 
 function showLoginSettings(message = "") {
   currentUserSettings = null;
+  // Never retain authenticated RSVP name catalogs after a session expires.
+  settingsChoiceAccount = "";
+  settingsChoiceLoadedAt = 0;
+  if (settingsChoiceControls) {
+    settingsChoiceControls.rsvp.setOptions([]);
+    settingsChoiceControls.newUser.setOptions([]);
+    settingsChoiceControls.teams.setOptions([]);
+    settingsChoiceControls.rsvp.close();
+    settingsChoiceControls.teams.close();
+    settingsChoiceControls.newUser.close();
+  }
   els.settingsLoginView.hidden = false;
   els.settingsOwnerView.hidden = true;
   if (els.ownerLoginUsername) {
@@ -1171,6 +1186,69 @@ function renderDeletedMatches(matches) {
   }
 }
 
+// All options stay in this page's memory only. No private roster names go to
+// service-worker caches, localStorage, public APIs or BallerWatch AI prompts.
+let settingsChoiceControls = null;
+let settingsChoicePending = null;
+let settingsChoiceLoadedAt = 0;
+let settingsChoiceAccount = "";
+
+function ensureSettingsChoices() {
+  if (settingsChoiceControls) return settingsChoiceControls;
+  const init = (prefix, root, input, multiple = false, chips = "") =>
+    createSettingsChoice({
+      root: document.querySelector("#" + root),
+      trigger: document.querySelector("#" + prefix + "-trigger"),
+      panel: document.querySelector("#" + prefix + "-popover"),
+      search: document.querySelector("#" + prefix + "-search"),
+      optionsList: document.querySelector("#" + prefix + "-options"),
+      display: document.querySelector("#" + prefix + "-display"),
+      input: document.querySelector("#" + input),
+      chips: chips ? document.querySelector("#" + chips) : null,
+      multiple,
+    });
+  settingsChoiceControls = {
+    rsvp: init("owner-name", "rsvp-choice", "owner-name"),
+    teams: init("owner-teams", "teams-choice", "owner-teams", true, "owner-teams-chips"),
+    newUser: init("user-create-name", "user-name-choice", "user-create-name"),
+  };
+  return settingsChoiceControls;
+}
+
+async function loadSettingsChoiceOptions() {
+  if (!ownerToken()) return;
+  const controls = ensureSettingsChoices();
+  const username = sessionUsername();
+  if (username !== settingsChoiceAccount) {
+    settingsChoiceAccount = username;
+    settingsChoiceLoadedAt = 0;
+    controls.rsvp.setOptions([]);
+    controls.newUser.setOptions([]);
+    controls.teams.setOptions([]);
+  }
+  if (settingsChoicePending) return settingsChoicePending;
+  if (Date.now() - settingsChoiceLoadedAt < 120_000) return;
+  const task = (async () => {
+    try {
+      const result = await api("/web/user/selection-options", {
+        headers: ownerHeaders(), retryNetwork: false, timeoutMs: 5_000,
+      });
+      if (username !== sessionUsername()) return;
+      const names = Array.isArray(result.names) ? result.names : [];
+      const teams = Array.isArray(result.teams) ? result.teams : [];
+      controls.rsvp.setOptions(names);
+      controls.newUser.setOptions(names);
+      controls.teams.setOptions(teams);
+      settingsChoiceLoadedAt = Date.now();
+    } catch {
+      // Current chosen values remain editable when optional sources lag.
+      settingsChoiceLoadedAt = Date.now() - 100_000;
+    }
+  })();
+  settingsChoicePending = task;
+  try { await task; } finally { if (settingsChoicePending === task) settingsChoicePending = null; }
+}
+
 function showOwnerSettings(settings) {
   currentUserSettings = settings || null;
   els.settingsLoginView.hidden = true;
@@ -1179,8 +1257,11 @@ function showOwnerSettings(settings) {
   saveSessionUsername(username);
   els.currentUserSummary.textContent =
     `Signed in as @${username} · ${settings?.role === "admin" ? "Administrator" : "User"}`;
-  els.ownerName.value = settings?.ownerName || "";
-  els.ownerTeams.value = Array.isArray(settings?.teams) ? settings.teams.join("\n") : "";
+  const selectors = ensureSettingsChoices();
+  selectors.rsvp.setValue(settings?.ownerName || "");
+  selectors.teams.setValue(Array.isArray(settings?.teams) ? settings.teams : []);
+  selectors.newUser.setValue("");
+  void loadSettingsChoiceOptions();
   els.ownerTeamSettings.hidden = !settings?.canManageTeams;
   els.userManagement.hidden = !settings?.canManageUsers;
   const deletedMatches = Array.isArray(settings?.deletedMatches) ? settings.deletedMatches : [];
@@ -1586,7 +1667,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=8.7.0", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=8.8.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -3590,79 +3671,114 @@ async function openTeamHistory(teamName, division = "") {
   }
 }
 
+/**
+ * iOS uses the Touch Events stream for horizontal cards: Pointer Events can
+ * be cancelled or retargeted as a swipe begins on a native <button>. We
+ * recognise intent before preventing default, leaving vertical scroll free.
+ * Mouse/pen still use pointer capture; a completed swipe suppresses clicks
+ * on the team link so only a deliberate tap opens scouting.
+ */
 function installStandingsSwipe() {
-  let pointerStart = null;
-  let dragging = false;
-  let suppressClick = false;
   const viewport = els.standingsViewport;
+  let gesture = null;
+  let suppressClickUntil = 0;
 
-  const resetDrag = () => {
+  function resetDrag() {
     viewport.querySelector(".standings-track")?.classList.remove("is-train-dragging");
-    pointerStart = null;
-    dragging = false;
-  };
-
-  viewport.addEventListener("pointerdown", (event) => {
-    // A swipe may start on a team row; a tap still opens the history sheet.
-    if (event.button !== 0 || event.target.closest("a, input, textarea, select")) return;
-    pointerStart = {
-      id: event.pointerId,
-      x: event.clientX,
-      y: event.clientY,
-      index: standingsIndex,
+    gesture = null;
+  }
+  function start(x, y, id, type) {
+    if (gesture) return;
+    gesture = {
+      x, y, id, type, index: standingsIndex, stepWidth: standingsStepWidth(),
+      beganAt: performance.now(), dragging: false,
     };
-    dragging = false;
-  });
-
-  viewport.addEventListener("pointermove", (event) => {
-    if (!pointerStart || pointerStart.id !== event.pointerId) return;
-    const dx = event.clientX - pointerStart.x;
-    const dy = event.clientY - pointerStart.y;
-    if (!dragging) {
-      if (Math.abs(dx) < 8) return;
-      if (Math.abs(dx) <= Math.abs(dy) * 1.1) {
+  }
+  function move(x, y, event) {
+    if (!gesture) return;
+    const dx = x - gesture.x;
+    const dy = y - gesture.y;
+    if (!gesture.dragging) {
+      if (Math.abs(dx) < 7 && Math.abs(dy) < 9) return;
+      // Releasing vertical gestures immediately prevents scroll jank.
+      if (Math.abs(dy) >= 9 && Math.abs(dy) > Math.abs(dx) * 0.92) {
         resetDrag();
         return;
       }
-      dragging = true;
-      viewport.setPointerCapture(event.pointerId);
+      if (Math.abs(dx) < 7 || Math.abs(dx) <= Math.abs(dy) * 1.05) return;
+      gesture.dragging = true;
       viewport.querySelector(".standings-track")?.classList.add("is-train-dragging");
+      if (gesture.type === "pointer") {
+        try { viewport.setPointerCapture(event.pointerId); } catch {}
+      }
     }
-    event.preventDefault();
+    if (event.cancelable) event.preventDefault();
     const track = viewport.querySelector(".standings-track");
-    const step = standingsStepWidth();
-    const atStart = pointerStart.index === 0 && dx > 0;
-    const atEnd = pointerStart.index === (currentStandings?.cards?.length || 1) - 1 && dx < 0;
-    const movement = (atStart || atEnd) ? dx * 0.18 : dx;
+    const atStart = gesture.index === 0 && dx > 0;
+    const atEnd = gesture.index === (currentStandings?.cards?.length || 1) - 1 && dx < 0;
+    const movement = atStart || atEnd ? dx * 0.16 : dx;
     if (track) {
       track.style.transform =
-        `translate3d(${-(pointerStart.index * step) + movement}px, 0, 0)`;
+        "translate3d(" + (-(gesture.index * gesture.stepWidth) + movement) + "px, 0, 0)";
     }
-  });
-
-  const finish = (event, cancelled = false) => {
-    if (!pointerStart || pointerStart.id !== event.pointerId) return;
-    const dx = event.clientX - pointerStart.x;
-    const dy = event.clientY - pointerStart.y;
-    const didDrag = dragging;
-    const originalIndex = pointerStart.index;
+  }
+  function finish(x, y, cancelled = false) {
+    if (!gesture) return;
+    const dx = x - gesture.x;
+    const dy = y - gesture.y;
+    const elapsed = Math.max(1, performance.now() - gesture.beganAt);
+    const didDrag = gesture.dragging;
+    const originalIndex = gesture.index;
     resetDrag();
     if (didDrag) {
-      suppressClick = true;
-      // A captured swipe must never accidentally open the history dialog.
-      window.setTimeout(() => { suppressClick = false; }, 0);
+      suppressClickUntil = Date.now() + 550;
+      // A short, quick flick should advance as easily as a long drag.
+      const enoughDistance = Math.abs(dx) >= Math.min(52, viewport.clientWidth * 0.14);
+      const quickFlick = Math.abs(dx) >= 19 && Math.abs(dx) / elapsed >= 0.38;
+      const step = !cancelled && Math.abs(dx) > Math.abs(dy) * 1.05 &&
+        (enoughDistance || quickFlick) ? (dx < 0 ? 1 : -1) : 0;
+      setStandingsSlide(originalIndex + step);
     }
-    const step = !cancelled && didDrag && Math.abs(dx) >= 55 &&
-      Math.abs(dx) > Math.abs(dy) * 1.2 ? (dx < 0 ? 1 : -1) : 0;
-    setStandingsSlide(originalIndex + step);
-  };
+  }
 
-  viewport.addEventListener("pointerup", (event) => finish(event));
-  viewport.addEventListener("pointercancel", (event) => finish(event, true));
+  // A touch beginning directly on a team-name button still belongs to the
+  // whole standings card. Only a real tap activates the scout.
+  viewport.addEventListener("touchstart", (event) => {
+    if (event.touches.length !== 1 || event.target.closest("input, textarea, select")) return;
+    const touch = event.changedTouches[0];
+    start(touch.clientX, touch.clientY, touch.identifier, "touch");
+  }, { passive: true });
+  viewport.addEventListener("touchmove", (event) => {
+    if (!gesture || gesture.type !== "touch") return;
+    const touch = [...event.changedTouches].find((item) => item.identifier === gesture.id);
+    if (touch) move(touch.clientX, touch.clientY, event);
+  }, { passive: false });
+  viewport.addEventListener("touchend", (event) => {
+    if (!gesture || gesture.type !== "touch") return;
+    const touch = [...event.changedTouches].find((item) => item.identifier === gesture.id);
+    if (touch) finish(touch.clientX, touch.clientY);
+  }, { passive: true });
+  viewport.addEventListener("touchcancel", () => resetDrag(), { passive: true });
+
+  viewport.addEventListener("pointerdown", (event) => {
+    if (event.pointerType === "touch" || event.button !== 0 ||
+        event.target.closest("a, input, textarea, select")) return;
+    start(event.clientX, event.clientY, event.pointerId, "pointer");
+  });
+  viewport.addEventListener("pointermove", (event) => {
+    if (gesture?.type !== "pointer" || event.pointerId !== gesture.id) return;
+    move(event.clientX, event.clientY, event);
+  });
+  viewport.addEventListener("pointerup", (event) => {
+    if (gesture?.type === "pointer" && event.pointerId === gesture.id) {
+      finish(event.clientX, event.clientY);
+    }
+  });
+  viewport.addEventListener("pointercancel", () => resetDrag());
   viewport.addEventListener("click", (event) => {
-    if (!suppressClick) return;
+    if (Date.now() >= suppressClickUntil) return;
     event.preventDefault();
-    event.stopPropagation();
+    event.stopImmediatePropagation();
   }, true);
 
   for (const [control, direction] of [
@@ -3671,10 +3787,8 @@ function installStandingsSwipe() {
     control.addEventListener("click", () => setStandingsSlide(standingsIndex + direction));
     bindCardEdgeWaterfall(control, direction);
   }
-
   window.addEventListener("resize", () => {
-    // Slide geometry comes from the viewport, not the growing train width.
-    if (pointerStart) resetDrag();
+    if (gesture) resetDrag();
     const track = viewport.querySelector(".standings-track");
     if (!track) return;
     track.classList.add("is-train-dragging");

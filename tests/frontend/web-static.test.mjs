@@ -12,19 +12,19 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
 
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   assert.match(html, /manifest\.webmanifest/);
-  assert.match(html, /apple-touch-icon\.png\?v=8\.7\.0/);
+  assert.match(html, /apple-touch-icon\.png\?v=8\.8\.0/);
   assert.match(html, /class="brand-icon"/);
-  assert.match(html, /icon\.svg\?v=8\.7\.0/);
+  assert.match(html, /icon\.svg\?v=8\.8\.0/);
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=8\.7\.0/);
-  assert.match(html, /app\.js\?v=8\.7\.0/);
+  assert.match(html, /styles\.css\?v=8\.8\.0/);
+  assert.match(html, /app\.js\?v=8\.8\.0/);
 
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v8-7-0-shell/);
+  assert.match(sw, /ballerwatch-v8-8-0-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -93,7 +93,7 @@ test("promotion watches Worker and Pages then refreshes the open PWA", () => {
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=8\.7\.0/);
+  assert.match(app, /sw\.js\?v=8\.8\.0/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -826,7 +826,7 @@ test("page uses a soccer-pitch backdrop with readable translucent cards", () => 
   assert.match(icon, /A soccer pitch with a soccer ball/);
   assert.match(icon, /<circle cx="256" cy="256" r="54"\/>/);
   assert.match(icon, /translate\(347 344\)/);
-  assert.match(manifest, /icon\.svg\?v=8\.7\.0/);
+  assert.match(manifest, /icon\.svg\?v=8\.8\.0/);
   assert.match(css, /\.card,[\s\S]*\.footer-install \{[\s\S]*rgba\(6, 18, 22, 0\.57\)/);
   assert.match(css, /\.spotlight-card \{[\s\S]*rgba\(4, 16, 22, 0\.72\)/);
   assert.match(css, /backdrop-filter:\s*blur\(24px\) saturate\(135%\)/);
@@ -1350,7 +1350,7 @@ test("cinematic launch owns first paint, stays session-scoped, and is reduced-mo
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
 
   assert.match(html, /<html lang="en" class="launch-intro-pending">/);
-  assert.match(html, /<script src="\.\/launch-prepaint\.js\?v=8\.7\.0"><\/script>[\s\S]*<link rel="stylesheet"/);
+  assert.match(html, /<script src="\.\/launch-prepaint\.js\?v=8\.8\.0"><\/script>[\s\S]*<link rel="stylesheet"/);
   assert.match(html, /id="launch-intro" aria-hidden="true">/);
   assert.doesNotMatch(html, /id="launch-intro"[^>]*\shidden/);
   assert.match(html, /class="launch-intro-word-main">BallerWatch<\/span>/);
@@ -1371,7 +1371,7 @@ test("cinematic launch owns first paint, stays session-scoped, and is reduced-mo
   assert.match(css, /@keyframes ballerwatch-intro-shine/);
   assert.match(css, /\.launch-intro\.is-active \{[\s\S]*pointer-events:\s*auto/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.launch-intro \{[\s\S]*display:\s*none !important/);
-  assert.match(sw, /\.\/launch-prepaint\.js\?v=8\.7\.0/);
+  assert.match(sw, /\.\/launch-prepaint\.js\?v=8\.8\.0/);
   assert.doesNotMatch([html, gate, app, css].join("\n"), /Netflix/i);
 });
 
@@ -1651,14 +1651,16 @@ test("standings uses adjacent-card drag train and minimal table, preserving team
   const css = fs.readFileSync("frontend/web/styles.css", "utf8");
 
   assert.match(html, /class="standings-rail"/);
-  assert.match(html, /class="standings-step standings-step-previous"/);
-  assert.match(html, /class="standings-step standings-step-next"/);
+  assert.match(html, /class="standings-step carousel-waterfall-edge standings-step-previous"/);
+  assert.match(html, /class="standings-step carousel-waterfall-edge standings-step-next"/);
   assert.doesNotMatch(html, /class="card standings-card"/);
   assert.match(app, /function standingsStepWidth\(\)/);
   assert.match(app, /els\.standingsViewport\.clientWidth \+ gap/);
   assert.match(app, /standingsIndex \* standingsStepWidth\(\)/);
   assert.doesNotMatch(app, /standingsIndex \* 100/);
   assert.match(app, /viewport\.setPointerCapture\(event\.pointerId\)/);
+  assert.match(app, /touchmove/);
+  assert.match(app, /passive: false/);
   assert.match(app, /"pointermove"/);
   assert.match(app, /"pointercancel"/);
   assert.match(app, /is-train-dragging/);
@@ -1813,7 +1815,7 @@ test("repeated scouting requests do not starve public match data", () => {
   assert.match(worker, /publicReadCache\.get\("rats-history", 120_000/);
   assert.match(worker, /loadRatsHistoryUncached\(env\)/);
   assert.match(worker, /publicReadCache\.get\("public-snapshot", 90_000/);
-  assert.match(worker, /prebuilt-scout-index-v3/);
+  assert.match(worker, /prebuilt-scout-index-v4/);
   assert.match(worker, /scoutingProjectionCurrent\(index, snapshot\)/);
   assert.match(worker, /index\.reports\[key\]/);
   assert.doesNotMatch(worker, /standings-fallback:|scout-fallback:|buildLeagueStandings\(|buildLeagueTeamHistory\(/);
@@ -1887,4 +1889,52 @@ test("scouting index initializes when its workflow is merged or release is promo
   assert.match(source, /workflows: \["Promote production release"\]/);
   assert.match(source, /workflow_run\.conclusion == 'success'/);
   assert.match(source, /node backend\/league\/scouting-index\.mjs/);
+});
+
+test("match/standings share the EXACT masked waterfall class and responsive touch intent", () => {
+  const html = fs.readFileSync("frontend/web/index.html","utf8");
+  const css = fs.readFileSync("frontend/web/styles.css","utf8");
+  const app = fs.readFileSync("frontend/web/app.js","utf8");
+  assert.match(html, /class="spotlight-edge-control carousel-waterfall-edge spotlight-edge-previous"/);
+  assert.match(html, /class="standings-step carousel-waterfall-edge standings-step-previous"/);
+  assert.match(css, /:is\(\.spotlight-carousel, \.standings-rail\)[\s\S]*\.carousel-waterfall-edge::before/);
+  assert.match(css, /\.carousel-waterfall-edge:is\(\.spotlight-edge-next, \.standings-step-next\)::before/);
+  assert.match(css, /-webkit-mask-image: linear-gradient\(270deg/);
+  assert.match(app, /touchstart/);
+  assert.match(app, /touchmove/);
+  assert.match(app, /event\.touches\.length !== 1/);
+  assert.match(app, /suppressClickUntil = Date\.now\(\) \+ 550/);
+  assert.match(app, /Math\.abs\(dx\) \/ elapsed >= 0\.38/);
+});
+test("searchable comboboxes preserve private RSVP names and multi team selections", () => {
+  const html = fs.readFileSync("frontend/web/index.html","utf8");
+  const app = fs.readFileSync("frontend/web/app.js","utf8");
+  const css = fs.readFileSync("frontend/web/styles.css","utf8");
+  const choice = fs.readFileSync("frontend/web/lib/settings-choice.js","utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs","utf8");
+  assert.match(html, /id="owner-name-options" role="listbox"/);
+  assert.match(html, /id="owner-teams-options" role="listbox"[\s\S]*aria-multiselectable="true"/);
+  assert.match(html, /id="owner-teams-chips"/);
+  assert.match(app, /api\("\/web\/user\/selection-options"/);
+  assert.match(app, /loadSettingsChoiceOptions\(\)/);
+  assert.match(choice, /aria-selected/);
+  assert.match(choice, /Escape/);
+  assert.match(choice, /maxSelected = 20/);
+  assert.match(css, /\.settings-choice-popover/);
+  assert.match(worker, /userRoute\(url\.pathname, "selection-options"\)/);
+  assert.match(worker, /resolveOwnerCapability\(env, bearerToken\(request\)\)/);
+  assert.match(worker, /privateRsvpNameOptions/);
+  assert.doesNotMatch(app, /localStorage\.setItem\([^)]*(?:rsvp|choice|roster)/);
+});
+test("AI scouting is grounded in a prepared model, never raw history on question load", () => {
+  const app = fs.readFileSync("frontend/web/app.js","utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs","utf8");
+  const model = fs.readFileSync("backend/shared/scouting-ai.mjs","utf8");
+  assert.match(worker, /isScoutingQuestion\(text\)/);
+  assert.match(worker, /answerScoutingQuestion\(text, index/);
+  assert.match(worker, /loadScoutingIndex\(env\)/);
+  assert.match(model, /index\?\.reports/);
+  assert.match(model, /match\.winPct/);
+  assert.match(model, /not calibrated betting odds/);
+  assert.match(app, /What is the win chance for the next monitored matchup/);
 });
