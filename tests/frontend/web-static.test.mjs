@@ -702,7 +702,7 @@ test("installed app does not interrupt first-load hydration for a service-worker
   );
   assert.match(
     app,
-    /const calendarReady = loadCalendar\(\);[\s\S]*?void Promise\.allSettled\(\[\s*registerServiceWorker\(\),\s*loadConfig\(\),\s*loadBoard\(\),\s*loadStandings\(\),\s*loadNotificationProfile\(\),\s*\]\);/,
+    /void registerServiceWorker\(\)\.catch\(\(\) => null\);[\s\S]*?const calendarOk = await loadCalendar\(\)\.catch\(\(\) => false\);[\s\S]*?void Promise\.allSettled\(\[\s*loadConfig\(\),\s*loadBoard\(\),\s*loadStandings\(\),\s*loadNotificationProfile\(\),\s*\]\);/,
   );
   assert.match(app, /initialLoadComplete = true/);
   assert.match(
@@ -1788,7 +1788,7 @@ test("cold-start work and card measurements stay bounded regardless of full sche
   assert.match(size, /adjacentCalendarSelection\(1\)\?\.game/);
   assert.doesNotMatch(size, /for \(const game of currentCalendar\?\.games \|\| \[\]\)/);
   assert.match(app, /JSON\.stringify\(next\) !== JSON\.stringify\(currentCalendar\)/);
-  assert.match(app, /const calendarReady = loadCalendar\(\)/);
+  assert.match(app, /const calendarOk = await loadCalendar\(\)\.catch/);
   assert.match(app, /const calendarOk = await calendarReady\.catch/);
   assert.match(worker, /const pendingJsonLoads = new Map\(\)/);
 });
