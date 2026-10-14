@@ -136,11 +136,10 @@ export function createSettingsChoice({
       options[(index + (event.key === "ArrowDown" ? 1 : -1) + options.length) % options.length]?.focus();
     }
   });
-  document.addEventListener("pointerdown", (event) => {
-    // Closing the containing dialog must not remove the open listbox during
-    // pointerdown: that reflows the dialog before mouseup and can swallow the
-    // close button's click (notably in Chromium/iOS-style modal layouts).
-    if (event.target?.closest?.("#close-settings")) return;
+  // Let the outside button receive its click before dismissing the listbox.
+  // Pointerdown dismissal can reflow a modal between down/up and swallow Save,
+  // Close, notifications or any other adjacent action on touch and desktop.
+  document.addEventListener("click", (event) => {
     if (!panel.hidden && !root.contains(event.target)) close();
   });
 
