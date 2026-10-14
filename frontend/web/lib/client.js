@@ -30,20 +30,30 @@ export function clearSession() {
 }
 
 export async function requestJson(path, options = {}) {
-  const { retryNetwork = false, ...requestOptions } = options;
+  const { retryNetwork = false, timeoutMs = 8_000, ...requestOptions } = options;
   const attempts = retryNetwork ? 2 : 1;
   let lastError = null;
 
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     try {
-      const response = await fetch(API_ORIGIN + path, {
-        cache: "no-store",
-        ...requestOptions,
-        headers: {
-          "content-type": "application/json",
-          ...(requestOptions.headers || {}),
-        },
-      });
+      // Cap public API hangs so one stalled Worker connection cannot pin
+      // the entire PWA on "Checking…" or delay cached scouting cards.
+      const controller = new AbortController();
+      const deadline = setTimeout(() => controller.abort(), Math.max(1000, timeoutMs));
+      let response;
+      try {
+        response = await fetch(API_ORIGIN + path, {
+          cache: "no-store",
+          ...requestOptions,
+          signal: requestOptions.signal || controller.signal,
+          headers: {
+            "content-type": "application/json",
+            ...(requestOptions.headers || {}),
+          },
+        });
+      } finally {
+        clearTimeout(deadline);
+      }
       const payload = await response.json().catch(() => ({}));
       if (!response.ok || payload.ok === false) {
         const error = new Error(payload.error || `Request failed (HTTP ${response.status})`);
@@ -54,7 +64,7 @@ export async function requestJson(path, options = {}) {
     } catch (error) {
       lastError = error;
       const networkFailure =
-        error instanceof TypeError ||
+        error instanceof TypeError || error?.name === "AbortError" ||
         /load failed|failed to fetch/i.test(String(error?.message || ""));
       const safeGet = String(requestOptions.method || "GET").toUpperCase() === "GET";
       const temporaryGatewayError = [502, 503, 504].includes(error?.status);
