@@ -390,7 +390,22 @@ function weightedRecentRecord(history, entries) {
     if (scored > conceded) weightedWins += weight;
     else if (scored === conceded) weightedDraws += weight;
   }
+  let weightedGoalsFor = 0, weightedGoalsAgainst = 0;
+  for (const entry of entries) {
+    const scored = entry.isHome ? entry.match.homeScore : entry.match.awayScore;
+    const conceded = entry.isHome ? entry.match.awayScore : entry.match.homeScore;
+    const team = entry.isHome ? entry.match.homeTeam : entry.match.awayTeam;
+    const weight = FORMAT_WEIGHTS[matchFormatFromArchive(history, entry.match, team)];
+    weightedGoalsFor += scored * weight;
+    weightedGoalsAgainst += conceded * weight;
+  }
   return { games: entries.length,
+    goalsForPerGame: totalWeight
+      ? Math.round(100 * weightedGoalsFor / totalWeight) / 100 : null,
+    goalsAgainstPerGame: totalWeight
+      ? Math.round(100 * weightedGoalsAgainst / totalWeight) / 100 : null,
+    goalDifferencePerGame: totalWeight
+      ? Math.round(100 * (weightedGoalsFor - weightedGoalsAgainst) / totalWeight) / 100 : null,
     weightedWinPct: totalWeight
       ? Math.round(100 * weightedWins / totalWeight) : null,
     // A draw counts as half a win only for the form/strength model.
@@ -426,7 +441,11 @@ function weightedQualityIndex(history, matches, teamName) {
   }
   // Divide by the strongest possible ten-match weighted outcome, keeping
   // the result within 0–100. 11v11 wins count more than 8v8 wins.
-  const index = Math.round(100 * weightedScore / (entries.length * 1.25 * 1.25));
+  const rawIndex = 100 * weightedScore / (entries.length * 1.25 * 1.25);
+  // Shrink untested teams toward neutral: two wins should not look like a
+  // proven 100/100 team. This is a form index, not a win probability.
+  const confidence = entries.length / (entries.length + 4);
+  const index = Math.round(50 + (rawIndex - 50) * confidence);
   return {
     index: Math.max(0, Math.min(100, index)),
     games: entries.length, wins, draws, losses,
