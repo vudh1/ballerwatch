@@ -40,9 +40,14 @@ function tier(team) {
   return 1;
 }
 function matchFormat(team) {
-  const label = [team?.leagueName, team?.divisionLabel].join(" ").toLowerCase();
-  if (/\b11\s*(?:v|vs|x)\s*11\b/.test(label)) return "11v11";
-  if (/\b8\s*(?:v|vs|x)\s*8\b/.test(label)) return "8v8";
+  if (!team) return "unknown";
+  // Mirror published league-format interpretation in league-standings.mjs.
+  const leagueName = String(team.leagueName || "").trim();
+  const alternative = [team.day, team.gender, team.division, team.divisionLabel]
+    .map((value) => String(value || "")).join(" ");
+  const label = leagueName || alternative;
+  if (/\b8\s*(?:v|vs|x|on)\s*8\b/i.test(label)) return "8v8";
+  if (leagueName || /\b11\s*(?:v|vs|x|on)\s*11\b/i.test(alternative)) return "11v11";
   return "unknown";
 }
 function seasonTeams(season) {
@@ -252,7 +257,9 @@ function qualityCorrelation(pairs) {
 export function tuneScoutingWeights(history, currentSeasonId = "") {
   const seasons = (Array.isArray(history?.seasons) ? history.seasons : [])
     .filter((season) => chronologicalKey(season.seasonId) !== null &&
-      season.seasonId !== currentSeasonId)
+      season.seasonId !== currentSeasonId &&
+      (!currentSeasonId || chronologicalKey(currentSeasonId) == null ||
+        chronologicalKey(season.seasonId) < chronologicalKey(currentSeasonId)))
     .map((season) => ({
       seasonId: season.seasonId,
       seasonKey: chronologicalKey(season.seasonId),
