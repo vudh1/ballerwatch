@@ -208,7 +208,20 @@ try {
         assert.equal(await page.locator("#soccer-intro").isVisible(), false);
         await page.setViewportSize({ width: 844, height: 390 });
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
+        // Device emulation reports zero hardware safe areas. Inject asymmetric
+        // landscape insets to verify that the rail and header stay inside them.
+        await page.evaluate(() => {
+          document.documentElement.style.setProperty("--v2-safe-left", "59px");
+          document.documentElement.style.setProperty("--v2-safe-right", "34px");
+        });
+        assert.ok(await page.locator(".v2-sidebar").evaluate((el) => el.getBoundingClientRect().left >= 59));
+        assert.ok(await page.locator("#settings-button").evaluate((el) => el.getBoundingClientRect().right <= window.innerWidth - 34));
+        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
         await shot(page, `${engine}-matchday-landscape`);
+        await page.evaluate(() => {
+          document.documentElement.style.removeProperty("--v2-safe-left");
+          document.documentElement.style.removeProperty("--v2-safe-right");
+        });
         await page.locator("#replay-intro").click();
         await atProgress(page, 0.7);
         await page.setViewportSize({ width: 390, height: 760 });

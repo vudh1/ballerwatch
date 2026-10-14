@@ -66,6 +66,13 @@ test("V2 installation identity is distinct and every icon is locally available",
   }
 });
 
+test("landscape safe areas protect the entire V2 grid, including desktop navigation", () => {
+  const css = read("v2/styles.css");
+  assert.match(css, /--v2-safe-left: env\(safe-area-inset-left, 0px\)/);
+  assert.match(css, /--v2-safe-right: env\(safe-area-inset-right, 0px\)/);
+  assert.match(css, /\.v2-shell \{[^}]*padding-left: var\(--v2-safe-left\);[^}]*padding-right: var\(--v2-safe-right\)/);
+});
+
 test("V2 retains every functional controller hook and loads exactly one shared controller", () => {
   const v1 = read("index.html");
   const v2 = read("v2/index.html");
