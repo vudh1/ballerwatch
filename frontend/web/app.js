@@ -2129,7 +2129,7 @@ function matchUpdatedText(value) {
 function monitoredWinForm(game) {
   if (game?.kind !== "league" || !game.team) return null;
   const nameKey = (name) => String(name || "").toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ").replace(/\\b(?:fc|sc)\\b$/g, "").trim();
+    .replace(/[^a-z0-9]+/g, " ").replace(/\b(?:fc|sc)\b$/g, "").trim();
   const tracked = (currentStandings?.cards || []).find(
     (card) => card.ready && nameKey(card.team) === nameKey(game.team),
   );
@@ -3589,10 +3589,10 @@ async function loadCalendar() {
   try {
     // The personal RSVP lookup is independent of the public schedule.
     // An auth/profile failure must never blank an otherwise valid calendar.
-    const [payload] = await Promise.all([
-      api("/web/calendar", {retryNetwork: true}),
-      loadRsvpStatus().catch(() => false),
-    ]);
+    // Never block public fixtures on a slow private RSVP/account lookup.
+    // That independent result can update the badge when it arrives.
+    void loadRsvpStatus().catch(() => false);
+    const payload = await api("/web/calendar", {retryNetwork: true});
     const next = payload.calendar || null;
     // Keep the active card, scroll position and expensive layout untouched
     // when the public schedule/weather snapshot is unchanged.
@@ -4634,14 +4634,17 @@ applyInstallState();
 setNotificationFilter("all");
 renderNotificationPreferences();
 setSystemState("checking");
-const initial = await Promise.allSettled([
+// The first match card and schedule must not wait for optional history,
+// notification preferences or service worker update checks.
+const calendarReady = loadCalendar();
+void Promise.allSettled([
   registerServiceWorker(), loadConfig(), loadBoard(),
-  loadCalendar(), loadStandings(), loadNotificationProfile(),
+  loadStandings(), loadNotificationProfile(),
 ]);
-const calendarOk = initial[3].status === "fulfilled" && initial[3].value === true;
+const calendarOk = await calendarReady.catch(() => false);
 setSystemState(calendarOk ? "live" : currentCalendar ? "stale" : "offline");
 initialLoadComplete = true;
-await updatePushStatus();
+void updatePushStatus();
 if (ownerToken()) void syncCurrentPushRegistration();
 
 window.setInterval(() => {
