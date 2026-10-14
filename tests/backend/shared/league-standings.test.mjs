@@ -418,6 +418,7 @@ test("published division strength respects D1 > D2a > D2b > D2c > D3 and neutral
   ].map(divisionStrengthMultiplier);
   assert.deepEqual(levels, [1.30, 1.18, 1.10, 1.03, 0.90]);
   assert.equal(divisionStrengthMultiplier({ division: "2" }), 1.10);
+  assert.equal(divisionStrengthMultiplier({ division: "2", leagueName: "Men D2a" }), 1.18);
   assert.equal(divisionStrengthMultiplier({ divisionLabel: "No bracket" }), 1);
   assert.equal(divisionStrengthMultiplier({ division: "4" }), 1);
 });
