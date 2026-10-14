@@ -69,7 +69,7 @@ export function buildScoutingIndex({
     }
   }
   return {
-    schemaVersion: 3,
+    schemaVersion: 2,
     seasonId,
     teamOptions,
     updatedAt: String(history?.updatedAt || ""),
