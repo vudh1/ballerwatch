@@ -213,13 +213,24 @@ function matchPoints(scored, conceded) {
 // usable at a neutral weight rather than being treated as missing history.
 const FORMAT_WEIGHTS = Object.freeze({ "8v8": 1, "11v11": 1.25, unknown: 1 });
 const FORM_WINDOW = 10;
+// Both caches are keyed by a public archive/results instance. WeakMap references
+// do not retain older archives when the encrypted runtime index is refreshed.
+// Reusing the ordered results avoids a full 2023–present sort for every match card.
+const archiveResultCache = new WeakMap();
+const teamGameIndexCache = new WeakMap();
+
 function allIndexedScoredMatches(history, today) {
-  return completedHistoryMatches(history)
+  if (!history || typeof history !== "object") return [];
+  const cached = archiveResultCache.get(history);
+  if (cached?.today === today) return cached.matches;
+  const matches = completedHistoryMatches(history)
     .filter((match) => /^\d{4}-\d{2}-\d{2}$/.test(String(match.date)) &&
       match.date <= today && historyTeamKey(match.homeTeam) !== historyTeamKey(match.awayTeam))
     .sort((a, b) => b.date.localeCompare(a.date) ||
       String(b.startTime || "").localeCompare(String(a.startTime || "")) ||
       b.seasonId.localeCompare(a.seasonId));
+  archiveResultCache.set(history, { today, matches });
+  return matches;
 }
 function matchFormatFromArchive(history, match, teamName) {
   const season = seasonData(history, match.seasonId);
@@ -227,14 +238,30 @@ function matchFormatFromArchive(history, match, teamName) {
   return leagueFormat(metadata);
 }
 function lastTeamGames(matches, teamName, excludeKey = "", limit = FORM_WINDOW) {
-  const key = historyTeamKey(teamName);
+  let byTeam = teamGameIndexCache.get(matches);
+  if (!byTeam) {
+    byTeam = new Map();
+    const append = (key, record) => {
+      if (!byTeam.has(key)) byTeam.set(key, []);
+      byTeam.get(key).push(record);
+    };
+    for (const match of matches) {
+      const homeKey = historyTeamKey(match.homeTeam);
+      const awayKey = historyTeamKey(match.awayTeam);
+      append(homeKey, {
+        match, isHome: true, opponent: match.awayTeam, opponentKey: awayKey,
+      });
+      append(awayKey, {
+        match, isHome: false, opponent: match.homeTeam, opponentKey: homeKey,
+      });
+    }
+    teamGameIndexCache.set(matches, byTeam);
+  }
+  const games = byTeam.get(historyTeamKey(teamName)) || [];
   const output = [];
-  for (const match of matches) {
-    const home = historyTeamKey(match.homeTeam), away = historyTeamKey(match.awayTeam);
-    if (excludeKey && (home === excludeKey || away === excludeKey)) continue;
-    if (home !== key && away !== key) continue;
-    output.push({ match, isHome: home === key, opponent: home === key
-      ? match.awayTeam : match.homeTeam });
+  for (const entry of games) {
+    if (excludeKey && entry.opponentKey === excludeKey) continue;
+    output.push(entry);
     if (output.length >= limit) break;
   }
   return output;
