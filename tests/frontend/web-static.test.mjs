@@ -1719,21 +1719,26 @@ test("team stats appear only after team-history API load; standings show no 1/2 
   assert.match(css, /\.standings-card-updated/);
 });
 
-test("league schedule match cards show last-ten weighted wins for both teams only", () => {
+test("match card shows only the monitored team's compact weighted win rate", () => {
   const html = fs.readFileSync("frontend/web/index.html","utf8");
   const app = fs.readFileSync("frontend/web/app.js","utf8");
   const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs","utf8");
   const css = fs.readFileSync("frontend/web/styles.css","utf8");
+  const standings = fs.readFileSync("backend/shared/league-standings.mjs","utf8");
   assert.match(html, /id="next-game-form" hidden/);
-  assert.match(app, /nextGameForm: document\.querySelector/);
-  assert.match(app, /model\.form/);
-  assert.match(app, /game\.kind === "league" && \(game\.teamForm \|\| game\.opponentForm\)/);
+  assert.match(app, /function monitoredWinForm\(game\)/);
+  assert.match(app, /formatMonitoredWin\(monitoredWinForm\(game\)\)/);
+  assert.match(app, /Win \$\{form\.weightedWinPct\}%/);
+  assert.doesNotMatch(app, /Weighted win % · Last 10 scored/);
+  assert.doesNotMatch(app, /game\.opponentForm/);
   assert.match(app, /form: role\("next-game-form"\)/);
-  assert.match(worker, /function withCalendarRecentForms/);
-  assert.match(worker, /withLeagueRecentForm\(withCachedVenue\(webNextGameDetails/);
-  assert.match(css, /\.next-game-form \{/);
+  assert.doesNotMatch(worker, /function withCalendarRecentForms/);
+  assert.doesNotMatch(worker, /function withLeagueRecentForm/);
+  assert.match(standings, /recentForm: buildTeamRecentForm\(history, team\.name, today\)/);
+  assert.match(css, /\.next-game-form \{[\s\S]*?justify-self: start/);
   assert.doesNotMatch(html, /calendar-window-next/);
 });
+
 
 test("standings rank pill and timestamp match the game card, both trains have real gaps", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
@@ -1754,7 +1759,7 @@ test("match data retries and preserves last successful data during outages", () 
   assert.match(client, /temporaryGatewayError = \[502, 503, 504\]/);
   assert.match(client, /safeGet/);
   assert.match(app, /api\("\/web\/calendar", \{retryNetwork: true\}\)/);
-  assert.match(app, /loadRsvpStatus\(\)\.catch\(\(\) => false\)/);
+  assert.match(app, /void loadRsvpStatus\(\)\.catch\(\(\) => false\)/);
   assert.match(app, /if \(currentCalendar\) \{/);
   assert.match(app, /Last synced · Reconnecting/);
   assert.match(app, /if \(currentNextGame\?\.id\) \{/);
@@ -1772,4 +1777,18 @@ test("last-ten scouting indexes the historical result archive only once per snap
   assert.match(lib, /archiveResultCache\.get\(history\)/);
   assert.match(lib, /teamGameIndexCache\.get\(matches\)/);
   assert.match(lib, /byTeam\.get\(historyTeamKey\(teamName\)\)/);
+});
+
+test("cold-start work and card measurements stay bounded regardless of full schedule length", () => {
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
+  const size = app.split("function syncSpotlightCardDimensions() {")[1]
+    ?.split("function addIsoDays(")[0] || "";
+  assert.match(size, /adjacentCalendarSelection\(-1\)\?\.game/);
+  assert.match(size, /adjacentCalendarSelection\(1\)\?\.game/);
+  assert.doesNotMatch(size, /for \(const game of currentCalendar\?\.games \|\| \[\]\)/);
+  assert.match(app, /JSON\.stringify\(next\) !== JSON\.stringify\(currentCalendar\)/);
+  assert.match(app, /const calendarReady = loadCalendar\(\)/);
+  assert.match(app, /const calendarOk = await calendarReady\.catch/);
+  assert.match(worker, /const pendingJsonLoads = new Map\(\)/);
 });
