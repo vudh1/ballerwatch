@@ -7,6 +7,7 @@ import {
   buildTeamScout,
   buildTeamRecentForm,
   buildMatchupEstimate,
+  divisionStrengthMultiplier,
 } from "../../../backend/shared/league-standings.mjs";
 
 function archive() {
@@ -381,7 +382,9 @@ test("conservative matchup estimate shrinks 2/2 raw wins and includes head-to-he
     ],
   }]};
   const estimate=buildMatchupEstimate(data,"Monitored","Opponent","2026-10-13");
-  assert.ok(estimate.winPct > 50 && estimate.winPct < 100);
+  assert.ok(estimate.winPct > 0 && estimate.winPct < 85);
+  assert.ok(estimate.winPct > estimate.lossPct);
+  assert.equal(estimate.winPct + estimate.drawPct + estimate.lossPct, 100);
   assert.equal(estimate.teamGames,2);
   assert.equal(estimate.headToHeadGames,1);
   assert.equal(estimate.sampleLimited,true);
@@ -402,6 +405,45 @@ test("standings attaches next fixture matchup estimates separately from live cal
   assert.ok(estimate);
   assert.equal(estimate.team,"Third Touch FC");
   assert.equal(estimate.opponent,"Other A");
-  assert.ok(estimate.winPct >= 15 && estimate.winPct <= 85);
+  assert.ok(estimate.winPct >= 10 && estimate.winPct <= 80);
+  assert.equal(estimate.winPct + estimate.drawPct + estimate.lossPct, 100);
   assert.equal(Object.keys(view.matchups).length,1);
+});
+
+test("published division strength respects D1 > D2a > D2b > D2c > D3 and neutral unknown", () => {
+  const levels = [
+    { divisionLabel: "D1" }, { division: "D2a" },
+    { leagueName: "Tuesday Men Division 2b" }, { divisionLabel: "D-2c" },
+    { division: "D3" },
+  ].map(divisionStrengthMultiplier);
+  assert.deepEqual(levels, [1.30, 1.18, 1.10, 1.03, 0.90]);
+  assert.equal(divisionStrengthMultiplier({ division: "2" }), 1.10);
+  assert.equal(divisionStrengthMultiplier({ divisionLabel: "No bracket" }), 1);
+  assert.equal(divisionStrengthMultiplier({ division: "4" }), 1);
+});
+
+test("equal winning records against D1 outrank D3 and W/D/L sum to 100", () => {
+  const team = (name, division) => ({
+    name, division, day: "Tuesday", gender: "Men", leagueName: "11v11",
+  });
+  const pairs = [["High", "H Rival", "D1"],
+    ["Low", "L Rival", "D3"], ["Reference", "R Rival", "D2b"]];
+  const teams = pairs.flatMap(([name, rival, division]) =>
+    [team(name, division), team(rival, division)]);
+  const matches = pairs.flatMap(([name, rival]) =>
+    Array.from({ length: 10 }, (_, day) => ({
+      date: `2026-10-${String(day + 1).padStart(2, "0")}`,
+      homeTeam: name, awayTeam: rival, homeScore: 2, awayScore: 0,
+    })));
+  const archive = { seasons: [{
+    seasonId: "fall-2026", teams, matches,
+  }] };
+  const high = buildMatchupEstimate(archive, "High", "Reference", "2026-10-13");
+  const low = buildMatchupEstimate(archive, "Low", "Reference", "2026-10-13");
+  assert.ok(high.winPct > low.winPct);
+  for (const prediction of [high, low]) {
+    assert.equal(prediction.winPct + prediction.drawPct + prediction.lossPct, 100);
+    assert.equal(prediction.sampleLimited, false);
+    assert.match(prediction.method, /Uncalibrated/);
+  }
 });
