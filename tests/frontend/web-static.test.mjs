@@ -1734,7 +1734,7 @@ test("team stats appear only after team-history API load; standings show no 1/2 
   assert.match(css, /\.standings-card-updated/);
 });
 
-test("match card shows only the monitored team's compact weighted win rate", () => {
+test("match card renders shared precomputed 3-way win/draw/loss as a horizontal RSVP-style bar", () => {
   const html = fs.readFileSync("frontend/web/index.html","utf8");
   const app = fs.readFileSync("frontend/web/app.js","utf8");
   const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs","utf8");
@@ -1742,15 +1742,18 @@ test("match card shows only the monitored team's compact weighted win rate", () 
   const standings = fs.readFileSync("backend/shared/league-standings.mjs","utf8");
   assert.match(html, /id="next-game-form" hidden/);
   assert.match(app, /function monitoredWinForm\(game\)/);
-  assert.match(app, /locationParts\.push\(formatMonitoredWin\(matchForm\)\)/);
-  assert.match(app, /Win ~\$\{form\.winPct\}%/);
+  assert.match(app, /function renderWinChanceBar\(target, game, estimate\)/);
+  assert.match(app, /estimate\.winPct \+ estimate\.drawPct \+ estimate\.lossPct === 100/);
+  assert.match(app, /renderWinChanceBar\(targets\.form, game, monitoredWinForm\(game\)\)/);
+  assert.doesNotMatch(app, /locationParts\.push\(formatMonitoredWin/);
   assert.doesNotMatch(app, /Weighted win % · Last 10 scored/);
   assert.doesNotMatch(app, /game\.opponentForm/);
   assert.match(app, /form: role\("next-game-form"\)/);
   assert.doesNotMatch(worker, /function withCalendarRecentForms/);
   assert.doesNotMatch(worker, /function withLeagueRecentForm/);
   assert.match(standings, /recentForm: buildTeamRecentForm\(history, team\.name, today\)/);
-  assert.match(css, /\.next-game-form \{[\s\S]*?justify-self: start/);
+  assert.match(css, /\.win-chance-track \{/);
+  assert.match(css, /\.win-chance-fill \{/);
   assert.doesNotMatch(html, /calendar-window-next/);
 });
 
@@ -1847,7 +1850,7 @@ test("scouting is precomputed hourly and no longer floods the Worker with browse
   assert.match(worker, /candidate\.divisionKey === division/);
   assert.match(worker, /index\.reports\[key\]/);
   assert.match(standings, /export function buildMatchupEstimate\(/);
-  assert.match(app, /Conservative estimated win chance|Estimated win chance/);
+  assert.match(app, /provisional scouting estimate/);
   assert.match(app, /function cachedDivisionScoutFallback\(teamName, division/);
   assert.match(app, /if \(fallback\) els\.teamScoutOverview\.append\(fallback\)/);
   assert.match(schedule, /cron: '7 \* \* \* \*'/);
@@ -1879,8 +1882,8 @@ test("scouting preloads once after base data, and status recovery never awaits o
   assert.match(app, /Promise\.allSettled\(\[/);
   assert.match(client, /new AbortController\(\)/);
   assert.match(client, /error\?\.name === "AbortError"/);
-  assert.match(app, /locationParts\.push\(formatMonitoredWin\(matchForm\)\)/);
-  assert.match(css, /\.next-game-form \{ display: none !important; \}/);
+  assert.match(app, /renderWinChanceBar\(targets\.form, game, monitoredWinForm\(game\)\)/);
+  assert.match(css, /\.win-chance-track \{/);
   assert.match(css, /\.standings-slide \.eyebrow \{\s*color: rgba\(191, 219, 254, 0\.72\)/);
 });
 
