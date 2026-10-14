@@ -1445,6 +1445,7 @@ function guestSelector() {
     input: els.guestTeams,
     chips: document.querySelector("#guest-teams-chips"),
     multiple: true, maxSelected: MAX_GUEST_TEAMS,
+    onChange: () => saveGuestSettings(),
   });
   return guestTeamSelector;
 }
@@ -1466,8 +1467,7 @@ async function loadGuestTeamOptions() {
     }
   } catch { /* Existing team choices remain usable offline. */ }
 }
-async function saveGuestSettings(event) {
-  event.preventDefault();
+function saveGuestSettings() {
   const before = JSON.stringify(guestProfile.teams);
   const next = {name: els.guestName.value, teams: guestSelector().getValues()};
   if (!saveGuestProfile(localStorage, next)) {
@@ -1493,16 +1493,12 @@ async function openSettings(options = {}) {
       : "";
   pendingMatchAdminAction = pendingAction;
   if (!els.settingsDialog.open) els.settingsDialog.showModal();
-  // Bind to the *live* dialog form, not an element captured before V2
-  // finishes its shared shell hydration.
-  const guestForm = document.querySelector("#guest-settings-form");
-  if (guestForm && guestForm.dataset.saveBound !== "true") {
-    guestForm.dataset.saveBound = "true";
-    guestForm.addEventListener("submit", saveGuestSettings);
-    guestForm.querySelector('button[type="submit"]').addEventListener("click", (event) => {
-      event.preventDefault();
-      void saveGuestSettings(event);
-    });
+  // Anonymous preferences save immediately as the visitor edits fields.
+  // No form submission or password/account flow is involved.
+  const guestName = document.querySelector("#guest-name");
+  if (guestName && guestName.dataset.autosaveBound !== "true") {
+    guestName.dataset.autosaveBound = "true";
+    guestName.addEventListener("input", saveGuestSettings);
   }
   renderGuestSettings();
   void loadGuestTeamOptions();

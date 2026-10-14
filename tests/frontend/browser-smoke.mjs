@@ -201,19 +201,12 @@ try {
         await page.locator("#guest-teams-trigger").click();
         await page.locator("#guest-teams-search").fill("Fixture FC");
         await page.locator('#guest-teams-options [role="option"]').first().click();
-        page.on("console", (message) => console.log("Guest browser console:", message.type(), message.text()));
-        await page.locator("#guest-settings-form button[type=submit]").click();
-        const diagnostic = await page.evaluate(() => ({
-          location: location.pathname + location.search,
-          navigation: performance.getEntriesByType("navigation").map(x => x.type),
-          form: document.querySelector("#guest-settings-form")?.outerHTML.slice(0, 500),
-          valid: document.querySelector("#guest-settings-form")?.checkValidity(),
-          status: document.querySelector("#guest-settings-status")?.textContent,
-          stored: localStorage.getItem("ballerwatch-visitor-profile-v1"),
-          name: document.querySelector("#guest-name")?.value,
-          selected: document.querySelector("#guest-teams")?.value,
-        }));
-        console.log("Guest preference save inspection:", JSON.stringify(diagnostic));
+        await page.waitForFunction(() => {
+          const raw = localStorage.getItem("ballerwatch-visitor-profile-v1");
+          if (!raw) return false;
+          const profile = JSON.parse(raw);
+          return profile.name === "Visitor" && profile.teams.includes("Fixture FC");
+        });
         assert.match(await page.locator("#guest-settings-status").textContent(), /device/);
         const profile = await page.evaluate(() => JSON.parse(localStorage.getItem("ballerwatch-visitor-profile-v1")));
         assert.equal(profile.name, "Visitor");

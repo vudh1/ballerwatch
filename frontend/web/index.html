@@ -393,7 +393,7 @@
 
       <section id="guest-settings-view" aria-label="Personal preferences on this device">
         <p class="muted">Use BallerWatch without an account. Your name, followed teams and notification preferences stay on this device.</p>
-        <form id="guest-settings-form" class="settings-form">
+        <div id="guest-settings-form" class="settings-form">
           <label for="guest-name">Your name (optional)</label>
           <input id="guest-name" type="text" maxlength="120" autocomplete="nickname" placeholder="Your name">
           <div class="settings-choice-field">
@@ -416,9 +416,9 @@
             <textarea id="guest-teams" rows="1" hidden></textarea>
             <p class="hint">Personal standings only. This does not change another visitor's schedule or settings.</p>
           </div>
-          <button type="submit">Save on this device</button>
+          <p class="hint">Your preferences save automatically on this device.</p>
           <p class="hint" id="guest-settings-status" role="status"></p>
-        </form>
+        </div>
       </section>
       <div class="settings-divider"></div>
       <details id="settings-login-view" class="admin-settings-details">
