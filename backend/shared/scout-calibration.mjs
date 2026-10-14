@@ -235,6 +235,37 @@ function pickWeights(folds, minimum = 80) {
   }
   return { weights: best.weights, selected: true, baseline: base };
 }
+/**
+ * Mirror the published 0–100 opponent-adjusted form index using ONLY past
+ * matches. This measures whether an old quality score predicts performance
+ * in the next season; it is NOT itself a win probability.
+ */
+function priorQualityIndex(prior, team, weights = DEFAULT_SCOUT_WEIGHTS) {
+  const entries = (prior.get(team) || []).slice(0, 10);
+  let score = 0, maxScore = 0;
+  for (const [i, entry] of entries.entries()) {
+    const recent = Math.pow(weights.decay, i);
+    const format = entry.format === "11v11" ? weights.format11 : 1;
+    const importance = recent * (entry.tier || 1) * format;
+    const opponentGames = (prior.get(entry.opponent) || [])
+      .filter((game) => game.opponent !== team).slice(0, 10);
+    let opponentWins = 0, opponentDraws = 0, total = 0;
+    for (const [j, game] of opponentGames.entries()) {
+      const w = Math.pow(weights.decay, j) * (game.tier || 1) *
+        (game.format === "11v11" ? weights.format11 : 1);
+      total += w;
+      if (game.scored > game.conceded) opponentWins += w;
+      else if (game.scored === game.conceded) opponentDraws += w;
+    }
+    const opponentForm = total ? (opponentWins + 0.5 * opponentDraws + 0.5) /
+      (total + 1) : 0.5;
+    const outcome = entry.scored > entry.conceded ? 1 :
+      entry.scored === entry.conceded ? 0.5 : 0;
+    score += outcome * importance * (0.75 + 0.5 * opponentForm);
+    maxScore += importance * 1.25;
+  }
+  return maxScore ? bounded(score / maxScore, 0, 1) : null;
+}
 function qualityCorrelation(pairs) {
   if (pairs.length < 12) return null;
   const avgX = pairs.reduce((sum, p) => sum + p[0], 0) / pairs.length;
@@ -291,9 +322,8 @@ export function tuneScoutingWeights(history, currentSeasonId = "") {
         if (previous.length < 3 || outcomes.length < 3) continue;
         const average = outcomes.reduce((sum, outcome) => sum + outcome, 0) /
           outcomes.length;
-        const previousForm = forecastFromFeatures(previous, [], [],
-          DEFAULT_SCOUT_WEIGHTS).win;
-        qualityPairs.push([previousForm, average]);
+        const previousQuality = priorQualityIndex(prior, team, DEFAULT_SCOUT_WEIGHTS);
+        if (previousQuality !== null) qualityPairs.push([previousQuality, average]);
       }
     }
     appendSeason(prior, season.games);
