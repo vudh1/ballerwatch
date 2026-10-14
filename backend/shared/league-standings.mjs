@@ -238,67 +238,125 @@ function matchPoints(scored, conceded) {
   return scored > conceded ? 3 : scored === conceded ? 1 : 0;
 }
 
-function opponentFormExcludingTeam(matches, opponentKey, excludedKey) {
-  let games = 0;
-  let points = 0;
-  for (const match of matches) {
-    const home = normalizeHistoryTeamName(match.homeTeam);
-    const away = normalizeHistoryTeamName(match.awayTeam);
-    if (home === excludedKey || away === excludedKey) continue;
-    if (home !== opponentKey && away !== opponentKey) continue;
-    const scored = home === opponentKey ? match.homeScore : match.awayScore;
-    const conceded = home === opponentKey ? match.awayScore : match.homeScore;
-    points += matchPoints(scored, conceded);
-    games += 1;
-  }
-  // One neutral pseudo-game limits noise when an opponent has played very little.
-  return (points + 1.5) / (3 * (games + 1));
+// Format multipliers intentionally make a verified 11v11 result 25% more
+// consequential than the same 8v8 result. Unknown historical format remains
+// usable at a neutral weight rather than being treated as missing history.
+const FORMAT_WEIGHTS = Object.freeze({ "8v8": 1, "11v11": 1.25, unknown: 1 });
+const FORM_WINDOW = 10;
+function allIndexedScoredMatches(history, today) {
+  return completedHistoryMatches(history)
+    .filter((match) => /^\\d{4}-\\d{2}-\\d{2}$/.test(String(match.date)) &&
+      match.date <= today && historyTeamKey(match.homeTeam) !== historyTeamKey(match.awayTeam))
+    .sort((a, b) => b.date.localeCompare(a.date) ||
+      String(b.startTime || "").localeCompare(String(a.startTime || "")) ||
+      b.seasonId.localeCompare(a.seasonId));
 }
-
-function qualityRanking(season, team, today) {
-  const divisionMatches = scoredDivisionMatches(season, team, today);
-  const members = (season.teams || []).filter((member) =>
-    normalizedDivision(member) === normalizedDivision(team));
-  const scored = members.map((member) => {
-    const key = normalizeHistoryTeamName(member.name);
-    let games = 0;
-    let adjustedPoints = 0;
-    let opponentStrength = 0;
-    let qualityWins = 0;
-    for (const match of divisionMatches) {
-      const home = normalizeHistoryTeamName(match.homeTeam);
-      const away = normalizeHistoryTeamName(match.awayTeam);
-      if (home !== key && away !== key) continue;
-      const scoredGoals = home === key ? match.homeScore : match.awayScore;
-      const concededGoals = home === key ? match.awayScore : match.homeScore;
-      const opponent = home === key ? away : home;
-      const opponentForm = opponentFormExcludingTeam(divisionMatches, opponent, key);
-      const points = matchPoints(scoredGoals, concededGoals);
-      adjustedPoints += points * (0.75 + 0.5 * opponentForm);
-      opponentStrength += opponentForm;
-      if (points === 3) qualityWins += opponentForm;
-      games += 1;
-    }
-    return {
-      name: member.name, games,
-      index: games ? Math.round(100 * adjustedPoints / (3.75 * games)) : null,
-      opponentsPct: games ? Math.round(100 * opponentStrength / games) : null,
-      qualityWins: Math.round(qualityWins * 100) / 100,
-    };
-  }).filter((row) => row.games > 0);
-  const target = scored.find((row) =>
-    normalizeHistoryTeamName(row.name) === normalizeHistoryTeamName(team.name));
+function matchFormatFromArchive(history, match, teamName) {
+  const season = seasonData(history, match.seasonId);
+  const metadata = matchingTeam(season?.teams || [], teamName);
+  return leagueFormat(metadata);
+}
+function lastTeamGames(matches, teamName, excludeKey = "", limit = FORM_WINDOW) {
+  const key = historyTeamKey(teamName);
+  const output = [];
+  for (const match of matches) {
+    const home = historyTeamKey(match.homeTeam), away = historyTeamKey(match.awayTeam);
+    if (excludeKey && (home === excludeKey || away === excludeKey)) continue;
+    if (home !== key && away !== key) continue;
+    output.push({ match, isHome: home === key, opponent: home === key
+      ? match.awayTeam : match.homeTeam });
+    if (output.length >= limit) break;
+  }
+  return output;
+}
+function weightedRecentRecord(history, entries) {
+  let weightedWins = 0, weightedDraws = 0, totalWeight = 0;
+  for (const entry of entries) {
+    const scored = entry.isHome ? entry.match.homeScore : entry.match.awayScore;
+    const conceded = entry.isHome ? entry.match.awayScore : entry.match.homeScore;
+    const team = entry.isHome ? entry.match.homeTeam : entry.match.awayTeam;
+    const weight = FORMAT_WEIGHTS[matchFormatFromArchive(history, entry.match, team)];
+    totalWeight += weight;
+    if (scored > conceded) weightedWins += weight;
+    else if (scored === conceded) weightedDraws += weight;
+  }
+  return { games: entries.length,
+    weightedWinPct: totalWeight
+      ? Math.round(100 * weightedWins / totalWeight) : null,
+    // A draw counts as half a win only for the form/strength model.
+    form: totalWeight
+      ? (weightedWins + 0.5 * weightedDraws + 0.5) / (totalWeight + 1) : 0.5,
+  };
+}
+function opponentFormExcludingTeam(history, matches, opponent, excludedName) {
+  const entries = lastTeamGames(matches, opponent, historyTeamKey(excludedName));
+  return weightedRecentRecord(history, entries).form;
+}
+function weightedQualityIndex(history, matches, teamName) {
+  const entries = lastTeamGames(matches, teamName);
+  if (!entries.length) return null;
+  let weightedScore = 0;
+  let wins = 0, draws = 0, losses = 0;
+  let weightedWins = 0, totalWeight = 0;
+  let opponentStrength = 0, qualityWins = 0;
+  for (const entry of entries) {
+    const match = entry.match;
+    const scored = entry.isHome ? match.homeScore : match.awayScore;
+    const conceded = entry.isHome ? match.awayScore : match.homeScore;
+    const format = matchFormatFromArchive(history, match, teamName);
+    const weight = FORMAT_WEIGHTS[format];
+    const strength = opponentFormExcludingTeam(history, matches, entry.opponent, teamName);
+    const outcome = scored > conceded ? 1 : scored === conceded ? 0.5 : 0;
+    if (outcome === 1) { wins++; weightedWins += weight; qualityWins += strength; }
+    else if (outcome === 0.5) draws++;
+    else losses++;
+    totalWeight += weight;
+    opponentStrength += strength;
+    weightedScore += outcome * weight * (0.75 + 0.5 * strength);
+  }
+  // Divide by the strongest possible ten-match weighted outcome, keeping
+  // the result within 0–100. 11v11 wins count more than 8v8 wins.
+  const index = Math.round(100 * weightedScore / (entries.length * 1.25 * 1.25));
+  return {
+    index: Math.max(0, Math.min(100, index)),
+    games: entries.length, wins, draws, losses,
+    weightedWinPct: Math.round(100 * weightedWins / totalWeight),
+    opponentsPct: Math.round(100 * opponentStrength / entries.length),
+    qualityWins: Math.round(100 * qualityWins) / 100,
+    provisional: true,
+  };
+}
+function qualityRanking(history, season, team, today) {
+  const matches = allIndexedScoredMatches(history, today);
+  const peers = (season?.teams || [])
+    .filter((member) => normalizedDivision(member) === normalizedDivision(team))
+    .map((member) => ({ name: member.name,
+      ...weightedQualityIndex(history, matches, member.name) }))
+    .filter((member) => Number.isInteger(member.index));
+  const target = peers.find((member) =>
+    normalizeHistoryTeamName(member.name) === normalizeHistoryTeamName(team.name));
   if (!target) return null;
   return {
-    index: target.index,
-    rank: 1 + scored.filter((row) => row.index > target.index).length,
-    total: scored.length,
-    opponentsPct: target.opponentsPct,
-    qualityWins: target.qualityWins,
-    games: target.games,
+    ...target,
+    rank: 1 + peers.filter((peer) => peer.index > target.index).length,
+    total: peers.length,
+    lastGames: FORM_WINDOW,
     provisional: true,
-    method: "Weighted scored results: wins over opponents with better records against other teams count more; each opponent's direct games against this team are excluded; one neutral pseudo-game smooths small samples.",
+    method: "Last ten indexed scored matches across all seasons and formats. 11v11 games receive 1.25× weight; 8v8 and unverified legacy games 1×. Wins against opponents with stronger recent records against others count more. Opponents' games against the rated team are excluded; early records are smoothed. Not betting odds.",
   };
+}
+
+/** Public, last-ten weighted win record for a team appearing in a fixture. */
+export function buildTeamRecentForm(history, teamName, today = "9999-12-31") {
+  if (!teamName || !String(teamName).trim()) return null;
+  const matches = allIndexedScoredMatches(history, today);
+  const games = lastTeamGames(matches, teamName);
+  if (!games.length) return null;
+  const model = weightedRecentRecord(history, games);
+  const wins = games.filter(({match,isHome}) =>
+    (isHome ? match.homeScore > match.awayScore : match.awayScore > match.homeScore)).length;
+  return { team: teamName, games: model.games, wins,
+    weightedWinPct: model.weightedWinPct, formWindow: FORM_WINDOW };
 }
 
 function emptyRecord() {
@@ -366,7 +424,7 @@ export function buildTeamScout(history, currentSeasonId, teamName, today = "9999
       played: currentRank.played, wins: currentRank.wins, draws: currentRank.draws,
       losses: currentRank.losses, rank: currentRank.rank, teams: seasonRows.length,
     } : null,
-    quality: qualityRanking(current, team, today),
+    quality: qualityRanking(history, current, team, today),
     attack: rankings.attack,
     defense: rankings.defense,
     previousSeason: rankings.previousSeason,
@@ -375,6 +433,7 @@ export function buildTeamScout(history, currentSeasonId, teamName, today = "9999
     formats: Object.fromEntries(Object.entries(byFormat)
       .map(([format, row]) => [format, finishRecord(row)])),
     recent: recent.slice(0, 5),
+    recentTen: buildTeamRecentForm(history, team.name, today),
     archiveComplete: history?.coverage?.complete === true,
   };
 }
