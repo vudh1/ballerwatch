@@ -6322,7 +6322,7 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
   pointer-events: none;
 }
 
-/* v8.11.0 — RSVP-style shared three-outcome match forecast. */
+/* v8.11.1 — single-layer three-outcome match forecast, no inner card. */
 .spotlight-content {
   grid-template-areas:
     "heading heading" "meta meta" "form form" "location weather"
@@ -6332,11 +6332,12 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
   display: grid !important;
   width: 100%;
   max-width: none;
-  padding: 0.76rem 0.85rem;
-  border: 1px solid rgba(74, 222, 128, 0.2);
-  border-radius: 14px;
-  background: rgba(34, 197, 94, 0.065);
-  gap: 0.55rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  margin: 0.65rem 0 0;
+  gap: 0.4rem;
   white-space: normal;
   line-height: 1.4;
 }
@@ -6365,6 +6366,6 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
 .win-chance-draw { background: #a7b4c8; }
 .win-chance-loss { background: #fb7185; }
 @media (max-width: 390px) {
-  .next-game-form { padding: 0.65rem; }
+  .next-game-form { padding: 0; }
   .win-chance-labels { font-size: 0.66rem; }
 }

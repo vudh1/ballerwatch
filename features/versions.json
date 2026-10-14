@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.11.0",
+  "currentVersion": "8.11.1",
   "releases": [
+    {
+      "version": "8.11.1",
+      "date": "2026-10-14",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Pinned validated scouting candidate and streamlined win bar",
+      "webAnnouncement": "BallerWatch 8.11.1 locks the Summer 2026 holdout-reviewed scouting weights into production, keeps the hourly prediction cache fast, and shows team acronyms above a clean, single-layer win/tie/loss bar.",
+      "changes": [
+        "Lock the holdout-tested candidate weights (form 0.55, division 0.28, H2H 0.08, draw 0.16, decay 0.98) into the production scouting index; future weekly evaluations cannot silently replace them.",
+        "Skip hourly weight tuning and publish the same reviewed parameters to match forecasts, division standings and full team scouting reports; retain independent hourly encrypted snapshot.",
+        "Remove the nested border, panel background and padding from the win-probability indicator on V1 and V2; use team initials plus Tie, with full names in accessible labels and tooltips.",
+        "Add unit and Chromium/WebKit browser regression coverage; version both PWA shells while keeping authenticated and device state separate."
+      ]
+    },
     {
       "version": "8.11.0",
       "date": "2026-10-14",

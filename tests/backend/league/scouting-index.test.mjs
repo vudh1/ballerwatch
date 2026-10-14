@@ -37,6 +37,13 @@ test("the hourly projection includes quick standings, forecasts and full scout p
     generatedAt: "2026-10-13T17:00:00Z",
   });
   assert.equal(index.schemaVersion, 2);
+  assert.equal(index.model.modelVersion, 2);
+  assert.equal(index.model.status, "production-locked");
+  assert.deepEqual(index.model.weights, {
+    form: 0.55, division: 0.28, h2h: 0.08, draw: 0.16, decay: 0.98, format11: 1.25,
+  });
+  assert.equal(index.model.holdoutSeason, "summer-2026");
+  assert.equal(index.model.holdoutGames, 1474);
   assert.deepEqual(index.teamOptions, ["Sitting Ducks", "Tracked FC"]);
   assert.equal(index.seasonId, "fall-2026");
   assert.equal(index.updatedAt, "2026-10-13T16:00:00Z");

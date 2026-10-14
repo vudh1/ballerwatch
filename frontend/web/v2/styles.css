@@ -188,8 +188,8 @@
   .v2 *, .v2 *::before, .v2 *::after { scroll-behavior: auto !important; animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
 }
 
-/* Preserve the same three-way RSVP-style bar with the V2 match card palette. */
-.v2 .next-game-form { border-color: #d3ff6a30; background: #d3ff6a0c; }
+/* Keep the shared three-way track flat; no nested border or background panel. */
+.v2 .next-game-form { border: 0; background: transparent; padding: 0; }
 .v2 .win-chance-win { background: var(--accent); }
 .v2 .win-chance-loss { background: #fb8a92; }
 
