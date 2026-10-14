@@ -5,10 +5,10 @@
 (() => {
   const root = document.documentElement;
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let seen = false;
-  try { seen = sessionStorage.getItem("ballerwatch:v2:intro-seen") === "1"; } catch {}
-  root.classList.toggle("v2-intro-skipped", seen || reduced);
+  // Background animation replays naturally on scroll; only reduced motion skips it.
+  root.classList.toggle("v2-intro-skipped", reduced);
   root.classList.toggle("v2-reduced", reduced);
+  root.classList.add("v2-app-ready");
   window.setTimeout(() => {
     if (root.dataset.timelineReady === "true") return;
     root.classList.add("v2-intro-skipped");

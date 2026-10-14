@@ -192,3 +192,55 @@
 .v2 .next-game-form { border-color: #d3ff6a30; background: #d3ff6a0c; }
 .v2 .win-chance-win { background: var(--accent); }
 .v2 .win-chance-loss { background: #fb8a92; }
+
+/* v8.11.0: soccer plays behind an immediately usable V1-style card page.
+ * Scroll reveals the first cards while always preserving navigation access. */
+.v2 .soccer-intro {
+  position: fixed;
+  inset: 0;
+  height: 100vh;
+  height: 100svh;
+  z-index: 0;
+  pointer-events: none;
+}
+.v2 .soccer-stage { position: absolute; inset: 0; height: 100%; }
+.v2 .intro-topline { display: none; }
+.v2 .scene-copy { opacity: 0.33; }
+.v2 .v2-shell {
+  margin-top: 0;
+  min-height: 240vh;
+  min-height: 240svh;
+  opacity: 1;
+  background: linear-gradient(180deg, rgba(8, 15, 20, 0.58), rgba(8, 15, 20, 0.38) 45%, rgba(8, 15, 20, 0.82));
+}
+.v2 .v2-content { position: relative; z-index: 2; }
+.v2 #panel-matchday .v2-match-grid {
+  opacity: var(--v2-cards-visible, 0);
+  transform: translateY(calc((1 - var(--v2-cards-visible, 0)) * 42px));
+  transition: opacity 130ms linear, transform 130ms linear;
+}
+.v2 .next-game-card, .v2 .calendar-card, .v2 .standings-slide {
+  background-color: rgba(15, 27, 32, 0.83);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.v2 .v2-editorial { background-color: rgba(15, 27, 32, 0.84); }
+.v2 .v2-sidebar { background: rgba(8, 15, 20, 0.7); backdrop-filter: blur(10px); }
+.v2 .v2-header #skip-intro {
+  display: inline-flex;
+  flex: 0 0 auto;
+  min-height: 44px;
+  margin-left: auto;
+  padding: 0.5rem 0.75rem;
+  background: rgba(17, 30, 35, 0.88);
+  color: #d1e6db;
+  border: 1px solid var(--border);
+  font-size: var(--type-caption);
+}
+.v2-intro-skipped #panel-matchday .v2-match-grid { opacity: 1; transform: none; }
+.v2-intro-skipped .v2-header #skip-intro { display: none; }
+.v2 .v2-static-welcome { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .v2 #panel-matchday .v2-match-grid { opacity: 1; transform: none; }
+  .v2 .soccer-intro { display: none; }
+}
