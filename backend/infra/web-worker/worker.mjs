@@ -1629,11 +1629,11 @@ async function runtimeSettings(env) {
 }
 
 // Reuse *decrypted* RATS archive and results objects across clicks/requests.
- // A per-request Cache API JSON parse otherwise destroys the WeakMap indexes
- // and forces repeated all-season indexing even within one Worker isolate.
+// A per-request Cache API JSON parse otherwise destroys the WeakMap indexes
+// and forces repeated all-season indexing even within one Worker isolate.
 const publicReadCache = createBoundedLoadCache({ maxEntries: 55 });
 const transientPublicLoadError = (error) =>
-  /\\b(?:429|500|502|503|504)\\b|timeout|network|fetch failed/i
+  /\b(?:429|500|502|503|504)\b|timeout|network|fetch failed/i
     .test(String(error?.message || ""));
 
 // Deduplicate simultaneous cache misses in the same Worker isolate. Without
