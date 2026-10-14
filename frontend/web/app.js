@@ -179,6 +179,11 @@ let calendarExpanded = false;
 let currentStandings = null;
 let standingsIndex = 0;
 let teamHistoryRequestId = 0;
+// Read-only reports are memoized on this page only. Never persist to a device
+// or refetch a large archive-derived report for every repeated team tap.
+const recentScoutReports = new Map();
+const SCOUT_REPORT_REUSE_MS = 3 * 60_000;
+const SCOUT_REPORT_STALE_MS = 15 * 60_000;
 let confirmedRsvpDates = new Set();
 let waitlistedRsvpDates = new Set();
 let serviceWorkerRegistration = null;
@@ -1576,7 +1581,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=8.5.2", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=8.5.3", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -3402,14 +3407,38 @@ async function openTeamHistory(teamName) {
   if (!els.teamHistoryDialog.open) els.teamHistoryDialog.showModal();
 
   try {
-    const payload = await api(`/web/team-history?team=${encodeURIComponent(teamName)}`,
-      {retryNetwork: true});
+    const cached = recentScoutReports.get(teamName);
+    let usingSavedReport = false;
+    let history;
+    if (cached && Date.now() - cached.at < SCOUT_REPORT_REUSE_MS) {
+      history = cached.history;
+    } else {
+      try {
+        const payload = await api(`/web/team-history?team=${encodeURIComponent(teamName)}`,
+          {retryNetwork: true});
+        if (!payload?.ok || !payload.history) throw new Error("History unavailable");
+        history = payload.history;
+      } catch (networkError) {
+        // On a brief API outage, an explicitly labelled prior report is better
+        // than blanking the entire sheet; never hide access/404 errors this way.
+        if (!cached || Date.now() - cached.at >= SCOUT_REPORT_STALE_MS ||
+            [400, 401, 403, 404].includes(networkError?.status)) throw networkError;
+        history = cached.history;
+        usingSavedReport = true;
+      }
+    }
     if (requestId !== teamHistoryRequestId || !els.teamHistoryDialog.open) return;
-    if (!payload?.ok || !payload.history) throw new Error("History unavailable");
-    const history = payload.history;
+    // A report is only cached after the server returns a validated payload.
+    if (!usingSavedReport) {
+      recentScoutReports.delete(teamName);
+      recentScoutReports.set(teamName, { at: Date.now(), history });
+      if (recentScoutReports.size > 20) {
+        recentScoutReports.delete(recentScoutReports.keys().next().value);
+      }
+    }
     const updated = new Date(history.updatedAt || "");
     els.teamHistoryNote.textContent =
-      `${history.indexedMatchCount} scored matches` +
+      `${usingSavedReport ? "Last synced · " : ""}${history.indexedMatchCount} scored matches` +
       (Number.isNaN(updated.getTime()) ? "" : ` · Updated ${new Intl.DateTimeFormat(
         undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" },
       ).format(updated)}`) +

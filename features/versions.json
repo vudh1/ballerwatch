@@ -1,7 +1,23 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.5.2",
+  "currentVersion": "8.5.3",
   "releases": [
+    {
+      "version": "8.5.3",
+      "date": "2026-10-13",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Scouting stability and resilient public match loading",
+      "webAnnouncement": "Repeated team scouting now reuses cached opponent reports and a bounded decrypted archive instead of rebuilding history each time. Calendar and match data are isolated from optional enrichment failures and can fall back to a recently synced public snapshot during transient network outages.",
+      "changes": [
+        "Deduplicate and reuse the decrypted public RATS results index within each Cloudflare Worker instance for two minutes, preserving the already-existing per-archive team and match indexes across scouting requests.",
+        "Cache public team scouting results per team, season and indexed data revision for five minutes, using bounded Worker memory instead of unbounded repeated expensive history scans.",
+        "Memoize read-only runtime snapshots briefly with strict transient-error-only stale recovery; missing, invalid or intentionally removed canonical runtime records still fail closed.",
+        "Keep public /web/calendar rendering available when optional weather or venue lookups fail, without requiring another historical score calculation.",
+        "Reuse scouting reports for three minutes within the PWA session; if a temporary API error occurs, show an explicitly marked last-synced report for up to fifteen minutes instead of an empty error sheet.",
+        "Add automated tests proving single-flight concurrent requests, bounded cache memory, stale-only-for-transient-errors behavior, and independent public match loading."
+      ]
+    },
     {
       "version": "8.5.2",
       "date": "2026-10-13",

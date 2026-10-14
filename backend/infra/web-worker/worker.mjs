@@ -27,6 +27,7 @@ import { answerFixtureQuestion } from "../../shared/fixture-ai.mjs";
 import { weeklyMatchBriefing } from "../../shared/match-briefing.mjs";
 import { answerRatsHistoryQuestion } from "../../shared/rats-history.mjs";
 import { buildLeagueStandings, buildLeagueTeamHistory } from "../../shared/league-standings.mjs";
+import { createBoundedLoadCache } from "../../shared/bounded-load-cache.mjs";
 import { matchVenue } from "../../shared/venue-directory.mjs";
 import {
   applyFreePickupMatchOverride,
@@ -1627,6 +1628,14 @@ async function runtimeSettings(env) {
   return {};
 }
 
+// Reuse *decrypted* RATS archive and results objects across clicks/requests.
+// A per-request Cache API JSON parse otherwise destroys the WeakMap indexes
+// and forces repeated all-season indexing even within one Worker isolate.
+const publicReadCache = createBoundedLoadCache({ maxEntries: 55 });
+const transientPublicLoadError = (error) =>
+  /\b(?:429|500|502|503|504)\b|timeout|network|fetch failed/i
+    .test(String(error?.message || ""));
+
 // Deduplicate simultaneous cache misses in the same Worker isolate. Without
 // single-flight, initial config/calendar/standings requests each re-fetch and
 // decrypt the same runtime snapshot from GitHub on a cold cache.
@@ -1755,6 +1764,12 @@ export function withCachedVenue(game, directory) {
 }
 
 async function loadRatsHistory(env) {
+  return publicReadCache.get("rats-history", 120_000, () => loadRatsHistoryUncached(env), {
+    staleMs: 10 * 60_000, transientError: transientPublicLoadError,
+  });
+}
+
+async function loadRatsHistoryUncached(env) {
   if (env.BALLERWATCH_STATE) {
     const cached = await kvJsonGet(env, "snapshot:rats-history").catch(() => null);
     if (cached && Array.isArray(cached.seasons)) return cached;
@@ -1771,17 +1786,23 @@ async function loadRatsHistory(env) {
     }
   }
 
-  return cachedJson("rats-history-v1", 600, async () => {
-    const encrypted = await githubRawJsonFile(env, "league/state/history.json", "runtime-state");
-    const history = await decryptState(encrypted, env);
-    if (!history || !Array.isArray(history.seasons)) {
-      throw new Error("RATS history index is unavailable.");
-    }
-    return history;
-  });
+  // Keep only the decrypted object in the bounded isolate cache. Avoid the
+  // default Cache API JSON round trip for this large private encrypted index.
+  const encrypted = await githubRawJsonFile(env, "league/state/history.json", "runtime-state");
+  const history = await decryptState(encrypted, env);
+  if (!history || !Array.isArray(history.seasons)) {
+    throw new Error("RATS history index is unavailable.");
+  }
+  return history;
 }
 
 async function loadSnapshot(env) {
+  return publicReadCache.get("public-snapshot", 20_000, () => loadSnapshotUncached(env), {
+    staleMs: 3 * 60_000, transientError: transientPublicLoadError,
+  });
+}
+
+async function loadSnapshotUncached(env) {
   if (env.BALLERWATCH_STATE) {
     try {
       const [pickup, pickupPrivate, league, today, teams, version, settings] = await Promise.all([
@@ -3561,8 +3582,8 @@ export default {
         // Optional last-ten form comes from /web/standings independently.
         const [snapshot, weather, venues] = await Promise.all([
           loadSnapshot(env),
-          loadWebWeather(env),
-          loadRatsVenues(env),
+          loadWebWeather(env).catch(() => null),
+          loadRatsVenues(env).catch(() => ({ venues: [] })),
         ]);
         const today = localDate();
         return webJson(request, {
@@ -3584,8 +3605,10 @@ export default {
           loadSnapshot(env), loadRatsHistory(env),
         ]);
         const seasonId = cleanText(snapshot?.league?.seasonId, 40);
-        const standings = buildLeagueStandings(
-          history, seasonId, snapshot?.teams || [], localDate(),
+        const standings = await publicReadCache.get(
+          `standings:${history.updatedAt}:${seasonId}:${localDate()}:${(snapshot?.teams || []).join("|")}`,
+          90_000,
+          () => buildLeagueStandings(history, seasonId, snapshot?.teams || [], localDate()),
         );
         return webJson(request, { ok: true, standings });
       } catch {
@@ -3606,8 +3629,10 @@ export default {
           loadSnapshot(env), loadRatsHistory(env),
         ]);
         const seasonId = cleanText(snapshot?.league?.seasonId, 40);
-        const standings = buildLeagueStandings(
-          history, seasonId, snapshot?.teams || [], localDate(),
+        const standings = await publicReadCache.get(
+          `standings:${history.updatedAt}:${seasonId}:${localDate()}:${(snapshot?.teams || []).join("|")}`,
+          90_000,
+          () => buildLeagueStandings(history, seasonId, snapshot?.teams || [], localDate()),
         );
         // Public drill-down is limited to teams in the current monitored divisions.
         const allowed = standings.cards.some((card) =>
@@ -3616,15 +3641,19 @@ export default {
           return webJson(request, { ok: false, error: "Team is not in the current standings." },
             { status: 404 });
         }
-        const teamHistory = buildLeagueTeamHistory(
-          history, seasonId, teamName, 35, localDate(),
+        const teamHistory = await publicReadCache.get(
+          `scout:${history.updatedAt}:${seasonId}:${localDate()}:${teamName}`,
+          5 * 60_000,
+          () => buildLeagueTeamHistory(history, seasonId, teamName, 35, localDate()),
         );
         if (!teamHistory) {
           return webJson(request, { ok: false, error: "Team history is not indexed yet." },
             { status: 404 });
         }
         return webJson(request, { ok: true, history: teamHistory });
-      } catch {
+      } catch (error) {
+        // Diagnostic class only: never log decrypted archive/roster or user tokens.
+        console.warn("Public scout read failed", String(error?.name || "Error").slice(0, 36));
         return webJson(request, {
           ok: false, error: "RATS match history is temporarily unavailable.",
         }, { status: 503 });

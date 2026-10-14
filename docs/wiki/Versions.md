@@ -50,6 +50,8 @@ Signed-in Inbox read/delete state is merged into the encrypted user profile so m
 
 ## Current development line
 
+- **8.5.3** — bounded, reusable public history and derived scouting caches to reduce Worker CPU pressure on repeated team taps, temporary stale-scoring fallback with proper labels, and core calendar isolation from optional weather/venue failures.
+
 - **8.5.2** — decouples critical match/calendar requests from history scanning, reduces match-card layout probes to immediate neighbors, puts calendar ahead of optional startup calls, deduplicates cold Worker loads and shows only the monitored team's compact weighted win percentage in league match cards.
 
 - **8.5.1** — fixes repeated indexed-history scanning in opponent scouting and match-card weighted win percentages; bounded transient GET retry and preserve-last-good schedules/inbox; restores 12px gaps in match and standings card trains; top-right monitored-team ranking pill and match-style short Updated timestamps.
