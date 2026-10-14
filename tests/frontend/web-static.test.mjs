@@ -1727,7 +1727,7 @@ test("match card shows only the monitored team's compact weighted win rate", () 
   const standings = fs.readFileSync("backend/shared/league-standings.mjs","utf8");
   assert.match(html, /id="next-game-form" hidden/);
   assert.match(app, /function monitoredWinForm\(game\)/);
-  assert.match(app, /formatMonitoredWin\(monitoredWinForm\(game\)\)/);
+  assert.match(app, /locationParts\.push\(formatMonitoredWin\(matchForm\)\)/);
   assert.match(app, /Win ~\$\{form\.winPct\}%/);
   assert.doesNotMatch(app, /Weighted win % · Last 10 scored/);
   assert.doesNotMatch(app, /game\.opponentForm/);
@@ -1758,7 +1758,7 @@ test("match data retries and preserves last successful data during outages", () 
   const client = fs.readFileSync("frontend/web/lib/client.js", "utf8");
   assert.match(client, /temporaryGatewayError = \[502, 503, 504\]/);
   assert.match(client, /safeGet/);
-  assert.match(app, /api\("\/web\/calendar", \{retryNetwork: true\}\)/);
+  assert.match(app, /api\("\/web\/calendar", \{\s*retryNetwork: true, timeoutMs: 4_000/);
   assert.match(app, /void loadRsvpStatus\(\)\.catch\(\(\) => false\)/);
   assert.match(app, /if \(currentCalendar\) \{/);
   assert.match(app, /Last synced · Reconnecting/);
@@ -1801,7 +1801,7 @@ test("repeated scouting requests do not starve public match data", () => {
   assert.match(worker, /publicReadCache\.get\("rats-history", 120_000/);
   assert.match(worker, /loadRatsHistoryUncached\(env\)/);
   assert.match(worker, /publicReadCache\.get\("public-snapshot", 90_000/);
-  assert.match(worker, /prebuilt-scout-index-v1/);
+  assert.match(worker, /prebuilt-scout-index-v2/);
   assert.match(worker, /scoutingProjectionCurrent\(index, snapshot\)/);
   assert.match(worker, /index\.reports\[key\]/);
   assert.match(worker, /standings-fallback:/);
@@ -1839,4 +1839,30 @@ test("scouting is precomputed hourly and no longer floods the Worker with browse
   assert.match(schedule, /node backend\/league\/scouting-index\.mjs/);
   assert.match(indexer, /encryptState\(value\)/);
   assert.doesNotMatch(app, /11v11-weighted.*form\.wins/);
+});
+
+test("scouting preloads once after base data, and status recovery never awaits optional endpoints", () => {
+  const app = fs.readFileSync("frontend/web/app.js","utf8");
+  const client = fs.readFileSync("frontend/web/lib/client.js","utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs","utf8");
+  const css = fs.readFileSync("frontend/web/styles.css","utf8");
+  assert.match(worker, /url\.pathname === "\/web\/scouting-reports"/);
+  assert.match(worker, /index\.reports/);
+  assert.match(worker, /kvJsonGet\(env, "snapshot:scout-index"\)/);
+  assert.match(app, /async function preloadPublishedScouts\(\)/);
+  assert.match(app, /api\("\/web\/scouting-reports"/);
+  assert.match(app, /recentScoutReports\.set\(scoutReportKey\(team, division\)/);
+  assert.match(app, /void preloadPublishedScouts\(\)/);
+  assert.match(app, /function restorePublicCalendar\(\)/);
+  assert.match(app, /function rememberPublicCalendar\(calendar\)/);
+  assert.match(app, /sessionStorage\.setItem\(PUBLIC_CALENDAR_CACHE_KEY/);
+  assert.match(app, /restorePublicCalendar\(\);\s*if \(currentCalendar\) setSystemState\("stale"\)/);
+  assert.match(app, /const calendarOk = await loadCalendar\(\)/);
+  assert.match(app, /if \(!optionalRefreshInFlight\)/);
+  assert.match(app, /Promise\.allSettled\(\[/);
+  assert.match(client, /new AbortController\(\)/);
+  assert.match(client, /error\?\.name === "AbortError"/);
+  assert.match(app, /locationParts\.push\(formatMonitoredWin\(matchForm\)\)/);
+  assert.match(css, /\.next-game-form \{ display: none !important; \}/);
+  assert.match(css, /\.standings-slide \.eyebrow \{\s*color: rgba\(191, 219, 254, 0\.72\)/);
 });
