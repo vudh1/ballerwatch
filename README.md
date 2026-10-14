@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, Calendar sync, and quick answers into one installable app.
 
-**Current source version: 8.3.0**
+**Current source version: 8.4.0**
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
 
@@ -34,6 +34,14 @@ Saturday synthetic pickup is shown simply as **Pickup** and has no RSVP/capacity
 A 22-second walkthrough with a short animated intro. Recorded from the app using synthetic sample data; game details, answers, and notifications are illustrative.
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/)
+
+## BallerWatch 8.4.0 — On-demand opponent scouting and hourly scores
+
+- **Minimal league standings:** Each team card is just its current-season league table, with the **LEAGUE STANDINGS** heading, tracked-team highlight, and a subtle **Updated** source credit *inside* the card. Carousel counters such as `1 / 2` are gone. Tap any team to open the report.
+- **Opponent Scout:** A compact modal gives a **results-strength index (0–100)** and division rank, current-season W–D–L, recent five form, historical wins/draws/losses, goals scored/conceded per match, and average goal difference. Attack/defense division ranks and immediate previous-season ranking bars appear **only in this report**. Recent five results are visible; older results expand on demand.
+- **Quality-of-opponent method:** A scored win is weighted higher when the defeated team has a better record against **other** teams in the current season/division; direct meetings with the featured team are excluded when estimating opponent strength. Draws are adjusted too. A neutral prior tempers thin samples; equal overall W-D-L can receive different quality scores. This is **not a gambling probability**, official RATS ranking, or prediction. Very small samples are clearly flagged.
+- **11v11 versus 8v8:** The encrypted public-results archive now preserves the RATS league name, enabling separate historical W-D-L summaries for 8v8 and 11v11. A league name containing 8v8 is classified as 8v8, other **known** league names as 11v11. Legacy games without a verified format stay in a separate unclassified count until refreshed, rather than silently polluting an 11v11 record. Overlapping 8v8/11v11 division names are kept separate in current-season calculations.
+- **Hourly index opportunity:** The completed RATS results index now becomes stale after **1 hour**, down from 12 hours. It is checked by the existing **five-minute league job**; an incomplete archive still retries every **30 minutes**, and the open app fetches its data approximately every **minute**. Large historical scans can need several five-minute batches and scores appear only after RATS publishes them and the refresh successfully persists encrypted runtime state.
 
 ## BallerWatch 8.3.0 — League rankings and unified carousel navigation
 

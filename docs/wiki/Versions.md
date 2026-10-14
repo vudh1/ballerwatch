@@ -50,6 +50,8 @@ Signed-in Inbox read/delete state is merged into the encrypted user profile so m
 
 ## Current development line
 
+- **8.4.0** — on-demand opponent scouting with weighted quality-of-victory index, attacking/defending and history ranks, form, average goal difference, verified 8v8 versus 11v11 records, collapsed older results; eliminates standings 1/2 indicator, places update timestamps inside cards, and reduces the public-results-index freshness gate to one hour.
+
 - **8.3.0** — moves LEAGUE STANDINGS into each tracked-team card; adds per-game attack/defense and verified previous-season ranking bars; brings match-style connected-card swipes and edge waterfall controls to the 14-day calendar; increases standings typography.
 
 - **8.2.1** — standings now behave as a full-width match-card train with drag/swipe and waterfall edge arrows; slimmer P/W-D-L/GD/Pts table; RATS history/standings index refresh reduced from 24 to 12 hours, partial retries unchanged at 30 minutes.

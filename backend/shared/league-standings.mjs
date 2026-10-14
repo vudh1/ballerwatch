@@ -15,7 +15,13 @@ function seasonLabel(seasonId) {
 }
 
 function normalizedDivision(team) {
-  return [team?.day, team?.gender, team?.division]
+  // Two similarly named divisions can have different 8v8/11v11 rosters.
+  // Preserve the old grouping for unlabelled/11v11 teams, but never merge a
+  // clearly identified 8v8 division into the corresponding 11v11 results.
+  const label = [team?.leagueName, team?.day, team?.gender, team?.divisionLabel]
+    .map((part) => String(part || "")).join(" ");
+  const format = /\b8\s*(?:v|vs|x|on)\s*8\b/i.test(label) ? "8v8" : "11v11";
+  return [team?.day, team?.gender, team?.division, format]
     .map((part) => String(part || "").trim().toLowerCase())
     .join("|");
 }
@@ -198,9 +204,178 @@ export function buildLeagueStandings(history, seasonId, monitoredTeams = [], tod
           highlighted: normalizeHistoryTeamName(row.name) === highlightedName,
         })),
         hasResults: rows.some((row) => row.played > 0),
-        stats: trackedTeamStats(history, seasonId, team, rows, today),
       };
     }),
+  };
+}
+
+/** Detects the *published* league format. Old archives without league names remain unknown. */
+function leagueFormat(team) {
+  if (!team) return "unknown";
+  const leagueName = String(team.leagueName || "").trim();
+  const alternative = [team.day, team.gender, team.division, team.divisionLabel]
+    .map((value) => String(value || "")).join(" ");
+  const label = leagueName || alternative;
+  if (/\b8\s*(?:v|vs|x|on)\s*8\b/i.test(label)) return "8v8";
+  if (leagueName || /\b11\s*(?:v|vs|x|on)\s*11\b/i.test(alternative)) return "11v11";
+  return "unknown";
+}
+
+function scoredDivisionMatches(season, team, today) {
+  const members = new Set((season?.teams || [])
+    .filter((member) => normalizedDivision(member) === normalizedDivision(team))
+    .map((member) => normalizeHistoryTeamName(member.name)));
+  return (season?.matches || []).filter((match) =>
+    /^\d{4}-\d{2}-\d{2}$/.test(String(match.date || "")) &&
+    match.date <= today &&
+    resultScore(match.homeScore) !== null && resultScore(match.awayScore) !== null &&
+    normalizeHistoryTeamName(match.homeTeam) !== normalizeHistoryTeamName(match.awayTeam) &&
+    members.has(normalizeHistoryTeamName(match.homeTeam)) &&
+    members.has(normalizeHistoryTeamName(match.awayTeam)));
+}
+
+function matchPoints(scored, conceded) {
+  return scored > conceded ? 3 : scored === conceded ? 1 : 0;
+}
+
+function opponentFormExcludingTeam(matches, opponentKey, excludedKey) {
+  let games = 0;
+  let points = 0;
+  for (const match of matches) {
+    const home = normalizeHistoryTeamName(match.homeTeam);
+    const away = normalizeHistoryTeamName(match.awayTeam);
+    if (home === excludedKey || away === excludedKey) continue;
+    if (home !== opponentKey && away !== opponentKey) continue;
+    const scored = home === opponentKey ? match.homeScore : match.awayScore;
+    const conceded = home === opponentKey ? match.awayScore : match.homeScore;
+    points += matchPoints(scored, conceded);
+    games += 1;
+  }
+  // One neutral pseudo-game limits noise when an opponent has played very little.
+  return (points + 1.5) / (3 * (games + 1));
+}
+
+function qualityRanking(season, team, today) {
+  const divisionMatches = scoredDivisionMatches(season, team, today);
+  const members = (season.teams || []).filter((member) =>
+    normalizedDivision(member) === normalizedDivision(team));
+  const scored = members.map((member) => {
+    const key = normalizeHistoryTeamName(member.name);
+    let games = 0;
+    let adjustedPoints = 0;
+    let opponentStrength = 0;
+    let qualityWins = 0;
+    for (const match of divisionMatches) {
+      const home = normalizeHistoryTeamName(match.homeTeam);
+      const away = normalizeHistoryTeamName(match.awayTeam);
+      if (home !== key && away !== key) continue;
+      const scoredGoals = home === key ? match.homeScore : match.awayScore;
+      const concededGoals = home === key ? match.awayScore : match.homeScore;
+      const opponent = home === key ? away : home;
+      const opponentForm = opponentFormExcludingTeam(divisionMatches, opponent, key);
+      const points = matchPoints(scoredGoals, concededGoals);
+      adjustedPoints += points * (0.75 + 0.5 * opponentForm);
+      opponentStrength += opponentForm;
+      if (points === 3) qualityWins += opponentForm;
+      games += 1;
+    }
+    return {
+      name: member.name, games,
+      index: games ? Math.round(100 * adjustedPoints / (3.75 * games)) : null,
+      opponentsPct: games ? Math.round(100 * opponentStrength / games) : null,
+      qualityWins: Math.round(qualityWins * 100) / 100,
+    };
+  }).filter((row) => row.games > 0);
+  const target = scored.find((row) =>
+    normalizeHistoryTeamName(row.name) === normalizeHistoryTeamName(team.name));
+  if (!target) return null;
+  return {
+    index: target.index,
+    rank: 1 + scored.filter((row) => row.index > target.index).length,
+    total: scored.length,
+    opponentsPct: target.opponentsPct,
+    qualityWins: target.qualityWins,
+    games: target.games,
+    provisional: true,
+    method: "Weighted scored results: wins over opponents with better records against other teams count more; each opponent's direct games against this team are excluded; one neutral pseudo-game smooths small samples.",
+  };
+}
+
+function emptyRecord() {
+  return { games: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0,
+    goalsAgainst: 0, goalDifference: 0, goalsForPerGame: null,
+    goalsAgainstPerGame: null, goalDifferencePerGame: null };
+}
+
+function finishRecord(record) {
+  const round = (n) => Math.round(n * 100) / 100;
+  return {
+    ...record,
+    goalsForPerGame: record.games ? round(record.goalsFor / record.games) : null,
+    goalsAgainstPerGame: record.games ? round(record.goalsAgainst / record.games) : null,
+    goalDifferencePerGame: record.games ? round(record.goalDifference / record.games) : null,
+  };
+}
+
+function addRecord(record, scored, conceded) {
+  record.games += 1;
+  record.goalsFor += scored;
+  record.goalsAgainst += conceded;
+  record.goalDifference += scored - conceded;
+  if (scored > conceded) record.wins += 1;
+  else if (scored === conceded) record.draws += 1;
+  else record.losses += 1;
+}
+
+/** A read-only, opponent-aware snapshot rendered only when a standings team is tapped. */
+export function buildTeamScout(history, currentSeasonId, teamName, today = "9999-12-31") {
+  const current = seasonData(history, currentSeasonId);
+  const team = matchingTeam(Array.isArray(current?.teams) ? current.teams : [], teamName);
+  if (!team) return null;
+  const target = historyTeamKey(team.name);
+  const seasonRows = divisionStandings(current, team, today);
+  const currentRank = seasonRows.find((row) =>
+    normalizeHistoryTeamName(row.name) === normalizeHistoryTeamName(team.name));
+  const all = emptyRecord();
+  const byFormat = { "8v8": emptyRecord(), "11v11": emptyRecord(), unknown: emptyRecord() };
+  const recent = [];
+
+  for (const match of completedHistoryMatches(history)) {
+    if (match.date > today || !/^\d{4}-\d{2}-\d{2}$/.test(String(match.date))) continue;
+    const isHome = historyTeamKey(match.homeTeam) === target;
+    const isAway = historyTeamKey(match.awayTeam) === target;
+    if (!isHome && !isAway) continue;
+    const season = seasonData(history, match.seasonId);
+    // Use the exact current season name where possible; never infer 8v8 from D-8.
+    const seasonTeam = matchingTeam(season?.teams || [], isHome ? match.homeTeam : match.awayTeam);
+    const format = leagueFormat(seasonTeam);
+    const goals = isHome ? match.homeScore : match.awayScore;
+    const conceded = isHome ? match.awayScore : match.homeScore;
+    addRecord(all, goals, conceded);
+    addRecord(byFormat[format], goals, conceded);
+    recent.push({ date: match.date, season: match.season, format,
+      result: goals > conceded ? "W" : goals === conceded ? "D" : "L" });
+  }
+  recent.sort((a,b) => b.date.localeCompare(a.date));
+  const rankings = trackedTeamStats(history, currentSeasonId, team, seasonRows, today);
+  return {
+    season: current.label || seasonLabel(currentSeasonId),
+    division: displayDivision(team),
+    currentFormat: leagueFormat(team),
+    current: currentRank && currentRank.played ? {
+      played: currentRank.played, wins: currentRank.wins, draws: currentRank.draws,
+      losses: currentRank.losses, rank: currentRank.rank, teams: seasonRows.length,
+    } : null,
+    quality: qualityRanking(current, team, today),
+    attack: rankings.attack,
+    defense: rankings.defense,
+    previousSeason: rankings.previousSeason,
+    previousSeasonLabel: rankings.previousSeasonLabel,
+    overall: finishRecord(all),
+    formats: Object.fromEntries(Object.entries(byFormat)
+      .map(([format, row]) => [format, finishRecord(row)])),
+    recent: recent.slice(0, 5),
+    archiveComplete: history?.coverage?.complete === true,
   };
 }
 
@@ -228,6 +403,7 @@ export function buildLeagueTeamHistory(history, currentSeasonId, teamName, limit
     indexedMatchCount: matches.length,
     coverageComplete: history?.coverage?.complete === true,
     updatedAt: String(history?.updatedAt || ""),
+    scout: buildTeamScout(history, currentSeasonId, team.name, today),
     matches: matches.slice(0, Math.min(50, Math.max(1, limit))).map((match) => {
       const isHome = historyTeamKey(match.homeTeam) === target;
       const scored = isHome ? match.homeScore : match.awayScore;
@@ -240,6 +416,10 @@ export function buildLeagueTeamHistory(history, currentSeasonId, teamName, limit
         homeScore: match.homeScore,
         awayScore: match.awayScore,
         result: scored > conceded ? "W" : scored < conceded ? "L" : "D",
+        format: leagueFormat(matchingTeam(
+          seasonData(history, match.seasonId)?.teams || [],
+          isHome ? match.homeTeam : match.awayTeam,
+        )),
       };
     }),
   };

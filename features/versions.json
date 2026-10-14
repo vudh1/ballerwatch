@@ -1,7 +1,25 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.3.0",
+  "currentVersion": "8.4.0",
   "releases": [
+    {
+      "version": "8.4.0",
+      "date": "2026-10-13",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "On-demand opponent scouting and hourly RATS result refresh",
+      "webAnnouncement": "Tap any team in League Standings for a compact opponent scouting report: quality-adjusted form, recent scores, scoring/defending performance and 8v8/11v11 history. Standings remain minimal with per-card update times, and the public results index now refreshes hourly.",
+      "changes": [
+        "Removes carousel position counts (such as 1/2) and moves public source/freshness timestamps into the footer of each standings team card.",
+        "Moves the attack/defense and preceding-season rank bars out of league standings and into an on-demand opponent scouting sheet alongside indexed match history.",
+        "Adds a transparent opponent-adjusted result quality index for current-season divisions: wins over teams that score well against others are worth more than equally sized wins over weaker opponents; opponents are evaluated excluding direct games with the featured team and smoothed for small samples.",
+        "Summarizes current-season W-D-L, recent five results, lifetime win/draw/loss, scoring and conceding rates and average goal difference in a mobile-friendly scouting dashboard, with older match history collapsed by default.",
+        "Retains public RATS league name metadata in the encrypted historical results archive and separates indexed 8v8, 11v11, and unknown-format results without manufacturing data where historical formats cannot be verified.",
+        "Keeps 8v8 and 11v11 divisions isolated in league tables and opponent-strength comparisons even when their day and division number coincide.",
+        "Reduces the complete-results-index refresh gate from 12 hours to one hour, using the existing five-minute league watcher and 30-minute incomplete-archive retry. The active PWA's one-minute API polling and existing Worker cache remain unchanged.",
+        "Adds reproducible offline tests for different-quality wins, format splits, no-data cases, source freshness placement, and the hourly refresh interval."
+      ]
+    },
     {
       "version": "8.3.0",
       "date": "2026-10-13",

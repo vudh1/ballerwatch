@@ -68,12 +68,12 @@ test("RATS history refresh repairs legacy and zero-score archives immediately", 
   );
 });
 
-test("complete RATS history refreshes every 12 hours while partial coverage retries sooner", () => {
-  assert.equal(HISTORY_REFRESH_MS, 12 * 60 * 60 * 1000);
+test("complete RATS results index refreshes hourly while partial coverage retries sooner", () => {
+  assert.equal(HISTORY_REFRESH_MS, 60 * 60 * 1000);
   const now = new Date("2026-10-07T12:00:00Z");
   const complete = {
     schemaVersion: 3,
-    updatedAt: "2026-10-07T00:01:00Z",
+    updatedAt: new Date(now.getTime() - HISTORY_REFRESH_MS + 1).toISOString(),
     coverage: {completedMatchCount: 100, complete: true},
   };
   assert.equal(historyRefreshDue(complete, now), false);
@@ -103,8 +103,10 @@ test("complete RATS history refreshes every 12 hours while partial coverage retr
 test("RATS history normalizes every public team and scored event in an aggregate", () => {
   const season = normalizeHistoryAggregate("fall-2026", {
     teams: [
-      {name: "Team Alpha", day: "Thursday", gender: "Men's", division: "1"},
-      {name: "Team Beta", day: "Thursday", gender: "Men's", division: "1"},
+      {name: "Team Alpha", day: "Thursday", gender: "Men's", division: "1",
+        league_name: "Fall 2026 8v8"},
+      {name: "Team Beta", day: "Thursday", gender: "Men's", division: "1",
+        league: {name: "Fall 2026 11v11"}},
     ],
     events: [
       {
@@ -128,6 +130,8 @@ test("RATS history normalizes every public team and scored event in an aggregate
   assert.equal(season.seasonId, "fall-2026");
   assert.equal(season.label, "Fall 2026");
   assert.equal(season.teams.length, 2);
+  assert.equal(season.teams.find(t=>t.name==="Team Alpha").leagueName,"Fall 2026 8v8");
+  assert.equal(season.teams.find(t=>t.name==="Team Beta").leagueName,"Fall 2026 11v11");
   assert.equal(season.matches.length, 2);
   assert.deepEqual(
     [season.matches[0].homeScore, season.matches[0].awayScore],

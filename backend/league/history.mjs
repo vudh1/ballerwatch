@@ -20,7 +20,7 @@ import { captureVenueEvents } from "./venue-cache.mjs";
 
 export const HISTORY_FILE = "league/state/history.json";
 export const HISTORY_START_YEAR = 2023;
-export const HISTORY_REFRESH_MS = 12 * 60 * 60 * 1000;
+export const HISTORY_REFRESH_MS = 60 * 60 * 1000;
 export const HISTORY_RETRY_MS = 30 * 60 * 1000;
 export const HISTORY_BATCH_SIZE = 4;
 export const HISTORY_MAX_ATTEMPTS_PER_SEASON = 3;
@@ -96,13 +96,22 @@ export function normalizeHistoryAggregate(seasonId, aggregate) {
   }
 
   const teams = aggregate.teams
-    .map((team) => ({
-      name: cleanText(team?.name),
-      day: cleanText(team?.day),
-      gender: cleanText(team?.gender),
-      division: cleanText(team?.division),
-      divisionLabel: teamDivision(team),
-    }))
+    .map((team) => {
+      // Preserve the public league's actual name; 8v8 and 11v11 must not
+      // be inferred from an unrelated numeric division.
+      const rawLeague = team?.league_name ?? team?.leagueName ??
+        team?.league?.name ?? team?.league ?? team?.competition?.name ??
+        team?.competition_name ?? team?.program?.name ?? "";
+      const leagueName = cleanText(typeof rawLeague === "string" ? rawLeague : "");
+      return {
+        name: cleanText(team?.name),
+        day: cleanText(team?.day),
+        gender: cleanText(team?.gender),
+        division: cleanText(team?.division),
+        divisionLabel: teamDivision(team),
+        leagueName,
+      };
+    })
     .filter((team) => team.name)
     .sort((a, b) => a.name.localeCompare(b.name));
 
