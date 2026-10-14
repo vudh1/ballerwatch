@@ -507,36 +507,19 @@ test("calendar selection reuses the main spotlight instead of a second detail pa
   assert.match(app, /scrollIntoView\(\{ behavior: "smooth"/);
 });
 
-test("calendar arrows page the 14-day grid without expanding the card", () => {
+test("calendar is a simple 14-day card with tap-to-expand full schedule, not a carousel", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
-  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
 
-  assert.match(html, /id="calendar-window-previous"[^>]*aria-label="Previous 14 days"/);
-  assert.match(html, /id="calendar-window-next"[^>]*aria-label="Next 14 days"/);
-  assert.match(html, /class="calendar-window-controls" role="group"/);
-  assert.match(html, /id="calendar-carousel"/);
-  assert.match(app, /function moveCalendarWindow\(direction\)/);
-  assert.match(app, /addIsoDays\(start, 14 \* Math.sign\(direction\)\)/);
-  assert.match(app, /candidate < base \? base : candidate/);
-  assert.match(app, /calendarWindowStart = nextStart;\s*renderCalendarGrid\(\)/);
-  assert.match(app, /event.stopPropagation\(\);\s*edgeStep\(direction\)/);
-  assert.match(app, /calendarPrevious.disabled = !base \|\| calendarExpanded \|\| start <= base/);
-  assert.match(app, /calendarNext.disabled = !base \|\| calendarExpanded/);
-  assert.match(css, /\.calendar-window-control:focus-visible/);
-  assert.match(css, /\.calendar-carousel \.calendar-card\.is-expanded ~ \.calendar-window-controls/);
-});
-
-test("calendar card expands on day clicks but pager clicks leave the view compact", () => {
-  const app = fs.readFileSync("frontend/web/app.js", "utf8");
-  const handler = app.split("function toggleCalendarExpandedFromEvent(event) {")[1]
-    ?.split("\n}")[0] || "";
-
-  assert.match(handler, /\.calendar-window-control/);
-  assert.match(handler, /\.calendar-day, \.calendar-game-choice/);
-  assert.match(handler, /if \(!calendarExpanded\) setCalendarExpanded\(true\)/);
-  assert.match(handler, /setCalendarExpanded\(!calendarExpanded\)/);
-  assert.match(app, /button.setAttribute\("aria-disabled", String\(games.length === 0\)\)/);
+  assert.match(html, /id="two-week-calendar"/);
+  assert.match(html, /id="calendar-grid"/);
+  assert.doesNotMatch(html, /id="calendar-carousel"|id="calendar-window-next"|id="calendar-window-previous"/);
+  assert.doesNotMatch(app, /installCalendarTrain|calendarWindowStart|moveCalendarWindow|syncCalendarWindowControls/);
+  assert.match(app, /return Array\.from\(\{ length: 14 \}, \(_, index\) => addIsoDays\(base, index\)\)/);
+  assert.match(app, /function toggleCalendarExpandedFromEvent\(event\)/);
+  assert.match(app, /if \(!calendarExpanded\) setCalendarExpanded\(true\)/);
+  assert.match(app, /setCalendarExpanded\(!calendarExpanded\)/);
+  assert.match(app, /button\.setAttribute\("aria-disabled", String\(games.length === 0\)\)/);
   assert.doesNotMatch(app, /button.disabled = games.length === 0/);
 });
 
@@ -1682,28 +1665,18 @@ test("standings uses adjacent-card drag train and minimal table, preserving team
   assert.match(app, /is-train-dragging/);
   assert.match(app, /setStandingsSlide\(originalIndex \+ step\)/);
   assert.match(css, /\.standings-track\.is-train-dragging \{ transition: none;/);
-  assert.match(css, /--standings-train-gap: 12px/);
+  assert.match(css, /--standings-train-gap: 0px/);
   assert.match(css, /\.standings-step-next::before/);
   assert.match(app, /\["W-D-L", "Wins, draws, losses"\]/);
   assert.match(app, /openTeamHistory\(row\.name\)/);
 });
 
-test("calendar moves as a connected neighboring 14-day card without hijacking day taps", () => {
-  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+test("calendar no longer includes a page carousel, waterfall controls, or train previews", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
-  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
-  assert.match(html, /class="calendar-carousel" id="calendar-carousel"/);
-  assert.match(app, /function calendarWindowPreview\(direction\)/);
-  assert.match(app, /function installCalendarTrain\(\)/);
-  assert.match(app, /const preview = els\.calendarCard\.cloneNode\(true\)/);
-  assert.match(app, /current\.setPointerCapture\(event\.pointerId\)/);
-  assert.match(app, /active\.preview\.style\.transform =/);
-  assert.match(app, /if \(commit && active\) moveCalendarWindow\(active\.direction\)/);
-  assert.match(app, /event\.stopImmediatePropagation\(\)/);
-  assert.match(app, /installCalendarTrain\(\)/);
-  assert.match(css, /\.calendar-carousel \.calendar-train-preview \{/);
-  assert.match(css, /\.calendar-carousel \.calendar-window-control::before/);
-  assert.match(css, /\.calendar-carousel \.calendar-grid,\s*\.calendar-carousel \.calendar-game-picker/);
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  assert.doesNotMatch(html, /calendar-window-control|calendar-carousel/);
+  assert.doesNotMatch(app, /calendarWindowPreview|installCalendarTrain|calendarPrevious|calendarNext/);
+  assert.match(html, /MATCH DAYS/);
 });
 
 test("league statistics use visible rankings and an honest unavailable state", () => {
@@ -1745,4 +1718,20 @@ test("team stats appear only after team-history API load; standings show no 1/2 
   assert.match(css, /\.scout-quality/);
   assert.match(css, /\.scout-format-grid/);
   assert.match(css, /\.standings-card-updated/);
+});
+
+test("league schedule match cards show last-ten weighted wins for both teams only", () => {
+  const html = fs.readFileSync("frontend/web/index.html","utf8");
+  const app = fs.readFileSync("frontend/web/app.js","utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs","utf8");
+  const css = fs.readFileSync("frontend/web/styles.css","utf8");
+  assert.match(html, /id="next-game-form" hidden/);
+  assert.match(app, /nextGameForm: document\.querySelector/);
+  assert.match(app, /model\.form/);
+  assert.match(app, /game\.kind === "league" && \(game\.teamForm \|\| game\.opponentForm\)/);
+  assert.match(app, /form: role\("next-game-form"\)/);
+  assert.match(worker, /function withCalendarRecentForms/);
+  assert.match(worker, /withLeagueRecentForm\(withCachedVenue\(webNextGameDetails/);
+  assert.match(css, /\.next-game-form \{/);
+  assert.doesNotMatch(html, /calendar-window-next/);
 });
