@@ -120,3 +120,59 @@ test("no recorded score does not imply a 0-0 draw", () => {
   assert.equal(row.draws, 1);
   assert.equal(row.points, 1);
 });
+
+test("attacking/defending rankings use per-game rates in the correct direction", () => {
+  const data = archive();
+  // Third Touch: 3 GF in two matches, 1 GA -> 1.5 and 0.5 goals/game.
+  const view = buildLeagueStandings(data, "fall-2026", ["Third Touch FC"], "2026-10-13");
+  const stats = view.cards[0].stats;
+  assert.deepEqual(stats.attack, { rank: 1, total: 2, perGame: 1.5, goals: 3 });
+  assert.deepEqual(stats.defense, { rank: 1, total: 2, perGame: 0.5, goals: 1 });
+  assert.equal(stats.previousSeason, null);
+  assert.equal(stats.previousSeasonLabel, "Summer 2026");
+  assert.equal(stats.archiveComplete, false);
+});
+
+test("previous season rank is unavailable when the immediate prior season is missing", () => {
+  const data = archive();
+  const view = buildLeagueStandings(data, "fall-2026", ["PhoSaiGon"], "2026-10-13");
+  assert.equal(view.cards[0].stats.previousSeason, null);
+  // Never label Fall 2025 as the 'last season' of Fall 2026.
+  assert.equal(view.cards[0].stats.previousSeasonLabel, "Summer 2026");
+});
+
+test("previous season placement is calculated only from that season's division", () => {
+  const data = archive();
+  data.seasons.push({
+    seasonId: "summer-2026",
+    label: "Summer 2026",
+    teams: [
+      { name: "Third Touch FC", day: "Thursday", gender: "Coed", division: "4" },
+      { name: "Previous Opponent", day: "Thursday", gender: "Coed", division: "4" },
+      { name: "Unrelated Club", day: "Tuesday", gender: "Men", division: "2" },
+    ],
+    matches: [
+      { date: "2026-06-20", homeTeam: "Previous Opponent", awayTeam: "Third Touch FC",
+        homeScore: 2, awayScore: 0 },
+    ],
+  });
+  const stats = buildLeagueStandings(
+    data, "fall-2026", ["Third Touch FC"], "2026-10-13",
+  ).cards[0].stats;
+  assert.deepEqual(stats.previousSeason, {
+    rank: 2, total: 2, label: "Summer 2026",
+    division: "Thursday Coed D-4", matches: 1,
+  });
+});
+
+test("unscored current division leaves ranking stats unavailable", () => {
+  const data = archive();
+  for (const match of data.seasons[1].matches) {
+    match.homeScore = null;
+    match.awayScore = null;
+  }
+  const stats = buildLeagueStandings(data, "fall-2026", ["Third Touch FC"], "2026-10-13")
+    .cards[0].stats;
+  assert.equal(stats.attack, null);
+  assert.equal(stats.defense, null);
+});
