@@ -26,6 +26,13 @@ export const fixtureStandings = {
       { name: "Test United", rank: 2, played: 3, wins: 1, draws: 1, losses: 1, goalDifference: 0, points: 4 },
     ],
   }],
+  matchups: {
+    fixtureVsTest: {
+      team: "Fixture FC", opponent: "Test United",
+      winPct: 45, drawPct: 20, lossPct: 35,
+      teamGames: 10, opponentGames: 8, headToHeadGames: 2,
+    },
+  },
 };
 
 export function fixtureResponse(pathname, method = "GET") {

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  DEFAULT_SCOUT_WEIGHTS, forecastFromFeatures, roundThreeWay,
+  DEFAULT_SCOUT_WEIGHTS, PRODUCTION_SCOUT_WEIGHTS, forecastFromFeatures, roundThreeWay,
   tuneScoutingWeights,
 } from "../../../backend/shared/scout-calibration.mjs";
 
@@ -40,6 +40,14 @@ function seasons() {
 function history() {
   return { updatedAt: "2026-10-12T12:00:00Z", seasons: seasons() };
 }
+
+test("production candidate is a distinct frozen weight set", () => {
+  assert.notDeepEqual(PRODUCTION_SCOUT_WEIGHTS, DEFAULT_SCOUT_WEIGHTS);
+  assert.ok(Object.isFrozen(PRODUCTION_SCOUT_WEIGHTS));
+  assert.deepEqual(PRODUCTION_SCOUT_WEIGHTS, {
+    form: 0.55, division: 0.28, h2h: 0.08, draw: 0.16, decay: 0.98, format11: 1.25,
+  });
+});
 
 test("probabilities are three-way, normalized and rounded to 5% steps", () => {
   const last = [{

@@ -11,7 +11,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { decryptState, encryptState } from "../shared/state-crypto.mjs";
 import { buildLeagueStandings, buildLeagueTeamHistory } from "../shared/league-standings.mjs";
-import { tuneScoutingWeights } from "../shared/scout-calibration.mjs";
+import { PRODUCTION_SCOUT_WEIGHTS } from "../shared/scout-calibration.mjs";
 
 export const SCOUT_INDEX_FILE = "league/state/scout-index.json";
 
@@ -38,9 +38,21 @@ export function buildScoutingIndex({
     .filter((game) => game?.date >= today && game?.team && game?.opponent)
     .sort((a, b) => String(a.date).localeCompare(String(b.date)))
     .slice(0, 25);
-  // Independent hourly job only: score historical seasons, freeze each season's
-  // predictors at its START, and use weights only if out-of-time Brier improves.
-  const calibration = tuneScoutingWeights(history, seasonId);
+  // Release-reviewed weights are pinned: no archive-wide candidate search on the
+  // hourly job. The independent weekly audit can propose a NEW release, never
+  // silently switch production. This snapshot remains read-only for web requests.
+  const calibration = {
+    modelVersion: 2,
+    status: "production-locked",
+    weights: { ...PRODUCTION_SCOUT_WEIGHTS },
+    holdoutSeason: "summer-2026",
+    holdoutGames: 1474,
+    holdoutLogLoss: 0.95638,
+    baselineHoldoutLogLoss: 0.96162,
+    holdoutBrier: 0.57217,
+    baselineHoldoutBrier: 0.57399,
+    note: "v8.11.1 manually approved candidate on untouched Summer 2026 holdout; release-pinned until reviewed again. Estimates remain provisional, not bookmaker odds.",
+  };
   const standings = buildLeagueStandings(
     history, seasonId, monitored, today, fixtures, calibration.weights,
   );
@@ -117,10 +129,11 @@ export function refreshScoutingIndex({
   fs.writeFileSync(file, JSON.stringify(encryptState(value), null, 2) + "\n");
   console.log(
     "Prepared encrypted scouting index:", Object.keys(value.reports).length,
-    "teams; walk-forward:", value.model.status,
-    "; evaluated:", value.model.evaluatedGames,
-    "; held-out Brier:", value.model.nextSeasonBrier,
-    "; baseline:", value.model.baselineNextSeasonBrier,
+    "teams; model:", value.model.status,
+    "; holdout:", value.model.holdoutSeason,
+    "; holdout games:", value.model.holdoutGames,
+    "; held-out Brier:", value.model.holdoutBrier,
+    "; baseline:", value.model.baselineHoldoutBrier,
   );
   return true;
 }

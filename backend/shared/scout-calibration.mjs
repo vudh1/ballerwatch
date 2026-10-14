@@ -12,6 +12,16 @@ export const DEFAULT_SCOUT_WEIGHTS = Object.freeze({
   form: 0.75, division: 0.18, h2h: 0.045,
   draw: 0.20, decay: 0.94, format11: 1.25,
 });
+/**
+ * Independently holdout-validated production weights (Summer 2026).
+ * Explicitly pinned by the v8.11.1 release; the hourly snapshot must not
+ * change these based on a later training run. Offline calibration still
+ * compares candidates against DEFAULT_SCOUT_WEIGHTS without affecting live.
+ */
+export const PRODUCTION_SCOUT_WEIGHTS = Object.freeze({
+  form: 0.55, division: 0.28, h2h: 0.08,
+  draw: 0.16, decay: 0.98, format11: 1.25,
+});
 const SEASONS = ["winter", "spring", "summer", "fall"];
 const round = (value, digits = 4) => Number(Number(value).toFixed(digits));
 const bounded = (number, lo, hi) => Math.min(hi, Math.max(lo, number));

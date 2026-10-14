@@ -163,6 +163,26 @@ try {
         await context.close();
       });
 
+      await scenario(`${engine}: three-way forecast uses initials and a borderless shared track`, async () => {
+        const { context, page, errors } = await prepare(browser, { reducedMotion: "reduce" });
+        await ready(page);
+        await page.locator("#spotlight-next").click();
+        await page.waitForFunction(() => document.querySelector("#next-game-form")?.textContent.includes("FFC 45%"));
+        assert.deepEqual(await page.locator("#next-game-form .win-chance-labels span").allTextContents(),
+          ["FFC 45%", "Tie 20%", "TU 35%"]);
+        const appearance = await page.locator("#next-game-form").evaluate((element) => {
+          const css = getComputedStyle(element);
+          return { border: css.borderTopWidth, padding: css.paddingTop,
+            background: css.backgroundColor, aria: element.getAttribute("aria-label") };
+        });
+        assert.equal(appearance.border, "0px");
+        assert.equal(appearance.padding, "0px");
+        assert.equal(appearance.background, "rgba(0, 0, 0, 0)");
+        assert.match(appearance.aria, /Fixture FC win 45%, tie 20%, Test United win 35%/);
+        assert.deepEqual(errors, []);
+        await context.close();
+      });
+
       await scenario(`${engine}: skip, direct refresh, navigation, iPhone portrait and landscape`, async () => {
         const { context, page, errors } = await prepare(browser, { ...playwright.devices["iPhone 13"], defaultBrowserType: undefined });
         await ready(page);

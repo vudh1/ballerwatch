@@ -1706,7 +1706,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=8.11.0", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=8.11.1", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -2272,6 +2272,15 @@ function monitoredWinForm(game) {
     estimate.winPct + estimate.drawPct + estimate.lossPct === 100 ? estimate : null;
 }
 
+/** Short, deterministic initials for team labels (full names remain accessible). */
+function teamAcronym(name) {
+  const words = String(name || "").normalize("NFKD").match(/[a-z0-9]+/gi) || [];
+  if (!words.length) return "?";
+  if (words.length === 1) return words[0].slice(0, 4).toUpperCase();
+  return words.map((word) => /^[A-Z0-9]{2,4}$/.test(word) ? word : word[0])
+    .join("").slice(0, 6).toUpperCase();
+}
+
 /** Paint the existing, independently-precomputed 3-way projection only. */
 function renderWinChanceBar(target, game, estimate) {
   target.replaceChildren();
@@ -2283,12 +2292,14 @@ function renderWinChanceBar(target, game, estimate) {
   }
   const labels = document.createElement("span");
   labels.className = "win-chance-labels";
-  for (const [text, pct] of [
-    ["Our team", estimate.winPct], ["Tie", estimate.drawPct],
-    ["Opponent", estimate.lossPct],
+  for (const [text, pct, fullName] of [
+    [teamAcronym(game.team), estimate.winPct, game.team],
+    ["Tie", estimate.drawPct, "Draw"],
+    [teamAcronym(game.opponent), estimate.lossPct, game.opponent],
   ]) {
     const label = document.createElement("span");
     label.textContent = `${text} ${pct}%`;
+    label.title = fullName;
     labels.append(label);
   }
   const track = document.createElement("span");
