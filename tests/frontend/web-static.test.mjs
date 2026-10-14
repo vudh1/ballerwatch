@@ -1789,6 +1789,6 @@ test("cold-start work and card measurements stay bounded regardless of full sche
   assert.doesNotMatch(size, /for \(const game of currentCalendar\?\.games \|\| \[\]\)/);
   assert.match(app, /JSON\.stringify\(next\) !== JSON\.stringify\(currentCalendar\)/);
   assert.match(app, /const calendarOk = await loadCalendar\(\)\.catch/);
-  assert.match(app, /const calendarOk = await calendarReady\.catch/);
+  assert.match(app, /const calendarOk = await loadCalendar\(\)\.catch/);
   assert.match(worker, /const pendingJsonLoads = new Map\(\)/);
 });
