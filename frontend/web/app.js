@@ -1554,7 +1554,9 @@ async function revokeOwnerDevices() {
 function setSystemState(state) {
   const live = state === "live";
   const checking = state === "checking";
-  els.system.textContent = live ? "Live" : checking ? "Checking…" : "Offline";
+  const cached = state === "stale";
+  els.system.textContent = live ? "Live" : checking ? "Checking…" :
+    cached ? "Last synced" : "Offline";
   els.system.style.color = live ? "#86efac" : checking ? "" : "#fde68a";
   els.systemLine?.classList.toggle("is-live", live);
   els.systemLine?.classList.toggle("is-offline", !live && !checking);
@@ -1585,7 +1587,7 @@ async function registerServiceWorker() {
 
 async function loadConfig() {
   try {
-    config = await api("/web/config");
+    config = await api("/web/config", {retryNetwork: true});
     els.version.textContent = `BallerWatch v${config.version}`;
     return true;
   } catch {
@@ -3193,7 +3195,7 @@ function renderStandings() {
 
 async function loadStandings() {
   try {
-    const payload = await api("/web/standings");
+    const payload = await api("/web/standings", {retryNetwork: true});
     if (!payload?.ok || !payload.standings) throw new Error("Standings unavailable");
     const selectedTeam = currentStandings?.cards?.[standingsIndex]?.team;
     // Preserve scroll/drag position when a 60-second API poll returns unchanged data.
@@ -3366,7 +3368,8 @@ async function openTeamHistory(teamName) {
   if (!els.teamHistoryDialog.open) els.teamHistoryDialog.showModal();
 
   try {
-    const payload = await api(`/web/team-history?team=${encodeURIComponent(teamName)}`);
+    const payload = await api(`/web/team-history?team=${encodeURIComponent(teamName)}`,
+      {retryNetwork: true});
     if (requestId !== teamHistoryRequestId || !els.teamHistoryDialog.open) return;
     if (!payload?.ok || !payload.history) throw new Error("History unavailable");
     const history = payload.history;
@@ -3549,18 +3552,22 @@ function installStandingsSwipe() {
 
 async function loadCalendar() {
   try {
+    // The personal RSVP lookup is independent of the public schedule.
+    // An auth/profile failure must never blank an otherwise valid calendar.
     const [payload] = await Promise.all([
-      api("/web/calendar"),
-      loadRsvpStatus(),
+      api("/web/calendar", {retryNetwork: true}),
+      loadRsvpStatus().catch(() => false),
     ]);
     renderCalendar(payload.calendar || null);
     return true;
   } catch (error) {
-    currentCalendar = null;
-    els.calendarGrid.replaceChildren();
-    els.calendarGamePicker.hidden = true;
-    els.calendarUpdated.textContent = "Calendar offline";
-      syncSpotlightEdgeControls();
+    // Keep the last successfully loaded fixtures while a request fails.
+    // An empty-state fallback is appropriate only before the first sync.
+    if (currentCalendar) {
+      els.calendarUpdated.textContent = "Last synced · Reconnecting";
+      return false;
+    }
+    els.calendarUpdated.textContent = "Calendar temporarily unavailable";
     await loadNextGame();
     return false;
   }
@@ -3574,15 +3581,15 @@ async function refreshLiveData() {
     const notificationProfileRefresh = ownerToken()
       ? loadNotificationProfile({ migrateLocal: false })
       : Promise.resolve(true);
-    const [calendarOk, boardOk] = await Promise.all([
-      loadCalendar(),
-      loadBoard(),
-      loadStandings(),
+    const [calendarOk] = await Promise.all([
+      loadCalendar(), loadBoard(), loadStandings(),
+      notificationProfileRefresh.catch(() => false),
     ]);
-    await notificationProfileRefresh;
-    setSystemState(calendarOk && boardOk ? "live" : "offline");
+    // The notification board or personal settings may be unavailable even
+    // when the public match schedule is healthy.
+    setSystemState(calendarOk ? "live" : currentCalendar ? "stale" : "offline");
   } catch {
-    setSystemState("offline");
+    setSystemState(currentCalendar ? "stale" : "offline");
   } finally {
     liveRefreshInFlight = false;
   }
@@ -3646,16 +3653,17 @@ async function watchPromotedRelease(version, {
 
 async function loadNextGame() {
   try {
-    const payload = await api("/web/next-game");
+    const payload = await api("/web/next-game", {retryNetwork: true});
     renderNextGame(payload.game || null);
     return true;
   } catch (error) {
-    els.nextGameTitle.textContent = "Next game unavailable";
-    els.nextGameType.textContent = "Offline";
-    els.nextGameMeta.textContent = "";
-    els.nextGameLocation.textContent = "";
-    els.nextGameActions.hidden = true;
-    els.nextGameHint.textContent = error.message;
+    if (currentNextGame?.id) {
+      els.nextGameHint.textContent = "Showing last synced game · Reconnecting";
+    } else {
+      els.nextGameTitle.textContent = "Next game temporarily unavailable";
+      els.nextGameType.textContent = "Pending";
+      els.nextGameHint.textContent = "Trying to reconnect…";
+    }
     return false;
   }
 }
@@ -4022,15 +4030,17 @@ async function scheduleTestNotification() {
 async function loadBoard() {
   els.refresh.disabled = true;
   try {
-    const payload = await api("/web/board?limit=30");
+    const payload = await api("/web/board?limit=30", {retryNetwork: true});
     renderBoard(payload.entries || []);
     return true;
   } catch (error) {
-    els.board.replaceChildren();
-    const message = document.createElement("p");
-    message.className = "muted";
-    message.textContent = error.message;
-    els.board.append(message);
+    if (!currentBoardEntries.length) {
+      els.board.replaceChildren();
+      const message = document.createElement("p");
+      message.className = "muted";
+      message.textContent = "Notifications temporarily unavailable.";
+      els.board.append(message);
+    }
     return false;
   } finally {
     els.refresh.disabled = false;
@@ -4584,15 +4594,12 @@ applyInstallState();
 setNotificationFilter("all");
 renderNotificationPreferences();
 setSystemState("checking");
-const [, configOk, boardOk, calendarOk] = await Promise.all([
-  registerServiceWorker().catch(() => null),
-  loadConfig(),
-  loadBoard(),
-  loadCalendar(),
-  loadStandings(),
-  loadNotificationProfile(),
+const initial = await Promise.allSettled([
+  registerServiceWorker(), loadConfig(), loadBoard(),
+  loadCalendar(), loadStandings(), loadNotificationProfile(),
 ]);
-setSystemState(configOk && boardOk && calendarOk ? "live" : "offline");
+const calendarOk = initial[3].status === "fulfilled" && initial[3].value === true;
+setSystemState(calendarOk ? "live" : currentCalendar ? "stale" : "offline");
 initialLoadComplete = true;
 await updatePushStatus();
 if (ownerToken()) void syncCurrentPushRegistration();
