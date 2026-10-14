@@ -247,13 +247,20 @@ const DIVISION_WEIGHTS = Object.freeze({
 });
 export function divisionStrengthMultiplier(team) {
   if (!team) return 1;
-  const raw = [team.divisionLabel, team.division, team.leagueName]
+  // Check all published labels for lettered subdivisions before bare D2;
+  // otherwise an unlettered metadata field could mask a specific D2a league.
+  const labels = [team.divisionLabel, team.leagueName, team.division]
     .map((part) => String(part || "").trim());
-  for (const part of raw) {
-    const explicit = /(?:^|[^a-z0-9])(?:d|division)[\s_-]*([123])\s*([abc])?(?=$|[^a-z0-9])/i.exec(part);
-    if (explicit) return DIVISION_WEIGHTS[explicit[1] + (explicit[2] || "").toLowerCase()] || 1;
-    // The official division metadata sometimes contains just "2a" or "1".
-    if (/^[123](?:[abc])?$/i.test(part)) return DIVISION_WEIGHTS[part.toLowerCase()] || 1;
+  const explicit = /(?:^|[^a-z0-9])(?:d|division)[\\s_-]*([123])[\\s_-]*([abc])?(?=$|[^a-z0-9])/i;
+  for (const label of labels) {
+    const match = explicit.exec(label);
+    if (match?.[2]) return DIVISION_WEIGHTS[match[1] + match[2].toLowerCase()];
+    if (/^2[abc]$/i.test(label)) return DIVISION_WEIGHTS[label.toLowerCase()];
+  }
+  for (const label of labels) {
+    const match = explicit.exec(label);
+    if (match) return DIVISION_WEIGHTS[match[1]] || 1;
+    if (/^[123]$/i.test(label)) return DIVISION_WEIGHTS[label] || 1;
   }
   return 1;
 }
