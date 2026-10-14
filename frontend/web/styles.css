@@ -6367,3 +6367,24 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
     transition: none;
   }
 }
+
+/* Shared component-class entry points. Old cards and new cards use the same
+ * tokens even if their internal layouts (grid/flex) differ. */
+.bw-card-frame {
+  border-color: var(--bw-card-border);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+.bw-card-frame .bw-card-title {
+  font-size: var(--bw-card-title-size);
+  font-weight: var(--bw-card-title-weight);
+  line-height: var(--bw-card-title-leading);
+  letter-spacing: var(--bw-card-title-tracking);
+}
+.bw-card-heading { align-items: flex-start; }
+.calendar-card-footer.bw-card-footer {
+  min-height: 0;
+  margin: 0;
+  border-top: 0;
+  pointer-events: none;
+}
