@@ -205,6 +205,93 @@ export function buildLeagueStandings(
   };
 }
 
+/** Compute complete read-only public scouting data in a scheduled job, not in HTTP requests. */
+export function buildScoutingSnapshot(history, seasonId, today = "9999-12-31", fixtures = []) {
+  const season = seasonData(history, seasonId);
+  const teams = Array.isArray(season?.teams) ? season.teams : [];
+  const rowsByDivision = new Map();
+  const cards = [];
+  const reports = [];
+  const seen = new Set();
+  for (const team of teams) {
+    const divisionKey = normalizedDivision(team);
+    const key = [divisionKey, normalizeHistoryTeamName(team.name)].join("|");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    if (!rowsByDivision.has(divisionKey)) {
+      rowsByDivision.set(divisionKey, divisionStandings(season, team, today));
+    }
+    const rows = rowsByDivision.get(divisionKey);
+    cards.push({
+      team: team.name, division: displayDivision(team), divisionKey,
+      ready: true, rows, hasResults: rows.some(row => row.played > 0),
+      recentForm: buildTeamRecentForm(history, team.name, today),
+    });
+    const report = buildLeagueTeamHistory(
+      history, seasonId, team.name, 35, today, divisionKey,
+    );
+    if (report) reports.push({ team: team.name, divisionKey, history: report });
+  }
+  const matchups = {};
+  const allFixtures = [
+    ...fixtures,
+    ...(season?.matches || []).filter(match => String(match.date || "") >= today),
+  ];
+  for (const game of allFixtures) {
+    const team = String(game.team || game.homeTeam || "").trim();
+    const opponent = String(game.opponent || game.awayTeam || "").trim();
+    if (!team || !opponent || historyTeamKey(team) === historyTeamKey(opponent)) continue;
+    const key = [historyTeamKey(team), historyTeamKey(opponent)].join("|");
+    if (matchups[key]) continue;
+    const estimate = buildMatchupEstimate(history, team, opponent, today);
+    if (estimate) matchups[key] = estimate;
+  }
+  return {
+    schemaVersion: 1,
+    seasonId, season: season?.label || seasonLabel(seasonId),
+    sourceUpdatedAt: String(history?.updatedAt || ""),
+    updatedAt: new Date().toISOString(),
+    cards, reports, matchups,
+    method: "Public scored RATS archive; last ten, format-weighted, opponent adjusted; provisional.",
+  };
+}
+
+export function standingsFromScoutingSnapshot(scouting, seasonId, monitoredTeams = [], fixtures = []) {
+  if (!scouting || scouting.schemaVersion !== 1 || scouting.seasonId !== seasonId) return null;
+  const raw = Array.isArray(scouting.cards) ? scouting.cards : [];
+  const tracked = [...new Set((Array.isArray(monitoredTeams) ? monitoredTeams : [])
+    .map(name => String(name || "").trim()).filter(Boolean))];
+  const cards = tracked.map(name => {
+    const matches = raw.filter(card => historyTeamKey(card.team) === historyTeamKey(name));
+    if (matches.length !== 1) {
+      return { team: name, ready: false, division: "", rows: [],
+        message: matches.length > 1 ? "Team appears in multiple divisions." : "Team not indexed this season." };
+    }
+    const card = matches[0];
+    return { ...card, rows: card.rows.map(row => ({
+      ...row, highlighted: normalizeHistoryTeamName(row.name) ===
+        normalizeHistoryTeamName(card.team),
+    })) };
+  });
+  const matchups = {};
+  for (const game of (Array.isArray(fixtures) ? fixtures : []).slice(0, 25)) {
+    const key = [historyTeamKey(game.team), historyTeamKey(game.opponent)].join("|");
+    if (scouting.matchups?.[key]) matchups[key] = scouting.matchups[key];
+  }
+  return { seasonId, season: scouting.season,
+    updatedAt: scouting.sourceUpdatedAt || scouting.updatedAt,
+    source: "Precomputed RATS public results", official: false,
+    method: scouting.method, cards, matchups };
+}
+
+export function teamHistoryFromScoutingSnapshot(scouting, seasonId, teamName, division = "") {
+  if (!scouting || scouting.schemaVersion !== 1 || scouting.seasonId !== seasonId) return null;
+  const reports = (Array.isArray(scouting.reports) ? scouting.reports : []).filter(item =>
+    (!division || item.divisionKey === division) &&
+    historyTeamKey(item.team) === historyTeamKey(teamName));
+  return reports.length === 1 ? reports[0].history : null;
+}
+
 /** Detects the *published* league format. Old archives without league names remain unknown. */
 function leagueFormat(team) {
   if (!team) return "unknown";
