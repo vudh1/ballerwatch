@@ -1,7 +1,25 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.5.4",
+  "currentVersion": "8.6.0",
   "releases": [
+    {
+      "version": "8.6.0",
+      "date": "2026-10-13",
+      "type": "minor",
+      "source": "user-reported",
+      "title": "Independent hourly RATS scouting and resilient public cards",
+      "webAnnouncement": "BallerWatch now prepares team scouting, standings and matchup estimates independently every hour. Cards read prebuilt results instead of recalculating archive history when tapped. Match data stays responsive when optional scouting is delayed, and the opponent rating uses last-10 scoring and defense with small-sample confidence adjustment.",
+      "changes": [
+        "Adds an independent hourly, serialized GitHub Actions scouting refresh that pulls the encrypted public-results archive, refreshes RATS scores when due, calculates all current-season team dossiers and upcoming matchup estimates, encrypts the output, and publishes only canonical runtime-state files.",
+        "Introduces a bounded encrypted scouting.json runtime projection and privacy-reviewed read-only Worker endpoints for standings and team history; these no longer scan/decrypt the full historical-results archive during public HTTP requests.",
+        "Stops the PWA's one-minute per-team background scouting prefetch storm. Read-only scouting reports are fetched only when opened and reuse cached/in-flight reports.",
+        "Makes public calendar success the sole live/offline gate; optional league scouting, board and account refreshes run independently. An unchanged successful calendar refresh now clears a stuck Last synced/Reconnecting footer after transient failures.",
+        "Adjusts form-index scoring toward neutral for short result samples; the score remains a 0–100 strength index, not a win probability or betting line.",
+        "Reports attack, defense and average goal difference from the latest ten indexed scored games across seasons, with 11v11 weighted 1.25x and 8v8/unknown-format games weighted 1x.",
+        "Dispatches a first independent scouting build after the 8.6.0 production promotion, while leaving the ongoing hourly schedule independent of browsing or live Worker reads.",
+        "Adds synthetic tests verifying encrypted persistence, snapshot lookup isolation, archive-derived matchup estimates and no on-demand scouting calculations in public routes."
+      ]
+    },
     {
       "version": "8.5.4",
       "date": "2026-10-13",
