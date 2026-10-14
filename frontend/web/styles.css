@@ -6056,3 +6056,14 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
     transition: none;
   }
 }
+
+/* Let the shared gradient, rather than a second mask, fade to transparency. */
+@media (hover: hover) and (pointer: fine) {
+  .standings-rail .standings-step::before {
+    mask-image: none;
+    -webkit-mask-image: none;
+  }
+  .standings-rail .standings-step:not(:disabled):is(:hover, :focus-visible) span {
+    transform: scale(1);
+  }
+}
