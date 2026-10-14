@@ -3461,6 +3461,139 @@ async function loadStandings() {
   }
 }
 
+function scoutingRecordText(record) {
+  return record?.games
+    ? `${record.wins}W · ${record.draws}D · ${record.losses}L`
+    : "No scored matches";
+}
+
+function scoutDataCell(label, value, supporting = "") {
+  const cell = document.createElement("div");
+  cell.className = "scout-summary-cell";
+  cell.append(standingsCell("span", label, "scout-summary-label"),
+    standingsCell("strong", value, "scout-summary-value"));
+  if (supporting) cell.append(standingsCell("span", supporting, "scout-summary-detail"));
+  return cell;
+}
+
+function buildScoutOverview(scout) {
+  const overview = document.createElement("section");
+  overview.className = "scout-dashboard";
+  if (!scout) {
+    overview.append(standingsCell("p", "Scouting statistics are not indexed for this team yet.", "muted"));
+    return overview;
+  }
+  const quality = document.createElement("section");
+  quality.className = "scout-quality";
+  const above = document.createElement("div");
+  above.className = "scout-quality-heading";
+  const name = document.createElement("div");
+  name.append(standingsCell("p", "OPPONENT-ADJUSTED FORM", "eyebrow"),
+    standingsCell("p",
+      `${scout.season} · ${scout.division} · ${scout.currentFormat === "unknown"
+        ? "Format unverified" : scout.currentFormat}`,
+      "scout-season"));
+  const score = document.createElement("div");
+  score.className = "scout-quality-score";
+  score.append(standingsCell("strong",
+    scout.quality ? String(scout.quality.index) : "—"),
+    standingsCell("span", "/ 100"));
+  above.append(name, score);
+  quality.append(above);
+  const meter = document.createElement("div");
+  meter.className = "scout-quality-meter";
+  meter.setAttribute("role", "img");
+  meter.setAttribute("aria-label", scout.quality
+    ? `Opponent-adjusted results score ${scout.quality.index} of 100`
+    : "Opponent-adjusted score unavailable");
+  const fill = document.createElement("span");
+  fill.style.width = `${scout.quality?.index ?? 0}%`;
+  meter.append(fill);
+  quality.append(meter);
+  quality.append(standingsCell("p", scout.quality
+    ? `#${scout.quality.rank} of ${scout.quality.total} scored teams · ${scout.quality.games} current-season matches${scout.quality.games < 3 ? " · Early sample" : ""}`
+    : "Not enough scored division games for a rating yet.",
+    "scout-quality-caption"));
+  overview.append(quality);
+
+  const snapshot = document.createElement("div");
+  snapshot.className = "scout-snapshot";
+  snapshot.append(
+    scoutDataCell("CURRENT SEASON", scout.current
+      ? `${scout.current.wins}–${scout.current.draws}–${scout.current.losses}`
+      : "—", "W – D – L"),
+    scoutDataCell("ALL-TIME", scoutingRecordText(scout.overall),
+      `${scout.overall?.games || 0} indexed games`),
+    scoutDataCell("AVG GOAL DIFF", scout.overall?.goalDifferencePerGame == null
+      ? "—" : `${scout.overall.goalDifferencePerGame > 0 ? "+" : ""}${scout.overall.goalDifferencePerGame}`,
+      "Goals per game"),
+  );
+  overview.append(snapshot);
+
+  const form = document.createElement("section");
+  form.className = "scout-form";
+  form.append(standingsCell("h3", "Recent form", "scout-subheading"));
+  const chips = document.createElement("div");
+  chips.className = "scout-form-results";
+  for (const match of scout.recent || []) {
+    const chip = standingsCell("span", match.result, "scout-form-result");
+    chip.dataset.result = match.result;
+    chip.title = `${match.season} · ${match.date} · ${match.format}`;
+    chip.setAttribute("aria-label", `${match.date}: ${match.result === "W"
+      ? "Win" : match.result === "D" ? "Draw" : "Loss"}`);
+    chips.append(chip);
+  }
+  if (!chips.childNodes.length) chips.append(standingsCell("span", "No recent scored matches", "muted"));
+  form.append(chips);
+  overview.append(form);
+
+  const rates = document.createElement("div");
+  rates.className = "scout-scoring";
+  rates.append(
+    scoutDataCell("SCORING", scout.overall?.goalsForPerGame == null
+      ? "—" : String(scout.overall.goalsForPerGame), "Goals per game"),
+    scoutDataCell("DEFENDING", scout.overall?.goalsAgainstPerGame == null
+      ? "—" : String(scout.overall.goalsAgainstPerGame), "Goals allowed/game"),
+  );
+  overview.append(rates);
+
+  // Ranking bars were intentionally moved *from* the carousel to this sheet.
+  overview.append(buildStandingStats(scout));
+
+  const formatSection = document.createElement("section");
+  formatSection.className = "scout-formats";
+  formatSection.append(standingsCell("h3", "Record by format", "scout-subheading"));
+  const formats = document.createElement("div");
+  formats.className = "scout-format-grid";
+  for (const [format, label] of [["8v8", "8v8"], ["11v11", "11v11"]]) {
+    const record = scout.formats?.[format];
+    formats.append(scoutDataCell(label, scoutingRecordText(record),
+      `${record?.games || 0} indexed games`));
+  }
+  formatSection.append(formats);
+  if (scout.formats?.unknown?.games) {
+    formatSection.append(standingsCell("p",
+      `${scout.formats.unknown.games} older results have no verified format and are excluded from 8v8/11v11 totals.`,
+      "scout-format-note"));
+  }
+  overview.append(formatSection);
+  const how = document.createElement("details");
+  how.className = "scout-method";
+  const howSummary = document.createElement("summary");
+  howSummary.textContent = "How is opponent strength calculated?";
+  how.append(howSummary, standingsCell("p",
+    "A win scores more against an opponent with a stronger record against other teams. " +
+    "Draws are adjusted too. Direct games against this team are excluded when assessing an opponent. " +
+    "Small samples are smoothed; scores compare only teams with scored games in the same current-season division. " +
+    "This is an experimental, results-based index, not betting odds or a prediction.",
+    "scout-method-text"));
+  if (!scout.archiveComplete) how.append(standingsCell("p",
+    "Archive coverage is incomplete, so older format records and rankings may change.",
+    "scout-method-text"));
+  overview.append(how);
+  return overview;
+}
+
 function closeTeamHistory() {
   teamHistoryRequestId += 1;
   if (els.teamHistoryDialog.open) els.teamHistoryDialog.close();
@@ -3470,8 +3603,9 @@ async function openTeamHistory(teamName) {
   const requestId = ++teamHistoryRequestId;
   els.teamHistoryTitle.textContent = teamName;
   els.teamHistoryNote.textContent = "Public RATS results archive";
-  els.teamHistoryList.replaceChildren(
-    standingsCell("p", "Loading match history…", "muted"));
+  els.teamScoutOverview.replaceChildren(
+    standingsCell("p", "Loading scouting report…", "muted"));
+  els.teamHistoryList.replaceChildren();
   if (!els.teamHistoryDialog.open) els.teamHistoryDialog.showModal();
 
   try {
@@ -3479,24 +3613,32 @@ async function openTeamHistory(teamName) {
     if (requestId !== teamHistoryRequestId || !els.teamHistoryDialog.open) return;
     if (!payload?.ok || !payload.history) throw new Error("History unavailable");
     const history = payload.history;
+    const updated = new Date(history.updatedAt || "");
     els.teamHistoryNote.textContent =
-      `${history.indexedMatchCount} indexed scored matches · Showing latest ${history.matches.length}` +
-      (history.coverageComplete ? "" : " · Archive coverage incomplete");
+      `${history.indexedMatchCount} scored matches` +
+      (Number.isNaN(updated.getTime()) ? "" : ` · Updated ${new Intl.DateTimeFormat(
+        undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" },
+      ).format(updated)}`) +
+      (history.coverageComplete ? "" : " · Partial archive");
+    els.teamScoutOverview.replaceChildren(buildScoutOverview(history.scout));
     els.teamHistoryList.replaceChildren();
 
+    const heading = standingsCell("h3", "Match history", "scout-subheading");
+    els.teamHistoryList.append(heading);
     if (!history.matches.length) {
       els.teamHistoryList.append(standingsCell("p",
-        "No scored matches are indexed for this team yet.", "muted"));
+        "No scored match results are indexed for this team.", "muted"));
       return;
     }
 
-    for (const match of history.matches) {
+    function matchResultItem(match) {
       const item = document.createElement("div");
       item.className = "team-history-match";
       const detail = document.createElement("div");
       detail.className = "team-history-match-detail";
       detail.append(
-        standingsCell("span", `${match.season} · ${match.date}`,
+        standingsCell("span",
+          `${match.season} · ${match.date} · ${match.format === "unknown" ? "Format unverified" : match.format}`,
           "team-history-match-date"),
         standingsCell("strong",
           `${match.homeTeam} ${match.homeScore}–${match.awayScore} ${match.awayTeam}`,
@@ -3504,15 +3646,29 @@ async function openTeamHistory(teamName) {
       );
       const result = standingsCell("span", match.result, "team-history-result");
       result.dataset.result = match.result;
-      result.setAttribute("aria-label",
-        match.result === "W" ? "Win" : match.result === "D" ? "Draw" : "Loss");
+      result.setAttribute("aria-label", match.result === "W" ? "Win"
+        : match.result === "D" ? "Draw" : "Loss");
       item.append(detail, result);
-      els.teamHistoryList.append(item);
+      return item;
+    }
+
+    for (const match of history.matches.slice(0, 5)) {
+      els.teamHistoryList.append(matchResultItem(match));
+    }
+    if (history.matches.length > 5) {
+      const expanded = document.createElement("details");
+      expanded.className = "scout-more-matches";
+      const summary = document.createElement("summary");
+      summary.textContent = `Show ${history.matches.length - 5} older matches`;
+      expanded.append(summary);
+      for (const match of history.matches.slice(5)) expanded.append(matchResultItem(match));
+      els.teamHistoryList.append(expanded);
     }
   } catch {
     if (requestId === teamHistoryRequestId && els.teamHistoryDialog.open) {
-      els.teamHistoryList.replaceChildren(standingsCell("p",
-        "Match history is unavailable right now.", "muted"));
+      els.teamScoutOverview.replaceChildren(
+        standingsCell("p", "Scouting data is unavailable right now.", "muted"));
+      els.teamHistoryList.replaceChildren();
     }
   }
 }
