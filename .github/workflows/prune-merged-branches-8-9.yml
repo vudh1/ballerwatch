@@ -1,0 +1,86 @@
+name: Prune safely merged stale branches after 8.9.0
+
+# One-time maintenance at the end of an authenticated and healthy Pages rollout.
+# Never delete release source until v8.9.0 is published and production matches.
+on:
+  workflow_run:
+    workflows: ["Deploy GitHub Pages app"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ballerwatch-safe-branch-prune-8-9
+  cancel-in-progress: false
+
+jobs:
+  prune:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Verify production and delete only unchanged already-merged branches
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+          DEPLOYED_SHA: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$GH_TOKEN" || { echo "::error::RELEASE_GITHUB_TOKEN missing"; exit 1; }
+          repo="$GITHUB_REPOSITORY"
+          released_sha="$(gh api "/repos/$repo/git/ref/tags/v8.9.0" --jq '.object.sha')"
+          production_sha="$(gh api "/repos/$repo/git/ref/heads/production" --jq '.object.sha')"
+          draft="$(gh release view v8.9.0 --repo "$repo" --json isDraft --jq '.isDraft')"
+          if [ "$draft" != false ] || [ "$production_sha" != "$released_sha" ] || [ "$DEPLOYED_SHA" != "$released_sha" ]; then
+            echo "8.9.0 source/production/Pages do not agree; leaving all branches intact."
+            exit 0
+          fi
+
+          # A squash merge does not make the feature branch an ancestor of main.
+          # Instead require the exact current SHA to be the head of a merged PR
+          # targeting main. Never prune a branch with unmerged later commits.
+          gh api --paginate "/repos/$repo/pulls?state=closed&per_page=100" |
+            jq -s '[.[][] | select(.merged_at != null and .base.ref == "main") |
+              {branch: .head.ref, sha: .head.sha, merged: .merged_at}]' > /tmp/merged-prs.json
+          gh api --paginate "/repos/$repo/branches?per_page=100" |
+            jq -s '[.[][] | {branch: .name, sha: .commit.sha, protected: .protected}]' > /tmp/branches.json
+
+          total=0
+          deleted=0
+          skipped=0
+          echo "### Safe stale-branch audit for v8.9.0" >> "$GITHUB_STEP_SUMMARY"
+          while IFS='|' read -r name sha protected; do
+            total=$((total + 1))
+            case "$name" in
+              main|production|runtime-state|release/8.9.0) continue ;;
+              release/*|fix/*|maintenance/*) ;;
+              *) skipped=$((skipped + 1)); continue ;;
+            esac
+            if [ "$protected" = true ]; then skipped=$((skipped + 1)); continue; fi
+            merged="$(jq -r --arg name "$name" --arg sha "$sha" \
+              '[.[] | select(.branch == $name and .sha == $sha)] | length' \
+              /tmp/merged-prs.json)"
+            if [ "$merged" -lt 1 ]; then
+              skipped=$((skipped + 1))
+              echo "- Preserved unmerged or changed: $name" >> "$GITHUB_STEP_SUMMARY"
+              continue
+            fi
+            live="$(gh api "/repos/$repo/git/ref/heads/$name" --jq '.object.sha' || true)"
+            if [ "$live" != "$sha" ]; then
+              skipped=$((skipped + 1))
+              echo "- Preserved changed during audit: $name" >> "$GITHUB_STEP_SUMMARY"
+              continue
+            fi
+            if gh api -X DELETE "/repos/$repo/git/refs/heads/$name" >/dev/null; then
+              deleted=$((deleted + 1))
+              echo "- Deleted exact merged head: $name" >> "$GITHUB_STEP_SUMMARY"
+            else
+              skipped=$((skipped + 1))
+              echo "- Preserved: deletion not authorized for $name" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done < <(jq -r '.[] | [.branch, .sha, (.protected|tostring)] | join("|")' /tmp/branches.json)
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Audited $total branches; deleted $deleted unchanged merged branches; preserved $skipped candidates." >> "$GITHUB_STEP_SUMMARY"
