@@ -427,11 +427,11 @@ export function buildTeamScout(history, currentSeasonId, teamName, today = "9999
   const byFormat = { "8v8": emptyRecord(), "11v11": emptyRecord(), unknown: emptyRecord() };
   const recent = [];
 
-  for (const match of completedHistoryMatches(history)) {
-    if (match.date > today || !/^\d{4}-\d{2}-\d{2}$/.test(String(match.date))) continue;
-    const isHome = historyTeamKey(match.homeTeam) === target;
-    const isAway = historyTeamKey(match.awayTeam) === target;
-    if (!isHome && !isAway) continue;
+  // The ordered public archive and per-team index are shared with the
+  // last-ten ranking calculations; never scan/decode all seasons again here.
+  const allScored = allIndexedScoredMatches(history, today);
+  for (const entry of lastTeamGames(allScored, team.name, "", Number.MAX_SAFE_INTEGER)) {
+    const { match, isHome } = entry;
     const season = seasonData(history, match.seasonId);
     // Use the exact current season name where possible; never infer 8v8 from D-8.
     const seasonTeam = matchingTeam(season?.teams || [], isHome ? match.homeTeam : match.awayTeam);
@@ -473,15 +473,9 @@ export function buildLeagueTeamHistory(history, currentSeasonId, teamName, limit
   const team = matchingTeam(Array.isArray(current?.teams) ? current.teams : [], teamName);
   if (!team) return null;
   const target = historyTeamKey(team.name);
-  const matches = completedHistoryMatches(history)
-    .filter((match) => {
-      if (historyTeamKey(match.homeTeam) !== target &&
-          historyTeamKey(match.awayTeam) !== target) return false;
-      return /^\d{4}-\d{2}-\d{2}$/.test(String(match.date || "")) &&
-        match.date <= today &&
-        resultScore(match.homeScore) !== null &&
-        resultScore(match.awayScore) !== null;
-    })
+  const matches = lastTeamGames(
+    allIndexedScoredMatches(history, today), team.name, "", Number.MAX_SAFE_INTEGER,
+  ).map(({ match }) => match)
     .sort((a, b) => b.date.localeCompare(a.date) ||
       b.seasonId.localeCompare(a.seasonId) ||
       String(b.startTime || "").localeCompare(String(a.startTime || "")));
