@@ -14,7 +14,7 @@ function containsName(question, name) {
 }
 export function isScoutingQuestion(question) {
   const text = String(question || "");
-  return /\b(?:scout(?:ing)?|strength|stronger|strongest|form|performance|win(?:ning)?\s+(?:chance|probability|rate|percentage)|odds|predict(?:ion|ed)?|likely to win|attack(?:ing)?|defen(?:se|ce|sive)|quality score|opponent.adjusted|last\s+(?:five|5|ten|10)\s+(?:games|matches)|draw\s+(?:chance|probability)|loss\s+(?:chance|probability)|team rankings?)\b/i
+  return /\b(?:scout(?:ing)?|backtest(?:ing)?|accuracy|calibrat(?:ion|ed|e)?|train(?:ing|ed)?|model performance|model weights|strength|stronger|strongest|form|performance|win(?:ning)?\s+(?:chance|probability|rate|percentage)|odds|predict(?:ion|ed)?|likely to win|attack(?:ing)?|defen(?:se|ce|sive)|quality score|opponent.adjusted|last\s+(?:five|5|ten|10)\s+(?:games|matches)|draw\s+(?:chance|probability)|loss\s+(?:chance|probability)|team rankings?)\b/i
     .test(text) || /\bcompare\b.{0,80}\b(?:teams?|clubs?|form|attack|defense|scoring)\b/i.test(text);
 }
 function reportRows(index) {
@@ -81,6 +81,30 @@ function matchupAnswer(match) {
 export function answerScoutingQuestion(question, index, { contextTeams = [] } = {}) {
   if (!isScoutingQuestion(question)) return null;
   const raw = String(question || "").slice(0, 600);
+  if (/\b(?:backtest|accuracy|calibrat|training|model (?:performance|weights))\b/i.test(raw)) {
+    const calibration = index?.model;
+    if (!calibration || !calibration.evaluatedGames) {
+      return { ok: true, intent: "league_scout",
+        reply: "BallerWatch uses provisional, precomputed scouting estimates. A next-season validation sample is not yet available for this index.",
+        sources: SOURCE };
+    }
+    const lines = [
+      "Scouting model: " + (calibration.status === "tuned" ? "forward-validated tuned weights" : "conservative baseline retained"),
+      "Forward validation: " + calibration.evaluatedGames + " scored fixtures across " +
+        calibration.trainedFolds + " completed season folds.",
+      "Multiclass Brier (lower is better): " +
+        calibration.nextSeasonBrier + " with walk-forward selection vs " +
+        calibration.baselineNextSeasonBrier + " baseline.",
+      calibration.qualityNextSeasonCorrelation == null
+        ? "Quality-score correlation: not enough comparable team-seasons."
+        : "Previous-season opponent-adjusted quality vs next-season performance correlation: " +
+          calibration.qualityNextSeasonCorrelation + " (" +
+          calibration.qualityTeamPairs + " comparable team-seasons).",
+      "Each test uses only prior completed seasons. No match outcome can train its own prediction. "
+        + "These numbers are not calibrated betting odds.",
+    ];
+    return { ok: true, reply: lines.join("\n"), intent: "league_scout", sources: SOURCE };
+  }
   const candidates = reportRows(index);
   const matchups = Object.values(index?.standings?.matchups || {})
     .filter((match) => match?.team && match?.opponent);
