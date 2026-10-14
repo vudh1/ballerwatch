@@ -1,7 +1,18 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.10.1",
+  "currentVersion": "8.10.2",
   "releases": [
+    {
+      "version": "8.10.2",
+      "date": "2026-10-14",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Keep V2 landscape controls inside iPhone safe areas",
+      "changes": [
+        "Apply environment-backed asymmetric left/right safe-area padding to the entire V2 desktop-navigation grid in landscape, preserving V1 and cached 8.10.1 startup.",
+        "Add Chromium and WebKit landscape regressions for 59px/34px insets, rail and header bounds, and horizontal overflow."
+      ]
+    },
     {
       "version": "8.10.1",
       "date": "2026-10-14",
