@@ -228,6 +228,7 @@ const NOTIFICATION_DELETED_KEY = LOCAL_NOTIFICATION_DELETED_KEY;
 const QUESTION_HISTORY_KEY = experienceKey("ballerwatch-question-history-v1", "questions");
 const LIVE_DATA_REFRESH_MS = 60_000;
 const PUBLIC_CALENDAR_CACHE_KEY = experienceKey("ballerwatch-public-calendar-session-v1", "public-calendar");
+const PUBLIC_CALENDAR_DEVICE_KEY = experienceKey(PUBLIC_CALENDAR_LOCAL_KEY, "public-calendar-device");
 const APP_UPDATE_CHECK_MS = 5 * 60_000;
 const SPOTLIGHT_IDLE_RESET_MS = 15_000;
 const INTERACTION_VIBRATION_MS = 8;
@@ -3851,14 +3852,14 @@ function installStandingsSwipe() {
 // Cache reads are synchronous, so the previous good cards paint before any GET.
 function rememberPublicCalendar(calendar) {
   writePublicCalendar(sessionStorage, PUBLIC_CALENDAR_CACHE_KEY, calendar);
-  writePublicCalendar(localStorage, PUBLIC_CALENDAR_LOCAL_KEY, calendar);
+  writePublicCalendar(localStorage, PUBLIC_CALENDAR_DEVICE_KEY, calendar);
 }
 
 function restorePublicCalendar() {
   const today = todaySeattleKey();
   const now = Date.now();
   const cached = readPublicCalendar(sessionStorage, PUBLIC_CALENDAR_CACHE_KEY, now, today) ||
-    readPublicCalendar(localStorage, PUBLIC_CALENDAR_LOCAL_KEY, now, today);
+    readPublicCalendar(localStorage, PUBLIC_CALENDAR_DEVICE_KEY, now, today);
   if (!cached) return false;
   renderCalendar(cached);
   return true;
