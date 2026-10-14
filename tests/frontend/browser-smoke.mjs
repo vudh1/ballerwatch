@@ -99,9 +99,7 @@ async function ready(page, route = "v2/") {
 
 async function atProgress(page, progress) {
   await page.evaluate((value) => {
-    const intro = document.querySelector("#soccer-intro");
-    const stage = document.querySelector("#soccer-stage");
-    window.scrollTo(0, (intro.offsetHeight - stage.clientHeight) * value);
+    window.scrollTo(0, (document.documentElement.scrollHeight - window.innerHeight) * value);
   }, progress);
   await page.waitForFunction((value) => Math.abs(Number(document.documentElement.dataset.sceneProgress) - value) < 0.002, progress);
   return page.locator("#scene-ball").getAttribute("transform");
@@ -128,7 +126,8 @@ try {
       await scenario(`${engine}: critical data loads during a reversible scroll intro; natural goal reveal`, async () => {
         const { context, page, calls, errors } = await prepare(browser);
         await ready(page);
-        assert.equal(await page.locator("#matchday-app").evaluate((el) => el.inert), true);
+        assert.equal(await page.locator("#matchday-app").evaluate((el) => el.inert), false);
+        assert.equal(await page.locator("#soccer-intro").isVisible(), true);
         assert.equal(calls.filter((call) => call.path === "/web/calendar").length, 1);
         await shot(page, `${engine}-intro-setup`);
         const forward = await atProgress(page, 0.44);
@@ -141,7 +140,7 @@ try {
         await shot(page, `${engine}-intro-goal`);
         await atProgress(page, 1);
         assert.equal(await page.locator("#matchday-app").evaluate((el) => el.inert), false);
-        assert.equal(await page.evaluate(() => sessionStorage.getItem("ballerwatch:v2:intro-seen")), "1");
+        assert.ok(await page.locator("#panel-matchday .v2-match-grid").evaluate((el) => Number(getComputedStyle(el).opacity) > 0.95));
         await shot(page, `${engine}-matchday-desktop`);
         assert.deepEqual(errors, []);
         await context.close();
@@ -188,7 +187,7 @@ try {
         await page.reload();
         await page.waitForFunction(() => !document.querySelector("#matchday-app").inert);
         assert.equal(new URL(page.url()).pathname, "/ballerwatch/v2/");
-        assert.equal(await page.locator("#soccer-intro").isVisible(), false);
+        assert.equal(await page.locator("#soccer-intro").isVisible(), true);
         await page.setViewportSize({ width: 844, height: 390 });
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
         // Device emulation reports zero hardware safe areas. Inject asymmetric

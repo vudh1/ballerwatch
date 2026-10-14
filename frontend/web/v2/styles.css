@@ -241,6 +241,7 @@
 .v2-intro-skipped .v2-header #skip-intro { display: none; }
 .v2 .v2-static-welcome { display: none; }
 @media (prefers-reduced-motion: reduce) {
+  .v2 .v2-static-welcome { display: block; }
   .v2 #panel-matchday .v2-match-grid { opacity: 1; transform: none; }
   .v2 .soccer-intro { display: none; }
 }

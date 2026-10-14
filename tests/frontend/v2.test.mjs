@@ -26,6 +26,17 @@ test("ball contact, curved flight, goalkeeper and upper-corner impact stay synch
   assert.equal(scenePose(1).reveal, 1);
 });
 
+test("V2 keeps the shared app live with the scroll timeline in the background", () => {
+  const timeline = read("v2/timeline.js");
+  const css = read("v2/styles.css");
+  const html = read("v2/index.html");
+  assert.match(timeline, /app\.inert = false/);
+  assert.match(timeline, /document\.documentElement\.scrollHeight - window\.innerHeight/);
+  assert.match(css, /\.v2 \.soccer-intro \{[\s\S]*position: fixed/);
+  assert.match(css, /--v2-cards-visible/);
+  assert.match(html, /id="scene-player-number"[^>]*>10<\/text>/);
+});
+
 test("every pose reverses exactly with scroll, clamps input and stays finite", () => {
   const steps = Array.from({ length: 101 }, (_, index) => index / 100);
   const forward = steps.map((progress) => scenePose(progress));
