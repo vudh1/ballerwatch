@@ -18,10 +18,10 @@ concurrency:
 
 jobs:
   dispatch:
-    if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push' &&
-      github.event.workflow_run.head_branch == 'main'
+    # A successful validation event may originate on a PR, but the step
+    # below independently compares the validated SHA to the exact current
+    # main SHA and the release ledger. Do not skip at job level.
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
