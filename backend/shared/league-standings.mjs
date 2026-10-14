@@ -419,7 +419,6 @@ export function buildTeamScout(history, currentSeasonId, teamName, today = "9999
   const current = seasonData(history, currentSeasonId);
   const team = matchingTeam(Array.isArray(current?.teams) ? current.teams : [], teamName);
   if (!team) return null;
-  const target = historyTeamKey(team.name);
   const seasonRows = divisionStandings(current, team, today);
   const currentRank = seasonRows.find((row) =>
     normalizeHistoryTeamName(row.name) === normalizeHistoryTeamName(team.name));
