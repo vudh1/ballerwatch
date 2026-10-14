@@ -26,6 +26,7 @@ import {
   normalizedNotificationProfile,
   saveLocalNotificationIds,
 } from "./lib/notification-state.js";
+import { createSettingsChoice } from "./lib/settings-choice.js";
 
 const els = {
   launchIntro: document.querySelector("#launch-intro"),
@@ -1171,6 +1172,69 @@ function renderDeletedMatches(matches) {
   }
 }
 
+// All options stay in this page's memory only. No private roster names go to
+// service-worker caches, localStorage, public APIs or BallerWatch AI prompts.
+let settingsChoiceControls = null;
+let settingsChoicePending = null;
+let settingsChoiceLoadedAt = 0;
+let settingsChoiceAccount = "";
+
+function ensureSettingsChoices() {
+  if (settingsChoiceControls) return settingsChoiceControls;
+  const init = (prefix, root, input, multiple = false, chips = "") =>
+    createSettingsChoice({
+      root: document.querySelector("#" + root),
+      trigger: document.querySelector("#" + prefix + "-trigger"),
+      panel: document.querySelector("#" + prefix + "-popover"),
+      search: document.querySelector("#" + prefix + "-search"),
+      optionsList: document.querySelector("#" + prefix + "-options"),
+      display: document.querySelector("#" + prefix + "-display"),
+      input: document.querySelector("#" + input),
+      chips: chips ? document.querySelector("#" + chips) : null,
+      multiple,
+    });
+  settingsChoiceControls = {
+    rsvp: init("owner-name", "rsvp-choice", "owner-name"),
+    teams: init("owner-teams", "teams-choice", "owner-teams", true, "owner-teams-chips"),
+    newUser: init("user-create-name", "user-name-choice", "user-create-name"),
+  };
+  return settingsChoiceControls;
+}
+
+async function loadSettingsChoiceOptions() {
+  if (!ownerToken()) return;
+  const controls = ensureSettingsChoices();
+  const username = sessionUsername();
+  if (username !== settingsChoiceAccount) {
+    settingsChoiceAccount = username;
+    settingsChoiceLoadedAt = 0;
+    controls.rsvp.setOptions([]);
+    controls.newUser.setOptions([]);
+    controls.teams.setOptions([]);
+  }
+  if (settingsChoicePending) return settingsChoicePending;
+  if (Date.now() - settingsChoiceLoadedAt < 120_000) return;
+  const task = (async () => {
+    try {
+      const result = await api("/web/user/selection-options", {
+        headers: ownerHeaders(), retryNetwork: false, timeoutMs: 5_000,
+      });
+      if (username !== sessionUsername()) return;
+      const names = Array.isArray(result.names) ? result.names : [];
+      const teams = Array.isArray(result.teams) ? result.teams : [];
+      controls.rsvp.setOptions(names);
+      controls.newUser.setOptions(names);
+      controls.teams.setOptions(teams);
+      settingsChoiceLoadedAt = Date.now();
+    } catch {
+      // Current chosen values remain editable when optional sources lag.
+      settingsChoiceLoadedAt = Date.now() - 100_000;
+    }
+  })();
+  settingsChoicePending = task;
+  try { await task; } finally { if (settingsChoicePending === task) settingsChoicePending = null; }
+}
+
 function showOwnerSettings(settings) {
   currentUserSettings = settings || null;
   els.settingsLoginView.hidden = true;
@@ -1179,8 +1243,11 @@ function showOwnerSettings(settings) {
   saveSessionUsername(username);
   els.currentUserSummary.textContent =
     `Signed in as @${username} · ${settings?.role === "admin" ? "Administrator" : "User"}`;
-  els.ownerName.value = settings?.ownerName || "";
-  els.ownerTeams.value = Array.isArray(settings?.teams) ? settings.teams.join("\n") : "";
+  const selectors = ensureSettingsChoices();
+  selectors.rsvp.setValue(settings?.ownerName || "");
+  selectors.teams.setValue(Array.isArray(settings?.teams) ? settings.teams : []);
+  selectors.newUser.setValue("");
+  void loadSettingsChoiceOptions();
   els.ownerTeamSettings.hidden = !settings?.canManageTeams;
   els.userManagement.hidden = !settings?.canManageUsers;
   const deletedMatches = Array.isArray(settings?.deletedMatches) ? settings.deletedMatches : [];
