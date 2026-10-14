@@ -1,5 +1,5 @@
 /**
- * Hourly, notification-silent public scouting projections (v8.6.0).
+ * Hourly, notification-silent public scouting projections (v8.6.0; v8.7.0 model).
  *
  * GitHub Actions computes the expensive archive-wide model independently of
  * every browser and Worker request. Only a complete AES-GCM encrypted envelope
@@ -53,7 +53,7 @@ export function buildScoutingIndex({
     }
   }
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     seasonId,
     updatedAt: String(history?.updatedAt || ""),
     generatedAt,
