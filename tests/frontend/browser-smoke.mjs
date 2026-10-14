@@ -257,6 +257,21 @@ try {
           sessionStorage.getItem("ballerwatch-intro-seen-v1"),
           sessionStorage.getItem("ballerwatch-public-calendar-session-v1"),
         ]), ["0", "v1-sentinel", "v1-sentinel"]);
+        // Browser fixtures deliberately use year 2099 for stable future
+        // games; set only the stored snapshot's startDate to today's Seattle
+        // day so this exercises the real same-day cache-restore guard.
+        await instance.page.evaluate(() => {
+          const key = "ballerwatch:v2:public-calendar-device";
+          const saved = JSON.parse(localStorage.getItem(key) || "null");
+          if (!saved?.calendar) throw new Error("Expected public device cache");
+          const parts = new Intl.DateTimeFormat("en-US", {
+            timeZone: "America/Los_Angeles", year: "numeric",
+            month: "2-digit", day: "2-digit",
+          }).formatToParts(new Date());
+          const get = (type) => parts.find((part) => part.type === type)?.value;
+          saved.calendar.startDate = [get("year"), get("month"), get("day")].join("-");
+          localStorage.setItem(key, JSON.stringify(saved));
+        });
         instance.controls.offlineApi = true;
         await instance.page.reload();
         await instance.page.waitForFunction(() => document.querySelector("#next-game-title").textContent.includes("October 15"));
