@@ -1,7 +1,25 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.7.0",
+  "currentVersion": "8.8.0",
   "releases": [
+    {
+      "version": "8.8.0",
+      "date": "2026-10-14",
+      "type": "minor",
+      "source": "user-reported",
+      "title": "Waterfall parity, searchable settings, mobile swipes and scouting-aware AI",
+      "webAnnouncement": "BallerWatch 8.8 brings identical glass-waterfall edges to match and standings cards, faster iPhone standings flicks that do not accidentally open team reports, modern searchable RSVP name pickers and multi-select monitored teams, plus scouting-aware AI grounded in hourly reports with review-guided answer corrections.",
+      "changes": [
+        "Match and standings cards now share the same gradient colors, masked edge fade, blur, arrow opacity and pointer-distance easing; mobile keeps accessible swipe navigation and reduced-motion support.",
+        "Replace text fields for user RSVP names with authenticated searchable selection panels and a custom-name option; replace monitored teams textarea with searchable multi-select, checkmarks, removable chips and a 20-team limit while preserving encrypted settings and role permissions.",
+        "Create a public name-only RATS team directory in the independently computed encrypted scouting index; make authenticated RSVP options from current/future private rosters available through a protected no-store endpoint without leaking participant names to anonymous APIs or AI.",
+        "Refactor iOS standings carousel gestures to recognize horizontal touch and quick flicks across team-name buttons while preserving vertical scroll and preventing accidental scouting report taps.",
+        "Ground BallerWatch AI scouting, strength, form, attack, defense, current-season, all-time and precomputed matchup prediction questions in the hourly report index; handle ambiguous club divisions without fabricating scores or calibrated odds.",
+        "Fix review-observed mixed dated pickup/RSVP/opponent intent so league fixture questions no longer return pickup capacity; explicitly state when pickup has no opposing team and allow authenticated users to ask their own RSVP display name.",
+        "Add privacy-safe regression tests for scouting Q&A, name suggestions, picker roles, iPhone swipe handling, mixed fixture questions and 3-way estimates; schedule these in the existing six-hour AI feedback review.",
+        "Bump encrypted scouting snapshot schema, client PWA cache and documentation; retain existing production validation, secret, notification and Calendar gates."
+      ]
+    },
     {
       "version": "8.7.0",
       "date": "2026-10-14",
