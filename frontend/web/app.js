@@ -3110,16 +3110,13 @@ function renderStandings() {
       ? card.rows.find((row) => row.highlighted)
       : null;
     meta.append(group, standingsCell("span",
-      tracked ? `#${tracked.rank} of ${card.rows.length}` : "Pending",
-      "standings-rank"));
+      tracked ? `#${tracked.rank} of ${card.rows.length}` : "Unranked",
+      "status-dot standings-rank"));
     slide.append(meta);
-    const updated = new Date(standings.updatedAt || "");
     const freshness = standingsCell("p",
-      `RATS results · Provisional · ${Number.isNaN(updated.getTime())
-        ? "Refresh pending"
-        : `Updated ${new Intl.DateTimeFormat(undefined, {month: "short", day: "numeric",
-          hour: "numeric", minute: "2-digit"}).format(updated)}`}`,
-      "standings-footnote standings-card-updated");
+      matchUpdatedText(standings.updatedAt) || "Updated pending",
+      "match-update-credit standings-card-updated");
+    freshness.title = "RATS published results · Provisional league standings";
 
     if (!card.ready) {
       slide.append(standingsCell("p", card.message || "Standings are not available yet.",
@@ -3424,10 +3421,12 @@ async function openTeamHistory(teamName) {
       for (const match of history.matches.slice(5)) expanded.append(matchResultItem(match));
       els.teamHistoryList.append(expanded);
     }
-  } catch {
+  } catch (error) {
     if (requestId === teamHistoryRequestId && els.teamHistoryDialog.open) {
-      els.teamScoutOverview.replaceChildren(
-        standingsCell("p", "Scouting data is unavailable right now.", "muted"));
+      const unavailable = error?.status === 404
+        ? "This team is no longer in the current indexed standings."
+        : "Unable to load this team's scouting report. Please try again.";
+      els.teamScoutOverview.replaceChildren(standingsCell("p", unavailable, "muted"));
       els.teamHistoryList.replaceChildren();
     }
   }
