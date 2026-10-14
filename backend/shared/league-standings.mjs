@@ -44,7 +44,8 @@ function matchingTeam(teams, name, division = "") {
   // missing team, while rejecting genuinely ambiguous unscoped requests.
   const candidates = (Array.isArray(teams) ? teams : []);
   const scoped = division
-    ? candidates.filter((team) => displayDivision(team) === division)
+    ? candidates.filter((team) =>
+      normalizedDivision(team) === division || displayDivision(team) === division)
     : candidates;
   const exact = scoped.filter((team) =>
     normalizeHistoryTeamName(team?.name) === normalizeHistoryTeamName(name));
@@ -189,6 +190,7 @@ export function buildLeagueStandings(
       return {
         team: team.name,
         division: displayDivision(team),
+        divisionKey: normalizedDivision(team),
         ready: true,
         rows: rows.map((row) => ({
           ...row,
