@@ -2,13 +2,15 @@
 
 BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, Calendar sync, and quick answers into one installable app.
 
-**Current source version: 8.9.2**
+**Current source version: 8.10.0**
 
-[Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
+[Open original BallerWatch](https://vudh1.github.io/ballerwatch/) · [Open V2](https://vudh1.github.io/ballerwatch/v2/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
 
 > `main` is reviewed source. `production` is the exact released commit. The live app changes only after a validated promotion.
 
 ## What you can do
+
+- **Try V2 at [/v2/](https://vudh1.github.io/ballerwatch/v2/):** a new Matchday / Schedule / Club layout, a reversible scroll-controlled soccer intro, and a separate iPhone Home Screen install. V1 stays at the root. Both use the same backend, account, matches, Inbox and canonical encrypted runtime-state. See the [V2 implementation and operations guide](docs/wiki/V2.md).
 
 - See the next **Pickup** or **League** match with a cleaner visual hierarchy for location, weather, RSVP, and secondary actions. Newly published RSVP dates remain in the match-card carousel and expanded calendar even beyond the initial 14-day grid; missing field details show *Venue to be announced* until the RSVP source publishes a location.
 - See RSVP capacity for pickup games; tap the capacity area to open the full-width roster sheet and RSVP from inside it.
@@ -37,13 +39,11 @@ A 22-second walkthrough with a short animated intro. Recorded from the app using
 
 ## What's new
 
-**v8.9.1** — Fixed a selector mismatch that gave standings an opaque blue hover strip. Match and standings now share the exact same translucent waterfall, responsive opacity, blur and masked fade.
+**v8.10.0** — A separate V2 experience with a native-scroll soccer cinematic, redesigned mobile navigation, the existing live data and capabilities, and independent PWA launch/cache identities. V1 remains at its original URL.
 
 **v8.9.2** — Corrected the standings waterfall hover rectangle and cached-calendar Last synced flash while prioritizing initial page data.
 
-**v8.9.0** — Shared card design rules keep the match, calendar and standings headings and timestamps consistent, with one true waterfall opacity/blur effect. The independent scouting worker backtests past-to-next-season results and only promotes weights when the measured holdout evidence improves.
-
-**v8.8.0** — Searchable RSVP names, multi-team selection, smoother iPhone standings swipes and scouting-aware AI answers.
+**v8.9.1** — Fixed a selector mismatch that gave standings an opaque blue hover strip. Match and standings now share the exact same translucent waterfall, responsive opacity, blur and masked fade.
 
 That's the recent summary. Older release details live in [GitHub Releases](https://github.com/vudh1/ballerwatch/releases) and the [Versions guide](https://github.com/vudh1/ballerwatch/wiki/Versions). The project keeps the full ledger in [features/versions.json](features/versions.json) rather than repeating it in this README.
 

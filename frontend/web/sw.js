@@ -1,20 +1,48 @@
-const CACHE = "ballerwatch-v8-9-2-shell";
-const SHELL = [
+/**
+ * Shared V1/V2 offline and push lifecycle. Baseline: v8.10.0.
+ * Each registration owns only its route-specific shell/device caches. Never
+ * intercept remote APIs or persist authenticated responses in frontend caches.
+ */
+const IS_V2 = /\/v2\/sw\.js$/.test(self.location.pathname);
+const CACHE = IS_V2 ? "ballerwatch-v2-v8-10-0-shell" : "ballerwatch-v8-10-0-shell";
+const SHELL = IS_V2 ? [
   "./",
   "./index.html",
-  "./launch-prepaint.js?v=8.9.2",
-  "./styles.css?v=8.9.2",
-  "./app.js?v=8.9.2",
+  "./prepaint.js?v=8.10.0",
+  "./styles.css?v=8.10.0",
+  "./app.js?v=8.10.0",
+  "./timeline.js",
+  "./scene-config.mjs",
+  "./assets/stadium.svg",
+  "./assets/icon-192.png",
+  "./assets/icon-512.png",
+  "./manifest.webmanifest?v=8.10.0",
+  "../styles.css?v=8.10.0",
+  "../app.js?v=8.10.0",
+  "../lib/client.js",
+  "../lib/experience.js",
+  "../lib/settings-choice.js",
+  "../lib/notification-state.js",
+  "../icon.svg?v=8.10.0",
+  "../apple-touch-icon.png?v=8.10.0",
+] : [
+  "./",
+  "./index.html",
+  "./launch-prepaint.js?v=8.10.0",
+  "./styles.css?v=8.10.0",
+  "./app.js?v=8.10.0",
   "./lib/client.js",
+  "./lib/experience.js",
   "./lib/settings-choice.js",
   "./lib/notification-state.js",
-  "./manifest.webmanifest?v=8.9.2",
-  "./icon.svg?v=8.9.2",
-  "./apple-touch-icon.png?v=8.9.2",
+  "./manifest.webmanifest?v=8.10.0",
+  "./icon.svg?v=8.10.0",
+  "./apple-touch-icon.png?v=8.10.0",
 ];
 const API = "https://ballerwatch-web.vudhone.workers.dev";
-const APP_URL = "https://vudh1.github.io/ballerwatch/";
-const DEVICE_STATE_CACHE = "ballerwatch-device-state-v1";
+const APP_URL = new URL("./", self.location.href).href;
+const ICON_URL = new URL(IS_V2 ? "../icon.svg" : "./icon.svg", self.location.href).href;
+const DEVICE_STATE_CACHE = IS_V2 ? "ballerwatch-v2-device-state-v1" : "ballerwatch-device-state-v1";
 const BADGE_STATE_URL = new URL("./.badge-state", self.location.href).href;
 const NOTIFICATION_PREFS_URL = new URL("./.notification-prefs", self.location.href).href;
 const RSVP_STATE_URL = new URL("./.rsvp-state", self.location.href).href;
@@ -151,6 +179,14 @@ function safeAppUrl(value) {
     const url = new URL(String(value || APP_URL), APP_URL);
     if (url.origin !== new URL(APP_URL).origin) return APP_URL;
     if (!url.pathname.startsWith("/ballerwatch/")) return APP_URL;
+    // Board links describe the shared product. Keep each installed app inside
+    // its own launch identity when the board supplies the original root URL.
+    if (IS_V2 && !url.pathname.startsWith(new URL(APP_URL).pathname)) {
+      const destination = new URL(APP_URL);
+      destination.search = url.search;
+      destination.hash = url.hash;
+      return destination.href;
+    }
     return url.href;
   } catch {
     return APP_URL;
@@ -167,7 +203,9 @@ self.addEventListener("activate", (event) => {
     caches.keys()
       .then((keys) => Promise.all(
         keys
-          .filter((key) => key !== CACHE && key !== DEVICE_STATE_CACHE)
+          .filter((key) => key !== CACHE && key.endsWith("-shell") &&
+            (IS_V2 ? key.startsWith("ballerwatch-v2-") :
+              /^ballerwatch-v\d/.test(key) && !key.startsWith("ballerwatch-v2-")))
           .map((key) => caches.delete(key)),
       ))
       .then(() => self.clients.claim()),
@@ -178,17 +216,32 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
+  // A navigation controlled by the parent V1 worker must never receive the
+  // root document as a V2 offline fallback before the narrower scope claims it.
+  const inRoute = IS_V2 || !/\/v2(?:\/|$)/.test(url.pathname);
+  if (event.request.mode === "navigate" && !inRoute) return;
 
   const networkRequest = new Request(event.request, { cache: "no-store" });
 
   event.respondWith(
     fetch(networkRequest)
       .then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE).then((cache) => cache.put(event.request, copy));
+        if (response.ok && response.type !== "opaque") {
+          const copy = response.clone();
+          event.waitUntil(caches.open(CACHE).then((cache) => cache.put(event.request, copy)));
+        }
         return response;
       })
-      .catch(() => caches.match(event.request).then((cached) => cached || caches.match("./index.html"))),
+      .catch(async () => {
+        const cache = await caches.open(CACHE);
+        const cached = await cache.match(event.request);
+        if (cached) return cached;
+        if (event.request.mode === "navigate") {
+          const fallback = await cache.match(new URL("./index.html", self.location.href).href);
+          if (fallback) return fallback;
+        }
+        return Response.error();
+      }),
   );
 });
 
@@ -216,10 +269,10 @@ self.addEventListener("message", (event) => {
       try {
         await self.registration.showNotification("BallerWatch", {
           body: "Test notification.",
-          icon: "./icon.svg",
-          badge: "./icon.svg",
+          icon: ICON_URL,
+          badge: ICON_URL,
           tag: "ballerwatch-local-test",
-          data: { url: "https://vudh1.github.io/ballerwatch/" },
+          data: { url: APP_URL },
         });
       } finally {
         resolve();
@@ -249,8 +302,8 @@ self.addEventListener("push", (event) => {
     const title = entry.title || "BallerWatch updated";
     const options = {
       body: entry.body || "Open BallerWatch for the latest soccer update.",
-      icon: "./icon.svg",
-      badge: "./icon.svg",
+      icon: ICON_URL,
+      badge: ICON_URL,
       tag: entry.tag || "ballerwatch-update",
       renotify: true,
       data: { url: safeAppUrl(entry.url) },
@@ -267,7 +320,8 @@ self.addEventListener("notificationclick", (event) => {
   event.waitUntil((async () => {
     const target = safeAppUrl(event.notification.data?.url);
     const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-    const existing = windows.find((client) => client.url.startsWith(APP_URL));
+    const existing = windows.find((client) => client.url.startsWith(APP_URL) &&
+      (IS_V2 || !/\/v2(?:\/|$)/.test(new URL(client.url).pathname)));
     if (existing) {
       await existing.focus();
       existing.navigate(target);

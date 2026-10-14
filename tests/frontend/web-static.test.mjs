@@ -12,19 +12,19 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
 
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   assert.match(html, /manifest\.webmanifest/);
-  assert.match(html, /apple-touch-icon\.png\?v=8\.9\.2/);
+  assert.match(html, /apple-touch-icon\.png\?v=8\.10\.0/);
   assert.match(html, /class="brand-icon"/);
-  assert.match(html, /icon\.svg\?v=8\.9\.2/);
+  assert.match(html, /icon\.svg\?v=8\.10\.0/);
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=8\.9\.2/);
-  assert.match(html, /app\.js\?v=8\.9\.2/);
+  assert.match(html, /styles\.css\?v=8\.10\.0/);
+  assert.match(html, /app\.js\?v=8\.10\.0/);
 
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v8-9-2-shell/);
+  assert.match(sw, /ballerwatch-v8-10-0-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -93,7 +93,7 @@ test("promotion watches Worker and Pages then refreshes the open PWA", () => {
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=8\.9\.2/);
+  assert.match(app, /sw\.js\?v=8\.10\.0/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -748,13 +748,13 @@ test("installed app icon badge mirrors unread notifications and background push"
   assert.match(app, /type: "ballerwatch:badge-count"/);
   assert.match(app, /void syncAppIconBadge\(normalized\)/);
 
-  assert.match(sw, /DEVICE_STATE_CACHE = "ballerwatch-device-state-v1"/);
+  assert.match(sw, /DEVICE_STATE_CACHE = IS_V2 \? "ballerwatch-v2-device-state-v1" : "ballerwatch-device-state-v1"/);
   assert.match(sw, /async function readBadgeCount/);
   assert.match(sw, /async function incrementAppBadge/);
   assert.match(sw, /self\.navigator\.setAppBadge\(normalized\)/);
   assert.match(sw, /event\.data\?\.type === "ballerwatch:badge-count"/);
   assert.match(sw, /incrementAppBadge\(\)/);
-  assert.match(sw, /key !== CACHE && key !== DEVICE_STATE_CACHE/);
+  assert.match(sw, /key !== CACHE && key\.endsWith\("-shell"\)/);
 });
 
 test("notification push control is compact and only displays On or Off", () => {
@@ -826,7 +826,7 @@ test("page uses a soccer-pitch backdrop with readable translucent cards", () => 
   assert.match(icon, /A soccer pitch with a soccer ball/);
   assert.match(icon, /<circle cx="256" cy="256" r="54"\/>/);
   assert.match(icon, /translate\(347 344\)/);
-  assert.match(manifest, /icon\.svg\?v=8\.9\.2/);
+  assert.match(manifest, /icon\.svg\?v=8\.10\.0/);
   assert.match(css, /\.card,[\s\S]*\.footer-install \{[\s\S]*rgba\(6, 18, 22, 0\.57\)/);
   assert.match(css, /\.spotlight-card \{[\s\S]*rgba\(4, 16, 22, 0\.72\)/);
   assert.match(css, /backdrop-filter:\s*blur\(24px\) saturate\(135%\)/);
@@ -1350,7 +1350,7 @@ test("cinematic launch owns first paint, stays session-scoped, and is reduced-mo
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
 
   assert.match(html, /<html lang="en" class="launch-intro-pending">/);
-  assert.match(html, /<script src="\.\/launch-prepaint\.js\?v=8\.9\.2"><\/script>[\s\S]*<link rel="stylesheet"/);
+  assert.match(html, /<script src="\.\/launch-prepaint\.js\?v=8\.10\.0"><\/script>[\s\S]*<link rel="stylesheet"/);
   assert.match(html, /id="launch-intro" aria-hidden="true">/);
   assert.doesNotMatch(html, /id="launch-intro"[^>]*\shidden/);
   assert.match(html, /class="launch-intro-word-main">BallerWatch<\/span>/);
@@ -1371,7 +1371,7 @@ test("cinematic launch owns first paint, stays session-scoped, and is reduced-mo
   assert.match(css, /@keyframes ballerwatch-intro-shine/);
   assert.match(css, /\.launch-intro\.is-active \{[\s\S]*pointer-events:\s*auto/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.launch-intro \{[\s\S]*display:\s*none !important/);
-  assert.match(sw, /\.\/launch-prepaint\.js\?v=8\.9\.2/);
+  assert.match(sw, /\.\/launch-prepaint\.js\?v=8\.10\.0/);
   assert.doesNotMatch([html, gate, app, css].join("\n"), /Netflix/i);
 });
 
@@ -1388,7 +1388,7 @@ test("music is an icon-only opt-in control and remains gesture-safe", () => {
   assert.doesNotMatch(html, /<h3[^>]*>Experience<\/h3>|Original BallerWatch ambient soundtrack/);
   assert.match(css, /\.music-icon-toggle\.is-on \.music-wave \{[\s\S]*display:\s*block/);
   assert.match(css, /\.music-icon-toggle\.is-on \.music-slash \{[\s\S]*display:\s*none/);
-  assert.match(app, /MUSIC_ENABLED_KEY = "ballerwatch-music-enabled-v1"/);
+  assert.match(app, /MUSIC_ENABLED_KEY = experienceKey\("ballerwatch-music-enabled-v1", "music"\)/);
   assert.match(app, /localStorage\.getItem\(MUSIC_ENABLED_KEY\)/);
   assert.match(app, /setAttribute\(\s*"aria-label",[\s\S]*Turn music off[\s\S]*Turn music on/);
   assert.match(app, /document\.addEventListener\("pointerdown", startMusicFromGesture/);

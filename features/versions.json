@@ -1,7 +1,25 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.9.2",
+  "currentVersion": "8.10.0",
   "releases": [
+    {
+      "version": "8.10.0",
+      "date": "2026-10-14",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "A new V2 matchday experience alongside the original app",
+      "webAnnouncement": "BallerWatch V2 is here at /v2/: a new Matchday, Schedule and Club experience, a reversible scroll-controlled soccer intro, and a separate iPhone Home Screen install. Both versions share your existing account, matches, Inbox and backend. The original app stays at its usual address.",
+      "changes": [
+        "Add an independent /v2/ frontend with lime-and-ink matchday design, desktop rail, touch navigation, real next-match RSVP/weather/venue/actions, calendar, standings, scouting, AI, Inbox and existing account/admin dialogs.",
+        "Reuse the existing application controller, API client, authentication, account operations and polling. No backend endpoint, runtime-state branch, canonical dataset, watcher or indexing job is duplicated.",
+        "Add original replaceable SVG stadium and articulated player/goalkeeper layers driven by a pure normalized scroll model: foot contact, curved rotating ball, timed dive, net impact and continuous app reveal. Scrolling reverses every pose.",
+        "Load critical match/session/calendar state independently of the optional intro; add immediate Skip, per-session V2 intro state, Replay, reduced-motion welcome and fail-open handling for missing assets/modules.",
+        "Give V2 a distinct manifest ID/start URL/scope and a narrower service-worker registration, with independent versioned frontend/device caches and V2 notification launch targets. Scope cache cleanup so neither app deletes the other app’s assets.",
+        "Isolate presentation, question context, public schedule fallback and music preferences under V2 keys while preserving the existing shared secure session and account notifications. Cache no private API responses.",
+        "Add safe viewport units, safe-area padding, portrait/landscape and standalone layouts, native touch scrolling, accessible keyboard controls, gesture-safe optional music and event-driven animation that pauses in the background.",
+        "Add pure choreography/cache tests, production static packaging, read-only live API smoke checks and Chromium/WebKit browser CI for V1/V2 routing, sessions, touch, reduced motion, failures and offline PWA coexistence. Release through existing validated promotion and Worker-to-Pages gates."
+      ]
+    },
     {
       "version": "8.9.2",
       "date": "2026-10-14",

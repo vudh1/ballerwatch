@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1000 0 3400 900">
+  <defs>
+    <linearGradient id="sky" x2="0" y2="1"><stop stop-color="#070e17"/><stop offset="1" stop-color="#1c303d"/></linearGradient>
+    <linearGradient id="pitch" x2="0" y2="1"><stop stop-color="#173d35"/><stop offset="1" stop-color="#071d20"/></linearGradient>
+    <radialGradient id="light"><stop stop-color="#e9f9ff" stop-opacity=".7"/><stop offset="1" stop-color="#b8e9ff" stop-opacity="0"/></radialGradient>
+    <pattern id="crowd" width="27" height="20" patternUnits="userSpaceOnUse"><circle cx="6" cy="6" r="1.5" fill="#879b9e" opacity=".5"/><circle cx="21" cy="14" r="1.2" fill="#c4d0b3" opacity=".4"/></pattern>
+  </defs>
+  <path fill="url(#sky)" d="M-1000 0h3400v900h-3400z"/>
+  <g id="stadium"><path d="M-1000 240Q700 530 2400 240v360H-1000Z" fill="#111e29"/><path d="M-1000 270Q700 510 2400 270v280H-1000Z" fill="url(#crowd)"/><path d="M-1000 400Q700 565 2400 400M-1000 460Q700 595 2400 460" fill="none" stroke="#4c666a" stroke-opacity=".22" stroke-width="4"/><path d="M-1000 548H2400v40H-1000Z" fill="#1b3133"/><path d="M-1000 563H2400" stroke="#d3ff6a" stroke-opacity=".18" stroke-width="2"/></g>
+  <g id="lighting"><ellipse cx="180" cy="190" rx="360" ry="370" fill="url(#light)" opacity=".15"/><ellipse cx="1350" cy="200" rx="430" ry="380" fill="url(#light)" opacity=".14"/><g stroke="#71868a" stroke-width="7"><path d="M150 330V160M1350 330V160"/></g><g fill="#cde3df"><rect x="98" y="145" width="110" height="12" rx="3"/><rect x="1298" y="145" width="110" height="12" rx="3"/></g><g fill="#d4f8d9" opacity=".035"><path d="M98 160-500 900H700L208 160Z"/><path d="M1298 160 700 900H1900L1408 160Z"/></g></g>
+  <g id="field"><path d="M-1000 588H2400v312H-1000Z" fill="url(#pitch)"/><g fill="#9ddba6" opacity=".022"><path d="M-1000 620H2400v45H-1000ZM-1000 720H2400v75H-1000Z"/></g><g fill="none" stroke="#a5c3ab" stroke-opacity=".23" stroke-width="2"><path d="M-1000 600H2400M850 589 720 900M1550 590l330 310M850 650H1590M750 850H1810"/><ellipse cx="480" cy="800" rx="250" ry="85"/></g></g>
+  <g id="foreground" fill="#658c65" opacity=".18"><path d="m-1000 900 20-35 4 35 22-24 9 24h3300v-10H-1000Z"/></g>
+</svg>

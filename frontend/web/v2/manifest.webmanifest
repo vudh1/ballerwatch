@@ -1,0 +1,37 @@
+{
+  "id": "/ballerwatch/v2/",
+  "name": "BallerWatch V2",
+  "short_name": "BW V2",
+  "description": "Soccer games, match weather, RSVP status, schedules, and alerts.",
+  "start_url": "/ballerwatch/v2/",
+  "scope": "/ballerwatch/v2/",
+  "display": "standalone",
+  "background_color": "#080f14",
+  "theme_color": "#080f14",
+  "icons": [
+    {
+      "src": "../apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "../icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
