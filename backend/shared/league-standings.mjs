@@ -245,7 +245,7 @@ const FORMAT_WEIGHTS = Object.freeze({ "8v8": 1, "11v11": 1.25, unknown: 1 });
 const FORM_WINDOW = 10;
 function allIndexedScoredMatches(history, today) {
   return completedHistoryMatches(history)
-    .filter((match) => /^\\d{4}-\\d{2}-\\d{2}$/.test(String(match.date)) &&
+    .filter((match) => /^\d{4}-\d{2}-\d{2}$/.test(String(match.date)) &&
       match.date <= today && historyTeamKey(match.homeTeam) !== historyTeamKey(match.awayTeam))
     .sort((a, b) => b.date.localeCompare(a.date) ||
       String(b.startTime || "").localeCompare(String(a.startTime || "")) ||
