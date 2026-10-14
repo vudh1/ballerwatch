@@ -72,6 +72,15 @@ test("win odds are only quoted when a published matchup projection exists", () =
   assert.match(noChance.error, /missing predictions are not invented/);
 });
 
+test("new upcoming match questions cannot silently reuse older team context", () => {
+  const answer = answerScoutingQuestion(
+    "What is the win chance for the next monitored matchup?", prepared(),
+    { contextTeams: ["Sitting Ducks"] });
+  assert.equal(answer.ok, true);
+  assert.match(answer.reply, /Third Touch FC vs Sitting Ducks/);
+  assert.match(answer.reply, /Win ~45%/);
+});
+
 test("same-named division peers cannot be silently conflated", () => {
   const index = prepared();
   index.reports[JSON.stringify(["wed|coed|1", "Sitting Ducks"])] = {
