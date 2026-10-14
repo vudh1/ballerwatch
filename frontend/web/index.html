@@ -102,6 +102,7 @@
             </div>
           </div>
           <p class="next-game-meta" id="next-game-meta"></p>
+          <p class="next-game-form" id="next-game-form" hidden></p>
           <p class="next-game-location muted" id="next-game-location"></p>
           <div class="next-game-weather" id="next-game-weather" hidden></div>
           <div class="next-game-capacity" id="next-game-capacity" role="button" tabindex="0"
@@ -126,8 +127,7 @@
       </section>
     </div>
 
-    <div class="calendar-carousel" id="calendar-carousel">
-      <section class="card calendar-card" id="two-week-calendar" aria-expanded="false">
+    <section class="card calendar-card" id="two-week-calendar" aria-expanded="false">
         <div class="section-heading calendar-heading">
           <div>
             <p class="eyebrow">MATCH DAYS</p>
@@ -139,18 +139,7 @@
         <div class="calendar-card-footer">
           <p class="calendar-updated calendar-update-credit" id="calendar-updated">Updated pending</p>
         </div>
-      </section>
-      <div class="calendar-window-controls" role="group" aria-label="Browse 14-day calendar windows">
-        <button class="calendar-window-control" id="calendar-window-previous" type="button"
-          aria-label="Previous 14 days" title="Previous 14 days" disabled>
-          <span aria-hidden="true">‹</span>
-        </button>
-        <button class="calendar-window-control" id="calendar-window-next" type="button"
-          aria-label="Next 14 days" title="Next 14 days" disabled>
-          <span aria-hidden="true">›</span>
-        </button>
-      </div>
-    </div>
+    </section>
 
     <section class="standings-card" id="league-standings" aria-label="Current season standings">
       <div class="standings-rail">
