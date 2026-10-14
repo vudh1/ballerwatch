@@ -183,6 +183,9 @@ let teamHistoryRequestId = 0;
 // or refetch a large archive-derived report for every repeated team tap.
 const recentScoutReports = new Map();
 const pendingScoutReports = new Map();
+let scoutPreloadPending = null;
+let scoutPreloadFailureAt = 0;
+let lastScoutPreloadUpdated = "";
 const SCOUT_REPORT_REUSE_MS = 15 * 60_000;
 const SCOUT_REPORT_STALE_MS = 60 * 60_000;
 let confirmedRsvpDates = new Set();
@@ -2188,6 +2191,8 @@ function spotlightModel(game, label = "NEXT GAME") {
     locationParts.push("Venue to be announced");
   }
   if (game.jerseyColor) locationParts.push(`${game.jerseyColor} jersey`);
+  const matchForm = monitoredWinForm(game);
+  if (matchForm) locationParts.push(formatMonitoredWin(matchForm));
 
   const capacity = Number(game.capacity);
   const reserved = Number(game.reserved);
@@ -2209,7 +2214,7 @@ function spotlightModel(game, label = "NEXT GAME") {
       .filter(Boolean)
       .join(" • "),
     location: locationParts.join(" • "),
-    form: formatMonitoredWin(monitoredWinForm(game)),
+    form: "",
     capacityText,
     capacityPercent,
     spotsText,
@@ -3232,23 +3237,19 @@ async function loadStandings() {
     // Refresh the preload check once per minute; the unchanged archive is not
     // needlessly re-fetched for every team.
     if (JSON.stringify(currentStandings) === JSON.stringify(payload.standings)) {
+      if (!recentScoutReports.size) void preloadPublishedScouts();
       return true;
     }
     currentStandings = payload.standings;
-    // Scouting is optional: update the tiny badge only after standings arrive.
-    // Match/calendar cards remain usable if results history is offline.
-    if (currentNextGame?.kind === "league") {
-      const form = monitoredWinForm(currentNextGame);
-      els.nextGameForm.textContent = formatMonitoredWin(form);
-      els.nextGameForm.hidden = !form;
-      if (form) {
-        els.nextGameForm.title =
-          `${currentNextGame.team} vs ${currentNextGame.opponent} · Estimated win chance from last ${form.teamGames}/${form.opponentGames} scored games and ${form.headToHeadGames} head-to-head · Not bookmaker odds`;
-      } else {
-        els.nextGameForm.removeAttribute("title");
-      }
+    // A short win estimate lives inline after the jersey/location metadata.
+    // Match and calendar fixtures remain independent of the scouting index.
+    const selected = currentCalendar?.games?.find((game) => game.id === selectedCalendarGameId);
+    const shown = selected || currentNextGame;
+    if (shown?.kind === "league") {
+      els.nextGameLocation.textContent = spotlightModel(shown).location;
       window.requestAnimationFrame(syncSpotlightCardDimensions);
     }
+    void preloadPublishedScouts();
     const index = currentStandings.cards?.findIndex((card) => card.team === selectedTeam) ?? -1;
     standingsIndex = index >= 0 ? index : 0;
     renderStandings();
@@ -3401,6 +3402,42 @@ function buildScoutOverview(scout) {
   return overview;
 }
 
+// One optional background request preloads already-built reports. Never
+// block fixture hydration or poll one endpoint for each standings row.
+async function preloadPublishedScouts() {
+  const updated = String(currentStandings?.updatedAt || "");
+  if (!currentStandings?.cards?.length) return false;
+  if (scoutPreloadPending) return scoutPreloadPending;
+  if (lastScoutPreloadUpdated === updated && recentScoutReports.size) return true;
+  if (Date.now() - scoutPreloadFailureAt < 4 * 60_000) return false;
+  const task = (async () => {
+    try {
+      const payload = await api("/web/scouting-reports", {
+        retryNetwork: false, timeoutMs: 6_000,
+      });
+      if (!payload?.ready || !payload?.reports) return false;
+      const at = Date.now();
+      for (const [id, history] of Object.entries(payload.reports)) {
+        if (!history || !Array.isArray(history.matches)) continue;
+        let division;
+        let team;
+        try { [division, team] = JSON.parse(id); } catch { continue; }
+        if (typeof division !== "string" || typeof team !== "string") continue;
+        recentScoutReports.set(scoutReportKey(team, division), { at, history });
+      }
+      lastScoutPreloadUpdated = String(payload.updatedAt || updated);
+      scoutPreloadFailureAt = 0;
+      return recentScoutReports.size > 0;
+    } catch {
+      scoutPreloadFailureAt = Date.now();
+      return false;
+    }
+  })();
+  scoutPreloadPending = task;
+  try { return await task; }
+  finally { if (scoutPreloadPending === task) scoutPreloadPending = null; }
+}
+
 function scoutReportKey(teamName, division = "") {
   return `${soccerNameKey(teamName)}|${division}`;
 }
@@ -3408,9 +3445,8 @@ function scoutReportKey(teamName, division = "") {
 async function fetchScoutReport(teamName, division = "") {
   const key = scoutReportKey(teamName, division);
   const previous = recentScoutReports.get(key);
-  if (previous && Date.now() - previous.at < SCOUT_REPORT_REUSE_MS &&
-      (!currentStandings?.updatedAt ||
-        previous.history.updatedAt === currentStandings.updatedAt)) {
+  if (previous && (Date.now() - previous.at < SCOUT_REPORT_REUSE_MS ||
+      previous.history.updatedAt === currentStandings?.updatedAt)) {
     return { history: previous.history, usingSavedReport: false };
   }
   if (pendingScoutReports.has(key)) return pendingScoutReports.get(key);
@@ -3473,11 +3509,11 @@ async function openTeamHistory(teamName, division = "") {
   els.teamHistoryNote.textContent = "Public RATS results archive";
   const key = scoutReportKey(teamName, division);
   const cached = recentScoutReports.get(key);
-  if (!cached) {
-    els.teamScoutOverview.replaceChildren(
-      standingsCell("p", "Loading scouting report…", "muted"));
-    els.teamHistoryList.replaceChildren();
-  }
+  // Do not show the previous team's report even for a one-frame delay.
+  // A prefetched entry resolves locally on the very next microtask.
+  els.teamScoutOverview.replaceChildren(
+    standingsCell("p", cached ? "Opening report…" : "Loading scouting report…", "muted"));
+  els.teamHistoryList.replaceChildren();
   if (!els.teamHistoryDialog.open) els.teamHistoryDialog.showModal();
 
   try {
