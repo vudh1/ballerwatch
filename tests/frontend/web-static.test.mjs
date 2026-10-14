@@ -864,7 +864,7 @@ test("notification center supports filters, synced read state, and account prefe
   assert.match(app, /const notificationProfileRefresh = ownerToken\(\)/);
   assert.match(app, /loadNotificationProfile\(\{ migrateLocal: false \}\)/);
   assert.match(app, /const calendarOk = await loadCalendar\(\)/);
-  assert.match(app, /notificationProfileRefresh\.catch\(\(\) => false\)/);
+  assert.match(app, /loadBoard\(\), loadStandings\(\), notificationProfileRefresh/);
   assert.match(app, /Synced when active for @/);
 });
 
