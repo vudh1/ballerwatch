@@ -355,19 +355,20 @@ function opponentFormExcludingTeam(history, matches, opponent, excludedName) {
   const entries = lastTeamGames(matches, opponent, historyTeamKey(excludedName));
   return weightedRecentRecord(history, entries).form;
 }
-function weightedQualityIndex(history, matches, teamName) {
+function weightedQualityIndex(history, matches, teamName, weights = DEFAULT_SCOUT_WEIGHTS) {
   const entries = lastTeamGames(matches, teamName);
   if (!entries.length) return null;
   let weightedScore = 0;
   let wins = 0, draws = 0, losses = 0;
   let weightedWins = 0, totalWeight = 0;
   let opponentStrength = 0, qualityWins = 0, maximumScore = 0;
-  for (const entry of entries) {
+  for (const [position, entry] of entries.entries()) {
     const match = entry.match;
     const scored = entry.isHome ? match.homeScore : match.awayScore;
     const conceded = entry.isHome ? match.awayScore : match.homeScore;
     const format = matchFormatFromArchive(history, match, teamName);
-    const weight = indexedMatchWeight(history, match, teamName);
+    const weight = indexedMatchWeight(history, match, teamName) *
+      Math.pow(weights.decay, position);
     const strength = opponentFormExcludingTeam(history, matches, entry.opponent, teamName);
     const outcome = scored > conceded ? 1 : scored === conceded ? 0.5 : 0;
     if (outcome === 1) { wins++; weightedWins += weight; qualityWins += strength; }
@@ -390,12 +391,12 @@ function weightedQualityIndex(history, matches, teamName) {
     provisional: true,
   };
 }
-function qualityRanking(history, season, team, today) {
+function qualityRanking(history, season, team, today, weights = DEFAULT_SCOUT_WEIGHTS) {
   const matches = allIndexedScoredMatches(history, today);
   const peers = (season?.teams || [])
     .filter((member) => normalizedDivision(member) === normalizedDivision(team))
     .map((member) => ({ name: member.name,
-      ...weightedQualityIndex(history, matches, member.name) }))
+      ...weightedQualityIndex(history, matches, member.name, weights) }))
     .filter((member) => Number.isInteger(member.index));
   const target = peers.find((member) =>
     normalizeHistoryTeamName(member.name) === normalizeHistoryTeamName(team.name));
@@ -520,6 +521,7 @@ function addRecord(record, scored, conceded) {
 /** A read-only, opponent-aware snapshot rendered only when a standings team is tapped. */
 export function buildTeamScout(
   history, currentSeasonId, teamName, today = "9999-12-31", division = "",
+  weights = DEFAULT_SCOUT_WEIGHTS,
 ) {
   const current = seasonData(history, currentSeasonId);
   const team = matchingTeam(Array.isArray(current?.teams) ? current.teams : [], teamName, division);
@@ -557,7 +559,7 @@ export function buildTeamScout(
       played: currentRank.played, wins: currentRank.wins, draws: currentRank.draws,
       losses: currentRank.losses, rank: currentRank.rank, teams: seasonRows.length,
     } : null,
-    quality: qualityRanking(history, current, team, today),
+    quality: qualityRanking(history, current, team, today, weights),
     attack: recentGoalRanking(history, current, team, today, "attack"),
     defense: recentGoalRanking(history, current, team, today, "defense"),
     previousSeason: rankings.previousSeason,
@@ -574,6 +576,7 @@ export function buildTeamScout(
 /** Returns only completed public games; no score means the game is omitted. */
 export function buildLeagueTeamHistory(
   history, currentSeasonId, teamName, limit = 35, today = "9999-12-31", division = "",
+  weights = DEFAULT_SCOUT_WEIGHTS,
 ) {
   const current = seasonData(history, currentSeasonId);
   const team = matchingTeam(Array.isArray(current?.teams) ? current.teams : [], teamName, division);
@@ -591,7 +594,7 @@ export function buildLeagueTeamHistory(
     indexedMatchCount: matches.length,
     coverageComplete: history?.coverage?.complete === true,
     updatedAt: String(history?.updatedAt || ""),
-    scout: buildTeamScout(history, currentSeasonId, team.name, today, division),
+    scout: buildTeamScout(history, currentSeasonId, team.name, today, division, weights),
     matches: matches.slice(0, Math.min(50, Math.max(1, limit))).map((match) => {
       const isHome = historyTeamKey(match.homeTeam) === target;
       const scored = isHome ? match.homeScore : match.awayScore;
