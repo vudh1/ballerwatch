@@ -185,8 +185,6 @@ const recentScoutReports = new Map();
 const pendingScoutReports = new Map();
 const SCOUT_REPORT_REUSE_MS = 15 * 60_000;
 const SCOUT_REPORT_STALE_MS = 60 * 60_000;
-let scoutPrefetchVersion = "";
-let scoutPrefetchInFlight = false;
 let confirmedRsvpDates = new Set();
 let waitlistedRsvpDates = new Set();
 let serviceWorkerRegistration = null;
@@ -1599,7 +1597,8 @@ async function loadConfig() {
     els.version.textContent = `BallerWatch v${config.version}`;
     return true;
   } catch {
-    setSystemState("offline");
+    // Version metadata is optional. A config failure does not mean the
+    // already-loaded match card or calendar has gone offline.
     return false;
   }
 }
@@ -3233,7 +3232,6 @@ async function loadStandings() {
     // Refresh the preload check once per minute; the unchanged archive is not
     // needlessly re-fetched for every team.
     if (JSON.stringify(currentStandings) === JSON.stringify(payload.standings)) {
-      void prefetchScoutReports(currentStandings).catch(() => null);
       return true;
     }
     currentStandings = payload.standings;
@@ -3254,7 +3252,6 @@ async function loadStandings() {
     const index = currentStandings.cards?.findIndex((card) => card.team === selectedTeam) ?? -1;
     standingsIndex = index >= 0 ? index : 0;
     renderStandings();
-    void prefetchScoutReports(currentStandings).catch(() => null);
     return true;
   } catch {
     if (!currentStandings) {
@@ -3438,46 +3435,6 @@ async function fetchScoutReport(teamName, division = "") {
   }
 }
 
-async function prefetchScoutReports(standings) {
-  if (!standings?.cards?.length || scoutPrefetchInFlight) return;
-  // The one-minute standings refresh checks the archive version. No new HTTP
-  // requests are necessary if the source timestamp has not changed.
-  const stamp = String(standings.updatedAt || "");
-  const generation = `${stamp}|${standings.cards.map((c) => c.divisionKey).join("|")}`;
-  if (generation === scoutPrefetchVersion) return;
-  scoutPrefetchInFlight = true;
-  let failures = 0;
-  let complete = true;
-  try {
-    const seen = new Set();
-    const choices = standings.cards.filter((card) => card.ready)
-      .flatMap((card) => (card.rows || []).map((row) => ({
-        team: row.name, division: card.divisionKey || card.division,
-      })));
-    for (const choice of choices.slice(0, 28)) {
-      if (document.hidden) { complete = false; break; }
-      const key = scoutReportKey(choice.team, choice.division);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      const cached = recentScoutReports.get(key);
-      if (cached?.history?.updatedAt === stamp &&
-          Date.now() - cached.at < SCOUT_REPORT_REUSE_MS) continue;
-      try {
-        await fetchScoutReport(choice.team, choice.division);
-        failures = 0;
-      } catch {
-        failures += 1;
-        // Stop after two consecutive failures instead of exhausting the Worker
-        // with requests that cannot succeed while its upstream is unavailable.
-        if (failures >= 2) { complete = false; break; }
-      }
-      await new Promise((resolve) => window.setTimeout(resolve, 450));
-    }
-    if (complete) scoutPrefetchVersion = generation;
-  } finally {
-    scoutPrefetchInFlight = false;
-  }
-}
 
 function cachedDivisionScoutFallback(teamName, division = "") {
   // A history fetch failure must not erase the public standings already
