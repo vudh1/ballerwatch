@@ -29,6 +29,8 @@ import {
 } from "./lib/notification-state.js";
 import { createSettingsChoice } from "./lib/settings-choice.js";
 import { experienceKey, isV2 } from "./lib/experience.js";
+import { PUBLIC_CALENDAR_LOCAL_KEY, readPublicCalendar, todaySeattleKey,
+  writePublicCalendar } from "./lib/public-calendar-cache.js";
 
 const els = {
   launchIntro: document.querySelector("#launch-intro"),
@@ -196,6 +198,7 @@ let waitlistedRsvpDates = new Set();
 let serviceWorkerRegistration = null;
 let liveRefreshInFlight = false;
 let initialLoadComplete = false;
+let consecutiveCalendarFailures = 0;
 let appRefreshDeferred = false;
 let activeSuggestionIndex = -1;
 let lastAnswerExchange = null;
@@ -225,6 +228,7 @@ const NOTIFICATION_DELETED_KEY = LOCAL_NOTIFICATION_DELETED_KEY;
 const QUESTION_HISTORY_KEY = experienceKey("ballerwatch-question-history-v1", "questions");
 const LIVE_DATA_REFRESH_MS = 60_000;
 const PUBLIC_CALENDAR_CACHE_KEY = experienceKey("ballerwatch-public-calendar-session-v1", "public-calendar");
+const PUBLIC_CALENDAR_DEVICE_KEY = experienceKey(PUBLIC_CALENDAR_LOCAL_KEY, "public-calendar-device");
 const APP_UPDATE_CHECK_MS = 5 * 60_000;
 const SPOTLIGHT_IDLE_RESET_MS = 15_000;
 const INTERACTION_VIBRATION_MS = 8;
@@ -1647,12 +1651,39 @@ async function revokeOwnerDevices() {
 function setSystemState(state) {
   const live = state === "live";
   const checking = state === "checking";
+  const ready = state === "ready";
   const cached = state === "stale";
-  els.system.textContent = live ? "Live" : checking ? "Checking…" :
-    cached ? "Last synced" : "Offline";
-  els.system.style.color = live ? "#86efac" : checking ? "" : "#fde68a";
+  // "Ready" means a verified, anonymous saved schedule is painted, not
+  // that the Worker was contacted successfully. Never claim Live prematurely.
+  els.system.textContent = live ? "Live" : ready ? "Ready" :
+    checking ? "Loading…" : cached ? "Last synced" : "Offline";
+  els.system.title = live ? "Public calendar confirmed by the server." :
+    ready ? "Saved public schedule is visible; checking for newer fixtures." :
+    checking ? "Retrieving the first public fixture snapshot." :
+    cached ? "The server could not be reached repeatedly; saved fixtures remain visible." :
+    "No verified public fixture snapshot is available.";
+  els.system.style.color = live ? "#86efac" : ready ? "#cbd5e1" :
+    checking ? "" : "#fde68a";
   els.systemLine?.classList.toggle("is-live", live);
-  els.systemLine?.classList.toggle("is-offline", !live && !checking);
+  els.systemLine?.classList.toggle("is-offline", !live && !checking && !ready);
+}
+
+function setCalendarConnectionResult(success) {
+  if (success) {
+    consecutiveCalendarFailures = 0;
+    setSystemState("live");
+    return;
+  }
+  consecutiveCalendarFailures += 1;
+  if (navigator.onLine === false) {
+    setSystemState(currentCalendar ? "stale" : "offline");
+    return;
+  }
+  // A single transient timeout should not repeatedly toggle the header
+  // between Checking and Last synced while saved fixtures are on screen.
+  setSystemState(currentCalendar
+    ? (consecutiveCalendarFailures < 2 ? "ready" : "stale")
+    : "offline");
 }
 
 async function registerServiceWorker() {
@@ -1675,7 +1706,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=8.10.2", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=8.10.1", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -3817,63 +3848,81 @@ function installStandingsSwipe() {
 
 // Only anonymous public fixture data is stored, only in this tab's session,
 // and never private RSVP names, tokens, notification state or runtime secrets.
+// Only public fixture fields (never account data) persist across PWA launches.
+// Cache reads are synchronous, so the previous good cards paint before any GET.
 function rememberPublicCalendar(calendar) {
-  if (!calendar?.startDate || !Array.isArray(calendar.games)) return;
-  try {
-    const entry = JSON.stringify({ at: Date.now(), calendar });
-    if (entry.length <= 220_000) sessionStorage.setItem(PUBLIC_CALENDAR_CACHE_KEY, entry);
-  } catch {}
+  writePublicCalendar(sessionStorage, PUBLIC_CALENDAR_CACHE_KEY, calendar);
+  writePublicCalendar(localStorage, PUBLIC_CALENDAR_DEVICE_KEY, calendar);
 }
 
 function restorePublicCalendar() {
-  try {
-    const stored = JSON.parse(sessionStorage.getItem(PUBLIC_CALENDAR_CACHE_KEY) || "null");
-    if (!stored || Date.now() - stored.at > 6 * 60 * 60_000 ||
-        !stored.calendar?.startDate || !Array.isArray(stored.calendar.games)) return false;
-    // Rendering the last-known-good calendar already sets its real Updated
-    // timestamp. A network check is not proof of disconnection: never replace
-    // this timestamp with a transient "Last synced · Reconnecting" banner.
-    renderCalendar(stored.calendar);
-    return true;
-  } catch { return false; }
+  const today = todaySeattleKey();
+  const now = Date.now();
+  const cached = readPublicCalendar(sessionStorage, PUBLIC_CALENDAR_CACHE_KEY, now, today) ||
+    readPublicCalendar(localStorage, PUBLIC_CALENDAR_DEVICE_KEY, now, today);
+  if (!cached) return false;
+  renderCalendar(cached);
+  return true;
 }
 
-async function loadCalendar() {
+function retainVerifiedFixtureDetails(next, previous) {
+  if (!previous?.games || !Array.isArray(next?.games)) return next;
+  // Weather/venue are optional edge enrichments. If an optional lookup
+  // misses its bounded deadline, don't erase a verified cached forecast or
+  // field link for an unchanged source fixture in the opening frame.
+  const priorById = new Map(previous.games.map((game) => [game.id, game]));
+  return {
+    ...next,
+    updatedAt: next.updatedAt || previous.updatedAt || "",
+    games: next.games.map((game) => {
+      const last = priorById.get(game.id);
+      if (!last || game.date !== last.date || game.location !== last.location ||
+          game.sourceUpdatedAt !== last.sourceUpdatedAt ||
+          game.overrideActive !== last.overrideActive ||
+          game.overrideUpdatedAt !== last.overrideUpdatedAt) return game;
+      return {
+        ...game,
+        weather: game.weather || last.weather || null,
+        weatherStale: game.weather ? game.weatherStale : Boolean(last.weather),
+        coordinates: game.coordinates || last.coordinates || null,
+        venueCoordinates: game.venueCoordinates || last.venueCoordinates || null,
+        locationUrl: game.locationUrl || last.locationUrl || "",
+      };
+    }),
+  };
+}
+
+async function loadCalendar({ initial = false } = {}) {
   try {
-    // The personal RSVP lookup is independent of the public schedule.
-    // An auth/profile failure must never blank an otherwise valid calendar.
-    // Public fixtures get the first API slot; the private RSVP refresh is
-    // independent and runs after the schedule request completes.
+    // Startup makes a single bounded verification attempt. Cached cards have
+    // already rendered; an 8+ second retry chain must not hold the app shell.
     const payload = await api("/web/calendar", {
-      retryNetwork: true, timeoutMs: 4_000,
+      retryNetwork: !initial, timeoutMs: initial ? 3_800 : 4_000,
     });
-    const next = payload.calendar || null;
-    if (!next?.startDate || !Array.isArray(next.games)) {
+    const prepared = payload.calendar || null;
+    if (!prepared?.startDate || !Array.isArray(prepared.games)) {
       throw new Error("Calendar snapshot is incomplete.");
     }
+    const next = retainVerifiedFixtureDetails(prepared, currentCalendar);
     rememberPublicCalendar(next);
-    // Preserve the selected game and card geometry for an unchanged snapshot.
-    // Still clear any stale/offline status after a successful revalidation:
-    // previously the equality fast-path could leave "Reconnecting" forever.
+    // Do not rerender or remeasure the card carousel for an unchanged snapshot.
     if (JSON.stringify(next) !== JSON.stringify(currentCalendar)) {
       renderCalendar(next);
     } else {
       els.calendarUpdated.textContent = matchUpdatedText(next.updatedAt) || "Updated pending";
     }
     return true;
-  } catch (error) {
-    // Keep the last successfully loaded fixtures while a request fails.
-    // An empty-state fallback is appropriate only before the first sync.
-    if (currentCalendar) {
-      els.calendarUpdated.textContent = "Last synced · Reconnecting";
-      return false;
+  } catch {
+    // Preserve the real source timestamp instead of writing a transient
+    // "Last synced · Reconnecting" string into the card footer.
+    if (!currentCalendar) {
+      els.calendarUpdated.textContent = "Calendar temporarily unavailable";
+      // Only first-ever visitors without saved fixtures need this fallback.
+      void loadNextGame().catch(() => false);
     }
-    els.calendarUpdated.textContent = "Calendar temporarily unavailable";
-    // Never make a failed calendar request block status recovery while an
-    // independent /next-game fallback attempts to restore the match card.
-    void loadNextGame().catch(() => false);
     return false;
   } finally {
+    // Private RSVP status is never a prerequisite for public fixture display.
     void loadRsvpStatus().catch(() => false);
   }
 }
@@ -3887,7 +3936,7 @@ async function refreshLiveData() {
   if (!currentCalendar) setSystemState("checking");
   try {
     const calendarOk = await loadCalendar();
-    setSystemState(calendarOk ? "live" : currentCalendar ? "stale" : "offline");
+    setCalendarConnectionResult(calendarOk);
     if (!optionalRefreshInFlight) {
       optionalRefreshInFlight = true;
       void Promise.allSettled([
@@ -3896,7 +3945,7 @@ async function refreshLiveData() {
       ]).finally(() => { optionalRefreshInFlight = false; });
     }
   } catch {
-    setSystemState(currentCalendar ? "stale" : "offline");
+    setCalendarConnectionResult(false);
   } finally {
     liveRefreshInFlight = false;
   }
@@ -4900,16 +4949,19 @@ if (musicEnabled()) armMusicForFirstGesture();
 applyInstallState();
 setNotificationFilter("all");
 renderNotificationPreferences();
-setSystemState("checking");
-// Render the last public schedule before the first network await. Defer the
-// Service Worker registration/update download until AFTER the first calendar
-// check: asset update traffic must not compete with initial fixture hydration.
-restorePublicCalendar();
-// Cached fixtures paint synchronously. Remain neutral ("Checking…") until
-// the first network validation, rather than flashing a false "Last synced"
-// warning while a healthy Worker returns the same prepared snapshot.
-const calendarOk = await loadCalendar().catch(() => false);
-setSystemState(calendarOk ? "live" : currentCalendar ? "stale" : "offline");
+// On repeat visits, render the last verified PUBLIC fixtures from device
+// storage synchronously. This keeps the opening view independent of network,
+// scouting, push setup and weather/venue enrichment latency.
+const restoredPublicCalendar = restorePublicCalendar();
+setSystemState(restoredPublicCalendar ? "ready" : "checking");
+// Network validation may be slow, but the saved match and calendar are already
+// interactive. No scouting or historical computation runs in this startup path.
+const calendarOk = await loadCalendar({ initial: true }).catch(() => false);
+setCalendarConnectionResult(calendarOk);
+if (!calendarOk && !currentCalendar && navigator.onLine !== false) {
+  // First-ever launch can retry in a short interval without blocking cards.
+  window.setTimeout(() => { void refreshLiveData().catch(() => null); }, 12_000);
+}
 initialLoadComplete = true;
 // Refresh/install the service worker without blocking already visible cards.
 void registerServiceWorker().catch(() => null);

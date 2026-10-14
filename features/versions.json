@@ -1,17 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.10.2",
+  "currentVersion": "8.10.1",
   "releases": [
     {
-      "version": "8.10.2",
+      "version": "8.10.1",
       "date": "2026-10-14",
       "type": "patch",
-      "source": "validation",
-      "title": "Protect V2 landscape navigation from iPhone safe-area insets",
+      "source": "user-reported",
+      "title": "Instant repeat-launch calendar and stable connection freshness",
+      "webAnnouncement": "BallerWatch 8.10.1 shows saved public fixtures instantly on repeat app openings, avoids flashing Checking or Last synced on routine revalidation, and keeps the calendar responsive even when optional weather or field-location lookups are slow. Both original and V2 experiences receive the update.",
       "changes": [
-        "Apply left/right safe-area padding to the entire V2 grid, protecting the desktop-style navigation rail and header when an iPhone turns to landscape. Preserve the existing V1 layout and both install identities.",
-        "Expose environment-backed safe-area CSS tokens so browser tests can inject asymmetric notch/home-indicator insets even when device emulation reports zero hardware insets.",
-        "Add Chromium/WebKit landscape assertions for the navigation rail, settings control and overflow, plus a source regression. Rotate shell assets and release through the same validated promotion and Worker-to-Pages process."
+        "Persist a strictly allow-listed anonymous public calendar snapshot in separate V1/V2 device caches, with a 12-hour age limit and same-day validation. No RSVP names, notification/account state or tokens are persisted.",
+        "Paint saved match and calendar cards synchronously before the first network request on repeat launches; show neutral Ready until the calendar API actually confirms Live rather than repeatedly flashing Checking.",
+        "Preserve the real Updated footer on timeouts, use a single bounded first calendar request, and escalate a cached-card status to Last synced only after repeated failed checks or a genuine offline signal.",
+        "Preserve valid weather and venue enrichment only for unchanged source fixtures and unchanged manual overrides while optional services revalidate.",
+        "Deduplicate decrypted public weather loading, bound optional weather/venue wait time to 500 ms after core snapshot readiness and warm those caches using Worker waitUntil; no optional data source or historical scouting compute blocks the public calendar GET.",
+        "Fallback the calendar Updated timestamp to the verified league/pickup source timestamp when weather is temporarily unavailable.",
+        "Extend safe cache/privacy and UI/Worker startup regression tests, include new module in both scoped service worker caches, and deploy through existing release, Worker readiness and Pages gates."
       ]
     },
     {

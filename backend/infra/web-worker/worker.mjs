@@ -2940,7 +2940,9 @@ export function webCalendarDetails(
   return {
     startDate,
     endDate,
-    updatedAt: cleanText(weatherState?.updatedAt, 60),
+    updatedAt: cleanText(weatherState?.updatedAt ||
+      safe.league?.updatedAt || safe.pickup?.updatedAt ||
+      safe.pickupSourceHealth?.checkedAt, 60),
     refreshHours: Number(weatherState?.refreshHours || 6),
     providers: {
       weather: "Open-Meteo",
@@ -2951,12 +2953,42 @@ export function webCalendarDetails(
 }
 
 async function loadWebWeather(env) {
-  try {
+  // Previously every /web/calendar response fetched and decrypted GitHub
+  // weather before the user could see their schedule. Cache the public-only
+  // enrichment independently; a weather outage cannot break match cards.
+  return publicReadCache.get("public-web-weather-v1", 120_000, async () => {
     const encrypted = await githubFile(env, "state/weather.json", "runtime-state");
     return (await decryptState(encrypted, env)) || {};
-  } catch {
-    return {};
-  }
+  }, { staleMs: 60 * 60_000, transientError: transientPublicLoadError });
+}
+
+/**
+ * Calendar weather and venue enrichment never gate the primary schedule.
+ * Keep each lookup alive with waitUntil so a miss can warm isolate caches for
+ * later reads even when the public response uses a time-bounded fallback.
+ */
+function optionalCalendarResult(promise, fallback, timeoutMs = 500) {
+  return new Promise((resolve) => {
+    let resolved = false;
+    const timer = setTimeout(() => {
+      resolved = true;
+      resolve(fallback);
+    }, timeoutMs);
+    promise.then(
+      (value) => {
+        if (resolved) return;
+        clearTimeout(timer);
+        resolved = true;
+        resolve(value);
+      },
+      () => {
+        if (resolved) return;
+        clearTimeout(timer);
+        resolved = true;
+        resolve(fallback);
+      },
+    );
+  });
 }
 
 export function webNextGameDetails(snapshot, now = new Date()) {
@@ -3682,10 +3714,16 @@ export default {
       try {
         // Public fixtures must not wait for history archive decrypt/scan.
         // Optional last-ten form comes from /web/standings independently.
-        const [snapshot, weather, venues] = await Promise.all([
-          loadSnapshot(env),
-          loadWebWeather(env).catch(() => null),
-          loadRatsVenues(env).catch(() => ({ venues: [] })),
+        // The core fixture snapshot is the only required dependency.
+        // Optional weather/venues hydrate from encrypted, cached sources but
+        // cannot pin cold PWA startup on a slow GitHub/API read.
+        const weatherPending = loadWebWeather(env).catch(() => null);
+        const venuesPending = loadRatsVenues(env).catch(() => ({ venues: [] }));
+        ctx?.waitUntil?.(Promise.allSettled([weatherPending, venuesPending]));
+        const snapshot = await loadSnapshot(env);
+        const [weather, venues] = await Promise.all([
+          optionalCalendarResult(weatherPending, null),
+          optionalCalendarResult(venuesPending, { venues: [] }),
         ]);
         const today = localDate();
         return webJson(request, {
