@@ -256,6 +256,9 @@ const BASE_QUESTION_COMPLETIONS = [
   "What games are next week?",
   "What league teams are you monitoring?",
   "What is the RATS record for a team?",
+  "Scout Sitting Ducks",
+  "What is the win chance for the next monitored matchup?",
+  "Compare two teams' recent attack and defense",
   "Have two RATS teams played each other before?",
   "When do we play PhoSaiGon?",
   "Where is Supermokh FC vs PhoSaiGon?",
@@ -1110,6 +1113,17 @@ async function openRsvpRoster() {
 
 function showLoginSettings(message = "") {
   currentUserSettings = null;
+  // Never retain authenticated RSVP name catalogs after a session expires.
+  settingsChoiceAccount = "";
+  settingsChoiceLoadedAt = 0;
+  if (settingsChoiceControls) {
+    settingsChoiceControls.rsvp.setOptions([]);
+    settingsChoiceControls.newUser.setOptions([]);
+    settingsChoiceControls.teams.setOptions([]);
+    settingsChoiceControls.rsvp.close();
+    settingsChoiceControls.teams.close();
+    settingsChoiceControls.newUser.close();
+  }
   els.settingsLoginView.hidden = false;
   els.settingsOwnerView.hidden = true;
   if (els.ownerLoginUsername) {
