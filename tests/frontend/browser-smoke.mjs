@@ -51,7 +51,10 @@ const origin = `https://127.0.0.1:${server.address().port}`;
 let scenarios = 0;
 
 async function prepare(browser, options = {}) {
-  const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1440, height: 1000 }, ...options });
+  // Keep API fixtures under Playwright's routing control. WebKit service-worker
+  // networking can bypass those routes; exercise real workers separately below.
+  const context = await browser.newContext({ serviceWorkers: "block", ignoreHTTPSErrors: true,
+    viewport: { width: 1440, height: 1000 }, ...options });
   const calls = [];
   const errors = [];
   const controls = { offlineApi: false, optionalFailure: false, animationFailure: false, scriptFailure: false };
@@ -264,7 +267,7 @@ try {
 
       if (engine === "chromium") {
         await scenario("chromium: two service-worker scopes coexist, offline routes stay correct and cache clearing preserves V1", async () => {
-          const { context, page, errors } = await prepare(browser, { reducedMotion: "reduce" });
+          const { context, page, errors } = await prepare(browser, { reducedMotion: "reduce", serviceWorkers: "allow" });
           await ready(page, "");
           await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
           await ready(page);
