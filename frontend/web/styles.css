@@ -4966,19 +4966,16 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
   width: 2.4rem;
   height: 2.5rem;
   padding: 0;
-  border: 1px solid rgba(125, 211, 252, 0.18);
+  border: 0;
   border-radius: 12px;
   color: #e0faff;
-  background: rgba(15, 39, 46, 0.50);
+  background: transparent;
 }
 
 .standings-step span { font-size: 1.8rem; font-weight: 400; line-height: 1; }
 .standings-step:disabled { opacity: 0.28; cursor: default; }
-.standings-step:not(:disabled):hover,
-.standings-step:not(:disabled):focus-visible {
-  border-color: rgba(125, 211, 252, 0.58);
-  background: rgba(22, 78, 89, 0.65);
-}
+/* No standings-only hover surface here: the shared masked ::before waterfall
+ * is the entire hover treatment, exactly as it is for match cards. */
 .standings-position {
   min-width: 2.8rem;
   color: rgba(203, 213, 225, 0.76);
@@ -6204,6 +6201,17 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
     justify-content: flex-end;
     padding-right: 0.7rem;
     border-radius: 0 32px 32px 0;
+  }
+  /* Keep the button's entire hit surface optically empty across idle, hover,
+     focus and pressed states. Only its shared masked ::before may be visible.
+     This also defeats stale v8.2 standings hover backgrounds on Safari. */
+  :is(.spotlight-carousel, .standings-controls) >
+  .carousel-waterfall-edge:not(:disabled):is(:hover, :focus-visible, :active),
+  :is(.spotlight-carousel, .standings-controls) > .carousel-waterfall-edge {
+    background: transparent;
+    background-color: transparent;
+    border-color: transparent;
+    box-shadow: none;
   }
   /* Override the legacy match-card :hover specificity as well: otherwise
      old hover: opacity 1 would beat the new shared pointer-distance variable,

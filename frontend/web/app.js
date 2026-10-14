@@ -1667,7 +1667,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=8.9.1", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=8.9.2", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -3822,8 +3822,10 @@ function restorePublicCalendar() {
     const stored = JSON.parse(sessionStorage.getItem(PUBLIC_CALENDAR_CACHE_KEY) || "null");
     if (!stored || Date.now() - stored.at > 6 * 60 * 60_000 ||
         !stored.calendar?.startDate || !Array.isArray(stored.calendar.games)) return false;
+    // Rendering the last-known-good calendar already sets its real Updated
+    // timestamp. A network check is not proof of disconnection: never replace
+    // this timestamp with a transient "Last synced · Reconnecting" banner.
     renderCalendar(stored.calendar);
-    els.calendarUpdated.textContent = "Last synced · Reconnecting";
     return true;
   } catch { return false; }
 }
@@ -3838,11 +3840,17 @@ async function loadCalendar() {
       retryNetwork: true, timeoutMs: 4_000,
     });
     const next = payload.calendar || null;
-    if (next?.startDate) rememberPublicCalendar(next);
-    // Keep the active card, scroll position and expensive layout untouched
-    // when the public schedule/weather snapshot is unchanged.
+    if (!next?.startDate || !Array.isArray(next.games)) {
+      throw new Error("Calendar snapshot is incomplete.");
+    }
+    rememberPublicCalendar(next);
+    // Preserve the selected game and card geometry for an unchanged snapshot.
+    // Still clear any stale/offline status after a successful revalidation:
+    // previously the equality fast-path could leave "Reconnecting" forever.
     if (JSON.stringify(next) !== JSON.stringify(currentCalendar)) {
       renderCalendar(next);
+    } else {
+      els.calendarUpdated.textContent = matchUpdatedText(next.updatedAt) || "Updated pending";
     }
     return true;
   } catch (error) {
@@ -4885,16 +4893,18 @@ applyInstallState();
 setNotificationFilter("all");
 renderNotificationPreferences();
 setSystemState("checking");
-// The first match card and schedule must not wait for optional history,
-// notification preferences or service worker update checks.
-// Avoid a burst of optional API requests competing with the first schedule
-// request. Install/update can proceed while the schedule hydrates.
-void registerServiceWorker().catch(() => null);
+// Render the last public schedule before the first network await. Defer the
+// Service Worker registration/update download until AFTER the first calendar
+// check: asset update traffic must not compete with initial fixture hydration.
 restorePublicCalendar();
-if (currentCalendar) setSystemState("stale");
+// Cached fixtures paint synchronously. Remain neutral ("Checking…") until
+// the first network validation, rather than flashing a false "Last synced"
+// warning while a healthy Worker returns the same prepared snapshot.
 const calendarOk = await loadCalendar().catch(() => false);
 setSystemState(calendarOk ? "live" : currentCalendar ? "stale" : "offline");
 initialLoadComplete = true;
+// Refresh/install the service worker without blocking already visible cards.
+void registerServiceWorker().catch(() => null);
 void Promise.allSettled([
   loadConfig(), loadBoard(), loadStandings(), loadNotificationProfile(),
 ]);

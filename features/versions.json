@@ -1,7 +1,25 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.9.1",
+  "currentVersion": "8.9.2",
   "releases": [
+    {
+      "version": "8.9.2",
+      "date": "2026-10-14",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Transparent standings waterfall and instant cached-calendar status",
+      "webAnnouncement": "BallerWatch 8.9.2 removes the opaque rectangle that appeared when hovering standings navigation, making its transparency identical to match cards. Cached fixtures now show their real Updated time immediately instead of flashing Last synced, and service worker updates wait until the first calendar fetch completes.",
+      "changes": [
+        "Remove the legacy .standings-step hover/focus teal background that overrode the shared masked waterfall and produced a rectangular left/right hover overlay.",
+        "Explicitly retain a transparent, borderless, shadowless hover hit surface for match and standings edge controls, allowing only the same opacity-driven masked ::before to render.",
+        "Keep the cached calendar's authentic Updated timestamp during background revalidation; never paint a transient Last synced · Reconnecting message on a healthy cached first render.",
+        "On successful unchanged calendar responses, reset the calendar footer timestamp; report Last synced only if a real network failure occurs while retained data remains visible.",
+        "Require a complete calendar payload before asserting the Live status so empty or broken fetches cannot be mistaken for success.",
+        "Delay service worker asset-update traffic until the first calendar request finishes, prioritizing cached fixture hydration and live calendar confirmation.",
+        "Expand static regression coverage for hover-opacity parity, no rectangular backgrounds, cached startup status, unchanged-snapshot recovery, and startup request priority.",
+        "Rotate PWA shell version and use the existing validation and Worker/Pages production gates; no changes to the independently precomputed scouting model, notifications or Google Calendar."
+      ]
+    },
     {
       "version": "8.9.1",
       "date": "2026-10-14",

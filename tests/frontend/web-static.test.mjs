@@ -12,19 +12,19 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
 
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   assert.match(html, /manifest\.webmanifest/);
-  assert.match(html, /apple-touch-icon\.png\?v=8\.9\.1/);
+  assert.match(html, /apple-touch-icon\.png\?v=8\.9\.2/);
   assert.match(html, /class="brand-icon"/);
-  assert.match(html, /icon\.svg\?v=8\.9\.1/);
+  assert.match(html, /icon\.svg\?v=8\.9\.2/);
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=8\.9\.1/);
-  assert.match(html, /app\.js\?v=8\.9\.1/);
+  assert.match(html, /styles\.css\?v=8\.9\.2/);
+  assert.match(html, /app\.js\?v=8\.9\.2/);
 
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v8-9-1-shell/);
+  assert.match(sw, /ballerwatch-v8-9-2-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -93,7 +93,7 @@ test("promotion watches Worker and Pages then refreshes the open PWA", () => {
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=8\.9\.1/);
+  assert.match(app, /sw\.js\?v=8\.9\.2/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -702,7 +702,7 @@ test("installed app does not interrupt first-load hydration for a service-worker
   );
   assert.match(
     app,
-    /void registerServiceWorker\(\)\.catch\(\(\) => null\);[\s\S]*?const calendarOk = await loadCalendar\(\)\.catch\(\(\) => false\);[\s\S]*?void Promise\.allSettled\(\[\s*loadConfig\(\),\s*loadBoard\(\),\s*loadStandings\(\),\s*loadNotificationProfile\(\),\s*\]\);/,
+    /restorePublicCalendar\(\);[\s\S]*?const calendarOk = await loadCalendar\(\)\.catch\(\(\) => false\);[\s\S]*?initialLoadComplete = true;[\s\S]*?void registerServiceWorker\(\)\.catch\(\(\) => null\);[\s\S]*?void Promise\.allSettled\(\[\s*loadConfig\(\),\s*loadBoard\(\),\s*loadStandings\(\),\s*loadNotificationProfile\(\),\s*\]\);/,
   );
   assert.match(app, /initialLoadComplete = true/);
   assert.match(
@@ -826,7 +826,7 @@ test("page uses a soccer-pitch backdrop with readable translucent cards", () => 
   assert.match(icon, /A soccer pitch with a soccer ball/);
   assert.match(icon, /<circle cx="256" cy="256" r="54"\/>/);
   assert.match(icon, /translate\(347 344\)/);
-  assert.match(manifest, /icon\.svg\?v=8\.9\.1/);
+  assert.match(manifest, /icon\.svg\?v=8\.9\.2/);
   assert.match(css, /\.card,[\s\S]*\.footer-install \{[\s\S]*rgba\(6, 18, 22, 0\.57\)/);
   assert.match(css, /\.spotlight-card \{[\s\S]*rgba\(4, 16, 22, 0\.72\)/);
   assert.match(css, /backdrop-filter:\s*blur\(24px\) saturate\(135%\)/);
@@ -1350,7 +1350,7 @@ test("cinematic launch owns first paint, stays session-scoped, and is reduced-mo
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
 
   assert.match(html, /<html lang="en" class="launch-intro-pending">/);
-  assert.match(html, /<script src="\.\/launch-prepaint\.js\?v=8\.9\.1"><\/script>[\s\S]*<link rel="stylesheet"/);
+  assert.match(html, /<script src="\.\/launch-prepaint\.js\?v=8\.9\.2"><\/script>[\s\S]*<link rel="stylesheet"/);
   assert.match(html, /id="launch-intro" aria-hidden="true">/);
   assert.doesNotMatch(html, /id="launch-intro"[^>]*\shidden/);
   assert.match(html, /class="launch-intro-word-main">BallerWatch<\/span>/);
@@ -1371,7 +1371,7 @@ test("cinematic launch owns first paint, stays session-scoped, and is reduced-mo
   assert.match(css, /@keyframes ballerwatch-intro-shine/);
   assert.match(css, /\.launch-intro\.is-active \{[\s\S]*pointer-events:\s*auto/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.launch-intro \{[\s\S]*display:\s*none !important/);
-  assert.match(sw, /\.\/launch-prepaint\.js\?v=8\.9\.1/);
+  assert.match(sw, /\.\/launch-prepaint\.js\?v=8\.9\.2/);
   assert.doesNotMatch([html, gate, app, css].join("\n"), /Netflix/i);
 });
 
@@ -1871,7 +1871,8 @@ test("scouting preloads once after base data, and status recovery never awaits o
   assert.match(app, /function restorePublicCalendar\(\)/);
   assert.match(app, /function rememberPublicCalendar\(calendar\)/);
   assert.match(app, /sessionStorage\.setItem\(PUBLIC_CALENDAR_CACHE_KEY/);
-  assert.match(app, /restorePublicCalendar\(\);\s*if \(currentCalendar\) setSystemState\("stale"\)/);
+  assert.match(app, /restorePublicCalendar\(\);\s*\/\/ Cached fixtures paint synchronously/);
+  assert.doesNotMatch(app, /restorePublicCalendar\(\);\s*if \(currentCalendar\) setSystemState\("stale"\)/);
   assert.match(app, /const calendarOk = await loadCalendar\(\)/);
   assert.match(app, /if \(!optionalRefreshInFlight\)/);
   assert.match(app, /Promise\.allSettled\(\[/);
@@ -2038,4 +2039,47 @@ test("safe stale-branch cleanup requires the release, exact PR head and matching
   assert.match(workflow, /merged_at != null/);
   assert.match(workflow, /"\$live" != "\$sha"/);
   assert.match(workflow, /gh api -X DELETE/);
+});
+
+test("standings waterfall never paints an opaque rectangular button on hover", () => {
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
+  const shared = css.split("/* The *only* waterfall visual contract")[1] || "";
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const hover = css.match(/\.standings-step:not\(:disabled\):hover,[\s\S]*?\n\}/)?.[0] || "";
+  assert.doesNotMatch(hover, /background|box-shadow|border-color/);
+  assert.doesNotMatch(css, /background:\s*rgba\(22,\s*78,\s*89,\s*0\.65\)/);
+  assert.match(shared, /entire hit surface optically empty/);
+  assert.match(shared, /\.carousel-waterfall-edge:not\(:disabled\):is\(:hover, :focus-visible, :active\)/);
+  assert.match(shared, /background-color:\s*transparent/);
+  assert.match(shared, /border-color:\s*transparent/);
+  assert.match(shared, /box-shadow:\s*none/);
+  assert.match(shared, /opacity:\s*var\(--edge-opacity, var\(--bw-edge-background-alpha\)\)/);
+  assert.match(shared, /mask-image: linear-gradient\(90deg/);
+  assert.match(shared, /mask-image: linear-gradient\(270deg/);
+  assert.match(app, /bindCardEdgeWaterfall\(els\.spotlightNext, 1\)/);
+  assert.match(app, /bindCardEdgeWaterfall\(control, direction\)/);
+});
+
+test("cached calendar renders its real Updated timestamp without false reconnect flash", () => {
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const cacheRestore = app.match(/function restorePublicCalendar\(\)[\s\S]*?\n\}/)?.[0] || "";
+  const getCalendar = app.match(/async function loadCalendar\(\)[\s\S]*?\n\}/)?.[0] || "";
+  const startup = app.split('document.documentElement.classList.toggle("is-standalone"')[1] || "";
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
+  assert.match(cacheRestore, /renderCalendar\(stored\.calendar\)/);
+  assert.doesNotMatch(cacheRestore, /els\.calendarUpdated\.textContent = "Last synced|setSystemState\("stale"\)/);
+  assert.match(getCalendar, /if \(!next\?\.startDate \|\| !Array\.isArray\(next\.games\)\)/);
+  assert.match(getCalendar, /JSON\.stringify\(next\) !== JSON\.stringify\(currentCalendar\)/);
+  assert.match(getCalendar, /else \{\s*els\.calendarUpdated\.textContent = matchUpdatedText\(next\.updatedAt\)/);
+  assert.match(getCalendar, /if \(currentCalendar\) \{\s*els\.calendarUpdated\.textContent = "Last synced · Reconnecting"/);
+  assert.match(startup, /setSystemState\("checking"\)/);
+  assert.match(startup, /restorePublicCalendar\(\)/);
+  assert.ok(startup.indexOf("restorePublicCalendar();") <
+    startup.indexOf("const calendarOk = await loadCalendar()"));
+  assert.ok(startup.indexOf("const calendarOk = await loadCalendar()") <
+    startup.indexOf("void registerServiceWorker().catch"));
+  assert.match(startup, /initialLoadComplete = true;\s*\/\/ Refresh\/install the service worker/);
+  assert.doesNotMatch(startup.split("const calendarOk = await loadCalendar")[0], /setSystemState\("stale"\)/);
+  assert.match(worker, /url\.pathname === "\/web\/calendar"[\s\S]*?webCalendarDetails\(snapshot, weather/);
+  assert.doesNotMatch(worker, /buildMatchupEstimate\(|tuneScoutingWeights\(|buildLeagueStandings\(/);
 });
