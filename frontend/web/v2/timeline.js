@@ -46,6 +46,8 @@ function render() {
   if (!active || document.hidden) return;
   try {
     const position = Math.max(0, window.scrollY);
+    // Panels/data can extend after startup: recompute against current native scroll range.
+    distance = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
     const progress = clamp(position / distance);
     const reveal = clamp((position - 25) / Math.min(220, window.innerHeight * 0.3));
     const pose = scenePose(progress);
