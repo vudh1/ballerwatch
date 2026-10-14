@@ -4232,7 +4232,7 @@ async function toggleWrongAnswerFeedback() {
 }
 
 function toggleCalendarExpandedFromEvent(event) {
-  if (event?.target?.closest?.(".calendar-window-control, a, input, textarea, select, label")) return;
+  if (event?.target?.closest?.("a, input, textarea, select, label")) return;
   // Match-day and game choices still select matches, and now expand the schedule too.
   if (event?.target?.closest?.(".calendar-day, .calendar-game-choice")) {
     if (!calendarExpanded) setCalendarExpanded(true);
