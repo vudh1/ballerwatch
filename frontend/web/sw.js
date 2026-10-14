@@ -4,7 +4,7 @@
  * intercept remote APIs or persist authenticated responses in frontend caches.
  */
 const IS_V2 = /\/v2\/sw\.js$/.test(self.location.pathname);
-const CACHE = IS_V2 ? "ballerwatch-v2-v8-10-1-shell" : "ballerwatch-v8-10-1-shell";
+const CACHE = IS_V2 ? "ballerwatch-v2-v8-10-2-shell" : "ballerwatch-v8-10-2-shell";
 const SHELL = IS_V2 ? [
   "./",
   "./index.html",
