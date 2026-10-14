@@ -5907,7 +5907,7 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
   background: rgba(34, 197, 94, 0.10);
   color: #baf7d1;
   font-size: 0.75rem;
-  font-weight: 750;
+  font-weight: 700;
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
