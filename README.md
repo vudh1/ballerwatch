@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, Calendar sync, and quick answers into one installable app.
 
-**Current source version: 8.6.0**
+**Current source version: 8.6.1**
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
 
@@ -34,6 +34,14 @@ Saturday synthetic pickup is shown simply as **Pickup** and has no RSVP/capacity
 A 22-second walkthrough with a short animated intro. Recorded from the app using synthetic sample data; game details, answers, and notifications are illustrative.
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/)
+
+## BallerWatch 8.6.1 — Scout-index bootstrap and resilient loading
+
+- **Verified root cause of empty scouting cards:** the encrypted `league/state/scout-index.json` projection had not yet appeared in `runtime-state`. The independent index workflow now starts when its workflow file changes on `main` and whenever production promotion succeeds, in addition to hourly scheduled runs. It keeps the report encrypted and notification-silent. Publication is not complete until its Actions run passes and the encrypted file exists.
+- **Scouting ready before taps:** once the standings have loaded, the browser retrieves the *already prepared* public reports in a single background request and keeps them in this page's memory. Reopening a team uses its prepared entry immediately; repeat taps do not recalculate the all-season model. Full reports remain separate from critical match/calendar API calls.
+- **Match/calendar uptime:** public GETs now have a bounded timeout and retry. The app holds only the public calendar in tab-scoped session storage (six-hour maximum) and displays it immediately as **Last synced** while the Worker reconnects. Failed optional scouting and notifications must not keep the status indicator at **Checking…** or erase an already loaded match card.
+- **Compact match form:** the monitored team’s `Win ~XX%` estimate appears in the metadata line after jersey color as a short bullet, with no independent badge row. **LEAGUE STANDINGS** uses the same heading tint as **MATCH DAYS**.
+- **Release safety:** local tests never mutate the Calendar or send Web Push. After production promotion, allow the independently triggered **Refresh RATS scouting cache** workflow to publish the initial encrypted scouting index.
 
 ## BallerWatch 8.6.0 — Independent scouting snapshots and resilient match reads
 
