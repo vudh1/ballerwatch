@@ -66,11 +66,11 @@
     </div>
 
     <div class="spotlight-carousel" id="spotlight-carousel">
-      <button class="spotlight-edge-control spotlight-edge-previous" id="spotlight-previous"
+      <button class="spotlight-edge-control carousel-waterfall-edge spotlight-edge-previous" id="spotlight-previous"
         type="button" aria-label="Previous game" disabled>
         <span aria-hidden="true">‹</span>
       </button>
-      <button class="spotlight-edge-control spotlight-edge-next" id="spotlight-next"
+      <button class="spotlight-edge-control carousel-waterfall-edge spotlight-edge-next" id="spotlight-next"
         type="button" aria-label="Next game" disabled>
         <span aria-hidden="true">›</span>
       </button>
@@ -148,9 +148,9 @@
           <p class="muted standings-message">Loading current season standings…</p>
         </div>
         <div class="standings-controls" role="group" aria-label="Browse team standings">
-          <button class="standings-step standings-step-previous" id="standings-previous" type="button"
+          <button class="standings-step carousel-waterfall-edge standings-step-previous" id="standings-previous" type="button"
             aria-label="Previous tracked team" disabled><span aria-hidden="true">‹</span></button>
-          <button class="standings-step standings-step-next" id="standings-next" type="button"
+          <button class="standings-step carousel-waterfall-edge standings-step-next" id="standings-next" type="button"
             aria-label="Next tracked team" disabled><span aria-hidden="true">›</span></button>
         </div>
       </div>
@@ -224,7 +224,7 @@
             </svg>
           </span>
           <div>
-            <p class="eyebrow">MATCH INTELLIGENCE · V8</p>
+            <p class="eyebrow">MATCH INTELLIGENCE · V8.8</p>
             <h2>BallerWatch AI</h2>
           </div>
         </div>
@@ -246,7 +246,7 @@
       <div class="answer-feedback-controls">
         <p class="answer-feedback-status" id="answer-feedback-status" hidden></p>
       </div>
-      <p class="hint chat-dialog-hint">Ask follow-ups about the same match. Answers come from published match data, not invented predictions. Type <strong>/</strong> for commands. Double-click an answer, or press and hold it on touch, to mark or unmark it as wrong.</p>
+      <p class="hint chat-dialog-hint">Ask follow-ups about the same match. Answers use published match data and prepared scouting reports, never invented predictions. Type <strong>/</strong> for commands. Double-click an answer, or press and hold it on touch, to mark or unmark it as wrong.</p>
     </div>
   </dialog>
 
@@ -408,15 +408,44 @@
       <section id="settings-owner-view" hidden>
         <p class="settings-account-summary" id="current-user-summary"></p>
         <form id="owner-settings-form" class="settings-form">
-          <label for="owner-name">Pickup RSVP name</label>
-          <input id="owner-name" maxlength="120" autocomplete="name"
-            placeholder="Your RSVP display name">
+          <div class="settings-choice-field">
+            <label id="owner-name-label" for="owner-name-trigger">Pickup RSVP name</label>
+            <div class="settings-choice" id="rsvp-choice">
+              <button class="settings-choice-trigger" id="owner-name-trigger" type="button"
+                aria-haspopup="listbox" aria-expanded="false" aria-controls="owner-name-options">
+                <span id="owner-name-display">Choose your RSVP name</span>
+                <span class="choice-chevron" aria-hidden="true">⌄</span>
+              </button>
+              <div class="settings-choice-popover" id="owner-name-popover" hidden>
+                <label for="owner-name-search" class="choice-search-label">Find a name</label>
+                <input type="search" id="owner-name-search" placeholder="Search RSVP names…" autocomplete="off">
+                <div class="settings-choice-options" id="owner-name-options" role="listbox"
+                  aria-label="Pickup RSVP names"></div>
+                <p class="hint choice-hint">Can't find yourself? Search a name to use it.</p>
+              </div>
+            </div>
+            <input id="owner-name" type="hidden" maxlength="120">
+          </div>
 
-          <div id="owner-team-settings">
-            <label for="owner-teams">League teams to monitor</label>
-            <textarea id="owner-teams" rows="5" maxlength="1200"
-              placeholder="One team per line"></textarea>
-            <p class="hint">Shared app setting. Administrator changes take effect on the next league refresh.</p>
+          <div id="owner-team-settings" class="settings-choice-field">
+            <label for="owner-teams-trigger">League teams to monitor</label>
+            <div class="settings-choice" id="teams-choice">
+              <button class="settings-choice-trigger" id="owner-teams-trigger" type="button"
+                aria-haspopup="listbox" aria-expanded="false" aria-controls="owner-teams-options">
+                <span id="owner-teams-display">Choose monitored teams</span>
+                <span class="choice-chevron" aria-hidden="true">⌄</span>
+              </button>
+              <div class="settings-choice-chips" id="owner-teams-chips" aria-label="Selected league teams"></div>
+              <div class="settings-choice-popover" id="owner-teams-popover" hidden>
+                <label for="owner-teams-search" class="choice-search-label">Find league teams</label>
+                <input type="search" id="owner-teams-search" placeholder="Search teams…" autocomplete="off">
+                <div class="settings-choice-options" id="owner-teams-options" role="listbox"
+                  aria-label="League teams" aria-multiselectable="true"></div>
+                <p class="hint choice-hint">Select multiple teams. You can add a team not yet indexed.</p>
+              </div>
+            </div>
+            <textarea id="owner-teams" rows="1" maxlength="1200" hidden></textarea>
+            <p class="hint">Shared app setting. Changes take effect on the next league refresh.</p>
           </div>
 
           <button type="submit">Save changes</button>
@@ -431,9 +460,23 @@
             <label for="user-create-username">New username</label>
             <input id="user-create-username" maxlength="32" autocomplete="off"
               placeholder="teammate" required>
-            <label for="user-create-name">Pickup RSVP name</label>
-            <input id="user-create-name" maxlength="120" autocomplete="off"
-              placeholder="RSVP display name">
+            <div class="settings-choice-field">
+              <label for="user-create-name-trigger">Pickup RSVP name</label>
+              <div class="settings-choice" id="user-name-choice">
+                <button class="settings-choice-trigger" id="user-create-name-trigger" type="button"
+                  aria-haspopup="listbox" aria-expanded="false" aria-controls="user-create-name-options">
+                  <span id="user-create-name-display">Choose RSVP name</span>
+                  <span class="choice-chevron" aria-hidden="true">⌄</span>
+                </button>
+                <div class="settings-choice-popover" id="user-create-name-popover" hidden>
+                  <label for="user-create-name-search" class="choice-search-label">Find a name</label>
+                  <input type="search" id="user-create-name-search" placeholder="Search RSVP names…" autocomplete="off">
+                  <div class="settings-choice-options" id="user-create-name-options" role="listbox"
+                    aria-label="New user's RSVP name"></div>
+                </div>
+              </div>
+              <input id="user-create-name" type="hidden" maxlength="120">
+            </div>
             <label for="user-create-password">Initial password</label>
             <input id="user-create-password" type="password" minlength="12" maxlength="200"
               autocomplete="new-password" placeholder="At least 12 characters" required>
