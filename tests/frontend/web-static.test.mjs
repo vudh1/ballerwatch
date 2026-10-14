@@ -1716,8 +1716,33 @@ test("league statistics use visible rankings and an honest unavailable state", (
   assert.match(app, /standingRankBar\("Attack", stats\.attack/);
   assert.match(app, /standingRankBar\("Defense", stats\.defense/);
   assert.match(app, /stats\.previousSeason/);
+  assert.match(app, /overview\.append\(buildStandingStats\(scout\)\)/);
   assert.match(app, /role", "img"/);
   assert.match(css, /\.standings-stats-chart/);
   assert.match(css, /\.standings-table th:nth-child\(3\),\s*\.standings-table td:nth-child\(3\) \{ width: 5%; \}/);
   assert.match(css, /\.standings-table \{\s*font-size: clamp\(0\.79rem/);
+});
+
+test("team stats appear only after team-history API load; standings show no 1/2 or timestamps outside cards", () => {
+  const html = fs.readFileSync("frontend/web/index.html","utf8");
+  const app = fs.readFileSync("frontend/web/app.js","utf8");
+  const css = fs.readFileSync("frontend/web/styles.css","utf8");
+  assert.doesNotMatch(html, /id="standings-position"/);
+  assert.doesNotMatch(html, /id="standings-updated"/);
+  assert.match(html, /id="team-scout-overview"/);
+  assert.match(app, /slide\.append\(freshness\)/);
+  assert.match(app, /"standings-footnote standings-card-updated"/);
+  assert.doesNotMatch(app, /els\.standingsPosition/);
+  assert.doesNotMatch(app, /els\.standingsUpdated/);
+  assert.doesNotMatch(app, /card\.stats/);
+  assert.match(app, /buildScoutOverview\(history\.scout\)/);
+  assert.match(app, /overview\.append\(buildStandingStats\(scout\)\)/);
+  assert.match(app, /function scoutingRecordText/);
+  assert.match(app, /scout\.formats\?\.\[format\]/);
+  assert.match(app, /scout\.quality\.index/);
+  assert.match(app, /history\.matches\.slice\(0, 5\)/);
+  assert.match(app, /Show \$\{history\.matches\.length - 5\} older matches/);
+  assert.match(css, /\.scout-quality/);
+  assert.match(css, /\.scout-format-grid/);
+  assert.match(css, /\.standings-card-updated/);
 });
