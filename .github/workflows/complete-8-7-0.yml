@@ -1,0 +1,60 @@
+name: Complete BallerWatch 8.7.0 promotion
+
+# One-time release handoff. This does not bypass the production promoter's
+# verified-candidate, GitHub Release, Worker readiness or Pages gates.
+on:
+  workflow_run:
+    workflows: ["Validate code"]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: ballerwatch-8-7-0-handoff
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Verify precise release candidate and validation SHA
+        id: candidate
+        env:
+          VALIDATED_SHA: ${{ github.event.workflow_run.head_sha }}
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          head_sha="$(git rev-parse HEAD)"
+          ledger_sha="$(git log -1 --format=%H HEAD -- features/versions.json)"
+          version="$(node -p 'JSON.parse(require("fs").readFileSync("features/versions.json","utf8")).currentVersion')"
+          if [ "$head_sha" != "$VALIDATED_SHA" ] || [ "$head_sha" != "$ledger_sha" ] || [ "$version" != "8.7.0" ]; then
+            echo "Release handoff not applicable to this validation."
+            echo "dispatch=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          test -n "$GH_TOKEN" || { echo "::error::RELEASE_GITHUB_TOKEN missing"; exit 1; }
+          if gh release view v8.7.0 --repo "$GITHUB_REPOSITORY" --json isDraft --jq '.isDraft' 2>/dev/null | grep -qx false; then
+            echo "Release already published; skipping duplicate promotion."
+            echo "dispatch=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "dispatch=true" >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch existing audited production promotion
+        if: steps.candidate.outputs.dispatch == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+        run: gh workflow run promote-release.yml --repo "$GITHUB_REPOSITORY" --ref main
