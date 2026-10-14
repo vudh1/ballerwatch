@@ -4,6 +4,15 @@ on:
   schedule:
     - cron: '7 * * * *'
   workflow_dispatch:
+  # Bootstrap the encrypted report as soon as this workflow is updated.
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/scouting-index.yml'
+  # A newly promoted release must not wait for the next hourly schedule.
+  workflow_run:
+    workflows: ["Promote production release"]
+    types: [completed]
 
 permissions:
   contents: write
@@ -15,6 +24,7 @@ concurrency:
 
 jobs:
   index:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:

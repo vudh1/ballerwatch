@@ -183,6 +183,9 @@ let teamHistoryRequestId = 0;
 // or refetch a large archive-derived report for every repeated team tap.
 const recentScoutReports = new Map();
 const pendingScoutReports = new Map();
+let scoutPreloadPending = null;
+let scoutPreloadFailureAt = 0;
+let lastScoutPreloadUpdated = "";
 const SCOUT_REPORT_REUSE_MS = 15 * 60_000;
 const SCOUT_REPORT_STALE_MS = 60 * 60_000;
 let confirmedRsvpDates = new Set();
@@ -218,6 +221,7 @@ const NOTIFICATION_READ_KEY = LOCAL_NOTIFICATION_READ_KEY;
 const NOTIFICATION_DELETED_KEY = LOCAL_NOTIFICATION_DELETED_KEY;
 const QUESTION_HISTORY_KEY = "ballerwatch-question-history-v1";
 const LIVE_DATA_REFRESH_MS = 60_000;
+const PUBLIC_CALENDAR_CACHE_KEY = "ballerwatch-public-calendar-session-v1";
 const APP_UPDATE_CHECK_MS = 5 * 60_000;
 const SPOTLIGHT_IDLE_RESET_MS = 15_000;
 const INTERACTION_VIBRATION_MS = 8;
@@ -1582,7 +1586,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=8.6.0", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=8.6.1", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -2188,6 +2192,8 @@ function spotlightModel(game, label = "NEXT GAME") {
     locationParts.push("Venue to be announced");
   }
   if (game.jerseyColor) locationParts.push(`${game.jerseyColor} jersey`);
+  const matchForm = monitoredWinForm(game);
+  if (matchForm) locationParts.push(formatMonitoredWin(matchForm));
 
   const capacity = Number(game.capacity);
   const reserved = Number(game.reserved);
@@ -2209,7 +2215,7 @@ function spotlightModel(game, label = "NEXT GAME") {
       .filter(Boolean)
       .join(" • "),
     location: locationParts.join(" • "),
-    form: formatMonitoredWin(monitoredWinForm(game)),
+    form: "",
     capacityText,
     capacityPercent,
     spotsText,
@@ -3232,23 +3238,19 @@ async function loadStandings() {
     // Refresh the preload check once per minute; the unchanged archive is not
     // needlessly re-fetched for every team.
     if (JSON.stringify(currentStandings) === JSON.stringify(payload.standings)) {
+      if (!recentScoutReports.size) void preloadPublishedScouts();
       return true;
     }
     currentStandings = payload.standings;
-    // Scouting is optional: update the tiny badge only after standings arrive.
-    // Match/calendar cards remain usable if results history is offline.
-    if (currentNextGame?.kind === "league") {
-      const form = monitoredWinForm(currentNextGame);
-      els.nextGameForm.textContent = formatMonitoredWin(form);
-      els.nextGameForm.hidden = !form;
-      if (form) {
-        els.nextGameForm.title =
-          `${currentNextGame.team} vs ${currentNextGame.opponent} · Estimated win chance from last ${form.teamGames}/${form.opponentGames} scored games and ${form.headToHeadGames} head-to-head · Not bookmaker odds`;
-      } else {
-        els.nextGameForm.removeAttribute("title");
-      }
+    // A short win estimate lives inline after the jersey/location metadata.
+    // Match and calendar fixtures remain independent of the scouting index.
+    const selected = currentCalendar?.games?.find((game) => game.id === selectedCalendarGameId);
+    const shown = selected || currentNextGame;
+    if (shown?.kind === "league") {
+      els.nextGameLocation.textContent = spotlightModel(shown).location;
       window.requestAnimationFrame(syncSpotlightCardDimensions);
     }
+    void preloadPublishedScouts();
     const index = currentStandings.cards?.findIndex((card) => card.team === selectedTeam) ?? -1;
     standingsIndex = index >= 0 ? index : 0;
     renderStandings();
@@ -3401,6 +3403,42 @@ function buildScoutOverview(scout) {
   return overview;
 }
 
+// One optional background request preloads already-built reports. Never
+// block fixture hydration or poll one endpoint for each standings row.
+async function preloadPublishedScouts() {
+  const updated = String(currentStandings?.updatedAt || "");
+  if (!currentStandings?.cards?.length) return false;
+  if (scoutPreloadPending) return scoutPreloadPending;
+  if (lastScoutPreloadUpdated === updated && recentScoutReports.size) return true;
+  if (Date.now() - scoutPreloadFailureAt < 4 * 60_000) return false;
+  const task = (async () => {
+    try {
+      const payload = await api("/web/scouting-reports", {
+        retryNetwork: false, timeoutMs: 6_000,
+      });
+      if (!payload?.ready || !payload?.reports) return false;
+      const at = Date.now();
+      for (const [id, history] of Object.entries(payload.reports)) {
+        if (!history || !Array.isArray(history.matches)) continue;
+        let division;
+        let team;
+        try { [division, team] = JSON.parse(id); } catch { continue; }
+        if (typeof division !== "string" || typeof team !== "string") continue;
+        recentScoutReports.set(scoutReportKey(team, division), { at, history });
+      }
+      lastScoutPreloadUpdated = String(payload.updatedAt || updated);
+      scoutPreloadFailureAt = 0;
+      return recentScoutReports.size > 0;
+    } catch {
+      scoutPreloadFailureAt = Date.now();
+      return false;
+    }
+  })();
+  scoutPreloadPending = task;
+  try { return await task; }
+  finally { if (scoutPreloadPending === task) scoutPreloadPending = null; }
+}
+
 function scoutReportKey(teamName, division = "") {
   return `${soccerNameKey(teamName)}|${division}`;
 }
@@ -3408,9 +3446,8 @@ function scoutReportKey(teamName, division = "") {
 async function fetchScoutReport(teamName, division = "") {
   const key = scoutReportKey(teamName, division);
   const previous = recentScoutReports.get(key);
-  if (previous && Date.now() - previous.at < SCOUT_REPORT_REUSE_MS &&
-      (!currentStandings?.updatedAt ||
-        previous.history.updatedAt === currentStandings.updatedAt)) {
+  if (previous && (Date.now() - previous.at < SCOUT_REPORT_REUSE_MS ||
+      previous.history.updatedAt === currentStandings?.updatedAt)) {
     return { history: previous.history, usingSavedReport: false };
   }
   if (pendingScoutReports.has(key)) return pendingScoutReports.get(key);
@@ -3473,11 +3510,11 @@ async function openTeamHistory(teamName, division = "") {
   els.teamHistoryNote.textContent = "Public RATS results archive";
   const key = scoutReportKey(teamName, division);
   const cached = recentScoutReports.get(key);
-  if (!cached) {
-    els.teamScoutOverview.replaceChildren(
-      standingsCell("p", "Loading scouting report…", "muted"));
-    els.teamHistoryList.replaceChildren();
-  }
+  // Do not show the previous team's report even for a one-frame delay.
+  // A prefetched entry resolves locally on the very next microtask.
+  els.teamScoutOverview.replaceChildren(
+    standingsCell("p", cached ? "Opening report…" : "Loading scouting report…", "muted"));
+  els.teamHistoryList.replaceChildren();
   if (!els.teamHistoryDialog.open) els.teamHistoryDialog.showModal();
 
   try {
@@ -3673,14 +3710,38 @@ function installStandingsSwipe() {
   els.teamHistoryDialog.addEventListener("close", () => { teamHistoryRequestId += 1; });
 }
 
+// Only anonymous public fixture data is stored, only in this tab's session,
+// and never private RSVP names, tokens, notification state or runtime secrets.
+function rememberPublicCalendar(calendar) {
+  if (!calendar?.startDate || !Array.isArray(calendar.games)) return;
+  try {
+    const entry = JSON.stringify({ at: Date.now(), calendar });
+    if (entry.length <= 220_000) sessionStorage.setItem(PUBLIC_CALENDAR_CACHE_KEY, entry);
+  } catch {}
+}
+
+function restorePublicCalendar() {
+  try {
+    const stored = JSON.parse(sessionStorage.getItem(PUBLIC_CALENDAR_CACHE_KEY) || "null");
+    if (!stored || Date.now() - stored.at > 6 * 60 * 60_000 ||
+        !stored.calendar?.startDate || !Array.isArray(stored.calendar.games)) return false;
+    renderCalendar(stored.calendar);
+    els.calendarUpdated.textContent = "Last synced · Reconnecting";
+    return true;
+  } catch { return false; }
+}
+
 async function loadCalendar() {
   try {
     // The personal RSVP lookup is independent of the public schedule.
     // An auth/profile failure must never blank an otherwise valid calendar.
     // Public fixtures get the first API slot; the private RSVP refresh is
     // independent and runs after the schedule request completes.
-    const payload = await api("/web/calendar", {retryNetwork: true});
+    const payload = await api("/web/calendar", {
+      retryNetwork: true, timeoutMs: 4_000,
+    });
     const next = payload.calendar || null;
+    if (next?.startDate) rememberPublicCalendar(next);
     // Keep the active card, scroll position and expensive layout untouched
     // when the public schedule/weather snapshot is unchanged.
     if (JSON.stringify(next) !== JSON.stringify(currentCalendar)) {
@@ -3695,28 +3756,32 @@ async function loadCalendar() {
       return false;
     }
     els.calendarUpdated.textContent = "Calendar temporarily unavailable";
-    await loadNextGame();
+    // Never make a failed calendar request block status recovery while an
+    // independent /next-game fallback attempts to restore the match card.
+    void loadNextGame().catch(() => false);
     return false;
   } finally {
     void loadRsvpStatus().catch(() => false);
   }
 }
 
+let optionalRefreshInFlight = false;
 async function refreshLiveData() {
   if (liveRefreshInFlight || document.hidden) return;
   liveRefreshInFlight = true;
-  setSystemState("checking");
+  // A healthy card should not flash "Checking…" because a separate
+  // scouting or notifications endpoint is temporarily slow.
+  if (!currentCalendar) setSystemState("checking");
   try {
-    const notificationProfileRefresh = ownerToken()
-      ? loadNotificationProfile({ migrateLocal: false })
-      : Promise.resolve(true);
-    const [calendarOk] = await Promise.all([
-      loadCalendar(), loadBoard(), loadStandings(),
-      notificationProfileRefresh.catch(() => false),
-    ]);
-    // The notification board or personal settings may be unavailable even
-    // when the public match schedule is healthy.
+    const calendarOk = await loadCalendar();
     setSystemState(calendarOk ? "live" : currentCalendar ? "stale" : "offline");
+    if (!optionalRefreshInFlight) {
+      optionalRefreshInFlight = true;
+      void Promise.allSettled([
+        loadBoard(), loadStandings(),
+        ownerToken() ? loadNotificationProfile({ migrateLocal: false }) : Promise.resolve(),
+      ]).finally(() => { optionalRefreshInFlight = false; });
+    }
   } catch {
     setSystemState(currentCalendar ? "stale" : "offline");
   } finally {
@@ -4692,7 +4757,7 @@ window.addEventListener("resize", () => {
 });
 
 window.addEventListener("online", () => {
-  setSystemState("checking");
+  if (!currentCalendar) setSystemState("checking");
   refreshLiveData().catch(() => null);
   checkForAppUpdate().catch(() => null);
 });
@@ -4728,6 +4793,8 @@ setSystemState("checking");
 // Avoid a burst of optional API requests competing with the first schedule
 // request. Install/update can proceed while the schedule hydrates.
 void registerServiceWorker().catch(() => null);
+restorePublicCalendar();
+if (currentCalendar) setSystemState("stale");
 const calendarOk = await loadCalendar().catch(() => false);
 setSystemState(calendarOk ? "live" : currentCalendar ? "stale" : "offline");
 initialLoadComplete = true;

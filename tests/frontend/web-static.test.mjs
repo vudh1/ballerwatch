@@ -12,19 +12,19 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
 
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   assert.match(html, /manifest\.webmanifest/);
-  assert.match(html, /apple-touch-icon\.png\?v=8\.6\.0/);
+  assert.match(html, /apple-touch-icon\.png\?v=8\.6\.1/);
   assert.match(html, /class="brand-icon"/);
-  assert.match(html, /icon\.svg\?v=8\.6\.0/);
+  assert.match(html, /icon\.svg\?v=8\.6\.1/);
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=8\.6\.0/);
-  assert.match(html, /app\.js\?v=8\.6\.0/);
+  assert.match(html, /styles\.css\?v=8\.6\.1/);
+  assert.match(html, /app\.js\?v=8\.6\.1/);
 
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v8-6-0-shell/);
+  assert.match(sw, /ballerwatch-v8-6-1-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -93,7 +93,7 @@ test("promotion watches Worker and Pages then refreshes the open PWA", () => {
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=8\.6\.0/);
+  assert.match(app, /sw\.js\?v=8\.6\.1/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -615,7 +615,7 @@ test("web Live status requires successful runtime-backed reads", () => {
   const config = app.match(/async function loadConfig\(\)[\s\S]*?\n}\n/)?.[0] || "";
   const online = app.match(/window\.addEventListener\("online"[\s\S]*?\n}\);/)?.[0] || "";
 
-  assert.match(refresh, /const \[calendarOk\] = await Promise\.all/);
+  assert.match(refresh, /const calendarOk = await loadCalendar\(\)/);
   assert.match(refresh, /calendarOk \? "live" : currentCalendar \? "stale" : "offline"/);
   assert.doesNotMatch(config, /setSystemState\("live"\)/);
   assert.match(online, /setSystemState\("checking"\)/);
@@ -826,7 +826,7 @@ test("page uses a soccer-pitch backdrop with readable translucent cards", () => 
   assert.match(icon, /A soccer pitch with a soccer ball/);
   assert.match(icon, /<circle cx="256" cy="256" r="54"\/>/);
   assert.match(icon, /translate\(347 344\)/);
-  assert.match(manifest, /icon\.svg\?v=8\.6\.0/);
+  assert.match(manifest, /icon\.svg\?v=8\.6\.1/);
   assert.match(css, /\.card,[\s\S]*\.footer-install \{[\s\S]*rgba\(6, 18, 22, 0\.57\)/);
   assert.match(css, /\.spotlight-card \{[\s\S]*rgba\(4, 16, 22, 0\.72\)/);
   assert.match(css, /backdrop-filter:\s*blur\(24px\) saturate\(135%\)/);
@@ -861,10 +861,10 @@ test("notification center supports filters, synced read state, and account prefe
   assert.match(css, /\.notification-preferences \{/);
   assert.match(html, /<span>App update<\/span>/);
   assert.match(css, /\.notification-preference-options \{[\s\S]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/);
-  assert.match(app, /const notificationProfileRefresh = ownerToken\(\)/);
+  assert.match(app, /ownerToken\(\) \? loadNotificationProfile\(\{ migrateLocal: false \}\)/);
   assert.match(app, /loadNotificationProfile\(\{ migrateLocal: false \}\)/);
-  assert.match(app, /const \[calendarOk\] = await Promise\.all/);
-  assert.match(app, /notificationProfileRefresh\.catch\(\(\) => false\)/);
+  assert.match(app, /const calendarOk = await loadCalendar\(\)/);
+  assert.match(app, /Promise\.allSettled\(\[/);
   assert.match(app, /Synced when active for @/);
 });
 
@@ -1350,7 +1350,7 @@ test("cinematic launch owns first paint, stays session-scoped, and is reduced-mo
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
 
   assert.match(html, /<html lang="en" class="launch-intro-pending">/);
-  assert.match(html, /<script src="\.\/launch-prepaint\.js\?v=8\.6\.0"><\/script>[\s\S]*<link rel="stylesheet"/);
+  assert.match(html, /<script src="\.\/launch-prepaint\.js\?v=8\.6\.1"><\/script>[\s\S]*<link rel="stylesheet"/);
   assert.match(html, /id="launch-intro" aria-hidden="true">/);
   assert.doesNotMatch(html, /id="launch-intro"[^>]*\shidden/);
   assert.match(html, /class="launch-intro-word-main">BallerWatch<\/span>/);
@@ -1371,7 +1371,7 @@ test("cinematic launch owns first paint, stays session-scoped, and is reduced-mo
   assert.match(css, /@keyframes ballerwatch-intro-shine/);
   assert.match(css, /\.launch-intro\.is-active \{[\s\S]*pointer-events:\s*auto/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.launch-intro \{[\s\S]*display:\s*none !important/);
-  assert.match(sw, /\.\/launch-prepaint\.js\?v=8\.6\.0/);
+  assert.match(sw, /\.\/launch-prepaint\.js\?v=8\.6\.1/);
   assert.doesNotMatch([html, gate, app, css].join("\n"), /Netflix/i);
 });
 
@@ -1727,7 +1727,7 @@ test("match card shows only the monitored team's compact weighted win rate", () 
   const standings = fs.readFileSync("backend/shared/league-standings.mjs","utf8");
   assert.match(html, /id="next-game-form" hidden/);
   assert.match(app, /function monitoredWinForm\(game\)/);
-  assert.match(app, /formatMonitoredWin\(monitoredWinForm\(game\)\)/);
+  assert.match(app, /locationParts\.push\(formatMonitoredWin\(matchForm\)\)/);
   assert.match(app, /Win ~\$\{form\.winPct\}%/);
   assert.doesNotMatch(app, /Weighted win % · Last 10 scored/);
   assert.doesNotMatch(app, /game\.opponentForm/);
@@ -1758,7 +1758,7 @@ test("match data retries and preserves last successful data during outages", () 
   const client = fs.readFileSync("frontend/web/lib/client.js", "utf8");
   assert.match(client, /temporaryGatewayError = \[502, 503, 504\]/);
   assert.match(client, /safeGet/);
-  assert.match(app, /api\("\/web\/calendar", \{retryNetwork: true\}\)/);
+  assert.match(app, /api\("\/web\/calendar", \{\s*retryNetwork: true, timeoutMs: 4_000/);
   assert.match(app, /void loadRsvpStatus\(\)\.catch\(\(\) => false\)/);
   assert.match(app, /if \(currentCalendar\) \{/);
   assert.match(app, /Last synced · Reconnecting/);
@@ -1801,7 +1801,7 @@ test("repeated scouting requests do not starve public match data", () => {
   assert.match(worker, /publicReadCache\.get\("rats-history", 120_000/);
   assert.match(worker, /loadRatsHistoryUncached\(env\)/);
   assert.match(worker, /publicReadCache\.get\("public-snapshot", 90_000/);
-  assert.match(worker, /prebuilt-scout-index-v1/);
+  assert.match(worker, /prebuilt-scout-index-v2/);
   assert.match(worker, /scoutingProjectionCurrent\(index, snapshot\)/);
   assert.match(worker, /index\.reports\[key\]/);
   assert.match(worker, /standings-fallback:/);
@@ -1826,7 +1826,7 @@ test("scouting is precomputed hourly and no longer floods the Worker with browse
   assert.match(app, /function scoutReportKey\(teamName, division/);
   assert.doesNotMatch(app, /prefetchScoutReports/);
   assert.doesNotMatch(app, /scoutPrefetchInFlight/);
-  assert.match(app, /currentStandings\.updatedAt/);
+  assert.match(app, /currentStandings\?\.updatedAt/);
   assert.match(app, /encodeURIComponent\(division\)/);
   assert.match(worker, /url\.searchParams\.get\("division"\)/);
   assert.match(worker, /candidate\.divisionKey === division/);
@@ -1839,4 +1839,40 @@ test("scouting is precomputed hourly and no longer floods the Worker with browse
   assert.match(schedule, /node backend\/league\/scouting-index\.mjs/);
   assert.match(indexer, /encryptState\(value\)/);
   assert.doesNotMatch(app, /11v11-weighted.*form\.wins/);
+});
+
+test("scouting preloads once after base data, and status recovery never awaits optional endpoints", () => {
+  const app = fs.readFileSync("frontend/web/app.js","utf8");
+  const client = fs.readFileSync("frontend/web/lib/client.js","utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs","utf8");
+  const css = fs.readFileSync("frontend/web/styles.css","utf8");
+  assert.match(worker, /url\.pathname === "\/web\/scouting-reports"/);
+  assert.match(worker, /index\.reports/);
+  assert.match(worker, /kvJsonGet\(env, "snapshot:scout-index"\)/);
+  assert.match(app, /async function preloadPublishedScouts\(\)/);
+  assert.match(app, /api\("\/web\/scouting-reports"/);
+  assert.match(app, /recentScoutReports\.set\(scoutReportKey\(team, division\)/);
+  assert.match(app, /void preloadPublishedScouts\(\)/);
+  assert.match(app, /function restorePublicCalendar\(\)/);
+  assert.match(app, /function rememberPublicCalendar\(calendar\)/);
+  assert.match(app, /sessionStorage\.setItem\(PUBLIC_CALENDAR_CACHE_KEY/);
+  assert.match(app, /restorePublicCalendar\(\);\s*if \(currentCalendar\) setSystemState\("stale"\)/);
+  assert.match(app, /const calendarOk = await loadCalendar\(\)/);
+  assert.match(app, /if \(!optionalRefreshInFlight\)/);
+  assert.match(app, /Promise\.allSettled\(\[/);
+  assert.match(client, /new AbortController\(\)/);
+  assert.match(client, /error\?\.name === "AbortError"/);
+  assert.match(app, /locationParts\.push\(formatMonitoredWin\(matchForm\)\)/);
+  assert.match(css, /\.next-game-form \{ display: none !important; \}/);
+  assert.match(css, /\.standings-slide \.eyebrow \{\s*color: rgba\(191, 219, 254, 0\.72\)/);
+});
+
+test("scouting index initializes when its workflow is merged or release is promoted", () => {
+  const source = fs.readFileSync(".github/workflows/scouting-index.yml","utf8");
+  assert.match(source, /cron: '7 \* \* \* \*'/);
+  assert.match(source, /branches: \[main\]/);
+  assert.match(source, /scouting-index\.yml'/);
+  assert.match(source, /workflows: \["Promote production release"\]/);
+  assert.match(source, /workflow_run\.conclusion == 'success'/);
+  assert.match(source, /node backend\/league\/scouting-index\.mjs/);
 });
