@@ -126,8 +126,8 @@ test("attacking/defending rankings use per-game rates in the correct direction",
   // Third Touch: 3 GF in two matches, 1 GA -> 1.5 and 0.5 goals/game.
   const view = buildLeagueStandings(data, "fall-2026", ["Third Touch FC"], "2026-10-13");
   const stats = view.cards[0].stats;
-  assert.deepEqual(stats.attack, { rank: 1, total: 2, perGame: 1.5, goals: 3 });
-  assert.deepEqual(stats.defense, { rank: 1, total: 2, perGame: 0.5, goals: 1 });
+  assert.deepEqual(stats.attack, { rank: 1, total: 3, perGame: 1.5, goals: 3 });
+  assert.deepEqual(stats.defense, { rank: 1, total: 3, perGame: 0.5, goals: 1 });
   assert.equal(stats.previousSeason, null);
   assert.equal(stats.previousSeasonLabel, "Summer 2026");
   assert.equal(stats.archiveComplete, false);
