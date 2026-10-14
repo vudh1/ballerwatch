@@ -7,6 +7,9 @@ import {
   buildTeamScout,
   buildTeamRecentForm,
   buildMatchupEstimate,
+  buildScoutingSnapshot,
+  standingsFromScoutingSnapshot,
+  teamHistoryFromScoutingSnapshot,
 } from "../../../backend/shared/league-standings.mjs";
 
 function archive() {
@@ -404,4 +407,31 @@ test("standings attaches next fixture matchup estimates separately from live cal
   assert.equal(estimate.opponent,"Other A");
   assert.ok(estimate.winPct >= 15 && estimate.winPct <= 85);
   assert.equal(Object.keys(view.matchups).length,1);
+});
+
+test("hourly public projection serves complete scouting and fixture estimates without live archive work", () => {
+  const history = archive();
+  const projected = buildScoutingSnapshot(history,"fall-2026","2026-10-13",[
+    {team:"Third Touch FC",opponent:"Other A",date:"2026-10-19"},
+  ]);
+  assert.equal(projected.schemaVersion,1);
+  assert.equal(projected.sourceUpdatedAt,history.updatedAt);
+  assert.ok(projected.cards.some(card=>card.team==="Third Touch FC"));
+  const standings = standingsFromScoutingSnapshot(projected,"fall-2026",
+    ["Third Touch FC","PhoSaiGon"],[
+      {team:"Third Touch FC",opponent:"Other A"},
+    ]);
+  assert.equal(standings.cards.length,2);
+  assert.ok(standings.cards[0].rows[0].highlighted);
+  assert.ok(standings.cards[0].recentForm);
+  assert.ok(standings.matchups["third touch|other a"]);
+  assert.equal(standingsFromScoutingSnapshot(projected,"winter-2027",["Third Touch FC"]),null);
+  const report = teamHistoryFromScoutingSnapshot(projected,"fall-2026",
+    "Other A","tuesday|men|2|11v11");
+  assert.ok(report);
+  assert.equal(report.team,"Other A");
+  assert.ok(report.scout);
+  assert.equal(teamHistoryFromScoutingSnapshot(projected,"winter-2027","Other A"),null);
+  assert.equal(teamHistoryFromScoutingSnapshot(projected,"fall-2026",
+    "Other A","wednesday|coed|1|11v11"),null);
 });
