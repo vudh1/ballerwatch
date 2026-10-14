@@ -208,8 +208,8 @@
 .v2 .scene-copy { opacity: 0.33; }
 .v2 .v2-shell {
   margin-top: 0;
-  min-height: 240vh;
-  min-height: 240svh;
+  min-height: 100vh;
+  min-height: 100svh;
   opacity: 1;
   background: linear-gradient(180deg, rgba(8, 15, 20, 0.58), rgba(8, 15, 20, 0.38) 45%, rgba(8, 15, 20, 0.82));
 }
@@ -244,4 +244,20 @@
   .v2 .v2-static-welcome { display: block; }
   .v2 #panel-matchday .v2-match-grid { opacity: 1; transform: none; }
   .v2 .soccer-intro { display: none; }
+}
+
+/* Matchday now displays all the V1-style front cards in one natural scroll. */
+.v2-full-feed #panel-schedule,
+.v2-full-feed #panel-club {
+  opacity: var(--v2-cards-visible, 0);
+  transform: translateY(calc((1 - var(--v2-cards-visible, 0)) * 32px));
+  transition: opacity 130ms linear, transform 130ms linear;
+}
+.v2-full-feed #panel-schedule { margin-top: clamp(2rem, 5vw, 4rem); }
+.v2-full-feed #panel-club { margin-top: clamp(2rem, 5vw, 4rem); }
+.v2-intro-skipped.v2-full-feed #panel-schedule,
+.v2-intro-skipped.v2-full-feed #panel-club { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .v2-full-feed #panel-schedule,
+  .v2-full-feed #panel-club { opacity: 1; transform: none; }
 }
