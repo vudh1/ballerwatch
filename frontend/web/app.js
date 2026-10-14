@@ -31,6 +31,8 @@ import { createSettingsChoice } from "./lib/settings-choice.js";
 import { experienceKey, isV2 } from "./lib/experience.js";
 import { PUBLIC_CALENDAR_LOCAL_KEY, readPublicCalendar, todaySeattleKey,
   writePublicCalendar } from "./lib/public-calendar-cache.js";
+import { PUBLIC_STANDINGS_LOCAL_KEY, readPublicStandings, writePublicStandings }
+  from "./lib/public-standings-cache.js";
 
 const els = {
   launchIntro: document.querySelector("#launch-intro"),
@@ -229,6 +231,7 @@ const QUESTION_HISTORY_KEY = experienceKey("ballerwatch-question-history-v1", "q
 const LIVE_DATA_REFRESH_MS = 60_000;
 const PUBLIC_CALENDAR_CACHE_KEY = experienceKey("ballerwatch-public-calendar-session-v1", "public-calendar");
 const PUBLIC_CALENDAR_DEVICE_KEY = experienceKey(PUBLIC_CALENDAR_LOCAL_KEY, "public-calendar-device");
+const PUBLIC_STANDINGS_DEVICE_KEY = experienceKey(PUBLIC_STANDINGS_LOCAL_KEY, "public-standings-device");
 const APP_UPDATE_CHECK_MS = 5 * 60_000;
 const SPOTLIGHT_IDLE_RESET_MS = 15_000;
 const INTERACTION_VIBRATION_MS = 8;
@@ -1706,7 +1709,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=8.11.1", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=8.11.2", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -2294,11 +2297,11 @@ function renderWinChanceBar(target, game, estimate) {
   labels.className = "win-chance-labels";
   for (const [text, pct, fullName] of [
     [teamAcronym(game.team), estimate.winPct, game.team],
-    ["Tie", estimate.drawPct, "Draw"],
+    ["Tie", null, "Draw"],
     [teamAcronym(game.opponent), estimate.lossPct, game.opponent],
   ]) {
     const label = document.createElement("span");
-    label.textContent = `${text} ${pct}%`;
+    label.textContent = pct == null ? text : `${text} ${pct}%`;
     label.title = fullName;
     labels.append(label);
   }
@@ -3389,30 +3392,46 @@ function renderStandings() {
   setStandingsSlide(standingsIndex);
 }
 
-async function loadStandings() {
+function rememberPublicStandings(standings) {
+  writePublicStandings(localStorage, PUBLIC_STANDINGS_DEVICE_KEY, standings);
+}
+
+function applyPublicStandings(standings) {
+  const selectedTeam = currentStandings?.cards?.[standingsIndex]?.team;
+  currentStandings = standings;
+  const index = currentStandings.cards?.findIndex((card) => card.team === selectedTeam) ?? -1;
+  standingsIndex = index >= 0 ? index : 0;
+  renderStandings();
+  // The calendar can arrive before OR after the scouting response.
+  // Refresh the visible probability bar without touching the location text,
+  // selected fixture, carousel position, or public calendar cache.
+  const selected = currentCalendar?.games?.find((game) => game.id === selectedCalendarGameId);
+  const shown = selected || currentNextGame;
+  if (shown) {
+    renderWinChanceBar(els.nextGameForm, shown, monitoredWinForm(shown));
+    window.requestAnimationFrame(syncSpotlightCardDimensions);
+  }
+}
+
+function restorePublicStandings() {
+  const cached = readPublicStandings(localStorage, PUBLIC_STANDINGS_DEVICE_KEY);
+  if (!cached) return false;
+  applyPublicStandings(cached);
+  return true;
+}
+
+async function loadStandings({ initial = false } = {}) {
   try {
-    const payload = await api("/web/standings", {retryNetwork: true});
+    const payload = await api("/web/standings", {
+      retryNetwork: !initial, timeoutMs: initial ? 3_800 : 4_000,
+    });
     if (!payload?.ok || !payload.standings) throw new Error("Standings unavailable");
-    const selectedTeam = currentStandings?.cards?.[standingsIndex]?.team;
-    // Refresh the preload check once per minute; the unchanged archive is not
-    // needlessly re-fetched for every team.
-    if (JSON.stringify(currentStandings) === JSON.stringify(payload.standings)) {
-      if (!recentScoutReports.size) void preloadPublishedScouts();
-      return true;
+    rememberPublicStandings(payload.standings);
+    // Avoid unnecessary DOM replacement and layout on unchanged snapshots.
+    if (JSON.stringify(currentStandings) !== JSON.stringify(payload.standings)) {
+      applyPublicStandings(payload.standings);
     }
-    currentStandings = payload.standings;
-    // A short win estimate lives inline after the jersey/location metadata.
-    // Match and calendar fixtures remain independent of the scouting index.
-    const selected = currentCalendar?.games?.find((game) => game.id === selectedCalendarGameId);
-    const shown = selected || currentNextGame;
-    if (shown?.kind === "league") {
-      els.nextGameLocation.textContent = spotlightModel(shown).location;
-      window.requestAnimationFrame(syncSpotlightCardDimensions);
-    }
-    void preloadPublishedScouts();
-    const index = currentStandings.cards?.findIndex((card) => card.team === selectedTeam) ?? -1;
-    standingsIndex = index >= 0 ? index : 0;
-    renderStandings();
+    if (!recentScoutReports.size) void preloadPublishedScouts();
     return true;
   } catch {
     if (!currentStandings) {
@@ -4990,10 +5009,15 @@ renderNotificationPreferences();
 // On repeat visits, render the last verified PUBLIC fixtures from device
 // storage synchronously. This keeps the opening view independent of network,
 // scouting, push setup and weather/venue enrichment latency.
+// Restore both public card types before network I/O or the first awaited GET.
+// Restoring standings first also lets a saved league match paint its forecast
+// alongside the calendar, rather than jumping in later.
+restorePublicStandings();
 const restoredPublicCalendar = restorePublicCalendar();
 setSystemState(restoredPublicCalendar ? "ready" : "checking");
-// Network validation may be slow, but the saved match and calendar are already
-// interactive. No scouting or historical computation runs in this startup path.
+// Start both independent HTTP requests together; never hold standings behind
+// the calendar's 3.8-second verification deadline on a first-time visit.
+void loadStandings({ initial: true }).catch(() => false);
 const calendarOk = await loadCalendar({ initial: true }).catch(() => false);
 setCalendarConnectionResult(calendarOk);
 if (!calendarOk && !currentCalendar && navigator.onLine !== false) {
@@ -5004,7 +5028,7 @@ initialLoadComplete = true;
 // Refresh/install the service worker without blocking already visible cards.
 void registerServiceWorker().catch(() => null);
 void Promise.allSettled([
-  loadConfig(), loadBoard(), loadStandings(), loadNotificationProfile(),
+  loadConfig(), loadBoard(), loadNotificationProfile(),
 ]);
 void updatePushStatus();
 if (ownerToken()) void syncCurrentPushRegistration();

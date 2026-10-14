@@ -6322,10 +6322,11 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
   pointer-events: none;
 }
 
-/* v8.11.1 — single-layer three-outcome match forecast, no inner card. */
+/* v8.11.2 — probability and RSVP tracks share the full-width row just
+   below the venue/address, rather than inserting odds above the address. */
 .spotlight-content {
   grid-template-areas:
-    "heading heading" "meta meta" "form form" "location weather"
+    "heading heading" "meta meta" "location weather" "form form"
     "capacity capacity" "actions actions" "hint hint";
 }
 .next-game-form {
@@ -6336,8 +6337,8 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
   border: 0;
   border-radius: 0;
   background: transparent;
-  margin: 0.65rem 0 0;
-  gap: 0.4rem;
+  margin: 0.95rem 0 0;
+  gap: 0.5rem;
   white-space: normal;
   line-height: 1.4;
 }
@@ -6356,7 +6357,7 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
 .win-chance-track {
   display: flex;
   width: 100%;
-  height: 0.6rem;
+  height: 0.48rem;
   overflow: hidden;
   border-radius: 999px;
   background: rgba(148, 163, 184, 0.22);

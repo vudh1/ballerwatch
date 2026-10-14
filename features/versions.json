@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.11.1",
+  "currentVersion": "8.11.2",
   "releases": [
+    {
+      "version": "8.11.2",
+      "date": "2026-10-14",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Instant standings and match probability placement",
+      "webAnnouncement": "BallerWatch 8.11.2 opens cached standings alongside the match and calendar, fetches all public cards in parallel, and places the compact match forecast beneath the address with no visible tie percentage.",
+      "changes": [
+        "Restore strictly allowlisted anonymous public standings from a date- and age-bounded device snapshot on repeat launches; no team scouting reports, user data, tokens or RSVPs are persisted.",
+        "Start /web/standings independently alongside the initial calendar fetch, preserving the fast cached calendar and stable connection status.",
+        "Refresh the active match probability bar whenever a newer scouting snapshot arrives, even when calendar fixtures are unchanged.",
+        "Move the three-outcome bar below the address, full width like RSVP progress, with team win percentages and a plain Tie label but no displayed tie percentage.",
+        "Add cache/privacy and browser regressions for V1 and V2; update installable service-worker cache versions."
+      ]
+    },
     {
       "version": "8.11.1",
       "date": "2026-10-14",
