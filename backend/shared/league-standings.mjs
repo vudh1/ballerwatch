@@ -92,6 +92,75 @@ function divisionStandings(season, trackedTeam, today) {
   return rows.map((row, index) => ({ ...row, rank: index + 1 }));
 }
 
+function previousSeasonId(seasonId) {
+  const match = /^(winter|spring|summer|fall)-(\d{4})$/i.exec(String(seasonId || ""));
+  if (!match) return "";
+  const index = SEASON_NAMES.indexOf(match[1].toLowerCase());
+  const previousIndex = (index + SEASON_NAMES.length - 1) % SEASON_NAMES.length;
+  const year = Number(match[2]) - (index === 0 ? 1 : 0);
+  return `${SEASON_NAMES[previousIndex]}-${year}`;
+}
+
+function rankedGoalRate(rows, teamName, field, ascending = false) {
+  const scored = rows.filter((row) => row.played > 0);
+  if (!scored.length) return null;
+  const ordered = [...scored].sort((a, b) => {
+    const left = a[field] / a.played;
+    const right = b[field] / b.played;
+    return (ascending ? left - right : right - left) ||
+      a.name.localeCompare(b.name);
+  });
+  const chosen = ordered.find((row) =>
+    normalizeHistoryTeamName(row.name) === normalizeHistoryTeamName(teamName));
+  if (!chosen) return null;
+  // Ties share ranks: alphabetical sorting only stabilizes display order.
+  const rate = chosen[field] / chosen.played;
+  const better = ordered.filter((row) => {
+    const comparison = row[field] / row.played;
+    return ascending ? comparison < rate : comparison > rate;
+  }).length;
+  return {
+    rank: better + 1,
+    total: scored.length,
+    perGame: Math.round(rate * 100) / 100,
+    goals: chosen[field],
+  };
+}
+
+function trackedTeamStats(history, seasonId, team, rows, today) {
+  const attack = rankedGoalRate(rows, team.name, "goalsFor");
+  const defense = rankedGoalRate(rows, team.name, "goalsAgainst", true);
+  const priorId = previousSeasonId(seasonId);
+  const prior = seasonData(history, priorId);
+  const previousTeam = matchingTeam(
+    Array.isArray(prior?.teams) ? prior.teams : [],
+    team.name,
+  );
+  let previousSeason = null;
+  if (prior && previousTeam) {
+    const previousRows = divisionStandings(prior, previousTeam, today);
+    const matched = previousRows.find((row) =>
+      normalizeHistoryTeamName(row.name) === normalizeHistoryTeamName(previousTeam.name));
+    if (matched && matched.played > 0) {
+      previousSeason = {
+        rank: matched.rank,
+        total: previousRows.length,
+        label: prior.label || seasonLabel(priorId),
+        division: displayDivision(previousTeam),
+        matches: matched.played,
+      };
+    }
+  }
+
+  return {
+    attack,
+    defense,
+    previousSeason,
+    previousSeasonLabel: seasonLabel(priorId),
+    archiveComplete: history?.coverage?.complete === true,
+  };
+}
+
 /** Current-season cards deliberately never fall back to a previous season. */
 export function buildLeagueStandings(history, seasonId, monitoredTeams = [], today = "9999-12-31") {
   const season = seasonData(history, seasonId);
@@ -129,6 +198,7 @@ export function buildLeagueStandings(history, seasonId, monitoredTeams = [], tod
           highlighted: normalizeHistoryTeamName(row.name) === highlightedName,
         })),
         hasResults: rows.some((row) => row.played > 0),
+        stats: trackedTeamStats(history, seasonId, team, rows, today),
       };
     }),
   };
