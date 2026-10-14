@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, Calendar sync, and quick answers into one installable app.
 
-**Current source version: 8.2.1**
+**Current source version: 8.3.0**
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
 
@@ -34,6 +34,14 @@ Saturday synthetic pickup is shown simply as **Pickup** and has no RSVP/capacity
 A 22-second walkthrough with a short animated intro. Recorded from the app using synthetic sample data; game details, answers, and notifications are illustrative.
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/)
+
+## BallerWatch 8.3.0 — League rankings and unified carousel navigation
+
+- **LEAGUE STANDINGS inside each card:** Like the **NEXT GAME** and **MATCH DAYS** headings, the eyebrow now sits inside the active team card, above its team name. Standings use larger readable lettering and a tighter Played column.
+- **Useful ranking bars:** Attack and Defense show the tracked team's rank among division teams with completed scores, with goals scored/conceded **per game**. Last Season shows the previous RATS season's calculated rank when that specific archive and team season are available; otherwise it clearly says unavailable. Short bars encode ranking position, not goal totals. These are provisional 3–1–0 standings, not official RATS tiebreaker rankings.
+- **Unified swiping:** The **14-Day Calendar** now slides a real neighboring 14-day card into view as you drag, with the same smooth snap and subtle edge-waterfall arrows as match cards on desktop. Date tapping still expands to Full Schedule and selects a game where available; the arrows page without expanding.
+- **Standings swipe anywhere:** On mobile the standings train also lets you start swiping from a team row, while a tap still opens its scored match-history dialog.
+- **Data scope:** Ranking statistics only use scored RATS games and existing encrypted-index public results, refresh on the existing 12-hour complete-archive cadence, and expose partial coverage rather than inventing missing records.
 
 ## BallerWatch 8.2.1 — Minimal standings card train and faster results
 
