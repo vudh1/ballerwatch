@@ -615,7 +615,7 @@ test("web Live status requires successful runtime-backed reads", () => {
   const config = app.match(/async function loadConfig\(\)[\s\S]*?\n}\n/)?.[0] || "";
   const online = app.match(/window\.addEventListener\("online"[\s\S]*?\n}\);/)?.[0] || "";
 
-  assert.match(refresh, /const \[calendarOk, boardOk\] = await Promise\.all/);
+  assert.match(refresh, /const \[calendarOk\] = await Promise\.all/);
   assert.match(refresh, /calendarOk \? "live" : currentCalendar \? "stale" : "offline"/);
   assert.doesNotMatch(config, /setSystemState\("live"\)/);
   assert.match(online, /setSystemState\("checking"\)/);
@@ -702,7 +702,7 @@ test("installed app does not interrupt first-load hydration for a service-worker
   );
   assert.match(
     app,
-    /await Promise\.all\(\[\s*registerServiceWorker\(\)\.catch\(\(\) => null\),\s*loadConfig\(\),\s*loadBoard\(\),\s*loadCalendar\(\),\s*loadStandings\(\),\s*loadNotificationProfile\(\),\s*\]\);/,
+    /await Promise\.allSettled\(\[\s*registerServiceWorker\(\),\s*loadConfig\(\),\s*loadBoard\(\),\s*loadCalendar\(\),\s*loadStandings\(\),\s*loadNotificationProfile\(\),\s*\]\);/,
   );
   assert.match(app, /initialLoadComplete = true/);
   assert.match(
@@ -863,8 +863,8 @@ test("notification center supports filters, synced read state, and account prefe
   assert.match(css, /\.notification-preference-options \{[\s\S]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/);
   assert.match(app, /const notificationProfileRefresh = ownerToken\(\)/);
   assert.match(app, /loadNotificationProfile\(\{ migrateLocal: false \}\)/);
-  assert.match(app, /const \[calendarOk, boardOk\] = await Promise\.all/);
-  assert.match(app, /await notificationProfileRefresh/);
+  assert.match(app, /const \[calendarOk\] = await Promise\.all/);
+  assert.match(app, /notificationProfileRefresh\.catch\(\(\) => false\)/);
   assert.match(app, /Synced when active for @/);
 });
 
