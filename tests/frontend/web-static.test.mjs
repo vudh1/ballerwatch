@@ -1651,14 +1651,14 @@ test("standings uses adjacent-card drag train and minimal table, preserving team
   const css = fs.readFileSync("frontend/web/styles.css", "utf8");
 
   assert.match(html, /class="standings-rail"/);
-  assert.match(html, /class="standings-step standings-step-previous"/);
-  assert.match(html, /class="standings-step standings-step-next"/);
+  assert.match(html, /class="standings-step carousel-waterfall-edge standings-step-previous"/);
+  assert.match(html, /class="standings-step carousel-waterfall-edge standings-step-next"/);
   assert.doesNotMatch(html, /class="card standings-card"/);
   assert.match(app, /function standingsStepWidth\(\)/);
   assert.match(app, /els\.standingsViewport\.clientWidth \+ gap/);
   assert.match(app, /standingsIndex \* standingsStepWidth\(\)/);
   assert.doesNotMatch(app, /standingsIndex \* 100/);
-  assert.match(app, /viewport\.setPointerCapture\(event\.pointerId\)/);
+  assert.match(app, /viewport\.setPointerCapture\(event\.pointerId\)/);\n  assert.match(app, /touchmove/);\n  assert.match(app, /passive: false/);
   assert.match(app, /"pointermove"/);
   assert.match(app, /"pointercancel"/);
   assert.match(app, /is-train-dragging/);
@@ -1813,7 +1813,7 @@ test("repeated scouting requests do not starve public match data", () => {
   assert.match(worker, /publicReadCache\.get\("rats-history", 120_000/);
   assert.match(worker, /loadRatsHistoryUncached\(env\)/);
   assert.match(worker, /publicReadCache\.get\("public-snapshot", 90_000/);
-  assert.match(worker, /prebuilt-scout-index-v3/);
+  assert.match(worker, /prebuilt-scout-index-v4/);
   assert.match(worker, /scoutingProjectionCurrent\(index, snapshot\)/);
   assert.match(worker, /index\.reports\[key\]/);
   assert.doesNotMatch(worker, /standings-fallback:|scout-fallback:|buildLeagueStandings\(|buildLeagueTeamHistory\(/);
@@ -1887,4 +1887,52 @@ test("scouting index initializes when its workflow is merged or release is promo
   assert.match(source, /workflows: \["Promote production release"\]/);
   assert.match(source, /workflow_run\.conclusion == 'success'/);
   assert.match(source, /node backend\/league\/scouting-index\.mjs/);
+});
+
+test("match/standings share the EXACT masked waterfall class and responsive touch intent", () => {
+  const html = fs.readFileSync("frontend/web/index.html","utf8");
+  const css = fs.readFileSync("frontend/web/styles.css","utf8");
+  const app = fs.readFileSync("frontend/web/app.js","utf8");
+  assert.match(html, /class="spotlight-edge-control carousel-waterfall-edge spotlight-edge-previous"/);
+  assert.match(html, /class="standings-step carousel-waterfall-edge standings-step-previous"/);
+  assert.match(css, /:is\(\.spotlight-carousel, \.standings-rail\)[\s\S]*\.carousel-waterfall-edge::before/);
+  assert.match(css, /\.carousel-waterfall-edge:is\(\.spotlight-edge-next, \.standings-step-next\)::before/);
+  assert.match(css, /-webkit-mask-image: linear-gradient\(270deg/);
+  assert.match(app, /touchstart/);
+  assert.match(app, /touchmove/);
+  assert.match(app, /event\.touches\.length !== 1/);
+  assert.match(app, /suppressClickUntil = Date\.now\(\) \+ 550/);
+  assert.match(app, /Math\.abs\(dx\) \/ elapsed >= 0\.38/);
+});
+test("searchable comboboxes preserve private RSVP names and multi team selections", () => {
+  const html = fs.readFileSync("frontend/web/index.html","utf8");
+  const app = fs.readFileSync("frontend/web/app.js","utf8");
+  const css = fs.readFileSync("frontend/web/styles.css","utf8");
+  const choice = fs.readFileSync("frontend/web/lib/settings-choice.js","utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs","utf8");
+  assert.match(html, /id="owner-name-options" role="listbox"/);
+  assert.match(html, /id="owner-teams-options" role="listbox"[\s\S]*aria-multiselectable="true"/);
+  assert.match(html, /id="owner-teams-chips"/);
+  assert.match(app, /api\("\/web\/user\/selection-options"/);
+  assert.match(app, /loadSettingsChoiceOptions\(\)/);
+  assert.match(choice, /aria-selected/);
+  assert.match(choice, /Escape/);
+  assert.match(choice, /maxSelected = 20/);
+  assert.match(css, /\.settings-choice-popover/);
+  assert.match(worker, /userRoute\(url\.pathname, "selection-options"\)/);
+  assert.match(worker, /resolveOwnerCapability\(env, bearerToken\(request\)\)/);
+  assert.match(worker, /privateRsvpNameOptions/);
+  assert.doesNotMatch(app, /localStorage\.setItem\([^)]*(?:rsvp|choice|roster)/);
+});
+test("AI scouting is grounded in a prepared model, never raw history on question load", () => {
+  const app = fs.readFileSync("frontend/web/app.js","utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs","utf8");
+  const model = fs.readFileSync("backend/shared/scouting-ai.mjs","utf8");
+  assert.match(worker, /isScoutingQuestion\(text\)/);
+  assert.match(worker, /answerScoutingQuestion\(text, index/);
+  assert.match(worker, /loadScoutingIndex\(env\)/);
+  assert.match(model, /index\?\.reports/);
+  assert.match(model, /match\.winPct/);
+  assert.match(model, /not calibrated betting odds/);
+  assert.match(app, /What is the win chance for the next monitored matchup/);
 });
