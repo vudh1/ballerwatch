@@ -172,6 +172,7 @@ const els = {
 let config = null;
 let currentNextGame = null;
 let currentCalendar = null;
+let calendarReadWasStale = false;
 let currentBoardEntries = [];
 let selectedCalendarDate = "";
 let selectedCalendarGameId = "";
@@ -3682,11 +3683,14 @@ async function loadCalendar() {
     const next = payload.calendar || null;
     // Keep the active card, scroll position and expensive layout untouched
     // when the public schedule/weather snapshot is unchanged.
-    if (JSON.stringify(next) !== JSON.stringify(currentCalendar)) {
+    if (calendarReadWasStale ||
+        JSON.stringify(next) !== JSON.stringify(currentCalendar)) {
       renderCalendar(next);
     }
+    calendarReadWasStale = false;
     return true;
   } catch (error) {
+    calendarReadWasStale = true;
     // Keep the last successfully loaded fixtures while a request fails.
     // An empty-state fallback is appropriate only before the first sync.
     if (currentCalendar) {
