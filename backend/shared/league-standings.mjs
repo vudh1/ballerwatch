@@ -38,12 +38,19 @@ function seasonData(history, seasonId) {
     .find((season) => season.seasonId === seasonId) || null;
 }
 
-function matchingTeam(teams, name) {
-  const exact = teams.filter((team) =>
+function matchingTeam(teams, name, division = "") {
+  // RATS can reuse an exact club name in multiple divisions. Resolve the
+  // explicitly selected standings division rather than treating it as a
+  // missing team, while rejecting genuinely ambiguous unscoped requests.
+  const candidates = (Array.isArray(teams) ? teams : []);
+  const scoped = division
+    ? candidates.filter((team) => displayDivision(team) === division)
+    : candidates;
+  const exact = scoped.filter((team) =>
     normalizeHistoryTeamName(team?.name) === normalizeHistoryTeamName(name));
   if (exact.length === 1) return exact[0];
   if (exact.length > 1) return null;
-  const alias = teams.filter((team) => historyTeamKey(team?.name) === historyTeamKey(name));
+  const alias = scoped.filter((team) => historyTeamKey(team?.name) === historyTeamKey(name));
   return alias.length === 1 ? alias[0] : null;
 }
 
@@ -418,9 +425,11 @@ function addRecord(record, scored, conceded) {
 }
 
 /** A read-only, opponent-aware snapshot rendered only when a standings team is tapped. */
-export function buildTeamScout(history, currentSeasonId, teamName, today = "9999-12-31") {
+export function buildTeamScout(
+  history, currentSeasonId, teamName, today = "9999-12-31", division = "",
+) {
   const current = seasonData(history, currentSeasonId);
-  const team = matchingTeam(Array.isArray(current?.teams) ? current.teams : [], teamName);
+  const team = matchingTeam(Array.isArray(current?.teams) ? current.teams : [], teamName, division);
   if (!team) return null;
   const seasonRows = divisionStandings(current, team, today);
   const currentRank = seasonRows.find((row) =>
@@ -470,9 +479,11 @@ export function buildTeamScout(history, currentSeasonId, teamName, today = "9999
 }
 
 /** Returns only completed public games; no score means the game is omitted. */
-export function buildLeagueTeamHistory(history, currentSeasonId, teamName, limit = 35, today = "9999-12-31") {
+export function buildLeagueTeamHistory(
+  history, currentSeasonId, teamName, limit = 35, today = "9999-12-31", division = "",
+) {
   const current = seasonData(history, currentSeasonId);
-  const team = matchingTeam(Array.isArray(current?.teams) ? current.teams : [], teamName);
+  const team = matchingTeam(Array.isArray(current?.teams) ? current.teams : [], teamName, division);
   if (!team) return null;
   const target = historyTeamKey(team.name);
   const matches = lastTeamGames(
@@ -487,7 +498,7 @@ export function buildLeagueTeamHistory(history, currentSeasonId, teamName, limit
     indexedMatchCount: matches.length,
     coverageComplete: history?.coverage?.complete === true,
     updatedAt: String(history?.updatedAt || ""),
-    scout: buildTeamScout(history, currentSeasonId, team.name, today),
+    scout: buildTeamScout(history, currentSeasonId, team.name, today, division),
     matches: matches.slice(0, Math.min(50, Math.max(1, limit))).map((match) => {
       const isHome = historyTeamKey(match.homeTeam) === target;
       const scored = isHome ? match.homeScore : match.awayScore;
