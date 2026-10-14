@@ -99,9 +99,7 @@ async function ready(page, route = "v2/") {
 
 async function atProgress(page, progress) {
   await page.evaluate((value) => {
-    const intro = document.querySelector("#soccer-intro");
-    const stage = document.querySelector("#soccer-stage");
-    window.scrollTo(0, (intro.offsetHeight - stage.clientHeight) * value);
+    window.scrollTo(0, (document.documentElement.scrollHeight - window.innerHeight) * value);
   }, progress);
   await page.waitForFunction((value) => Math.abs(Number(document.documentElement.dataset.sceneProgress) - value) < 0.002, progress);
   return page.locator("#scene-ball").getAttribute("transform");
@@ -145,7 +143,8 @@ try {
       await scenario(`${engine}: critical data loads during a reversible scroll intro; natural goal reveal`, async () => {
         const { context, page, calls, errors } = await prepare(browser);
         await ready(page);
-        assert.equal(await page.locator("#matchday-app").evaluate((el) => el.inert), true);
+        assert.equal(await page.locator("#matchday-app").evaluate((el) => el.inert), false);
+        assert.equal(await page.locator("#soccer-intro").isVisible(), true);
         assert.equal(calls.filter((call) => call.path === "/web/calendar").length, 1);
         await shot(page, `${engine}-intro-setup`);
         const forward = await atProgress(page, 0.44);
@@ -158,7 +157,7 @@ try {
         await shot(page, `${engine}-intro-goal`);
         await atProgress(page, 1);
         assert.equal(await page.locator("#matchday-app").evaluate((el) => el.inert), false);
-        assert.equal(await page.evaluate(() => sessionStorage.getItem("ballerwatch:v2:intro-seen")), "1");
+        assert.ok(await page.locator("#panel-matchday .v2-match-grid").evaluate((el) => Number(getComputedStyle(el).opacity) > 0.95));
         await shot(page, `${engine}-matchday-desktop`);
         assert.deepEqual(errors, []);
         await context.close();
@@ -205,7 +204,7 @@ try {
         await page.reload();
         await page.waitForFunction(() => !document.querySelector("#matchday-app").inert);
         assert.equal(new URL(page.url()).pathname, "/ballerwatch/v2/");
-        assert.equal(await page.locator("#soccer-intro").isVisible(), false);
+        assert.equal(await page.locator("#soccer-intro").isVisible(), true);
         await page.setViewportSize({ width: 844, height: 390 });
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
         // Device emulation reports zero hardware safe areas. Inject asymmetric
@@ -311,15 +310,19 @@ try {
           const keys = await page.evaluate(() => caches.keys());
           assert.ok(keys.some((key) => /^ballerwatch-v\d/.test(key) && !key.startsWith("ballerwatch-v2-")));
           assert.ok(keys.some((key) => key.startsWith("ballerwatch-v2-") && key.endsWith("-shell")));
+          // The synthetic fixtures point to 2099; offline restoration correctly
+          // rejects a cache that is not anchored to the current local day.
+          // Make the fixture current before testing service-worker offline use.
           await alignSyntheticCalendarCacheToToday(page);
           await context.unrouteAll({ behavior: "wait" });
           await context.setOffline(true);
           await page.reload({ waitUntil: "domcontentloaded" });
           assert.equal(new URL(page.url()).pathname, "/ballerwatch/v2/");
           await page.waitForFunction(() => !document.querySelector("#matchday-app").inert);
-          await page.waitForFunction(() =>
-            document.querySelector("#next-game-title").textContent.includes("October 15"),
-            null, { timeout: 2_500 });
+          // The V2 background no longer gates interactivity, so wait for the
+          // independently restored public fixture rather than the old intro.
+          await page.waitForFunction(() => document.querySelector("#next-game-title")
+            ?.textContent === "Thursday, October 15", null, { timeout: 8000 });
           assert.equal(await page.locator("#next-game-title").textContent(), "Thursday, October 15");
           await page.goto(`${origin}/ballerwatch/`, { waitUntil: "domcontentloaded" });
           assert.equal(await page.locator(".brand-lockup h1").textContent(), "BallerWatch");

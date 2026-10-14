@@ -12,7 +12,14 @@ const buttons = [...document.querySelectorAll("[data-v2-target]")];
 const panels = [...document.querySelectorAll("[data-v2-panel]")];
 
 function showPanel(name, { focus = false } = {}) {
-  for (const panel of panels) panel.hidden = panel.dataset.v2Panel !== name;
+  // Matchday mirrors V1: one vertically-scrollable page of match, schedule,
+  // and standings cards. Other nav tabs still focus their own sections.
+  const fullFeed = name === "matchday";
+  document.documentElement.classList.toggle("v2-full-feed", fullFeed);
+  for (const panel of panels) {
+    panel.hidden = panel.dataset.v2Panel !== name &&
+      !(fullFeed && ["schedule", "club"].includes(panel.dataset.v2Panel));
+  }
   for (const button of buttons) {
     button.setAttribute("aria-current", button.dataset.v2Target === name ? "page" : "false");
   }
