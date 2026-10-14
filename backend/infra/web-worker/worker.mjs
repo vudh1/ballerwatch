@@ -26,7 +26,7 @@ import { safeForExternalIntent, validatedAiIntent } from "../../shared/ai-intent
 import { answerFixtureQuestion } from "../../shared/fixture-ai.mjs";
 import { weeklyMatchBriefing } from "../../shared/match-briefing.mjs";
 import { answerRatsHistoryQuestion } from "../../shared/rats-history.mjs";
-import { buildLeagueStandings, buildLeagueTeamHistory, buildTeamRecentForm } from "../../shared/league-standings.mjs";
+import { buildLeagueStandings, buildLeagueTeamHistory } from "../../shared/league-standings.mjs";
 import { matchVenue } from "../../shared/venue-directory.mjs";
 import {
   applyFreePickupMatchOverride,
@@ -1627,6 +1627,10 @@ async function runtimeSettings(env) {
   return {};
 }
 
+// Deduplicate simultaneous cache misses in the same Worker isolate. Without
+// single-flight, initial config/calendar/standings requests each re-fetch and
+// decrypt the same runtime snapshot from GitHub on a cold cache.
+const pendingJsonLoads = new Map();
 async function cachedJson(key, ttlSeconds, loader) {
   const request = new Request(`https://ballerwatch.internal/cache/${key}`);
   const hit = await caches.default.match(request);
@@ -1634,14 +1638,24 @@ async function cachedJson(key, ttlSeconds, loader) {
     const value = await hit.json().catch(() => null);
     if (value) return value;
   }
-  const value = await loader();
-  await caches.default.put(
-    request,
-    new Response(JSON.stringify(value), {
-      headers: { "cache-control": `public,max-age=${ttlSeconds}` },
-    }),
-  );
-  return value;
+  if (pendingJsonLoads.has(key)) return pendingJsonLoads.get(key);
+  const promise = (async () => {
+    const value = await loader();
+    // A failed remote request must not poison the next attempt.
+    await caches.default.put(
+      request,
+      new Response(JSON.stringify(value), {
+        headers: { "cache-control": `public,max-age=${ttlSeconds}` },
+      }),
+    ).catch(() => {});
+    return value;
+  })();
+  pendingJsonLoads.set(key, promise);
+  try {
+    return await promise;
+  } finally {
+    if (pendingJsonLoads.get(key) === promise) pendingJsonLoads.delete(key);
+  }
 }
 
 async function loadGitHubSnapshot(env) {
