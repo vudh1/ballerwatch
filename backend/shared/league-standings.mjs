@@ -250,7 +250,7 @@ export function divisionStrengthMultiplier(team) {
   const raw = [team.divisionLabel, team.division, team.leagueName]
     .map((part) => String(part || "").trim());
   for (const part of raw) {
-    const explicit = /(?:^|[^a-z0-9])(?:d|division)[\\s_-]*([123])\\s*([abc])?(?=$|[^a-z0-9])/i.exec(part);
+    const explicit = /(?:^|[^a-z0-9])(?:d|division)[\s_-]*([123])\s*([abc])?(?=$|[^a-z0-9])/i.exec(part);
     if (explicit) return DIVISION_WEIGHTS[explicit[1] + (explicit[2] || "").toLowerCase()] || 1;
     // The official division metadata sometimes contains just "2a" or "1".
     if (/^[123](?:[abc])?$/i.test(part)) return DIVISION_WEIGHTS[part.toLowerCase()] || 1;
