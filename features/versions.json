@@ -1,7 +1,24 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.6.0",
+  "currentVersion": "8.6.1",
   "releases": [
+    {
+      "version": "8.6.1",
+      "date": "2026-10-13",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Restore prebuilt scouting reports and remove Checking hangs",
+      "webAnnouncement": "BallerWatch now bootstraps its missing hourly scouting index automatically, preloads prepared team reports after match data, restores recent public calendar data immediately while reconnecting, and displays the monitored win estimate inline after jersey color.",
+      "changes": [
+        "Fixes missing scouting index by triggering the independent encrypted report-generation workflow both on release promotion and whenever the scouting workflow is updated, without waiting for a scheduled hourly run.",
+        "Adds one background read-only bulk scouting report request after standings hydrate and memoizes it per team/division to make repeated team taps instant when prepared data is available; preserves existing one-team API and lightweight division fallback.",
+        "Prefers the last prepared encrypted index from Worker KV when fresh, refreshes older projections from GitHub, and avoids repeated large historical read/decrypt operations for report preloads.",
+        "Bounds stuck public HTTP requests with AbortController timeouts and safe retry, retaining the last successfully read public calendar in tab-scoped session storage for six hours so the page can open immediately with a clearly marked Last synced fallback.",
+        "Decouples the Live/Checking status indicator from optional scouting, notification or board requests; public schedule success sets status immediately and returning online no longer forces a healthy page to Checking.",
+        "Moves the monitored team's concise win percentage into the metadata bullet sequence immediately after jersey color, removes its separate row, and matches the LEAGUE STANDINGS heading color with MATCH DAYS.",
+        "Updates source comments, regression coverage, frontend asset cache and documentation. Does not send notifications or mutate Calendar."
+      ]
+    },
     {
       "version": "8.6.0",
       "date": "2026-10-13",
