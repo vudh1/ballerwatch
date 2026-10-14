@@ -2267,11 +2267,47 @@ function monitoredWinForm(game) {
   const estimate = Object.values(currentStandings?.matchups || {}).find((value) =>
     soccerNameKey(value.team) === soccerNameKey(game.team) &&
     soccerNameKey(value.opponent) === soccerNameKey(game.opponent));
-  return Number.isFinite(estimate?.winPct) ? estimate : null;
+  return [estimate?.winPct, estimate?.drawPct, estimate?.lossPct]
+    .every((value) => Number.isInteger(value) && value >= 0 && value <= 100) &&
+    estimate.winPct + estimate.drawPct + estimate.lossPct === 100 ? estimate : null;
 }
 
-function formatMonitoredWin(form) {
-  return form ? `Win ~${form.winPct}%` : "";
+/** Paint the existing, independently-precomputed 3-way projection only. */
+function renderWinChanceBar(target, game, estimate) {
+  target.replaceChildren();
+  target.hidden = !estimate;
+  if (!estimate) {
+    target.removeAttribute("aria-label");
+    target.removeAttribute("title");
+    return;
+  }
+  const labels = document.createElement("span");
+  labels.className = "win-chance-labels";
+  for (const [text, pct] of [
+    ["Our team", estimate.winPct], ["Tie", estimate.drawPct],
+    ["Opponent", estimate.lossPct],
+  ]) {
+    const label = document.createElement("span");
+    label.textContent = `${text} ${pct}%`;
+    labels.append(label);
+  }
+  const track = document.createElement("span");
+  track.className = "win-chance-track";
+  track.setAttribute("aria-hidden", "true");
+  for (const [kind, percent] of [
+    ["win", estimate.winPct], ["draw", estimate.drawPct],
+    ["loss", estimate.lossPct],
+  ]) {
+    const fill = document.createElement("span");
+    fill.className = `win-chance-fill win-chance-${kind}`;
+    fill.style.width = `${percent}%`;
+    track.append(fill);
+  }
+  target.append(labels, track);
+  target.setAttribute("role", "img");
+  target.setAttribute("aria-label",
+    `${game.team} win ${estimate.winPct}%, tie ${estimate.drawPct}%, ${game.opponent} win ${estimate.lossPct}%; provisional scouting estimate`);
+  target.title = `Based on prepared scouting history: ${estimate.teamGames}/${estimate.opponentGames} recent scored games and ${estimate.headToHeadGames} previous meetings. Not betting odds.`;
 }
 
 function spotlightModel(game, label = "NEXT GAME") {
@@ -2312,8 +2348,6 @@ function spotlightModel(game, label = "NEXT GAME") {
     locationParts.push("Venue to be announced");
   }
   if (game.jerseyColor) locationParts.push(`${game.jerseyColor} jersey`);
-  const matchForm = monitoredWinForm(game);
-  if (matchForm) locationParts.push(formatMonitoredWin(matchForm));
 
   const capacity = Number(game.capacity);
   const reserved = Number(game.reserved);
@@ -2386,14 +2420,7 @@ function applySpotlightModel(targets, game, label = "NEXT GAME") {
   targets.title.textContent = model.title;
   targets.type.textContent = model.type;
   targets.meta.textContent = model.meta;
-  targets.form.textContent = model.form;
-  targets.form.hidden = !model.form;
-  if (model.form) {
-    const form = monitoredWinForm(game);
-    targets.form.title = `${game.team} vs ${game.opponent} · Estimated win chance from last ${form.teamGames}/${form.opponentGames} scored games and ${form.headToHeadGames} head-to-head · Not bookmaker odds`;
-  } else {
-    targets.form.removeAttribute("title");
-  }
+  renderWinChanceBar(targets.form, game, monitoredWinForm(game));
   targets.location.textContent = model.location;
   const estimate = monitoredWinForm(game);
   if (estimate) {

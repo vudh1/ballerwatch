@@ -187,3 +187,8 @@
   .v2 .v2-shell { margin-top: 0; opacity: 1; }
   .v2 *, .v2 *::before, .v2 *::after { scroll-behavior: auto !important; animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
 }
+
+/* Preserve the same three-way RSVP-style bar with the V2 match card palette. */
+.v2 .next-game-form { border-color: #d3ff6a30; background: #d3ff6a0c; }
+.v2 .win-chance-win { background: var(--accent); }
+.v2 .win-chance-loss { background: #fb8a92; }
