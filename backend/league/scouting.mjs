@@ -70,7 +70,8 @@ export function projectRatsScouting({
       prior?.seasonId === projection.seasonId &&
       prior?.sourceUpdatedAt === projection.sourceUpdatedAt &&
       prior?.cards?.length === projection.cards.length &&
-      prior?.reports?.length === projection.reports.length) {
+      prior?.reports?.length === projection.reports.length &&
+      prior?.fixtureKey === projection.fixtureKey) {
     return { changed: false, cards: prior.cards.length, reports: prior.reports.length };
   }
   fs.mkdirSync("league/state", { recursive: true });
