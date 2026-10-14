@@ -1831,5 +1831,7 @@ test("division-scoped scout requests warm in background and avoid overlapping wo
   assert.match(worker, /buildLeagueTeamHistory\(/);
   assert.match(standings, /export function buildMatchupEstimate\(/);
   assert.match(app, /Conservative estimated win chance|Estimated win chance/);
+  assert.match(app, /function cachedDivisionScoutFallback\(teamName, division/);
+  assert.match(app, /if \(fallback\) els\.teamScoutOverview\.append\(fallback\)/);
   assert.doesNotMatch(app, /11v11-weighted.*form\.wins/);
 });
