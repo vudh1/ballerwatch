@@ -39,6 +39,11 @@ test("only explicitly transient failures reuse last good public snapshots", asyn
   await assert.rejects(cache.get("snapshot", 2000, async () => {
     throw new Error("Canonical runtime state is missing");
   }, { staleMs: 10000, transientError: (e) => /503/.test(e.message) }), /missing/);
+  // Even when the prior cached value is recent, intentional deletion
+  // (404) may not resurrect the old canonical runtime snapshot.
+  await assert.rejects(cache.get("snapshot", 2000, async () => {
+    throw new Error("GitHub state fetch HTTP 404");
+  }, { staleMs: 10000, transientError: (e) => /503/.test(e.message) }), /404/);
   clock += 15000;
   await assert.rejects(cache.get("snapshot", 2000, async () => {
     throw new Error("GitHub fetch HTTP 503");
