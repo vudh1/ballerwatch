@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, Calendar sync, and quick answers into one installable app.
 
-**Current source version: 8.5.4**
+**Current source version: 8.6.0**
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
 
@@ -34,6 +34,13 @@ Saturday synthetic pickup is shown simply as **Pickup** and has no RSVP/capacity
 A 22-second walkthrough with a short animated intro. Recorded from the app using synthetic sample data; game details, answers, and notifications are illustrative.
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/)
+
+## BallerWatch 8.6.0 — Independent scouting snapshots and resilient match reads
+
+- **Scouting runs outside the app:** An independent, notification-silent `Refresh RATS scouting cache` workflow runs hourly. It refreshes the RATS history index and prepares encrypted current-season standings, monitored fixture matchup estimates and division-scoped team scouting reports. The normal Worker endpoints return prepared data without recalculating an archive on every team tap.
+- **No request flood:** The browser no longer fires dozens of team-history requests as background prefetch. It retains fast memory reuse on repeated taps while Worker reads compact precomputed reports from the encrypted runtime-state source. The full team-history view still uses the last ten scored games across 8v8/11v11, opponent-weighted form and recent direct meetings.
+- **Public data stays available:** Match and calendar endpoints never await the scout model. A failed optional version/config request no longer declares healthy match data Offline. Public runtime snapshot caching is now gentler on GitHub and can temporarily reuse last-good fixtures during transient upstream 5xx/timeouts; missing/corrupt canonical state fails closed. Timestamped Last synced data is explicitly not described as newly updated.
+- **Release behavior:** A newly promoted source version requires its first hourly index run to publish `league/state/scout-index.json`. During that initial transition the former read-only calculation remains available as fallback. The index is stored only as a hardened AES-GCM encrypted file on `runtime-state`. No push alerts or Google Calendar operations are triggered by the separate scouting job.
 
 ## BallerWatch 8.5.4 — Reliable scouting and a conservative matchup estimate
 
