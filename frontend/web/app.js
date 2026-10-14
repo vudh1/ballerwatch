@@ -26,8 +26,11 @@ import {
   normalizedNotificationChannels,
   normalizedNotificationProfile,
   saveLocalNotificationIds,
+  readLocalNotificationChannels,
+  saveLocalNotificationChannels,
 } from "./lib/notification-state.js";
 import { createSettingsChoice } from "./lib/settings-choice.js";
+import { readGuestProfile, saveGuestProfile, MAX_GUEST_TEAMS } from "./lib/guest-profile.js";
 import { experienceKey, isV2 } from "./lib/experience.js";
 import { PUBLIC_CALENDAR_LOCAL_KEY, readPublicCalendar, todaySeattleKey,
   writePublicCalendar } from "./lib/public-calendar-cache.js";
@@ -49,6 +52,10 @@ const els = {
   notificationBell: document.querySelector("#notification-bell"),
   settingsButton: document.querySelector("#settings-button"),
   settingsDialog: document.querySelector("#settings-dialog"),
+  guestName: document.querySelector("#guest-name"),
+  guestTeams: document.querySelector("#guest-teams"),
+  guestSettingsForm: document.querySelector("#guest-settings-form"),
+  guestSettingsStatus: document.querySelector("#guest-settings-status"),
   closeSettings: document.querySelector("#close-settings"),
   settingsLoginView: document.querySelector("#settings-login-view"),
   settingsOwnerView: document.querySelector("#settings-owner-view"),
@@ -212,6 +219,9 @@ let currentReleaseStatus = null;
 let currentNotificationProfile = null;
 let notificationFilter = "all";
 let notificationSyncPromise = Promise.resolve();
+let guestProfile = readGuestProfile(localStorage);
+let guestTeamSelector = null;
+let guestTeamOptionsUpdatedAt = 0;
 let pendingMatchAdminAction = "";
 let matchOverrideSourceState = null;
 let spotlightIdleResetTimer = null;
@@ -1135,6 +1145,7 @@ function showLoginSettings(message = "") {
   }
   els.settingsLoginView.hidden = false;
   els.settingsOwnerView.hidden = true;
+  if (message && pendingMatchAdminAction) els.settingsLoginView.open = true;
   if (els.ownerLoginUsername) {
     els.ownerLoginUsername.value = sessionUsername();
   }
@@ -1260,7 +1271,8 @@ async function loadSettingsChoiceOptions() {
 
 function showOwnerSettings(settings) {
   currentUserSettings = settings || null;
-  els.settingsLoginView.hidden = true;
+  els.settingsLoginView.hidden = false;
+  els.settingsLoginView.open = false;
   els.settingsOwnerView.hidden = false;
   const username = settings?.username || sessionUsername();
   saveSessionUsername(username);
@@ -1420,6 +1432,56 @@ function closeChat() {
   if (els.chatDialog.open) els.chatDialog.close();
 }
 
+
+function guestSelector() {
+  if (guestTeamSelector) return guestTeamSelector;
+  guestTeamSelector = createSettingsChoice({
+    root: document.querySelector("#guest-teams-choice"),
+    trigger: document.querySelector("#guest-teams-trigger"),
+    panel: document.querySelector("#guest-teams-popover"),
+    search: document.querySelector("#guest-teams-search"),
+    optionsList: document.querySelector("#guest-teams-options"),
+    display: document.querySelector("#guest-teams-display"),
+    input: els.guestTeams,
+    chips: document.querySelector("#guest-teams-chips"),
+    multiple: true, maxSelected: MAX_GUEST_TEAMS,
+  });
+  return guestTeamSelector;
+}
+function renderGuestSettings() {
+  els.guestName.value = guestProfile.name;
+  guestSelector().setValue(guestProfile.teams);
+}
+async function loadGuestTeamOptions() {
+  const selector = guestSelector();
+  selector.setOptions([...new Set([
+    ...guestProfile.teams, ...(currentStandings?.cards || []).map((card) => card.team),
+  ])]);
+  if (Date.now() - guestTeamOptionsUpdatedAt < 120_000) return;
+  try {
+    const response = await api("/web/teams", {retryNetwork: false, timeoutMs: 4000});
+    if (Array.isArray(response?.teams)) {
+      selector.setOptions([...new Set([...response.teams, ...guestProfile.teams])]);
+      guestTeamOptionsUpdatedAt = Date.now();
+    }
+  } catch { /* Existing team choices remain usable offline. */ }
+}
+async function saveGuestSettings(event) {
+  event.preventDefault();
+  const before = JSON.stringify(guestProfile.teams);
+  const next = {name: els.guestName.value, teams: guestSelector().getValues()};
+  if (!saveGuestProfile(localStorage, next)) {
+    els.guestSettingsStatus.textContent = "Browser storage is disabled; preferences could not be saved.";
+    return;
+  }
+  guestProfile = readGuestProfile(localStorage);
+  els.guestSettingsStatus.textContent = "Saved only on this device.";
+  if (JSON.stringify(guestProfile.teams) !== before) {
+    try { localStorage.removeItem(PUBLIC_STANDINGS_DEVICE_KEY); } catch {}
+    void loadStandings({initial: true});
+  }
+}
+
 async function openSettings(options = {}) {
   closeRsvpRoster();
   closeChat();
@@ -1431,6 +1493,13 @@ async function openSettings(options = {}) {
       : "";
   pendingMatchAdminAction = pendingAction;
   if (!els.settingsDialog.open) els.settingsDialog.showModal();
+  renderGuestSettings();
+  void loadGuestTeamOptions();
+  if (!ownerToken()) {
+    showLoginSettings();
+    if (pendingAction) els.settingsLoginView.open = true;
+    return;
+  }
   await loadOwnerSettings();
 }
 
@@ -1709,7 +1778,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=8.11.2", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=8.12.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -1792,7 +1861,9 @@ function accountNotificationStateActive() {
 }
 
 function notificationChannels() {
-  return normalizedNotificationChannels(currentNotificationProfile?.channels);
+  return accountNotificationStateActive()
+    ? normalizedNotificationChannels(currentNotificationProfile.channels)
+    : readLocalNotificationChannels(localStorage);
 }
 
 async function syncServiceWorkerNotificationPreferences(channels = notificationChannels()) {
@@ -1823,12 +1894,12 @@ function renderNotificationPreferences() {
     els.notificationPrefLeague,
     els.notificationPrefVersion,
   ]) {
-    if (input) input.disabled = !signedIn;
+    if (input) input.disabled = false;
   }
   if (els.notificationSyncStatus) {
     els.notificationSyncStatus.textContent = signedIn
       ? `Synced when active for @${sessionUsername()}`
-      : "Sign in to sync read state, deletes, and notification preferences.";
+      : "Saved on this device. No account needed.";
   }
 }
 
@@ -1936,8 +2007,10 @@ function notificationViewState(entries = currentBoardEntries) {
   const deleted = accountNotificationStateActive()
     ? new Set(currentNotificationProfile.deletedIds)
     : storedNotificationIds(NOTIFICATION_DELETED_KEY);
+  const channels = notificationChannels();
   const allVisible = entries.filter((item) =>
-    !deleted.has(notificationId(item)) && !skipPersonalPickupAlert(item));
+    !deleted.has(notificationId(item)) && !skipPersonalPickupAlert(item) &&
+    channels[String(item?.channel || "")] !== false);
   const visible = notificationFilter === "all"
     ? allVisible
     : allVisible.filter((item) => String(item?.channel || "") === notificationFilter);
@@ -2297,7 +2370,6 @@ function renderWinChanceBar(target, game, estimate) {
   labels.className = "win-chance-labels";
   for (const [text, pct, fullName] of [
     [teamAcronym(game.team), estimate.winPct, game.team],
-    ["Tie", null, "Draw"],
     [teamAcronym(game.opponent), estimate.lossPct, game.opponent],
   ]) {
     const label = document.createElement("span");
@@ -3422,7 +3494,9 @@ function restorePublicStandings() {
 
 async function loadStandings({ initial = false } = {}) {
   try {
-    const payload = await api("/web/standings", {
+    const query = guestProfile.teams.length
+      ? `?teams=${encodeURIComponent(guestProfile.teams.join(","))}` : "";
+    const payload = await api(`/web/standings${query}`, {
       retryNetwork: !initial, timeoutMs: initial ? 3_800 : 4_000,
     });
     if (!payload?.ok || !payload.standings) throw new Error("Standings unavailable");
@@ -4875,15 +4949,21 @@ els.matchOverrideCancel.addEventListener("click", () => els.matchOverrideDialog.
 els.closeMatchOverride.addEventListener("click", () => els.matchOverrideDialog.close());
 
 async function saveNotificationPreferencesFromUi() {
-  if (!accountNotificationStateActive()) return;
   const channels = {
     pickup: Boolean(els.notificationPrefPickup?.checked),
     league: Boolean(els.notificationPrefLeague?.checked),
     version: Boolean(els.notificationPrefVersion?.checked),
   };
-  optimisticNotificationProfile({ channels });
-  renderNotificationPreferences();
-  await persistNotificationProfile({ channels }, { refreshPush: true });
+  if (accountNotificationStateActive()) {
+    optimisticNotificationProfile({ channels });
+    renderNotificationPreferences();
+    await persistNotificationProfile({ channels }, { refreshPush: true });
+  } else {
+    saveLocalNotificationChannels(localStorage, channels);
+    renderNotificationPreferences();
+    renderBoard(currentBoardEntries);
+    void syncCurrentPushRegistration();
+  }
 }
 
 els.chatLauncher?.addEventListener("click", openChat);
@@ -4896,6 +4976,7 @@ els.settingsButton.addEventListener("click", openSettings);
 els.musicToggle?.addEventListener("click", () => void toggleMusic());
 els.closeSettings.addEventListener("click", () => els.settingsDialog.close());
 els.ownerLoginForm.addEventListener("submit", loginOwnerDevice);
+els.guestSettingsForm.addEventListener("submit", saveGuestSettings);
 els.ownerSettingsForm.addEventListener("submit", saveOwnerSettings);
 els.ownerPasswordForm.addEventListener("submit", saveOwnerPassword);
 els.userCreateForm.addEventListener("submit", createManagedUser);

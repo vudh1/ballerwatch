@@ -52,3 +52,19 @@ export function normalizedNotificationProfile(value = {}) {
     updatedAt: String(value?.updatedAt || ""),
   };
 }
+
+export const LOCAL_NOTIFICATION_CHANNELS_KEY = "ballerwatch-notification-channels-v1";
+export function readLocalNotificationChannels(storage) {
+  try {
+    const raw=storage.getItem(LOCAL_NOTIFICATION_CHANNELS_KEY);
+    return raw && raw.length <= 512 ? normalizedNotificationChannels(JSON.parse(raw))
+      : normalizedNotificationChannels();
+  } catch { return normalizedNotificationChannels(); }
+}
+export function saveLocalNotificationChannels(storage, channels) {
+  try {
+    storage.setItem(LOCAL_NOTIFICATION_CHANNELS_KEY,
+      JSON.stringify(normalizedNotificationChannels(channels)));
+    return true;
+  } catch { return false; }
+}

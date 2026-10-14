@@ -169,7 +169,7 @@ try {
         await page.locator("#spotlight-next").click();
         await page.waitForFunction(() => document.querySelector("#next-game-form")?.textContent.includes("FFC 45%"));
         assert.deepEqual(await page.locator("#next-game-form .win-chance-labels span").allTextContents(),
-          ["FFC 45%", "Tie", "TU 35%"]);
+          ["FFC 45%", "TU 35%"]);
         assert.ok(await page.locator("#next-game-form").evaluate((element) => {
           const address = document.querySelector("#next-game-location");
           const style = getComputedStyle(element);
@@ -300,6 +300,7 @@ try {
         const { context, page, calls, errors } = await prepare(browser, { reducedMotion: "reduce" });
         await ready(page, "");
         await page.locator("#settings-button").click();
+        await page.locator("#settings-login-view summary").click();
         await page.locator("#owner-login-username").fill("fixture");
         await page.locator("#owner-login-password").fill("synthetic-only-password");
         await page.locator('#owner-login-form button[type="submit"]').click();
