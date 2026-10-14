@@ -68,6 +68,7 @@ export function buildScoutingIndex({
       if (Object.hasOwn(reports, id)) continue;
       const report = buildLeagueTeamHistory(
         history, seasonId, row.name, 35, today, card.divisionKey || card.division,
+        calibration.weights,
       );
       if (report) reports[id] = report;
     }
