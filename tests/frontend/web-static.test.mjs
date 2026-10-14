@@ -1767,7 +1767,7 @@ test("match data retries and preserves last successful data during outages", () 
   assert.match(app, /Promise\.allSettled\(\[/);
   assert.match(app, /state === "stale"/);
   assert.match(app, /currentCalendar \? "stale" : "offline"/);
-  assert.match(app, /api\(\x60\/web\/team-history\?team=/);
+  assert.match(app, /const endpoint = \x60\/web\/team-history\?team=/);
 });
 
 test("last-ten scouting indexes the historical result archive only once per snapshot", () => {
