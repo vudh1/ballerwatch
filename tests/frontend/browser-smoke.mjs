@@ -202,6 +202,16 @@ try {
         await page.locator("#guest-teams-search").fill("Fixture FC");
         await page.locator('#guest-teams-options [role="option"]').first().click();
         await page.locator("#guest-settings-form button[type=submit]").click();
+        const diagnostic = await page.evaluate(() => ({
+          location: location.pathname + location.search,
+          form: document.querySelector("#guest-settings-form")?.outerHTML.slice(0, 500),
+          valid: document.querySelector("#guest-settings-form")?.checkValidity(),
+          status: document.querySelector("#guest-settings-status")?.textContent,
+          stored: localStorage.getItem("ballerwatch-visitor-profile-v1"),
+          name: document.querySelector("#guest-name")?.value,
+          selected: document.querySelector("#guest-teams")?.value,
+        }));
+        console.log("Guest preference save inspection:", JSON.stringify(diagnostic));
         assert.match(await page.locator("#guest-settings-status").textContent(), /device/);
         const profile = await page.evaluate(() => JSON.parse(localStorage.getItem("ballerwatch-visitor-profile-v1")));
         assert.equal(profile.name, "Visitor");
