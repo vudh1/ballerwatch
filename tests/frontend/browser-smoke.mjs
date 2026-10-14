@@ -315,6 +315,10 @@ try {
           await page.reload({ waitUntil: "domcontentloaded" });
           assert.equal(new URL(page.url()).pathname, "/ballerwatch/v2/");
           await page.waitForFunction(() => !document.querySelector("#matchday-app").inert);
+          // The V2 background no longer gates interactivity, so wait for the
+          // independently restored public fixture rather than the old intro.
+          await page.waitForFunction(() => document.querySelector("#next-game-title")
+            ?.textContent === "Thursday, October 15", null, { timeout: 8000 });
           assert.equal(await page.locator("#next-game-title").textContent(), "Thursday, October 15");
           await page.goto(`${origin}/ballerwatch/`, { waitUntil: "domcontentloaded" });
           assert.equal(await page.locator(".brand-lockup h1").textContent(), "BallerWatch");
