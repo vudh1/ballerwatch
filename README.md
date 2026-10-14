@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, Calendar sync, and quick answers into one installable app.
 
-**Current source version: 8.5.0**
+**Current source version: 8.5.1**
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
 
@@ -34,6 +34,14 @@ Saturday synthetic pickup is shown simply as **Pickup** and has no RSVP/capacity
 A 22-second walkthrough with a short animated intro. Recorded from the app using synthetic sample data; game details, answers, and notifications are illustrative.
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/)
+
+## BallerWatch 8.5.1 — Faster scouting and resilient live cards
+
+- **Opponent Scout performance:** Fixed the repeated archive-wide scans and sorts in the ten-game, quality-of-opponent model. The Worker now builds an index of scored matches by team once per archive snapshot, reusing it for league match-card form, current opponent rankings, and older match histories. This removes a likely source of Worker CPU overload and temporary scouting errors.
+- **Live-data recovery:** Read-only calendar, standings, team-history, Inbox, and next-game GET requests retry one transient network/502–504 failure. A failed poll no longer blanks previously loaded match, schedule or notification data. Initial hydration proceeds even if a secondary service fails; the top status says **Last synced** if an older schedule remains rather than showing an empty Offline card.
+- **Consistent card spacing:** The match and standings swipe trains now use a visible **12px gap** between fully rounded adjacent cards. The Match Days calendar remains a straightforward non-carousel 14-day/tap-to-expand view.
+- **Standings hierarchy:** Each monitored team has a compact current-division **rank pill** in the same top-right position as the Pickup/League pill on match cards; it is not a carousel `1/2` counter. The standings footer uses the same short local **Updated 6:21 PM** display pattern as other cards.
+- **Data integrity:** No new secrets, external services, speculative match data, user notifications or calendar mutation are involved in the fixes. Source results still depend on when RATS publishes scores, with the existing one-hour historical index freshness threshold unchanged.
 
 ## BallerWatch 8.5.0 — Cross-season weighted form and cleaner navigation
 
