@@ -449,17 +449,16 @@ test("two-week dashboard renders cached match weather", () => {
   assert.match(watchdog, /node backend\/weather\/update\.mjs/);
 });
 
-test("calendar rolls by week with spotlight navigation and expands through the latest match week", () => {
+test("calendar defaults to fourteen days and expands to the latest match week", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const css = fs.readFileSync("frontend/web/styles.css", "utf8");
 
   assert.doesNotMatch(html, /id="calendar-expand-toggle"/);
   assert.match(html, /id="two-week-calendar" aria-expanded="false"/);
-  assert.match(app, /let calendarWindowStart = ""/);
+  assert.doesNotMatch(app, /let calendarWindowStart/);
   assert.match(app, /let calendarExpanded = false/);
-  assert.match(app, /function ensureCalendarDateVisible/);
-  assert.match(app, /start = addIsoDays\(start, 7\)/);
+  assert.match(app, /return Array\.from\(\{ length: 14 \}/);
   assert.match(app, /Math\.ceil\(span \/ 7\) \* 7/);
   assert.match(app, /function setCalendarExpanded/);
   assert.match(app, /calendarCard\?\.addEventListener\("click"/);
