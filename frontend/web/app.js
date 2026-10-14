@@ -4757,7 +4757,7 @@ window.addEventListener("resize", () => {
 });
 
 window.addEventListener("online", () => {
-  setSystemState("checking");
+  if (!currentCalendar) setSystemState("checking");
   refreshLiveData().catch(() => null);
   checkForAppUpdate().catch(() => null);
 });
