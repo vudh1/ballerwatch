@@ -50,6 +50,8 @@ Signed-in Inbox read/delete state is merged into the encrypted user profile so m
 
 ## Current development line
 
+- **8.6.0** — hourly independent encrypted scorer for RATS standings, per-team scouting and matchup estimates, read-only snapshot API without on-request historical calculation, no per-team prefetch storm, restored calendar freshness status on successful recovery, and last-ten weighted attack/defense plus small-sample-adjusted quality index.
+
 - **8.5.4** — scoped duplicate-name scouting so teams such as Sitting Ducks resolve within the selected division, shared on-page prefetch cache with source-aware refresh and outage fallbacks, and a conservative matchup-specific win estimate using each side's last 10 scored games plus historic head-to-head instead of misleading raw 100% from two wins.
 
 - **8.5.3** — bounded, reusable public history and derived scouting caches to reduce Worker CPU pressure on repeated team taps, temporary stale-scoring fallback with proper labels, and core calendar isolation from optional weather/venue failures.
