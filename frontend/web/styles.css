@@ -6287,6 +6287,13 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
     padding-right: 0.7rem;
     border-radius: 0 32px 32px 0;
   }
+  /* Override the legacy match-card :hover specificity as well: otherwise
+     old hover: opacity 1 would beat the new shared pointer-distance variable,
+     making match and standings visibly different on hover. */
+  :is(.spotlight-carousel, .standings-rail) >
+  .carousel-waterfall-edge:not(:disabled):is(:hover, :focus-visible)::before {
+    opacity: var(--edge-opacity, var(--bw-edge-background-alpha));
+  }
   :is(.spotlight-carousel, .standings-rail) > .carousel-waterfall-edge::before {
     content: "";
     position: absolute;
