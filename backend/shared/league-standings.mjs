@@ -174,6 +174,9 @@ export function buildLeagueStandings(history, seasonId, monitoredTeams = [], tod
           highlighted: normalizeHistoryTeamName(row.name) === highlightedName,
         })),
         hasResults: rows.some((row) => row.played > 0),
+        // Precompute once for tracked teams in the existing standings response.
+        // The calendar route no longer needs the historical archive at all.
+        recentForm: buildTeamRecentForm(history, team.name, today),
       };
     }),
   };
