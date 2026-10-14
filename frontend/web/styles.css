@@ -6370,3 +6370,12 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
   .next-game-form { padding: 0; }
   .win-chance-labels { font-size: 0.66rem; }
 }
+
+/* v8.12.0: guest-first device preferences; protected administration is optional. */
+#guest-settings-view { padding: 0.35rem 0 0.7rem; }
+#guest-settings-view .settings-form { margin-top: 0.9rem; }
+.admin-settings-details { margin-top: 0.8rem; }
+.admin-settings-details > summary { cursor: pointer; padding: 0.75rem 0; font-weight: 700; color: var(--muted); }
+.admin-settings-details[open] > summary { color: var(--accent, #4ade80); }
+.win-chance-labels { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.win-chance-labels span:nth-child(2) { text-align: right; color: #fecdd3; }

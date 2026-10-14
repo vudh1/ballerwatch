@@ -5,7 +5,7 @@
  */
 export function createSettingsChoice({
   root, trigger, panel, search, optionsList, display, input,
-  chips = null, multiple = false, maxSelected = 20,
+  chips = null, multiple = false, maxSelected = 20, onChange = null,
 }) {
   if (![root, trigger, panel, search, optionsList, display, input].every(Boolean)) {
     throw new Error("Missing required settings selection element.");
@@ -38,6 +38,7 @@ export function createSettingsChoice({
         event.stopPropagation();
         selected = selected.filter((entry) => key(entry) !== key(value));
         sync();
+        onChange?.([...selected]);
         render();
       });
       chip.append(title, remove);
@@ -60,6 +61,7 @@ export function createSettingsChoice({
       } else if (selected.length < maxSelected) selected.push(name);
     } else selected = [name];
     sync();
+    onChange?.([...selected]);
     if (multiple) render();
     else close();
   }
@@ -134,7 +136,10 @@ export function createSettingsChoice({
       options[(index + (event.key === "ArrowDown" ? 1 : -1) + options.length) % options.length]?.focus();
     }
   });
-  document.addEventListener("pointerdown", (event) => {
+  // Let the outside button receive its click before dismissing the listbox.
+  // Pointerdown dismissal can reflow a modal between down/up and swallow Save,
+  // Close, notifications or any other adjacent action on touch and desktop.
+  document.addEventListener("click", (event) => {
     if (!panel.hidden && !root.contains(event.target)) close();
   });
 

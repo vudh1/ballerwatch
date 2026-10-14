@@ -1,7 +1,23 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.11.2",
+  "currentVersion": "8.12.0",
   "releases": [
+    {
+      "version": "8.12.0",
+      "date": "2026-10-14",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Password-free visitor settings and device notification preferences",
+      "webAnnouncement": "BallerWatch 8.12 welcomes visitors without an account: choose your own name and RATS teams on each device, manage your own notifications, and enjoy the clean two-label win-probability bar. Advanced administration remains secure.",
+      "changes": [
+        "Remove the visible Tie label and tie percentage while retaining the middle draw segment, with percentages beside team acronyms and full screen-reader probability details.",
+        "Put personal device settings ahead of optional administrator sign-in, saving only an optional name and up to eight team selections in browser local storage shared by V1 and V2.",
+        "Precompute current-season standings for the public team directory in the independent encrypted hourly job; serve per-device selected teams from that index without HTTP-time scouting calculations.",
+        "Allow anonymous device-specific notification channel filters and preferences, preserving local read/delete state and existing Web Push subscriptions.",
+        "Retain authenticated access controls for shared match modifications, private RSVP names, user/password management and production releases; no user-facing guest action can change shared defaults.",
+        "Include regression tests and update PWA cache versions; default anonymous experience keeps existing monitored teams and schedule."
+      ]
+    },
     {
       "version": "8.11.2",
       "date": "2026-10-14",

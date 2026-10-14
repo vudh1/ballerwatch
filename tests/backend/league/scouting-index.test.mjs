@@ -49,6 +49,8 @@ test("the hourly projection includes quick standings, forecasts and full scout p
   assert.equal(index.updatedAt, "2026-10-13T16:00:00Z");
   assert.deepEqual(index.monitoredTeams, ["Tracked FC"]);
   assert.equal(index.standings.cards.length, 1);
+  assert.equal(index.availableCards.length, 2);
+  assert.ok(index.availableCards.some((card) => card.team === "Sitting Ducks" && card.ready));
   const division = index.standings.cards[0].divisionKey;
   assert.equal(index.standings.cards[0].rows.length, 2);
   assert.equal(Object.keys(index.reports).length, 2);

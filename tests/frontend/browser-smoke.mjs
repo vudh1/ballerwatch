@@ -169,7 +169,7 @@ try {
         await page.locator("#spotlight-next").click();
         await page.waitForFunction(() => document.querySelector("#next-game-form")?.textContent.includes("FFC 45%"));
         assert.deepEqual(await page.locator("#next-game-form .win-chance-labels span").allTextContents(),
-          ["FFC 45%", "Tie", "TU 35%"]);
+          ["FFC 45%", "TU 35%"]);
         assert.ok(await page.locator("#next-game-form").evaluate((element) => {
           const address = document.querySelector("#next-game-location");
           const style = getComputedStyle(element);
@@ -187,6 +187,40 @@ try {
         assert.equal(appearance.padding, "0px");
         assert.equal(appearance.background, "rgba(0, 0, 0, 0)");
         assert.match(appearance.aria, /Fixture FC win 45%, tie 20%, Test United win 35%/);
+        assert.deepEqual(errors, []);
+        await context.close();
+      });
+
+      await scenario(`${engine}: guest settings, local notifications and favorite teams need no sign-in`, async () => {
+        const { context, page, errors, calls } = await prepare(browser, { reducedMotion: "reduce" });
+        await ready(page);
+        await page.locator("#settings-button").click();
+        assert.equal(await page.locator("#guest-settings-view").isVisible(), true);
+        assert.equal(await page.locator("#settings-login-view").evaluate((el) => el.open), false);
+        await page.locator("#guest-name").fill("Visitor");
+        await page.locator("#guest-teams-trigger").click();
+        await page.locator("#guest-teams-search").fill("Fixture FC");
+        await page.locator('#guest-teams-options [role="option"]').first().click();
+        await page.waitForFunction(() => {
+          const raw = localStorage.getItem("ballerwatch-visitor-profile-v1");
+          if (!raw) return false;
+          const profile = JSON.parse(raw);
+          return profile.name === "Visitor" && profile.teams.includes("Fixture FC");
+        });
+        assert.match(await page.locator("#guest-settings-status").textContent(), /device/);
+        const profile = await page.evaluate(() => JSON.parse(localStorage.getItem("ballerwatch-visitor-profile-v1")));
+        assert.equal(profile.name, "Visitor");
+        assert.deepEqual(profile.teams, ["Fixture FC"]);
+        assert.equal(calls.filter((call) => call.path === "/web/user/settings" && call.method === "POST").length, 0);
+        await page.locator("#close-settings").click();
+        await page.locator("#notification-bell").click();
+        await page.locator("#notification-pref-pickup").uncheck();
+        assert.equal(await page.evaluate(() =>
+          JSON.parse(localStorage.getItem("ballerwatch-notification-channels-v1")).pickup), false);
+        await page.reload();
+        await ready(page);
+        await page.locator("#settings-button").click();
+        assert.equal(await page.locator("#guest-name").inputValue(), "Visitor");
         assert.deepEqual(errors, []);
         await context.close();
       });
@@ -300,6 +334,7 @@ try {
         const { context, page, calls, errors } = await prepare(browser, { reducedMotion: "reduce" });
         await ready(page, "");
         await page.locator("#settings-button").click();
+        await page.locator("#settings-login-view summary").click();
         await page.locator("#owner-login-username").fill("fixture");
         await page.locator("#owner-login-password").fill("synthetic-only-password");
         await page.locator('#owner-login-form button[type="submit"]').click();
