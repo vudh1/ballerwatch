@@ -199,7 +199,7 @@ test("RATS history uses raw GitHub reads and a larger encrypted runtime allowanc
   assert.match(worker, /application\/vnd\.github\.raw\+json/);
   assert.match(
     worker,
-    /path === "league\/state\/history\.json" \? 10_000_000 : 500_000/,
+    /path === "league\/state\/history\.json" \? 10_000_000[\s\S]*path === "league\/state\/scout-index\.json" \? 3_000_000 : 500_000/,
   );
   assert.match(
     worker,
