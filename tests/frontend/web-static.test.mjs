@@ -702,7 +702,7 @@ test("installed app does not interrupt first-load hydration for a service-worker
   );
   assert.match(
     app,
-    /await Promise\.allSettled\(\[\s*registerServiceWorker\(\),\s*loadConfig\(\),\s*loadBoard\(\),\s*loadCalendar\(\),\s*loadStandings\(\),\s*loadNotificationProfile\(\),\s*\]\);/,
+    /const calendarReady = loadCalendar\(\);[\s\S]*?void Promise\.allSettled\(\[\s*registerServiceWorker\(\),\s*loadConfig\(\),\s*loadBoard\(\),\s*loadStandings\(\),\s*loadNotificationProfile\(\),\s*\]\);/,
   );
   assert.match(app, /initialLoadComplete = true/);
   assert.match(
