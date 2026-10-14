@@ -6330,3 +6330,12 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
   .settings-choice-popover { animation: none; }
   .settings-choice-trigger .choice-chevron { transition: none; }
 }
+
+/* The standings table itself must not steal an iOS horizontal card swipe. */
+@media (pointer: coarse) {
+  .standings-table-scroll {
+    overflow-x: clip;
+    touch-action: pan-y;
+  }
+  .standings-step { touch-action: manipulation; }
+}
