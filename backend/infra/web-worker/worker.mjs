@@ -3003,6 +3003,8 @@ export function webNextGameDetails(snapshot, now = new Date()) {
     date: next.date,
     dateLabel: formatDate(next.date),
     title: `${team} vs ${opponent}`,
+    team,
+    opponent,
     startTime,
     endTime,
     time,
