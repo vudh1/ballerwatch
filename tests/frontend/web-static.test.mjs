@@ -1801,8 +1801,10 @@ test("repeated scouting requests do not starve public match data", () => {
   assert.match(worker, /publicReadCache\.get\("rats-history", 120_000/);
   assert.match(worker, /loadRatsHistoryUncached\(env\)/);
   assert.match(worker, /publicReadCache\.get\("public-snapshot", 20_000/);
-  assert.match(worker, /publicReadCache\.get\(\s*[\x60]scout:/);
-  assert.match(worker, /publicReadCache\.get\(\s*[\x60]standings:/);
+  assert.match(worker, /prebuilt-scout-index-v1/);
+  assert.match(worker, /scoutingProjectionCurrent\(index, snapshot\)/);
+  assert.match(worker, /index\.reports\[key\]/);
+  assert.match(worker, /standings-fallback:/);
   assert.doesNotMatch(worker, /cachedJson\("rats-history-v1"/);
   assert.match(worker, /loadWebWeather\(env\)\.catch\(\(\) => null\)/);
   assert.match(worker, /loadRatsVenues\(env\)\.catch/);
@@ -1814,24 +1816,27 @@ test("repeated scouting requests do not starve public match data", () => {
   assert.match(app, /currentCalendar\) \{\s*els\.calendarUpdated\.textContent = "Last synced/);
 });
 
-test("division-scoped scout requests warm in background and avoid overlapping worker fetches", () => {
+test("scouting is precomputed hourly and no longer floods the Worker with browser prefetches", () => {
   const app = fs.readFileSync("frontend/web/app.js","utf8");
   const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs","utf8");
   const standings = fs.readFileSync("backend/shared/league-standings.mjs","utf8");
+  const schedule = fs.readFileSync(".github/workflows/scouting-index.yml","utf8");
+  const indexer = fs.readFileSync("backend/league/scouting-index.mjs","utf8");
   assert.match(app, /pendingScoutReports = new Map\(\)/);
   assert.match(app, /function scoutReportKey\(teamName, division/);
-  assert.match(app, /async function prefetchScoutReports\(standings\)/);
-  assert.match(app, /scoutPrefetchInFlight/);
-  assert.match(app, /if \(failures >= 2\) \{ complete = false; break; \}/);
-  assert.match(app, /await fetchScoutReport\(choice\.team, choice\.division\)/);
+  assert.doesNotMatch(app, /prefetchScoutReports/);
+  assert.doesNotMatch(app, /scoutPrefetchInFlight/);
   assert.match(app, /currentStandings\.updatedAt/);
   assert.match(app, /encodeURIComponent\(division\)/);
   assert.match(worker, /url\.searchParams\.get\("division"\)/);
-  assert.match(worker, /card\.divisionKey === division/);
-  assert.match(worker, /buildLeagueTeamHistory\(/);
+  assert.match(worker, /candidate\.divisionKey === division/);
+  assert.match(worker, /index\.reports\[key\]/);
   assert.match(standings, /export function buildMatchupEstimate\(/);
   assert.match(app, /Conservative estimated win chance|Estimated win chance/);
   assert.match(app, /function cachedDivisionScoutFallback\(teamName, division/);
   assert.match(app, /if \(fallback\) els\.teamScoutOverview\.append\(fallback\)/);
+  assert.match(schedule, /cron: '7 \* \* \* \*'/);
+  assert.match(schedule, /node backend\/league\/scouting-index\.mjs/);
+  assert.match(indexer, /encryptState\(value\)/);
   assert.doesNotMatch(app, /11v11-weighted.*form\.wins/);
 });
