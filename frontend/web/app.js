@@ -151,12 +151,11 @@ const els = {
   standingsViewport: document.querySelector("#standings-viewport"),
   standingsPrevious: document.querySelector("#standings-previous"),
   standingsNext: document.querySelector("#standings-next"),
-  standingsPosition: document.querySelector("#standings-position"),
-  standingsUpdated: document.querySelector("#standings-updated"),
   teamHistoryDialog: document.querySelector("#team-history-dialog"),
   teamHistoryTitle: document.querySelector("#team-history-title"),
   teamHistoryNote: document.querySelector("#team-history-note"),
   teamHistoryList: document.querySelector("#team-history-list"),
+  teamScoutOverview: document.querySelector("#team-scout-overview"),
   closeTeamHistory: document.querySelector("#close-team-history"),
   matchOverrideDialog: document.querySelector("#match-override-dialog"),
   closeMatchOverride: document.querySelector("#close-match-override"),
@@ -3250,7 +3249,6 @@ function setStandingsSlide(index) {
     track.style.transform =
       `translate3d(-${standingsIndex * standingsStepWidth()}px, 0, 0)`;
   }
-  els.standingsPosition.textContent = `${standingsIndex + 1} / ${cards.length}`;
   els.standingsPrevious.disabled = standingsIndex === 0;
   els.standingsNext.disabled = standingsIndex === cards.length - 1;
   for (const [slideIndex, slide] of
@@ -3330,7 +3328,6 @@ function renderStandings() {
   if (!cards.length) {
     els.standingsViewport.append(standingsCell("p",
       "No tracked RATS teams are configured yet.", "muted standings-message"));
-    els.standingsPosition.textContent = "—";
     els.standingsPrevious.disabled = true;
     els.standingsNext.disabled = true;
     return;
@@ -3359,13 +3356,21 @@ function renderStandings() {
       ? card.rows.find((row) => row.highlighted)
       : null;
     meta.append(group, standingsCell("span",
-      tracked ? `#${tracked.rank} / ${card.rows.length}` : "Pending",
+      tracked ? `#${tracked.rank} of ${card.rows.length}` : "Pending",
       "standings-rank"));
     slide.append(meta);
+    const updated = new Date(standings.updatedAt || "");
+    const freshness = standingsCell("p",
+      `RATS results · Provisional · ${Number.isNaN(updated.getTime())
+        ? "Refresh pending"
+        : `Updated ${new Intl.DateTimeFormat(undefined, {month: "short", day: "numeric",
+          hour: "numeric", minute: "2-digit"}).format(updated)}`}`,
+      "standings-footnote standings-card-updated");
 
     if (!card.ready) {
       slide.append(standingsCell("p", card.message || "Standings are not available yet.",
         "muted standings-message"));
+      slide.append(freshness);
       track.append(slide);
       continue;
     }
@@ -3426,17 +3431,11 @@ function renderStandings() {
       slide.append(standingsCell("p", "No scored league matches indexed for this division yet.",
         "muted standings-message"));
     }
-    if (card.hasResults && card.stats) slide.append(buildStandingStats(card.stats));
+    slide.append(freshness);
     track.append(slide);
   }
 
   els.standingsViewport.append(track);
-  const updated = new Date(standings.updatedAt || "");
-  els.standingsUpdated.textContent =
-    `RATS results · Provisional · ${Number.isNaN(updated.getTime())
-      ? "Refresh pending"
-      : `Updated ${new Intl.DateTimeFormat(undefined, {month: "short", day: "numeric",
-        hour: "numeric", minute: "2-digit"}).format(updated)}`}`;
   setStandingsSlide(standingsIndex);
 }
 
@@ -3457,7 +3456,6 @@ async function loadStandings() {
       els.standingsViewport.replaceChildren(standingsCell("p",
         "Standings are unavailable. The RATS results index may still be updating.",
         "muted standings-message"));
-      els.standingsUpdated.textContent = "RATS source currently unavailable";
     }
     return false;
   }
