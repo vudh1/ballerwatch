@@ -221,6 +221,7 @@ const NOTIFICATION_READ_KEY = LOCAL_NOTIFICATION_READ_KEY;
 const NOTIFICATION_DELETED_KEY = LOCAL_NOTIFICATION_DELETED_KEY;
 const QUESTION_HISTORY_KEY = "ballerwatch-question-history-v1";
 const LIVE_DATA_REFRESH_MS = 60_000;
+const PUBLIC_CALENDAR_CACHE_KEY = "ballerwatch-public-calendar-session-v1";
 const APP_UPDATE_CHECK_MS = 5 * 60_000;
 const SPOTLIGHT_IDLE_RESET_MS = 15_000;
 const INTERACTION_VIBRATION_MS = 8;
@@ -3709,14 +3710,38 @@ function installStandingsSwipe() {
   els.teamHistoryDialog.addEventListener("close", () => { teamHistoryRequestId += 1; });
 }
 
+// Only anonymous public fixture data is stored, only in this tab's session,
+// and never private RSVP names, tokens, notification state or runtime secrets.
+function rememberPublicCalendar(calendar) {
+  if (!calendar?.startDate || !Array.isArray(calendar.games)) return;
+  try {
+    const entry = JSON.stringify({ at: Date.now(), calendar });
+    if (entry.length <= 220_000) sessionStorage.setItem(PUBLIC_CALENDAR_CACHE_KEY, entry);
+  } catch {}
+}
+
+function restorePublicCalendar() {
+  try {
+    const stored = JSON.parse(sessionStorage.getItem(PUBLIC_CALENDAR_CACHE_KEY) || "null");
+    if (!stored || Date.now() - stored.at > 6 * 60 * 60_000 ||
+        !stored.calendar?.startDate || !Array.isArray(stored.calendar.games)) return false;
+    renderCalendar(stored.calendar);
+    els.calendarUpdated.textContent = "Last synced · Reconnecting";
+    return true;
+  } catch { return false; }
+}
+
 async function loadCalendar() {
   try {
     // The personal RSVP lookup is independent of the public schedule.
     // An auth/profile failure must never blank an otherwise valid calendar.
     // Public fixtures get the first API slot; the private RSVP refresh is
     // independent and runs after the schedule request completes.
-    const payload = await api("/web/calendar", {retryNetwork: true});
+    const payload = await api("/web/calendar", {
+      retryNetwork: true, timeoutMs: 4_000,
+    });
     const next = payload.calendar || null;
+    if (next?.startDate) rememberPublicCalendar(next);
     // Keep the active card, scroll position and expensive layout untouched
     // when the public schedule/weather snapshot is unchanged.
     if (JSON.stringify(next) !== JSON.stringify(currentCalendar)) {
@@ -3731,28 +3756,32 @@ async function loadCalendar() {
       return false;
     }
     els.calendarUpdated.textContent = "Calendar temporarily unavailable";
-    await loadNextGame();
+    // Never make a failed calendar request block status recovery while an
+    // independent /next-game fallback attempts to restore the match card.
+    void loadNextGame().catch(() => false);
     return false;
   } finally {
     void loadRsvpStatus().catch(() => false);
   }
 }
 
+let optionalRefreshInFlight = false;
 async function refreshLiveData() {
   if (liveRefreshInFlight || document.hidden) return;
   liveRefreshInFlight = true;
-  setSystemState("checking");
+  // A healthy card should not flash "Checking…" because a separate
+  // scouting or notifications endpoint is temporarily slow.
+  if (!currentCalendar) setSystemState("checking");
   try {
-    const notificationProfileRefresh = ownerToken()
-      ? loadNotificationProfile({ migrateLocal: false })
-      : Promise.resolve(true);
-    const [calendarOk] = await Promise.all([
-      loadCalendar(), loadBoard(), loadStandings(),
-      notificationProfileRefresh.catch(() => false),
-    ]);
-    // The notification board or personal settings may be unavailable even
-    // when the public match schedule is healthy.
+    const calendarOk = await loadCalendar();
     setSystemState(calendarOk ? "live" : currentCalendar ? "stale" : "offline");
+    if (!optionalRefreshInFlight) {
+      optionalRefreshInFlight = true;
+      void Promise.allSettled([
+        loadBoard(), loadStandings(),
+        ownerToken() ? loadNotificationProfile({ migrateLocal: false }) : Promise.resolve(),
+      ]).finally(() => { optionalRefreshInFlight = false; });
+    }
   } catch {
     setSystemState(currentCalendar ? "stale" : "offline");
   } finally {
@@ -4764,6 +4793,8 @@ setSystemState("checking");
 // Avoid a burst of optional API requests competing with the first schedule
 // request. Install/update can proceed while the schedule hydrates.
 void registerServiceWorker().catch(() => null);
+restorePublicCalendar();
+if (currentCalendar) setSystemState("stale");
 const calendarOk = await loadCalendar().catch(() => false);
 setSystemState(calendarOk ? "live" : currentCalendar ? "stale" : "offline");
 initialLoadComplete = true;
