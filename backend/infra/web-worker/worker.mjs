@@ -1813,9 +1813,11 @@ async function loadScoutingIndex(env) {
         if (value?.schemaVersion === 1 && value.standings?.cards &&
             value.reports && typeof value.reports === "object") return value;
       } catch (error) {
-        // An old working projection is preferable to forcing a costly rebuild
-        // while GitHub temporarily refuses requests.
-        if (!transientPublicLoadError(error)) throw error;
+        // During the first index run the projection may not exist yet. Only
+        // that specific missing-file case is allowed to fall back to the
+        // historical calculation; other nontransient errors fail closed.
+        const missing = /\b404\b|not found/i.test(String(error?.message || ""));
+        if (!missing && !transientPublicLoadError(error)) throw error;
       }
       const cached = await kvJsonGet(env, "snapshot:scout-index").catch(() => null);
       return cached?.schemaVersion === 1 ? cached : null;
