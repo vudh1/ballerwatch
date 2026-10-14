@@ -51,3 +51,14 @@ test("AI 8.1 feedback review identifies fixture and briefing failures without na
   assert.match(briefing.summary,/weekly briefing/);
   assert.doesNotMatch(JSON.stringify([fixture,briefing]),/Private Club/);
 });
+
+test("new scouting corrections are classified without saving user text", () => {
+  const response = negativeFeedbackProjection({
+    intent: "league_scout",
+    question: "Scouting Private TeamName prediction incorrect",
+  });
+  assert.match(response.summary, /prepared scouting/);
+  assert.match(response.summary, /scouting\/prediction/);
+  assert.match(response.reason, /projection freshness/);
+  assert.doesNotMatch(JSON.stringify(response), /Private TeamName/);
+});
