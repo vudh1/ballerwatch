@@ -1813,7 +1813,7 @@ test("repeated scouting requests do not starve public match data", () => {
   assert.match(worker, /publicReadCache\.get\("rats-history", 120_000/);
   assert.match(worker, /loadRatsHistoryUncached\(env\)/);
   assert.match(worker, /publicReadCache\.get\("public-snapshot", 90_000/);
-  assert.match(worker, /prebuilt-scout-index-v2/);
+  assert.match(worker, /prebuilt-scout-index-v3/);
   assert.match(worker, /scoutingProjectionCurrent\(index, snapshot\)/);
   assert.match(worker, /index\.reports\[key\]/);
   assert.doesNotMatch(worker, /standings-fallback:|scout-fallback:|buildLeagueStandings\(|buildLeagueTeamHistory\(/);
