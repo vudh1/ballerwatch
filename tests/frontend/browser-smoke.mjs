@@ -109,6 +109,23 @@ async function shot(page, name) {
   if (screenshotDir) await page.screenshot({ path: path.join(screenshotDir, `${name}.png`), fullPage: false });
 }
 
+async function alignSyntheticCalendarCacheToToday(page) {
+  // The browser fixtures use year 2099 for stable future game display.
+  // Production cache validation correctly requires a same-day startDate.
+  await page.evaluate(() => {
+    const key = "ballerwatch:v2:public-calendar-device";
+    const saved = JSON.parse(localStorage.getItem(key) || "null");
+    if (!saved?.calendar) throw new Error("Expected a public device cache");
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Los_Angeles", year: "numeric",
+      month: "2-digit", day: "2-digit",
+    }).formatToParts(new Date());
+    const get = (type) => parts.find((part) => part.type === type)?.value;
+    saved.calendar.startDate = [get("year"), get("month"), get("day")].join("-");
+    localStorage.setItem(key, JSON.stringify(saved));
+  });
+}
+
 async function scenario(name, run) {
   await run();
   scenarios += 1;
