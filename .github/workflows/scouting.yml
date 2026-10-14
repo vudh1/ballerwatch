@@ -1,0 +1,47 @@
+name: Hourly RATS scouting projection
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Serialize with the league watcher, since both update encrypted runtime-state.
+concurrency:
+  group: ballerwatch-league
+  cancel-in-progress: false
+
+jobs:
+  scouting:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: production
+          fetch-depth: 1
+
+      - name: Pull encrypted league state
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: node backend/shared/runtime-state.mjs pull league
+
+      - name: Update scored history when due and precompute scouting
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: |
+          node backend/league/history.mjs
+          node backend/league/scouting.mjs
+
+      - name: Seal and publish public scouting snapshot
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: node backend/shared/runtime-state.mjs push league
+
+      - name: Remove decrypted local runtime data
+        if: always()
+        run: |
+          node backend/shared/runtime-state.mjs clean league
+          rm -rf .runtime
