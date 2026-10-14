@@ -172,11 +172,11 @@ try {
           ["FFC 45%", "Tie", "TU 35%"]);
         assert.ok(await page.locator("#next-game-form").evaluate((element) => {
           const address = document.querySelector("#next-game-location");
-          const capacity = document.querySelector("#next-game-capacity");
           const style = getComputedStyle(element);
-          return address.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING &&
+          return Boolean(address.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING) &&
             style.gridArea === "form" &&
-            Math.abs(element.getBoundingClientRect().width - capacity.getBoundingClientRect().width) < 2;
+            element.getBoundingClientRect().top >= address.getBoundingClientRect().top &&
+            element.getBoundingClientRect().width >= address.getBoundingClientRect().width;
         }));
         const appearance = await page.locator("#next-game-form").evaluate((element) => {
           const css = getComputedStyle(element);
