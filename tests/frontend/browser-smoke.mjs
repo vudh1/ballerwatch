@@ -269,11 +269,15 @@ try {
           sessionStorage.getItem("ballerwatch-intro-seen-v1"),
           sessionStorage.getItem("ballerwatch-public-calendar-session-v1"),
         ]), ["0", "v1-sentinel", "v1-sentinel"]);
+        await alignSyntheticCalendarCacheToToday(instance.page);
         instance.controls.offlineApi = true;
         await instance.page.reload();
         await instance.page.waitForFunction(() => document.querySelector("#next-game-title").textContent.includes("October 15"));
-        await instance.page.waitForFunction(() => document.querySelector("#system-status").textContent === "Last synced");
-        assert.equal(await instance.page.locator("#system-status").textContent(), "Last synced");
+        // One transient outage is not enough to label saved fixtures stale:
+        // the last-good schedule stays visible with an honest neutral status.
+        await instance.page.waitForFunction(() => document.querySelector("#system-status").textContent === "Ready");
+        assert.equal(await instance.page.locator("#system-status").textContent(), "Ready");
+        assert.match(await instance.page.locator("#calendar-updated").textContent(), /Updated/);
         await instance.context.close();
       });
 
