@@ -6,6 +6,7 @@
  * Added in v8.2.0; division-aware model revised in v8.7.0.
  */
 import { completedHistoryMatches, historyTeamKey, normalizeHistoryTeamName } from "./rats-history.mjs";
+import { DEFAULT_SCOUT_WEIGHTS, forecastFromFeatures, gamePredictionFeatures, roundThreeWay } from "./scout-calibration.mjs";
 
 const SEASON_NAMES = ["winter", "spring", "summer", "fall"];
 
@@ -147,7 +148,7 @@ function trackedTeamStats(history, seasonId, team, rows, today) {
 
 /** Current-season cards deliberately never fall back to a previous season. */
 export function buildLeagueStandings(
-  history, seasonId, monitoredTeams = [], today = "9999-12-31", fixtures = [],
+  history, seasonId, monitoredTeams = [], today = "9999-12-31", fixtures = [], weights = DEFAULT_SCOUT_WEIGHTS,
 ) {
   const season = seasonData(history, seasonId);
   const teams = Array.isArray(season?.teams) ? season.teams : [];
@@ -172,7 +173,7 @@ export function buildLeagueStandings(
       .reduce((items, game) => {
         const key = [historyTeamKey(game.team), historyTeamKey(game.opponent)].join("|");
         if (items[key]) return items;
-        const result = buildMatchupEstimate(history, game.team, game.opponent, today);
+        const result = buildMatchupEstimate(history, game.team, game.opponent, today, weights);
         if (result) items[key] = result;
         return items;
       }, {}),
@@ -410,58 +411,38 @@ function qualityRanking(history, season, team, today) {
 }
 
 /**
- * Provisional three-outcome estimate from the last ten scored matches on
- * each side. Reweight older seasons by verified format, division tier, and
- * recency; limit head-to-head influence and smooth small samples. The values
- * are not empirically calibrated odds and must not be displayed as exact.
+ * Matchup estimates use the EXACT predictor used by walk-forward backtests.
+ * The optional weights are only supplied by the offline scouting builder;
+ * public request handlers still read immutable, encrypted snapshots.
  */
-export function buildMatchupEstimate(history, teamName, opponentName, today = "9999-12-31") {
+export function buildMatchupEstimate(
+  history, teamName, opponentName, today = "9999-12-31",
+  weights = DEFAULT_SCOUT_WEIGHTS,
+) {
   if (!teamName || !opponentName ||
       historyTeamKey(teamName) === historyTeamKey(opponentName)) return null;
   const matches = allIndexedScoredMatches(history, today);
   const ours = lastTeamGames(matches, teamName);
   const theirs = lastTeamGames(matches, opponentName);
   if (!ours.length && !theirs.length) return null;
-  const teamForm = weightedRecentRecord(history, ours);
-  const opponentForm = weightedRecentRecord(history, theirs);
-  const observed = Math.min(1, (ours.length + theirs.length) / (2 * FORM_WINDOW));
-  // Division strength adds context beyond W/D/L: identical records against
-  // D1 competition carry more evidence than identical results against D3.
-  const formEdge = (teamForm.form - opponentForm.form) * 0.75;
-  const divisionEdge = (teamForm.divisionLevel - opponentForm.divisionLevel) * 0.18;
-  let share = 0.5 + (formEdge + divisionEdge) * observed;
-
-  const meetings = lastTeamGames(
-    matches, teamName, "", Number.MAX_SAFE_INTEGER,
-  ).filter((entry) => entry.opponentKey === historyTeamKey(opponentName)).slice(0, 5);
-  let points = 0, meetingWeight = 0, meetingDraws = 0;
-  for (const [index, entry] of meetings.entries()) {
-    const scored = entry.isHome ? entry.match.homeScore : entry.match.awayScore;
-    const conceded = entry.isHome ? entry.match.awayScore : entry.match.homeScore;
-    const weight = indexedMatchWeight(history, entry.match, teamName) * Math.pow(0.85, index);
-    meetingWeight += weight;
-    if (scored > conceded) points += weight;
-    else if (scored === conceded) { points += weight * 0.5; meetingDraws += weight; }
-  }
-  const headToHead = (points + 1) / (meetingWeight + 2);
-  const influence = Math.min(0.22, meetings.length * 0.045);
-  share = Math.max(0.13, Math.min(0.87,
-    share * (1 - influence) + headToHead * influence));
-  // A draw is a separate result, not half a win probability. Regularize
-  // towards a 20% draw baseline because ten games cannot calibrate odds.
-  const observedDrawRate = (teamForm.drawRate + opponentForm.drawRate) / 2;
-  const drawShare = Math.max(0.12, Math.min(0.34,
-    0.20 + (observedDrawRate - 0.20) * 0.5 * observed +
-    (meetingWeight ? ((meetingDraws / meetingWeight) - 0.2) * influence * 0.2 : 0)));
-  const winPct = Math.round((1 - drawShare) * share * 20) * 5;
-  const drawPct = Math.round(drawShare * 20) * 5;
-  const lossPct = 100 - winPct - drawPct;
+  const tierResolver = (archive, match, name) => divisionStrengthMultiplier(
+    matchingTeam(seasonData(archive, match.seasonId)?.teams || [], name));
+  const formatResolver = (archive, match, name) =>
+    matchFormatFromArchive(archive, match, name);
+  const homeFeatures = gamePredictionFeatures(history, ours, tierResolver, formatResolver);
+  const awayFeatures = gamePredictionFeatures(history, theirs, tierResolver, formatResolver);
+  const meetings = lastTeamGames(matches, teamName, "", Number.MAX_SAFE_INTEGER)
+    .filter((entry) => entry.opponentKey === historyTeamKey(opponentName)).slice(0, 5);
+  const meetingFeatures = gamePredictionFeatures(
+    history, meetings, tierResolver, formatResolver);
+  const probs = forecastFromFeatures(homeFeatures, awayFeatures, meetingFeatures, weights);
+  const percentages = roundThreeWay(probs);
   return {
-    team: teamName, opponent: opponentName, winPct, drawPct, lossPct,
+    team: teamName, opponent: opponentName, ...percentages,
     teamGames: ours.length, opponentGames: theirs.length,
     headToHeadGames: meetings.length,
     sampleLimited: ours.length < 5 || theirs.length < 5,
-    method: "Provisional W/D/L estimate using last ten scored matches across seasons, recency, 11v11 format, D1–D3 division tiers and up to five head-to-head games. Three outcomes sum to 100%. Uncalibrated; not bookmaker odds.",
+    method: "Offline walk-forward-reviewed three-outcome estimate using 10 scored games, historical D1–D3 tiers, 11v11 format, recency, and up to five prior head-to-head meetings. Reported values are rounded and provisional, not betting odds.",
   };
 }
 
