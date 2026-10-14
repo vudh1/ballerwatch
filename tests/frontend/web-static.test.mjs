@@ -1871,7 +1871,7 @@ test("scouting preloads once after base data, and status recovery never awaits o
   assert.match(app, /function restorePublicCalendar\(\)/);
   assert.match(app, /function rememberPublicCalendar\(calendar\)/);
   assert.match(app, /writePublicCalendar\(sessionStorage, PUBLIC_CALENDAR_CACHE_KEY/);
-  assert.match(app, /writePublicCalendar\(localStorage, PUBLIC_CALENDAR_LOCAL_KEY/);
+  assert.match(app, /writePublicCalendar\(localStorage, PUBLIC_CALENDAR_DEVICE_KEY/);
   assert.match(app, /const restoredPublicCalendar = restorePublicCalendar\(\)/);
   assert.doesNotMatch(app, /restorePublicCalendar\(\);\s*if \(currentCalendar\) setSystemState\("stale"\)/);
   assert.match(app, /const calendarOk = await loadCalendar\(\)/);
@@ -2100,7 +2100,7 @@ test("repeat launch renders only allowlisted public schedule before any network 
   assert.match(cache, /PUBLIC_CALENDAR_MAX_AGE_MS = 12 \* 60 \* 60 \* 1000/);
   assert.match(cache, /calendar\.startDate !== today/);
   assert.doesNotMatch(cache, /"players"|"waitlist"|"sessionToken"|"password"/);
-  assert.match(app, /writePublicCalendar\(localStorage, PUBLIC_CALENDAR_LOCAL_KEY/);
+  assert.match(app, /writePublicCalendar\(localStorage, PUBLIC_CALENDAR_DEVICE_KEY/);
 });
 
 test("status is stable across a single transient error and never invents Live", () => {
