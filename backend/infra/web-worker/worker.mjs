@@ -1589,6 +1589,9 @@ async function syncDerivedRuntimeFile(env, path, raw) {
   } else if (path === "league/state/history.json") {
     const value = await decryptState(parsed, env);
     if (value) await kvJsonPut(env, "snapshot:rats-history", value);
+  } else if (path === "league/state/scout-index.json") {
+    const value = await decryptState(parsed, env);
+    if (value?.schemaVersion === 1) await kvJsonPut(env, "snapshot:scout-index", value);
   } else if (path === "state/user.json") {
     const userState = await userStateDocument(env, parsed);
     if (userState.settings) {
@@ -1606,7 +1609,8 @@ async function runtimeFilePut(env, path, raw) {
   if (!env.BALLERWATCH_STATE) throw new Error("Runtime KV is unavailable.");
   if (!RUNTIME_FILE_PATHS.has(path)) throw new Error("Runtime-state path is not allowed.");
   const text = String(raw || "");
-  const maxLength = path === "league/state/history.json" ? 10_000_000 : 500_000;
+  const maxLength = path === "league/state/history.json" ? 10_000_000
+    : path === "league/state/scout-index.json" ? 3_000_000 : 500_000;
   if (!text || text.length > maxLength) throw new Error("Invalid runtime-state payload.");
   await env.BALLERWATCH_STATE.put(runtimeKey(path), text);
   await syncDerivedRuntimeFile(env, path, text);
@@ -1794,6 +1798,38 @@ async function loadRatsHistoryUncached(env) {
     throw new Error("RATS history index is unavailable.");
   }
   return history;
+}
+
+// The large archive is read and ranked by the separate hourly Actions job.
+// Each Worker request only parses the compact encrypted projection.
+async function loadScoutingIndex(env) {
+  return publicReadCache.get("prebuilt-scout-index-v1", 90_000,
+    async () => {
+      try {
+        const envelope = await githubRawJsonFile(
+          env, "league/state/scout-index.json", "runtime-state",
+        );
+        const value = await decryptState(envelope, env);
+        if (value?.schemaVersion === 1 && value.standings?.cards &&
+            value.reports && typeof value.reports === "object") return value;
+      } catch (error) {
+        // An old working projection is preferable to forcing a costly rebuild
+        // while GitHub temporarily refuses requests.
+        if (!transientPublicLoadError(error)) throw error;
+      }
+      const cached = await kvJsonGet(env, "snapshot:scout-index").catch(() => null);
+      return cached?.schemaVersion === 1 ? cached : null;
+    },
+    { staleMs: 6 * 60 * 60_000, transientError: transientPublicLoadError },
+  );
+}
+
+function scoutingProjectionCurrent(index, snapshot) {
+  if (!index || index.seasonId !== String(snapshot?.league?.seasonId || "")) return false;
+  const tracked = Array.isArray(snapshot?.teams) ? snapshot.teams : [];
+  const indexed = Array.isArray(index.monitoredTeams) ? index.monitoredTeams : [];
+  const normalize = (list) => list.map((name) => String(name || "").trim().toLowerCase()).sort();
+  return JSON.stringify(normalize(tracked)) === JSON.stringify(normalize(indexed));
 }
 
 async function loadSnapshot(env) {
@@ -3601,23 +3637,21 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/web/standings") {
       try {
-        const [snapshot, history] = await Promise.all([
-          loadSnapshot(env), loadRatsHistory(env),
+        const [snapshot, index] = await Promise.all([
+          loadSnapshot(env), loadScoutingIndex(env),
         ]);
+        if (scoutingProjectionCurrent(index, snapshot)) {
+          return webJson(request, { ok: true, standings: index.standings });
+        }
+        // During the very first hourly index after an upgrade, keep old
+        // standings accessible. Normal operation never calculates on GET.
+        const history = await loadRatsHistory(env);
         const seasonId = cleanText(snapshot?.league?.seasonId, 40);
         const today = localDate();
-        const fixtureList = leagueMatches(snapshot)
-          .filter((game) => String(game?.date || "") >= today)
-          .sort((a, b) => String(a.date).localeCompare(String(b.date)))
-          .slice(0, 25);
-        const pairingKey = fixtureList.map((game) =>
-          `${game.team}/${game.opponent}`).join(";");
         const standings = await publicReadCache.get(
-          `standings-form:${history.updatedAt}:${seasonId}:${today}:${(snapshot?.teams || []).join("|")}:${pairingKey}`,
-          90_000,
-          () => buildLeagueStandings(
-            history, seasonId, snapshot?.teams || [], today, fixtureList,
-          ),
+          `standings-fallback:${history.updatedAt}:${seasonId}:${today}:${(snapshot?.teams || []).join("|")}`,
+          5 * 60_000,
+          () => buildLeagueStandings(history, seasonId, snapshot?.teams || [], today),
         );
         return webJson(request, { ok: true, standings });
       } catch {
@@ -3635,16 +3669,34 @@ export default {
           { status: 400 });
       }
       try {
-        const [snapshot, history] = await Promise.all([
-          loadSnapshot(env), loadRatsHistory(env),
+        const [snapshot, index] = await Promise.all([
+          loadSnapshot(env), loadScoutingIndex(env),
         ]);
+        if (scoutingProjectionCurrent(index, snapshot)) {
+          const card = index.standings.cards.find((candidate) =>
+            (!division || candidate.divisionKey === division ||
+              candidate.division === division) &&
+            candidate.rows.some((row) => row.name === teamName));
+          if (!card) {
+            return webJson(request, { ok: false, error: "Team is not in the current standings." },
+              { status: 404 });
+          }
+          const key = JSON.stringify([card.divisionKey || card.division, teamName]);
+          const report = index.reports[key];
+          if (report) return webJson(request, { ok: true, history: report });
+          return webJson(request, {
+            ok: false, error: "Scouting report has not been indexed for this team yet.",
+          }, { status: 503 });
+        }
+
+        // Preserve pre-index backwards compatibility without impacting the
+        // fast calendar or next-game endpoints. This path retires once the
+        // first independent hourly projection is published.
+        const history = await loadRatsHistory(env);
         const seasonId = cleanText(snapshot?.league?.seasonId, 40);
-        const standings = await publicReadCache.get(
-          `standings:${history.updatedAt}:${seasonId}:${localDate()}:${(snapshot?.teams || []).join("|")}`,
-          90_000,
-          () => buildLeagueStandings(history, seasonId, snapshot?.teams || [], localDate()),
+        const standings = buildLeagueStandings(
+          history, seasonId, snapshot?.teams || [], localDate(),
         );
-        // Public drill-down is limited to teams in the current monitored divisions.
         const allowed = standings.cards.some((card) =>
           (!division || card.divisionKey === division || card.division === division) &&
           card.rows.some((row) => row.name === teamName));
@@ -3652,20 +3704,18 @@ export default {
           return webJson(request, { ok: false, error: "Team is not in the current standings." },
             { status: 404 });
         }
-        const teamHistory = await publicReadCache.get(
-          `scout:${history.updatedAt}:${seasonId}:${localDate()}:${teamName}:${division}`,
+        const report = await publicReadCache.get(
+          `scout-fallback:${history.updatedAt}:${seasonId}:${localDate()}:${teamName}:${division}`,
           5 * 60_000,
           () => buildLeagueTeamHistory(
             history, seasonId, teamName, 35, localDate(), division,
           ),
         );
-        if (!teamHistory) {
-          return webJson(request, { ok: false, error: "Team history is not indexed yet." },
-            { status: 404 });
-        }
-        return webJson(request, { ok: true, history: teamHistory });
+        if (report) return webJson(request, { ok: true, history: report });
+        return webJson(request, {
+          ok: false, error: "Team history is not indexed yet.",
+        }, { status: 404 });
       } catch (error) {
-        // Diagnostic class only: never log decrypted archive/roster or user tokens.
         console.warn("Public scout read failed", String(error?.name || "Error").slice(0, 36));
         return webJson(request, {
           ok: false, error: "RATS match history is temporarily unavailable.",
