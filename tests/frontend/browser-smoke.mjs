@@ -191,6 +191,35 @@ try {
         await context.close();
       });
 
+      await scenario(`${engine}: guest settings, local notifications and favorite teams need no sign-in`, async () => {
+        const { context, page, errors, calls } = await prepare(browser, { reducedMotion: "reduce" });
+        await ready(page);
+        await page.locator("#settings-button").click();
+        assert.equal(await page.locator("#guest-settings-view").isVisible(), true);
+        assert.equal(await page.locator("#settings-login-view").evaluate((el) => el.open), false);
+        await page.locator("#guest-name").fill("Visitor");
+        await page.locator("#guest-teams-trigger").click();
+        await page.locator("#guest-teams-search").fill("Fixture FC");
+        await page.locator('#guest-teams-options [role="option"]').first().click();
+        await page.locator("#guest-settings-form button[type=submit]").click();
+        assert.match(await page.locator("#guest-settings-status").textContent(), /device/);
+        const profile = await page.evaluate(() => JSON.parse(localStorage.getItem("ballerwatch-visitor-profile-v1")));
+        assert.equal(profile.name, "Visitor");
+        assert.deepEqual(profile.teams, ["Fixture FC"]);
+        assert.equal(calls.filter((call) => call.path === "/web/user/settings" && call.method === "POST").length, 0);
+        await page.locator("#close-settings").click();
+        await page.locator("#notification-bell").click();
+        await page.locator("#notification-pref-pickup").uncheck();
+        assert.equal(await page.evaluate(() =>
+          JSON.parse(localStorage.getItem("ballerwatch-notification-channels-v1")).pickup), false);
+        await page.reload();
+        await ready(page);
+        await page.locator("#settings-button").click();
+        assert.equal(await page.locator("#guest-name").inputValue(), "Visitor");
+        assert.deepEqual(errors, []);
+        await context.close();
+      });
+
       await scenario(`${engine}: saved public standings and match odds paint before offline verification`, async () => {
         const { context, page, controls, errors, calls } = await prepare(browser, { reducedMotion: "reduce" });
         await ready(page);

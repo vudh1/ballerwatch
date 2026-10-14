@@ -3739,13 +3739,41 @@ export default {
       }
     }
 
+    // Public team names and standings come exclusively from the encrypted,
+    // hourly precomputed index. No personal data or authenticated state.
+    if (request.method === "GET" && url.pathname === "/web/teams") {
+      try {
+        const index = await loadScoutingIndex(env);
+        return webJson(request, { ok: true, teams: index.teamOptions || [] });
+      } catch {
+        return webJson(request, { ok: false, error: "Team directory unavailable." }, { status: 503 });
+      }
+    }
+
     if (request.method === "GET" && url.pathname === "/web/standings") {
       try {
         const [snapshot, index] = await Promise.all([
           loadSnapshot(env), loadScoutingIndex(env),
         ]);
         if (scoutingProjectionCurrent(index, snapshot)) {
-          return webJson(request, { ok: true, standings: index.standings });
+          const requested = url.searchParams.get("teams");
+          if (!requested) return webJson(request, { ok: true, standings: index.standings });
+          const teams = [...new Set(requested.split(",")
+            .map((name) => name.trim().toLocaleLowerCase("en"))
+            .filter((name) => name.length >= 2 && name.length <= 120))];
+          if (!teams.length || teams.length > 8 || requested.length > 1200) {
+            return webJson(request, { ok: false, error: "Choose 1–8 valid teams." }, { status: 400 });
+          }
+          const indexed = Array.isArray(index.availableCards) ? index.availableCards : [];
+          const byName = new Map(indexed.map((card) => [
+            String(card.team || "").toLocaleLowerCase("en"), card,
+          ]));
+          const cards = teams.map((name) => byName.get(name)).filter(Boolean);
+          if (!cards.length) {
+            return webJson(request, { ok: false,
+              error: "Selected teams are not indexed in the current RATS season." }, { status: 404 });
+          }
+          return webJson(request, { ok: true, standings: { ...index.standings, cards } });
         }
         // Missing or mismatched projections are reported as unavailable
         // instead of rebuilding years of historical results during a GET.

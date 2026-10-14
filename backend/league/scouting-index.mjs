@@ -72,6 +72,12 @@ export function buildScoutingIndex({
   }
   const teamOptions = [...teamDirectory.values()]
     .sort((left, right) => left.localeCompare(right)).slice(0, 450);
+  // Derive each current-season team's standings only in the hourly worker.
+  // Anonymous devices can select any indexed club without live history work.
+  // Full detailed scouting reports remain bounded to configured divisions.
+  const availableCards = buildLeagueStandings(
+    history, seasonId, teamOptions, today, [], calibration.weights,
+  ).cards;
   const reports = {};
   for (const card of standings.cards) {
     if (!card.ready) continue;
@@ -94,6 +100,7 @@ export function buildScoutingIndex({
     today,
     monitoredTeams: monitored,
     standings,
+    availableCards,
     model: calibration,
     reports,
   };
