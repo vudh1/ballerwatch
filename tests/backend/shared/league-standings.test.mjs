@@ -241,3 +241,24 @@ test("standings cards never bundle scout stats, which are fetched on team tap", 
   assert.ok(history.scout.quality);
   assert.equal(history.scout.formats.unknown.games,3);
 });
+
+test("8v8 and 11v11 leagues never share a table or scouting-opponent sample", () => {
+  const data={updatedAt:"2026-10-13T00:00:00Z",coverage:{complete:true},
+    seasons:[{seasonId:"fall-2026",label:"Fall 2026",
+      teams:[
+        {name:"Eight A",day:"Tuesday",gender:"Men",division:"2",leagueName:"8v8"},
+        {name:"Eight B",day:"Tuesday",gender:"Men",division:"2",leagueName:"8v8"},
+        {name:"Eleven A",day:"Tuesday",gender:"Men",division:"2",leagueName:"11v11"},
+        {name:"Eleven B",day:"Tuesday",gender:"Men",division:"2",leagueName:"11v11"},
+      ],
+      matches:[
+        {date:"2026-10-01",homeTeam:"Eight A",awayTeam:"Eight B",
+          homeScore:2,awayScore:1},
+        {date:"2026-10-01",homeTeam:"Eleven A",awayTeam:"Eleven B",
+          homeScore:1,awayScore:0},
+      ]}]};
+  const cards=buildLeagueStandings(data,"fall-2026",["Eight A","Eleven A"],"2026-10-13").cards;
+  assert.deepEqual(cards.map(card=>card.rows.map(row=>row.name)),
+    [["Eight A","Eight B"],["Eleven A","Eleven B"]]);
+  assert.equal(buildTeamScout(data,"fall-2026","Eight A","2026-10-13").quality.total,2);
+});
