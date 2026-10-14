@@ -6,6 +6,7 @@ const SHELL = [
   "./styles.css?v=8.7.0",
   "./app.js?v=8.7.0",
   "./lib/client.js",
+  "./lib/settings-choice.js",
   "./lib/notification-state.js",
   "./manifest.webmanifest?v=8.7.0",
   "./icon.svg?v=8.7.0",
