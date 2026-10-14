@@ -137,6 +137,10 @@ export function createSettingsChoice({
     }
   });
   document.addEventListener("pointerdown", (event) => {
+    // Closing the containing dialog must not remove the open listbox during
+    // pointerdown: that reflows the dialog before mouseup and can swallow the
+    // close button's click (notably in Chromium/iOS-style modal layouts).
+    if (event.target?.closest?.("#close-settings")) return;
     if (!panel.hidden && !root.contains(event.target)) close();
   });
 
