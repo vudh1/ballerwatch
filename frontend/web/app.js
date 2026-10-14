@@ -3532,7 +3532,8 @@ function installStandingsSwipe() {
   };
 
   viewport.addEventListener("pointerdown", (event) => {
-    if (event.button !== 0 || event.target.closest("button, a, input, textarea")) return;
+    // A swipe may start on a team row; a tap still opens the history sheet.
+    if (event.button !== 0 || event.target.closest("a, input, textarea, select")) return;
     pointerStart = {
       id: event.pointerId,
       x: event.clientX,
@@ -3599,7 +3600,7 @@ function installStandingsSwipe() {
     control.addEventListener("click", () => setStandingsSlide(standingsIndex + direction));
     const clear = () => {
       control.style.setProperty("--standings-edge-opacity", "0.10");
-      control.style.setProperty("--standings-arrow-opacity", "0.60");
+      control.style.setProperty("--standings-arrow-opacity", "0");
     };
     control.addEventListener("pointermove", (event) => {
       const rect = control.getBoundingClientRect();
@@ -3611,7 +3612,7 @@ function installStandingsSwipe() {
       control.style.setProperty("--standings-edge-opacity",
         (0.1 + 0.85 * strength * strength).toFixed(3));
       control.style.setProperty("--standings-arrow-opacity",
-        (0.6 + 0.4 * strength).toFixed(3));
+        Math.max(0, (strength * strength - 0.22) / 0.78).toFixed(3));
     });
     control.addEventListener("pointerleave", clear);
     control.addEventListener("blur", clear);
