@@ -3328,9 +3328,9 @@ function buildScoutOverview(scout) {
       `${scout.recentTen?.games || 0} games · 11v11 weighted`),
     scoutDataCell("ALL-TIME", scoutingRecordText(scout.overall),
       `${scout.overall?.games || 0} indexed games`),
-    scoutDataCell("AVG GOAL DIFF", scout.overall?.goalDifferencePerGame == null
-      ? "—" : `${scout.overall.goalDifferencePerGame > 0 ? "+" : ""}${scout.overall.goalDifferencePerGame}`,
-      "Goals per game"),
+    scoutDataCell("AVG GOAL DIFF", scout.recentTen?.goalDifferencePerGame == null
+      ? "—" : `${scout.recentTen.goalDifferencePerGame > 0 ? "+" : ""}${scout.recentTen.goalDifferencePerGame}`,
+      "Last 10 games"),
   );
   overview.append(snapshot);
 
@@ -3354,10 +3354,10 @@ function buildScoutOverview(scout) {
   const rates = document.createElement("div");
   rates.className = "scout-scoring";
   rates.append(
-    scoutDataCell("SCORING", scout.overall?.goalsForPerGame == null
-      ? "—" : String(scout.overall.goalsForPerGame), "Goals per game"),
-    scoutDataCell("DEFENDING", scout.overall?.goalsAgainstPerGame == null
-      ? "—" : String(scout.overall.goalsAgainstPerGame), "Goals allowed/game"),
+    scoutDataCell("SCORING", scout.recentTen?.goalsForPerGame == null
+      ? "—" : String(scout.recentTen.goalsForPerGame), "Goals/game · Last 10"),
+    scoutDataCell("DEFENDING", scout.recentTen?.goalsAgainstPerGame == null
+      ? "—" : String(scout.recentTen.goalsAgainstPerGame), "Allowed/game · Last 10"),
   );
   overview.append(rates);
 
@@ -3390,7 +3390,7 @@ function buildScoutOverview(scout) {
     "Draws are adjusted too. Direct games against this team are excluded when assessing an opponent. " +
     "Only each team's latest ten scored matches are used, across all indexed seasons and formats. " +
     "A verified 11v11 game counts 1.25× a verified 8v8 game; older games with unknown format count 1×. " +
-    "Small samples are smoothed. Teams are ranked against their current division peers using all available history. " +
+    "Ratings shrink toward neutral when fewer than ten scored games are available. Teams are ranked against their current division peers using each team's latest ten games. " +
     "This is an experimental form index, not betting odds or a prediction.",
     "scout-method-text"));
   if (!scout.archiveComplete) how.append(standingsCell("p",
