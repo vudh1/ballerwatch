@@ -14,7 +14,7 @@ function containsName(question, name) {
 }
 export function isScoutingQuestion(question) {
   const text = String(question || "");
-  return /\b(?:scout(?:ing)?|backtest(?:ing)?|accuracy|calibrat(?:ion|ed|e)?|train(?:ing|ed)?|model performance|model weights|strength|stronger|strongest|form|performance|win(?:ning)?\s+(?:chance|probability|rate|percentage)|odds|predict(?:ion|ed)?|likely to win|attack(?:ing)?|defen(?:se|ce|sive)|quality score|opponent.adjusted|last\s+(?:five|5|ten|10)\s+(?:games|matches)|draw\s+(?:chance|probability)|loss\s+(?:chance|probability)|team rankings?)\b/i
+  return /\b(?:scout(?:ing)?|backtest(?:ing)?|accuracy|accurate|precision|precise|calibrat(?:ion|ed|e)?|train(?:ing|ed)?|model performance|model weights|strength|stronger|strongest|form|performance|win(?:ning)?\s+(?:chance|probability|rate|percentage)|odds|predict(?:ion|ed)?|likely to win|attack(?:ing)?|defen(?:se|ce|sive)|quality score|opponent.adjusted|last\s+(?:five|5|ten|10)\s+(?:games|matches)|draw\s+(?:chance|probability)|loss\s+(?:chance|probability)|team rankings?)\b/i
     .test(text) || /\bcompare\b.{0,80}\b(?:teams?|clubs?|form|attack|defense|scoring)\b/i.test(text);
 }
 function reportRows(index) {
@@ -81,7 +81,7 @@ function matchupAnswer(match) {
 export function answerScoutingQuestion(question, index, { contextTeams = [] } = {}) {
   if (!isScoutingQuestion(question)) return null;
   const raw = String(question || "").slice(0, 600);
-  if (/\b(?:backtest(?:ing)?|accuracy|calibrat\w*|train(?:ing|ed)?|model (?:performance|weights))\b/i.test(raw)) {
+  if (/\b(?:backtest(?:ing)?|accuracy|accurate|precision|precise|calibrat\w*|train(?:ing|ed)?|model (?:performance|weights))\b/i.test(raw)) {
     const calibration = index?.model;
     if (!calibration || !calibration.evaluatedGames) {
       return { ok: true, intent: "league_scout",
