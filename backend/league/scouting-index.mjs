@@ -11,6 +11,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { decryptState, encryptState } from "../shared/state-crypto.mjs";
 import { buildLeagueStandings, buildLeagueTeamHistory } from "../shared/league-standings.mjs";
+import { tuneScoutingWeights } from "../shared/scout-calibration.mjs";
 
 export const SCOUT_INDEX_FILE = "league/state/scout-index.json";
 
@@ -37,8 +38,11 @@ export function buildScoutingIndex({
     .filter((game) => game?.date >= today && game?.team && game?.opponent)
     .sort((a, b) => String(a.date).localeCompare(String(b.date)))
     .slice(0, 25);
+  // Independent hourly job only: score historical seasons, freeze each season's
+  // predictors at its START, and use weights only if out-of-time Brier improves.
+  const calibration = tuneScoutingWeights(history, seasonId);
   const standings = buildLeagueStandings(
-    history, seasonId, monitored, today, fixtures,
+    history, seasonId, monitored, today, fixtures, calibration.weights,
   );
   // A public, name-only team directory is prepared in the same hourly job.
   // Settings can search it without scanning historical archives on an HTTP GET.
@@ -64,6 +68,7 @@ export function buildScoutingIndex({
       if (Object.hasOwn(reports, id)) continue;
       const report = buildLeagueTeamHistory(
         history, seasonId, row.name, 35, today, card.divisionKey || card.division,
+        calibration.weights,
       );
       if (report) reports[id] = report;
     }
@@ -77,6 +82,7 @@ export function buildScoutingIndex({
     today,
     monitoredTeams: monitored,
     standings,
+    model: calibration,
     reports,
   };
 }
@@ -109,7 +115,13 @@ export function refreshScoutingIndex({
   }
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, JSON.stringify(encryptState(value), null, 2) + "\n");
-  console.log(`Prepared encrypted scouting index: ${Object.keys(value.reports).length} teams.`);
+  console.log(
+    "Prepared encrypted scouting index:", Object.keys(value.reports).length,
+    "teams; walk-forward:", value.model.status,
+    "; evaluated:", value.model.evaluatedGames,
+    "; held-out Brier:", value.model.nextSeasonBrier,
+    "; baseline:", value.model.baselineNextSeasonBrier,
+  );
   return true;
 }
 

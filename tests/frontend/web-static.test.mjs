@@ -12,19 +12,19 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
 
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   assert.match(html, /manifest\.webmanifest/);
-  assert.match(html, /apple-touch-icon\.png\?v=8\.8\.0/);
+  assert.match(html, /apple-touch-icon\.png\?v=8\.9\.0/);
   assert.match(html, /class="brand-icon"/);
-  assert.match(html, /icon\.svg\?v=8\.8\.0/);
+  assert.match(html, /icon\.svg\?v=8\.9\.0/);
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=8\.8\.0/);
-  assert.match(html, /app\.js\?v=8\.8\.0/);
+  assert.match(html, /styles\.css\?v=8\.9\.0/);
+  assert.match(html, /app\.js\?v=8\.9\.0/);
 
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v8-8-0-shell/);
+  assert.match(sw, /ballerwatch-v8-9-0-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -72,7 +72,7 @@ test("Home Screen install card is removed in standalone mode and notifications u
 test("Home Screen install prompt uses the same card layout system as dashboard cards", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const css = fs.readFileSync("frontend/web/styles.css", "utf8");
-  assert.match(html, /class="card footer-install" id="install-card"/);
+  assert.match(html, /class="card footer-install bw-card-frame" id="install-card"/);
   assert.match(html, /class="footer-install-copy"/);
   assert.match(css, /\.footer-install\.card \{[\s\S]*padding:\s*clamp/);
   assert.match(css, /\.footer-install\.card \{[\s\S]*border-radius:\s*30px/);
@@ -93,7 +93,7 @@ test("promotion watches Worker and Pages then refreshes the open PWA", () => {
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=8\.8\.0/);
+  assert.match(app, /sw\.js\?v=8\.9\.0/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -826,7 +826,7 @@ test("page uses a soccer-pitch backdrop with readable translucent cards", () => 
   assert.match(icon, /A soccer pitch with a soccer ball/);
   assert.match(icon, /<circle cx="256" cy="256" r="54"\/>/);
   assert.match(icon, /translate\(347 344\)/);
-  assert.match(manifest, /icon\.svg\?v=8\.8\.0/);
+  assert.match(manifest, /icon\.svg\?v=8\.9\.0/);
   assert.match(css, /\.card,[\s\S]*\.footer-install \{[\s\S]*rgba\(6, 18, 22, 0\.57\)/);
   assert.match(css, /\.spotlight-card \{[\s\S]*rgba\(4, 16, 22, 0\.72\)/);
   assert.match(css, /backdrop-filter:\s*blur\(24px\) saturate\(135%\)/);
@@ -956,7 +956,7 @@ test("v5.5 dashboard matches the iPhone-first demo direction", () => {
   const css = fs.readFileSync("frontend/web/styles.css", "utf8");
 
   assert.match(html, /Pickup \+ RATS monitor/);
-  assert.match(html, /<h2 id="calendar-title">14-Day Calendar<\/h2>/);
+  assert.match(html, /<h2 class="bw-card-title" id="calendar-title">14-Day Calendar<\/h2>/);
   assert.match(html, /id="chat-launcher"/);
   assert.match(html, /<h2>BallerWatch AI<\/h2>/);
   assert.match(html, /id="next-game-capacity"/);
@@ -1288,7 +1288,7 @@ test("match type pill opens a touch-safe Edit/Delete action sheet and freshness 
   assert.match(css, /\.spotlight-content \{[\s\S]*padding-bottom:\s*2\.2rem/);
   assert.match(
     html,
-    /id="next-game-hint"><\/p>\s*<\/div>\s*<div class="match-card-footer">\s*<p class="match-update-credit" id="next-game-updated"><\/p>/,
+    /id="next-game-hint"><\/p>\s*<\/div>\s*<div class="match-card-footer bw-card-footer">\s*<p class="match-update-credit" id="next-game-updated"><\/p>/,
   );
   assert.match(css, /\.spotlight-card \{[\s\S]*--spotlight-card-inset:\s*clamp\(1\.35rem, 4vw, 1\.8rem\);[\s\S]*padding:\s*var\(--spotlight-card-inset\)/);
   assert.match(css, /\.match-card-footer \{[\s\S]*position:\s*absolute;[\s\S]*right:\s*var\(--spotlight-card-inset[\s\S]*bottom:\s*0\.45rem;[\s\S]*left:\s*var\(--spotlight-card-inset[\s\S]*min-height:\s*0;[\s\S]*padding-top:\s*0\.42rem/);
@@ -1302,7 +1302,7 @@ test("calendar weather freshness sits in a subtle card footer without page water
   const css = fs.readFileSync("frontend/web/styles.css", "utf8");
   assert.match(
     html,
-    /<div class="calendar-card-footer">\s*<p class="calendar-updated calendar-update-credit" id="calendar-updated">Updated pending<\/p>/,
+    /<div class="calendar-card-footer bw-card-footer">\s*<p class="calendar-updated calendar-update-credit" id="calendar-updated">Updated pending<\/p>/,
   );
   assert.match(css, /\.calendar-card-footer \{[\s\S]*position:\s*absolute;[\s\S]*bottom:\s*0\.42rem;[\s\S]*border-top:\s*0;/);
   assert.match(css, /\.calendar-card-footer \.calendar-update-credit \{[\s\S]*font-size:\s*0\.56rem;/);
@@ -1350,7 +1350,7 @@ test("cinematic launch owns first paint, stays session-scoped, and is reduced-mo
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
 
   assert.match(html, /<html lang="en" class="launch-intro-pending">/);
-  assert.match(html, /<script src="\.\/launch-prepaint\.js\?v=8\.8\.0"><\/script>[\s\S]*<link rel="stylesheet"/);
+  assert.match(html, /<script src="\.\/launch-prepaint\.js\?v=8\.9\.0"><\/script>[\s\S]*<link rel="stylesheet"/);
   assert.match(html, /id="launch-intro" aria-hidden="true">/);
   assert.doesNotMatch(html, /id="launch-intro"[^>]*\shidden/);
   assert.match(html, /class="launch-intro-word-main">BallerWatch<\/span>/);
@@ -1371,7 +1371,7 @@ test("cinematic launch owns first paint, stays session-scoped, and is reduced-mo
   assert.match(css, /@keyframes ballerwatch-intro-shine/);
   assert.match(css, /\.launch-intro\.is-active \{[\s\S]*pointer-events:\s*auto/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.launch-intro \{[\s\S]*display:\s*none !important/);
-  assert.match(sw, /\.\/launch-prepaint\.js\?v=8\.8\.0/);
+  assert.match(sw, /\.\/launch-prepaint\.js\?v=8\.9\.0/);
   assert.doesNotMatch([html, gate, app, css].join("\n"), /Netflix/i);
 });
 
@@ -1670,7 +1670,7 @@ test("standings uses adjacent-card drag train and minimal table, preserving team
   assert.match(css, /\.standings-step-next::before/);
   assert.match(app, /function bindCardEdgeWaterfall\(/);
   assert.match(app, /bindCardEdgeWaterfall\(control, direction\)/);
-  assert.match(css, /\.standings-rail \.standings-step:not\(:disabled\)::before/);
+  assert.match(css, /:is\(\.spotlight-carousel, \.standings-rail\) > \.carousel-waterfall-edge::before/);
   assert.match(app, /\["W-D-L", "Wins, draws, losses"\]/);
   assert.match(app, /openTeamHistory\(\s*row\.name, card\.divisionKey/);
 });
@@ -1716,7 +1716,8 @@ test("team stats appear only after team-history API load; standings show no 1/2 
   assert.doesNotMatch(html, /id="standings-position"/);
   assert.doesNotMatch(html, /id="standings-updated"/);
   assert.match(html, /id="team-scout-overview"/);
-  assert.match(app, /slide\.append\(freshness\)/);
+  assert.match(app, /footer\.append\(freshness\)/);
+  assert.match(app, /slide\.append\(footer\)/);
   assert.match(app, /"match-update-credit standings-card-updated"/);
   assert.doesNotMatch(app, /els\.standingsPosition/);
   assert.doesNotMatch(app, /els\.standingsUpdated/);
@@ -1937,4 +1938,82 @@ test("AI scouting is grounded in a prepared model, never raw history on question
   assert.match(model, /match\.winPct/);
   assert.match(model, /not calibrated betting odds/);
   assert.match(app, /What is the win chance for the next monitored matchup/);
+});
+
+
+test("all dashboard cards share one title, kicker and pinned footer contract", () => {
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  assert.match(css, /--bw-card-title-size: clamp\(1\.24rem, 3\.2vw, 1\.57rem\)/);
+  assert.match(css, /\.card h2,[\s\S]*\.standings-slide h2,[\s\S]*\.spotlight-card h2/);
+  assert.match(css, /\.bw-card-frame \.bw-card-title \{/);
+  assert.match(css, /\.standings-track \{ align-items: stretch; \}/);
+  assert.match(css, /\.bw-card-footer \{[\s\S]*margin-top: auto;/);
+  assert.match(css, /\.standings-slide \.bw-card-footer \.match-update-credit\.standings-card-updated/);
+  assert.match(html, /class="card next-game-card spotlight-card bw-card-frame"/);
+  assert.match(html, /class="card calendar-card bw-card-frame"/);
+  assert.match(html, /class="match-card-footer bw-card-footer"/);
+  assert.match(html, /class="calendar-card-footer bw-card-footer"/);
+  assert.match(app, /slide\.classList\.add\("bw-card-frame"\)/);
+  assert.match(app, /footer\.className = "bw-card-footer standings-card-footer"/);
+  assert.match(app, /footer\.append\(freshness\)/);
+  assert.match(app, /slide\.append\(footer\)/);
+  assert.match(html, /class="bw-card-title" id="next-game-title"/);
+  assert.match(html, /class="bw-card-title" id="calendar-title"/);
+  assert.ok(css.indexOf("/* BallerWatch card contract v1") >
+    css.indexOf("/* v8.7.0: shared sports-card typography"));
+});
+
+test("exactly one canonical waterfall effect owns both opacity and transparency", () => {
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
+  const contract = css.split("/* The *only* waterfall visual contract")[1] || "";
+  assert.match(contract, /:is\(\.spotlight-carousel, \.standings-rail\) > \.carousel-waterfall-edge::before/);
+  assert.match(contract, /opacity: var\(--edge-opacity, var\(--bw-edge-background-alpha\)\)/);
+  assert.match(contract, /\.carousel-waterfall-edge:not\(:disabled\):is\(:hover, :focus-visible\)::before \{[\s\S]*opacity: var\(--edge-opacity/);
+  assert.match(contract, /-webkit-backdrop-filter: var\(--bw-edge-blur\)/);
+  assert.match(contract, /transition: opacity 90ms linear/);
+  assert.match(contract, /rgba\(186, 230, 253, 0\.30\) 0%/);
+  assert.match(contract, /mask-image: linear-gradient\(270deg/);
+  assert.match(contract, /mask-image: linear-gradient\(90deg/);
+  assert.match(contract, /top: 5\.75rem;[\s\S]*overflow: visible;/);
+  assert.doesNotMatch(css, /\/\* v8\.8 — true shared waterfall/);
+  assert.doesNotMatch(css, /\/\* Use the match-card opacity and arrow tokens/);
+});
+
+test("scouting predictions are tuned only by the encrypted background index worker", () => {
+  const indexer = fs.readFileSync("backend/league/scouting-index.mjs", "utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
+  const tuner = fs.readFileSync("backend/shared/scout-calibration.mjs", "utf8");
+  const standings = fs.readFileSync("backend/shared/league-standings.mjs", "utf8");
+  assert.match(indexer, /tuneScoutingWeights\(history, seasonId\)/);
+  assert.match(indexer, /calibration\.weights/);
+  assert.match(indexer, /model: calibration/);
+  assert.match(standings, /forecastFromFeatures\(homeFeatures, awayFeatures, meetingFeatures, weights\)/);
+  assert.match(tuner, /season\.seasonId !== currentSeasonId/);
+  assert.match(tuner, /walkForwardBrier/);
+  assert.match(tuner, /promoted \? selection\.weights : DEFAULT_SCOUT_WEIGHTS/);
+  assert.doesNotMatch(worker, /tuneScoutingWeights|forecastFromFeatures|buildMatchupEstimate/);
+});
+
+test("README links old version history rather than duplicating dozens of release notes", () => {
+  const readme = fs.readFileSync("README.md", "utf8");
+  const headings = [...readme.matchAll(/^## BallerWatch \d/gm)];
+  assert.equal(headings.length, 0);
+  assert.match(readme, /GitHub Releases/);
+  assert.match(readme, /Card design system/);
+});
+
+
+test("safe stale-branch cleanup requires the release, exact PR head and matching deployment", () => {
+  const workflow = fs.readFileSync(".github/workflows/prune-merged-branches-8-9.yml", "utf8");
+  assert.match(workflow, /workflow_run:[\s\S]*Deploy GitHub Pages app/);
+  assert.match(workflow, /workflow_run\.conclusion == 'success'/);
+  assert.match(workflow, /production_sha.*released_sha/);
+  assert.match(workflow, /DEPLOYED_SHA.*released_sha/);
+  assert.match(workflow, /main\|production\|runtime-state\|release\/8\.9\.0/);
+  assert.match(workflow, /head\.sha/);
+  assert.match(workflow, /merged_at != null/);
+  assert.match(workflow, /"\$live" != "\$sha"/);
+  assert.match(workflow, /gh api -X DELETE/);
 });

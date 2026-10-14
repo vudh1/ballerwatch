@@ -5985,186 +5985,7 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
   font-size: 1rem;
   align-self: flex-start;
 }
-/* Use the match-card opacity and arrow tokens on the standings train too. */
-@media (hover: hover) and (pointer: fine) {
-  .standings-rail .standings-step {
-    top: 0;
-    bottom: 0;
-    width: clamp(2rem, 7vw, 3.3rem);
-    height: auto;
-    padding: 0;
-    transform: none;
-    border: 0;
-    border-radius: 27px;
-    background: transparent;
-    overflow: visible;
-    z-index: 4;
-  }
-  .standings-rail .standings-step::before {
-    top: 0;
-    height: 100%;
-    width: min(5.5rem, 22vw);
-    transform: none;
-    opacity: var(--edge-opacity, 0.10);
-    -webkit-backdrop-filter: blur(7px) saturate(150%);
-    backdrop-filter: blur(7px) saturate(150%);
-    transition: opacity 170ms ease;
-    pointer-events: none;
-  }
-  .standings-rail .standings-step-previous::before,
-  .spotlight-edge-previous::before {
-    background: linear-gradient(90deg,
-      rgba(125, 211, 252, 0.20) 0%,
-      rgba(96, 165, 250, 0.08) 42%, transparent 100%);
-  }
-  .standings-rail .standings-step-next::before,
-  .spotlight-edge-next::before {
-    background: linear-gradient(270deg,
-      rgba(125, 211, 252, 0.20) 0%,
-      rgba(96, 165, 250, 0.08) 42%, transparent 100%);
-  }
-  .standings-rail .standings-step span {
-    display: grid;
-    place-items: center;
-    width: 2.15rem;
-    height: 2.8rem;
-    opacity: var(--edge-arrow-opacity, 0);
-    text-shadow: 0 0 10px rgba(191, 219, 254, 0.78);
-    transform: scale(0.9);
-    transition: opacity 150ms ease, transform 180ms ease;
-  }
-  .spotlight-edge-control:not(:disabled)::before,
-  .spotlight-edge-control:not(:disabled):is(:hover, :focus-visible)::before,
-  .standings-rail .standings-step:not(:disabled)::before,
-  .standings-rail .standings-step:not(:disabled):is(:hover, :focus-visible)::before {
-    opacity: var(--edge-opacity, 0.10);
-  }
-  .spotlight-edge-control:not(:disabled) span,
-  .spotlight-edge-control:not(:disabled):is(:hover, :focus-visible) span,
-  .standings-rail .standings-step:not(:disabled) span,
-  .standings-rail .standings-step:not(:disabled):is(:hover, :focus-visible) span {
-    opacity: var(--edge-arrow-opacity, 0);
-  }
-  .standings-rail .standings-step:disabled {
-    pointer-events: none;
-    opacity: 0;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .standings-rail .standings-step::before,
-  .standings-rail .standings-step span {
-    transition: none;
-  }
-}
-
-/* Let the shared gradient, rather than a second mask, fade to transparency. */
-@media (hover: hover) and (pointer: fine) {
-  .standings-rail .standings-step::before {
-    mask-image: none;
-    -webkit-mask-image: none;
-  }
-  .standings-rail .standings-step:not(:disabled):is(:hover, :focus-visible) span {
-    transform: scale(1);
-  }
-}
-
-/* v8.8 — true shared waterfall. The same masks, blur, gradient, arrow token,
- * hit width and easing apply to both match and standings on desktop. */
-@media (hover: hover) and (pointer: fine) {
-  .standings-rail .carousel-waterfall-edge {
-    position: absolute;
-    z-index: 30;
-    display: flex;
-    align-items: center;
-    top: 0;
-    bottom: 0;
-    height: auto;
-    width: min(5.75rem, 20%);
-    padding: 0;
-    border: 0;
-    background: transparent;
-    box-shadow: none;
-    overflow: hidden;
-    transform: none;
-    color: rgba(248, 250, 252, 0.92);
-  }
-  .standings-rail .standings-step-previous {
-    left: 0;
-    justify-content: flex-start;
-    padding-left: 0.7rem;
-    border-radius: 32px 0 0 32px;
-  }
-  .standings-rail .standings-step-next {
-    right: 0;
-    justify-content: flex-end;
-    padding-right: 0.7rem;
-    border-radius: 0 32px 32px 0;
-  }
-  :is(.spotlight-carousel, .standings-rail) .carousel-waterfall-edge::before {
-    opacity: var(--edge-opacity, 0.10);
-    -webkit-backdrop-filter: blur(13px) saturate(160%);
-    backdrop-filter: blur(13px) saturate(160%);
-    transition: opacity 90ms linear;
-    pointer-events: none;
-  }
-  .standings-rail .carousel-waterfall-edge::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    transform: none;
-  }
-  :is(.spotlight-carousel, .standings-rail)
-  .carousel-waterfall-edge:is(.spotlight-edge-previous, .standings-step-previous)::before {
-    background: linear-gradient(90deg,
-      rgba(186, 230, 253, 0.30) 0%,
-      rgba(125, 211, 252, 0.19) 18%,
-      rgba(96, 165, 250, 0.09) 44%,
-      rgba(96, 165, 250, 0.025) 68%,
-      transparent 100%);
-    -webkit-mask-image: linear-gradient(90deg, #000 0%, rgba(0, 0, 0, 0.86) 36%, transparent 100%);
-    mask-image: linear-gradient(90deg, #000 0%, rgba(0, 0, 0, 0.86) 36%, transparent 100%);
-  }
-  :is(.spotlight-carousel, .standings-rail)
-  .carousel-waterfall-edge:is(.spotlight-edge-next, .standings-step-next)::before {
-    background: linear-gradient(270deg,
-      rgba(186, 230, 253, 0.30) 0%,
-      rgba(125, 211, 252, 0.19) 18%,
-      rgba(96, 165, 250, 0.09) 44%,
-      rgba(96, 165, 250, 0.025) 68%,
-      transparent 100%);
-    -webkit-mask-image: linear-gradient(270deg, #000 0%, rgba(0, 0, 0, 0.86) 36%, transparent 100%);
-    mask-image: linear-gradient(270deg, #000 0%, rgba(0, 0, 0, 0.86) 36%, transparent 100%);
-  }
-  :is(.spotlight-carousel, .standings-rail) .carousel-waterfall-edge span,
-  :is(.spotlight-carousel, .standings-rail) .carousel-waterfall-edge:not(:disabled):is(:hover, :focus-visible) span {
-    position: relative;
-    z-index: 1;
-    opacity: var(--edge-arrow-opacity, 0);
-    font-size: 2rem;
-    font-weight: 400;
-    line-height: 1;
-    text-shadow: 0 0 10px rgba(191, 219, 254, 0.78),
-      0 3px 14px rgba(0, 0, 0, 0.46);
-  }
-  .standings-rail .carousel-waterfall-edge span {
-    display: grid;
-    place-items: center;
-    width: 2.15rem;
-    height: 2.8rem;
-    transform: scale(0.9);
-    transition: opacity 150ms ease, transform 180ms ease;
-  }
-  .standings-rail .carousel-waterfall-edge:not(:disabled):hover span,
-  .standings-rail .carousel-waterfall-edge:not(:disabled):focus-visible span {
-    transform: scale(1);
-  }
-  .standings-rail .carousel-waterfall-edge:disabled {
-    pointer-events: none;
-    opacity: 0;
-  }
-}
+/* Prior v8.7 / v8.8 waterfall forks removed; canonical design rules are below. */
 /* Allow native vertical scrolling while recognizing horizontal card swipes.
  * No text selection/callout on team buttons during the active iOS gesture. */
 .standings-viewport,
@@ -6338,4 +6159,239 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
     touch-action: pan-y;
   }
   .standings-step { touch-action: manipulation; }
+}
+
+
+/* BallerWatch card contract v1 — one card, one typographic and footer scale.
+ * All dashboard cards reuse these tokens: no independent headline sizes. */
+:root {
+  --bw-card-title-size: clamp(1.24rem, 3.2vw, 1.57rem);
+  --bw-card-title-weight: 800;
+  --bw-card-title-leading: 1.17;
+  --bw-card-title-tracking: -0.032em;
+  --bw-card-kicker-size: var(--type-caption);
+  --bw-card-meta-size: var(--type-body);
+  --bw-card-credit-size: 0.60rem;
+  --bw-card-footer-inset: 0.62rem;
+  --bw-edge-width: min(5.75rem, 20%);
+  --bw-edge-blur: blur(13px) saturate(160%);
+  --bw-edge-background-alpha: 0.10;
+  --bw-card-border: var(--card-surface-line);
+}
+.card h2,
+.standings-slide h2,
+.spotlight-card h2,
+.calendar-card h2,
+.footer-install h2,
+.ask-card h2 {
+  font-family: var(--font-ui);
+  font-size: var(--bw-card-title-size);
+  font-weight: var(--bw-card-title-weight);
+  line-height: var(--bw-card-title-leading);
+  letter-spacing: var(--bw-card-title-tracking);
+  overflow-wrap: anywhere;
+}
+.spotlight-card h2 { margin-top: 0.26rem; }
+.card .section-heading .eyebrow,
+.standings-slide .eyebrow,
+.card .eyebrow {
+  font-size: var(--bw-card-kicker-size);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.11em;
+}
+.next-game-meta,
+.standings-division,
+.calendar-game-picker,
+.next-game-location {
+  font-size: var(--bw-card-meta-size);
+  line-height: 1.4;
+}
+.next-game-meta { margin-top: 0.68rem; font-weight: 600; }
+.standings-team-heading { align-items: flex-start; }
+.standings-slide {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: var(--bw-card-footer-inset);
+}
+.standings-track { align-items: stretch; }
+.bw-card-footer {
+  flex: 0 0 auto;
+  align-self: stretch;
+  min-width: 0;
+  min-height: 1rem;
+  margin-top: auto;
+  padding-top: 0.68rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.10);
+  text-align: right;
+}
+.standings-slide .bw-card-footer {
+  padding-top: 0.68rem;
+  margin-bottom: 0;
+}
+.standings-slide .bw-card-footer .match-update-credit.standings-card-updated {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  font-size: var(--bw-card-credit-size);
+  font-weight: 500;
+  line-height: 1.15;
+  color: rgba(148, 163, 184, 0.56);
+  letter-spacing: 0.015em;
+  text-align: right;
+}
+.match-card-footer .match-update-credit,
+.calendar-card-footer .calendar-update-credit {
+  font-size: var(--bw-card-credit-size);
+  font-weight: 500;
+  line-height: 1.15;
+  color: rgba(148, 163, 184, 0.56);
+  opacity: 1;
+  text-align: right;
+}
+
+/* The *only* waterfall visual contract for both card carousels.
+ * Both pseudo elements get the exact same opacity/blur/mask/gradient/easing.
+ * The match right-side control reserves the top-right edit action hit target. */
+@media (hover: hover) and (pointer: fine) {
+  :is(.spotlight-carousel, .standings-rail) > .carousel-waterfall-edge {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    z-index: 30;
+    top: 0;
+    bottom: 0;
+    height: auto;
+    width: var(--bw-edge-width);
+    padding: 0;
+    border: 0;
+    color: rgba(248, 250, 252, 0.92);
+    background: transparent;
+    box-shadow: none;
+    transform: none;
+    overflow: hidden;
+  }
+  :is(.spotlight-carousel, .standings-rail) >
+  .carousel-waterfall-edge:is(.spotlight-edge-previous, .standings-step-previous) {
+    left: 0;
+    justify-content: flex-start;
+    padding-left: 0.7rem;
+    border-radius: 32px 0 0 32px;
+  }
+  :is(.spotlight-carousel, .standings-rail) >
+  .carousel-waterfall-edge:is(.spotlight-edge-next, .standings-step-next) {
+    right: 0;
+    justify-content: flex-end;
+    padding-right: 0.7rem;
+    border-radius: 0 32px 32px 0;
+  }
+  /* Override the legacy match-card :hover specificity as well: otherwise
+     old hover: opacity 1 would beat the new shared pointer-distance variable,
+     making match and standings visibly different on hover. */
+  :is(.spotlight-carousel, .standings-rail) >
+  .carousel-waterfall-edge:not(:disabled):is(:hover, :focus-visible)::before {
+    opacity: var(--edge-opacity, var(--bw-edge-background-alpha));
+  }
+  :is(.spotlight-carousel, .standings-rail) > .carousel-waterfall-edge::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transform: none;
+    opacity: var(--edge-opacity, var(--bw-edge-background-alpha));
+    -webkit-backdrop-filter: var(--bw-edge-blur);
+    backdrop-filter: var(--bw-edge-blur);
+    transition: opacity 90ms linear;
+    box-shadow: none;
+    pointer-events: none;
+  }
+  :is(.spotlight-carousel, .standings-rail) >
+  .carousel-waterfall-edge:is(.spotlight-edge-previous, .standings-step-previous)::before {
+    background: linear-gradient(90deg,
+      rgba(186, 230, 253, 0.30) 0%,
+      rgba(125, 211, 252, 0.19) 18%,
+      rgba(96, 165, 250, 0.09) 44%,
+      rgba(96, 165, 250, 0.025) 68%,
+      transparent 100%);
+    -webkit-mask-image: linear-gradient(90deg, #000 0%, rgba(0, 0, 0, 0.86) 36%, transparent 100%);
+    mask-image: linear-gradient(90deg, #000 0%, rgba(0, 0, 0, 0.86) 36%, transparent 100%);
+  }
+  :is(.spotlight-carousel, .standings-rail) >
+  .carousel-waterfall-edge:is(.spotlight-edge-next, .standings-step-next)::before {
+    background: linear-gradient(270deg,
+      rgba(186, 230, 253, 0.30) 0%,
+      rgba(125, 211, 252, 0.19) 18%,
+      rgba(96, 165, 250, 0.09) 44%,
+      rgba(96, 165, 250, 0.025) 68%,
+      transparent 100%);
+    -webkit-mask-image: linear-gradient(270deg, #000 0%, rgba(0, 0, 0, 0.86) 36%, transparent 100%);
+    mask-image: linear-gradient(270deg, #000 0%, rgba(0, 0, 0, 0.86) 36%, transparent 100%);
+  }
+  :is(.spotlight-carousel, .standings-rail) > .carousel-waterfall-edge span,
+  :is(.spotlight-carousel, .standings-rail) > .carousel-waterfall-edge:not(:disabled):is(:hover, :focus-visible) span {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 2.15rem;
+    height: 2.8rem;
+    border: 0;
+    background: transparent;
+    color: rgba(248, 250, 252, 0.96);
+    font-size: 2rem;
+    font-weight: 400;
+    line-height: 1;
+    opacity: var(--edge-arrow-opacity, 0);
+    text-shadow: 0 0 10px rgba(191, 219, 254, 0.78),
+      0 3px 14px rgba(0, 0, 0, 0.46);
+    transform: translateX(0) scale(0.9);
+    transition: opacity 150ms ease, transform 180ms ease;
+  }
+  :is(.spotlight-carousel, .standings-rail) > .carousel-waterfall-edge:not(:disabled):is(:hover, :focus-visible) span {
+    transform: translateX(0) scale(1);
+  }
+  :is(.spotlight-carousel, .standings-rail) > .carousel-waterfall-edge:disabled {
+    opacity: 0;
+    pointer-events: none;
+  }
+  /* This special hit-zone offset is interaction-only: its visual reaches
+     over the header, but never steals Edit or the match category pill. */
+  .spotlight-carousel > .carousel-waterfall-edge.spotlight-edge-next {
+    top: 5.75rem;
+    overflow: visible;
+  }
+  .spotlight-carousel > .carousel-waterfall-edge.spotlight-edge-next::before {
+    top: -5.75rem;
+    height: calc(100% + 5.75rem);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(.spotlight-carousel, .standings-rail) > .carousel-waterfall-edge::before,
+  :is(.spotlight-carousel, .standings-rail) > .carousel-waterfall-edge span {
+    transition: none;
+  }
+}
+
+/* Shared component-class entry points. Old cards and new cards use the same
+ * tokens even if their internal layouts (grid/flex) differ. */
+.bw-card-frame {
+  border-color: var(--bw-card-border);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+.bw-card-frame .bw-card-title {
+  font-size: var(--bw-card-title-size);
+  font-weight: var(--bw-card-title-weight);
+  line-height: var(--bw-card-title-leading);
+  letter-spacing: var(--bw-card-title-tracking);
+}
+.bw-card-heading { align-items: flex-start; }
+.calendar-card-footer.bw-card-footer {
+  min-height: 0;
+  margin: 0;
+  border-top: 0;
+  pointer-events: none;
 }

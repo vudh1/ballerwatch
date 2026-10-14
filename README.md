@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, Calendar sync, and quick answers into one installable app.
 
-**Current source version: 8.8.0**
+**Current source version: 8.9.0**
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
 
@@ -35,161 +35,21 @@ A 22-second walkthrough with a short animated intro. Recorded from the app using
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/)
 
-## BallerWatch 8.8.0 — Scouting AI, searchable choices and smooth mobile cards
+## What's new
 
-- **Exactly matching waterfall edges:** Match and standings card desktop controls use one masked 5-stop cyan-to-transparent gradient, identical background blur, arrow opacity, edge-width and hover response; action buttons and touch gestures remain interactive.
-- **Faster iPhone standings:** Native touch-first gestures recognize deliberate left/right flicks, work when swiping over a team name, preserve vertical scrolling, and suppress accidental scouting taps during a swipe.
-- **Searchable team and RSVP selection:** Settings has a glassy, keyboard-accessible searchable RSVP-name picker and a multi-team selector with selected chips and removal. New-user RSVP identity gets the same chooser. An authenticated-only, no-store endpoint supplies recently published participant-name choices; the team directory is name-only and added compatibly to the encrypted hourly scout index, so the old Worker can read it during rollout. You can still add an unlisted name or team.
-- **Scouting-aware BallerWatch AI:** Ask for opponent-adjusted form, last-ten performance, attack and defense ranks, all-time records, team comparisons and published three-outcome matchup estimates. The assistant reads the precomputed model, warns about small samples and missing results, and never calculates predictions on demand or exposes private RSVP names. The existing historical RATS archive Q&A stays available for factual past scores.
-- **Feedback correction:** The latest sanitized review flagged one dated pickup/RSVP answer that also mentioned an opponent. Questions naming a RATS opponent now route to league fixtures ahead of generic pickup counts; pickup-opponent questions explicitly say no team-versus-team fixture exists. New tests run in the notification-silent six-hour QA review.
-- **Security/performance:** Source data remains encrypted at rest. Authenticated selection catalogs are never stored in localStorage, and failed optional option loads preserve current settings. Worker reads prepared scouting snapshots only, and the release still requires existing validation, Worker readiness and Pages checks.
+**v8.9.0** — Shared card design rules keep the match, calendar and standings headings and timestamps consistent, with one true waterfall opacity/blur effect. The independent scouting worker backtests past-to-next-season results and only promotes weights when the measured holdout evidence improves.
 
-## BallerWatch 8.7.0 — Unified sports cards and prepared division-aware scouting
+**v8.8.0** — Searchable RSVP names, multi-team selection, smoother iPhone standings swipes and scouting-aware AI answers.
 
-- **Matching edge navigation:** Match and standings cards now use one pointer-distance waterfall animation, consistent edge fading and arrow cues, with card contents and actions retaining click priority. The dark soccer-glass design has a shared type scale, borders, and numerical hierarchy using the existing native font stack.
-- **Simpler App controls:** Notification and Settings labels now say **App**; the scouting dialog's top-right close X matches the RSVP roster control.
-- **Division-aware cross-season results:** Historical form recognizes published D1, D2a, D2b, D2c, and D3 levels, weights verified 11v11 results above 8v8, and applies recency. Unspecified divisions receive neutral weight. Current-division standings are not changed by historical multipliers.
-- **More cautious three-outcome previews:** Scouting projections store a provisional win/draw/loss estimate for each monitored fixture, respecting recent results, opponent quality, division context, and up to five prior meetings. Each outcome is rounded to 5% steps and the three add to 100%. Estimates are **not calibrated odds**; the match card continues to show the monitored team's compact **Win ~XX%**, with all three percentages available in its accessible location tooltip.
-- **No historical calculations on public page requests:** `/web/standings` and `/web/team-history` now only read an independently generated, versioned and encrypted scouting projection. Failed projections respond as temporarily unavailable instead of rebuilding the whole history on GET; the browser keeps already loaded last-synced cards. The hourly refresh workflow remains notification-silent and separate from match/calendar routes.
-- **Release protection:** Old scouting projections are rejected by schema version and rebuilt through the release-triggered background workflow; source-only tests are synthetic and never send Web Push or mutate Google Calendar.
+**v8.7.0** — Hourly encrypted scouting reports, conservative matchup estimates and historical division adjustments.
 
-## BallerWatch 8.6.1 — Scout-index bootstrap and resilient loading
+That's the recent summary. Older release details live in [GitHub Releases](https://github.com/vudh1/ballerwatch/releases) and the [Versions guide](https://github.com/vudh1/ballerwatch/wiki/Versions). The project keeps the full ledger in [features/versions.json](features/versions.json) rather than repeating it in this README.
 
-- **Verified root cause of empty scouting cards:** the encrypted `league/state/scout-index.json` projection had not yet appeared in `runtime-state`. The independent index workflow now starts when its workflow file changes on `main` and whenever production promotion succeeds, in addition to hourly scheduled runs. It keeps the report encrypted and notification-silent. Publication is not complete until its Actions run passes and the encrypted file exists.
-- **Scouting ready before taps:** once the standings have loaded, the browser retrieves the *already prepared* public reports in a single background request and keeps them in this page's memory. Reopening a team uses its prepared entry immediately; repeat taps do not recalculate the all-season model. Full reports remain separate from critical match/calendar API calls.
-- **Match/calendar uptime:** public GETs now have a bounded timeout and retry. The app holds only the public calendar in tab-scoped session storage (six-hour maximum) and displays it immediately as **Last synced** while the Worker reconnects. Failed optional scouting and notifications must not keep the status indicator at **Checking…** or erase an already loaded match card.
-- **Compact match form:** the monitored team’s `Win ~XX%` estimate appears in the metadata line after jersey color as a short bullet, with no independent badge row. **LEAGUE STANDINGS** uses the same heading tint as **MATCH DAYS**.
-- **Release safety:** local tests never mutate the Calendar or send Web Push. After production promotion, allow the independently triggered **Refresh RATS scouting cache** workflow to publish the initial encrypted scouting index.
-
-## BallerWatch 8.6.0 — Independent scouting snapshots and resilient match reads
-
-- **Scouting runs outside the app:** An independent, notification-silent `Refresh RATS scouting cache` workflow runs hourly. It refreshes the RATS history index and prepares encrypted current-season standings, monitored fixture matchup estimates and division-scoped team scouting reports. The normal Worker endpoints return prepared data without recalculating an archive on every team tap.
-- **No request flood:** The browser no longer fires dozens of team-history requests as background prefetch. It retains fast memory reuse on repeated taps while Worker reads compact precomputed reports from the encrypted runtime-state source. The full team-history view still uses the last ten scored games across 8v8/11v11, opponent-weighted form and recent direct meetings.
-- **Public data stays available:** Match and calendar endpoints never await the scout model. A failed optional version/config request no longer declares healthy match data Offline. Public runtime snapshot caching is now gentler on GitHub and can temporarily reuse last-good fixtures during transient upstream 5xx/timeouts; missing/corrupt canonical state fails closed. Timestamped Last synced data is explicitly not described as newly updated.
-- **Release behavior:** A newly promoted source version requires its first hourly index run to publish `league/state/scout-index.json`. During that initial transition the former read-only calculation remains available as fallback. The index is stored only as a hardened AES-GCM encrypted file on `runtime-state`. No push alerts or Google Calendar operations are triggered by the separate scouting job.
-
-## BallerWatch 8.5.4 — Reliable scouting and a conservative matchup estimate
-
-- **Sitting Ducks / repeated team names:** Scouting requests now carry the selected RATS division key; the Worker checks that team and division belong to the displayed league standings and resolves the corresponding current-season roster entry. Two teams with the same displayed name in different divisions no longer cause an ambiguous-history 404.
-- **Fast cached scouting:** When league standings first load, the app sequentially warms up to 28 team reports without blocking match/calendar display. The on-page cache shares in-flight work across taps and background fetches, reuses verified reports, checks the source update stamp on the normal 60-second standings refresh, and stops prefetch after consecutive upstream errors. On temporary server faults, previously loaded public reports can still display as last-synced data.
-- **More grounded match chance:** The league match card shows only the monitored team's **Win ~XX%** estimate, not the raw fraction of wins. The estimate weighs both clubs' most recent ten scored games (11v11 games 1.25×) and up to five recorded head-to-head matches, shrinks small samples toward 50%, rounds to five-point increments, and limits displayed estimates to 15–85%. It is a provisional comparison, **not bookmaker odds or a guaranteed outcome**. If neither team has scored games, the percentage remains hidden.
-- **No regression to match availability:** The expensive RATS index stays on the optional standings/scouting route. The fast calendar route remains independent of it, so historical-results outages should not blank the last known match/calendar.
-
-## BallerWatch 8.5.3 — Reliable scouting and public fixtures
-
-- **Scouting doesn't reindex history for every tap:** A bounded Cloudflare Worker cache keeps the same decrypted RATS results object and its indexed games for a short time, coalesces concurrent reads, and caches each team's compiled opponent report by data revision. The PWA also reuses recent scouting reports in memory instead of repeatedly making the same expensive API call.
-- **Safe, clearly marked stale fallback:** When a temporary network/server error interrupts a previously successful public snapshot, the Worker may reuse a recent cached result; missing, purged or invalid canonical runtime state still fails closed. A previously opened scouting sheet can show **Last synced** for up to 15 minutes while reconnection is attempted.
-- **Core schedule resilience:** Weather and venue enrichment failures no longer cause public calendar requests to fail. The existing primary match and calendar cards retain their last valid data rather than blanking during transient API faults.
-- **Validation:** Synthetic single-flight, cache bounds, transient error classification and public API independence tests. No production notifications or Calendar mutations.
-
-## BallerWatch 8.5.2 — Faster match data and compact win rate
-
-- **Public schedule first:** `/web/calendar` and `/web/next-game` no longer depend on fetching/decrypting the large RATS history index or calculating per-opponent form. Existing match, weather, location and RSVP data remain available independently of history.
-- **Monitored-team win chip:** League match cards show a short **Win 80%**-style result (when available) only for the selected monitored team. The weighted percentage uses the last ten indexed scored games including 8v8 and 11v11, with the existing 11v11 weight. Opponent comparisons are available by tapping a team in the standings scouting sheet, not on the match card. The optional public Standings response delivers the lightweight win percentages.
-- **Performance:** The match train measures only adjacent team/game cards rather than cloning every published future fixture. Identical calendar data does not trigger redraws; initial calendar hydration gets priority over optional profile, board, history/standings and push tasks. Concurrent cold-cache Worker requests share the same snapshot load.
-- **Resilience:** Failed refreshes continue to preserve last-synced cards already open. The public backend still requires its encrypted runtime-state source; this avoids introducing stale private snapshots or unsafe plaintext fallbacks. A first load while the Worker is genuinely unavailable can still show a temporary unavailable state.
-
-## BallerWatch 8.5.1 — Faster scouting and resilient live cards
-
-- **Opponent Scout performance:** Fixed the repeated archive-wide scans and sorts in the ten-game, quality-of-opponent model. The Worker now builds an index of scored matches by team once per archive snapshot, reusing it for league match-card form, current opponent rankings, and older match histories. This removes a likely source of Worker CPU overload and temporary scouting errors.
-- **Live-data recovery:** Read-only calendar, standings, team-history, Inbox, and next-game GET requests retry one transient network/502–504 failure. A failed poll no longer blanks previously loaded match, schedule or notification data. Initial hydration proceeds even if a secondary service fails; the top status says **Last synced** if an older schedule remains rather than showing an empty Offline card.
-- **Consistent card spacing:** The match and standings swipe trains now use a visible **12px gap** between fully rounded adjacent cards. The Match Days calendar remains a straightforward non-carousel 14-day/tap-to-expand view.
-- **Standings hierarchy:** Each monitored team has a compact current-division **rank pill** in the same top-right position as the Pickup/League pill on match cards; it is not a carousel `1/2` counter. The standings footer uses the same short local **Updated 6:21 PM** display pattern as other cards.
-- **Data integrity:** No new secrets, external services, speculative match data, user notifications or calendar mutation are involved in the fixes. Source results still depend on when RATS publishes scores, with the existing one-hour historical index freshness threshold unchanged.
-
-## BallerWatch 8.5.0 — Cross-season weighted form and cleaner navigation
-
-- **Last ten scored matches, not just current season:** Opponent Scout now uses each team's most recent **10 indexed results**, across RATS seasons and **8v8 + 11v11**. A team newly playing 8v8 can draw on its older 11v11 record. Verified 11v11 games count **1.25×** 8v8 games; games lacking reliable format metadata count neutrally rather than disappearing. Older-than-ten results still contribute to the separate all-time/format totals.
-- **Opponent-adjusted form:** Win/draw results are weighted by the *other team's* recent scored record against third parties, excluding direct games with the featured team, and smoothed for small samples. Current-division rankings compare each club's **cross-season last-ten index**, rather than only results this season. This is an experimental strength index, not win odds. Attack and defense rankings likewise use last ten scored matches across formats and seasons.
-- **Match-card preview:** RATS **league** fixture cards show a compact last-ten **weighted win percentage** for both listed teams when the encrypted RATS archive has scored results. The rate is weighted wins divided by weighted games (draws are not counted as wins); this is historic form, **not** the chance of winning the upcoming fixture. Pickup cards do not show it. If a team has no index coverage, omit its percentage.
-- **Simpler 14-day schedule:** The Match Days card no longer has a carousel, waterfall arrows, or its own swipe navigation. Tapping the 14-day card opens the full published schedule, tapping again collapses; selecting a day still controls the spotlight match card.
-- **Standings:** The league team card train now has **no gap** between cards, matching the main match-card train.
-
-## BallerWatch 8.4.0 — On-demand opponent scouting and hourly scores
-
-- **Minimal league standings:** Each team card is just its current-season league table, with the **LEAGUE STANDINGS** heading, tracked-team highlight, and a subtle **Updated** source credit *inside* the card. Carousel counters such as `1 / 2` are gone. Tap any team to open the report.
-- **Opponent Scout:** A compact modal gives a **results-strength index (0–100)** and division rank, current-season W–D–L, recent five form, historical wins/draws/losses, goals scored/conceded per match, and average goal difference. Attack/defense division ranks and immediate previous-season ranking bars appear **only in this report**. Recent five results are visible; older results expand on demand.
-- **Quality-of-opponent method:** A scored win is weighted higher when the defeated team has a better record against **other** teams in the current season/division; direct meetings with the featured team are excluded when estimating opponent strength. Draws are adjusted too. A neutral prior tempers thin samples; equal overall W-D-L can receive different quality scores. This is **not a gambling probability**, official RATS ranking, or prediction. Very small samples are clearly flagged.
-- **11v11 versus 8v8:** The encrypted public-results archive now preserves the RATS league name, enabling separate historical W-D-L summaries for 8v8 and 11v11. A league name containing 8v8 is classified as 8v8, other **known** league names as 11v11. Legacy games without a verified format stay in a separate unclassified count until refreshed, rather than silently polluting an 11v11 record. Overlapping 8v8/11v11 division names are kept separate in current-season calculations.
-- **Hourly index opportunity:** The completed RATS results index now becomes stale after **1 hour**, down from 12 hours. It is checked by the existing **five-minute league job**; an incomplete archive still retries every **30 minutes**, and the open app fetches its data approximately every **minute**. Large historical scans can need several five-minute batches and scores appear only after RATS publishes them and the refresh successfully persists encrypted runtime state.
-
-## BallerWatch 8.3.0 — League rankings and unified carousel navigation
-
-- **LEAGUE STANDINGS inside each card:** Like the **NEXT GAME** and **MATCH DAYS** headings, the eyebrow now sits inside the active team card, above its team name. Standings use larger readable lettering and a tighter Played column.
-- **Useful ranking bars:** Attack and Defense show the tracked team's rank among division teams with completed scores, with goals scored/conceded **per game**. Last Season shows the previous RATS season's calculated rank when that specific archive and team season are available; otherwise it clearly says unavailable. Short bars encode ranking position, not goal totals. These are provisional 3–1–0 standings, not official RATS tiebreaker rankings.
-- **Unified swiping:** The **14-Day Calendar** now slides a real neighboring 14-day card into view as you drag, with the same smooth snap and subtle edge-waterfall arrows as match cards on desktop. Date tapping still expands to Full Schedule and selects a game where available; the arrows page without expanding.
-- **Standings swipe anywhere:** On mobile the standings train also lets you start swiping from a team row, while a tap still opens its scored match-history dialog.
-- **Data scope:** Ranking statistics only use scored RATS games and existing encrypted-index public results, refresh on the existing 12-hour complete-archive cadence, and expose partial coverage rather than inventing missing records.
-
-## BallerWatch 8.2.1 — Minimal standings card train and faster results
-
-- **One card, one tracked team:** RATS standings use a full-width swipeable train, matching the main match-card motion and understated waterfall navigation on the left/right edges. Cards stay adjacent through dragging and snap into place; the tracked team's row remains bold green.
-- **Cleaner table:** The standalone glass card removes the nested panel and consolidates the table into Rank, Team, P, W-D-L, GD, Pts. Team names still open scored match-history details.
-- **2× index refresh frequency:** The encrypted RATS historical result/standings index now refreshes **every 12 hours** (previously 24 hours) when complete; a partial index continues retrying every 30 minutes. The league watcher still checks schedules every five minutes, and the visible PWA polls for data about every minute. Published results can appear only after the upstream RATS data and a successful index update.
-- **Data integrity:** Standings are a provisional 3–1–0 calculation from scored RATS fixtures, not necessarily the official RATS tie-breaker order.
-
-## BallerWatch 8.2.0 — Team standings and match history
-
-- **Current-season standings:** A new RATS Standings carousel appears after the Calendar. Each monitored team, including Third Touch FC and PhoSaiGon by default, gets a card for its own division with games played, W-D-L, goal difference, and points. The monitored team is highlighted.
-- **Tap-to-open history:** Team names in the division table open a scrollable result sheet with season, match date, scores, and the selected team's win/draw/loss outcome. The archive currently covers indexed seasons only, and the sheet explicitly marks partial coverage.
-- **Data integrity:** Rankings are calculated from published scored fixtures (3 points for wins, 1 for draws), not represented as official RATS tie-breaker standings. No previous-season results are shown as the current season; missing current archive data displays a clear placeholder.
-- **Privacy and freshness:** Both endpoints expose only published team/game facts using the existing encrypted history pipeline. A source-update timestamp shows when the index was refreshed.
-
-## BallerWatch 8.1.3 — Match and calendar navigation
-
-- **Centered match arrow:** the right-side carousel chevron now aligns with the actual vertical center of the match card; the waterfall still covers the full edge without taking clicks from the match-type Edit/Delete control.
-- **Longer viewing window:** selecting a different match shows it for 15 seconds before returning to Next Game, rather than 6 seconds. Open dialogs and hidden tabs defer the reset.
-- **Calendar page affordance:** Previous/Next arrows in the calendar header move between 14-day windows without expanding the calendar; previous navigation stops at the current starting date. Clicking elsewhere on the calendar card, including a date, expands Full Schedule. Date selection still updates the main match card.
-
-## BallerWatch 8.1.2 — RSVP and Calendar reliability
-
-- **No duplicate RSVP nudges after booking:** Confirmed signed-in players no longer receive pickup RSVP or capacity prompts; waitlisted players no longer receive requests to RSVP again. Personal eligibility uses encrypted source rosters inside the workflow, and already-irrelevant reminders disappear from the signed-in Inbox and PWA push presentation. One-hour kickoff reminders are still eligible.
-- **Match-card edits and deletion:** The built-in BallerWatch calendar reflects match-card overrides immediately. For RATS league matches managed through the paired Google Calendar bridge, changed dates/times/locations are reconciled with the existing calendar event. Explicitly deleted cards remove *only* BallerWatch-tracked calendar events. Missing RATS upstream data alone never triggers deletion.
-- **Calendar bridge deployment:** Managed Google Calendar deletion requires redeploying `backend/league/google_apps_script/Code.gs` as Apps Script bridge **v6**. Older bridge deployments fail closed; source promotion alone does not redeploy a privately hosted Apps Script. Pickup matches are visible in BallerWatch's built-in calendar but are **not** created in Google Calendar by the RATS-only bridge.
-
-## BallerWatch AI 8.1 — stronger answers and reviewed feedback
-
-- **Privacy-gated free AI intent fallback:** If local routing cannot understand a short, public soccer question, the Cloudflare Worker may use configured Gemini/Groq providers to select a strict read-only intent. Account details, roster names, emails, phone numbers, locations/addresses, and user-specific RSVP questions are never forwarded. Providers return classification **only**, not unverified answer text; no provider is needed for standard questions.
-- **Signed-in RSVP questions:** `Am I in for Thursday pickup?` checks **only the authenticated user's configured RSVP name** against encrypted roster data. It reports confirmed, waitlisted, not listed, or unavailable without exposing others. Unauthenticated users are asked to sign in.
-- **Historical answer correctness:** Explicit head-to-head questions now require two identified teams. If one club is unknown, the bot asks for clarification rather than returning a misleading single-team W-D-L record. Results name the indexed season range and disclose gaps in archived coverage.
-- **Evidence links:** Supported factual answers can open their official RATS schedule or pickup RSVP source link. Browser links are allowlisted and not rendered from arbitrary HTML.
-- **Safer conversation memory:** Fixture/date/history context expires after 20 minutes of inactivity in the current browser session.
-- **A six-hour improvement check:** The encrypted, privacy-safe review job rechecks historical, fixture, briefing and classifier regressions. No model weights or code are silently retrained or deployed. New bot requests receive a distinct category in future anonymized summaries.
-- **Feedback audit that drove this release:** The most recent sanitized review contained 4 RATS-history and 1 monitored-teams negative feedback reports; the request projection had 10 unclassified "other" and 1 schedule report. Those historical counts do not expose question text or prove each report is individually fixed. New tests specifically target historical H2H misclassification and authenticated RSVP answer correctness.
-
-## BallerWatch 8 — BallerWatch AI
-
-BallerWatch AI combines the existing verified RATS history index, live schedules, pickup RSVP totals, and short-lived on-device conversation context. The core factual answering path is deterministic and needs **no paid AI service**. The app never guesses a location, game, result, or personal RSVP.
-
-- **Ask by opponent:** `When do we play PhoSaiGon?`, `Where is Supermokh FC vs PhoSaiGon?`. Queries with two clubs must resolve to the same official fixture, not unrelated games.
-- **Natural follow-ups:** After one fixture, ask `Where is that match?`, `What jersey do we wear?` or `What time?`. Fixture context stays in the browser session and is validated against the current, visibility-filtered schedule.
-- **Weekly briefing:** `Brief me on this week` or `Which pickup is filling up?` combines the next seven days of RATS matches and published RSVP counts. Occupancy at or above 75% is flagged without showing private participants.
-- **Source-aware, bounded answers:** The bot labels published RATS schedule information and calls out missing times, venues, or unavailable history rather than making claims beyond the data.
-- **Privacy-safe improvement:** The existing encrypted thumbs-down engineering reviews run every six hours, and league/pickup source indexes refresh on their existing schedules. This makes the *data* fresher over time; it is **not autonomous training of model weights**. Proposed behavior changes are tested and reviewed before a new release.
-
-BallerWatch AI remains **read-only**. Match edits, RSVPs, and app promotions use their existing authenticated controls; a chat question cannot perform those actions.
-
-## BallerWatch 7
-
-BallerWatch 7 turns the PWA into a more complete account-backed app experience:
-
-- **Cross-device state:** signed-in notification reads, deletes, and category preferences are stored in the encrypted user profile and merge safely across devices.
-- **Notification center:** Inbox filters Pickup, League, and App updates; supports mark-all-read and swipe/delete; and keeps the Home Screen badge aligned with unread state.
-- **Account-aware Web Push:** each device subscription can follow its signed-in account's notification categories without exposing account data in push payloads.
-- **Cleaner PWA architecture:** transport/session handling and notification persistence live in focused frontend modules instead of the main view controller.
-- **App navigation:** Inbox and Settings stay one tap away through the top-right bell and gear, without a persistent bottom tab bar.
-- **Notification layering:** Notification details return to Inbox as a true modal, keeping the notification surface above the dashboard until it is actually closed.
-- **Launch experience:** the cinematic intro owns the first browser paint on a fresh session, preventing the dashboard from flashing underneath it before the animation starts.
-- **Original stadium music:** the optional music toggle now drives a self-contained Web Audio football anthem with percussion, claps, brass-like stabs, bass, and an original celebratory hook; no third-party audio files are bundled.
-- **RATS history:** Ask BallerWatch uses a deterministic encrypted index of public RATS season results to answer team records, season history, and head-to-head questions. Score strings are parsed directly from published results, archive discovery advances incrementally, and partial coverage is labeled instead of being presented as all-time.
-- **RATS venue directory:** the league watcher saves exact field URLs from RATS fixtures and venue catalogs and checks new/unresolved RATS venue pages for published Maps links. Confirmed destinations are encrypted and reused for Directions and Share; Mod North/South and numbered pitches remain distinct. Missing or ambiguous RATS links use field GPS or Google Maps search rather than a guessed exact pin. The Schedule & Standings source is checked for clickable Maps links; its field-name Maps query format is also stored as an explicitly non-GPS fallback when the JavaScript-rendered link is unavailable. Both Share and Directions reuse the best cached destination.
-
-Signed-out use still works: local read/delete state and anonymous Web Push remain available, and local notification state is migrated into the account after a successful sign-in.
-
+See the [Card design system](docs/CARD-DESIGN-SYSTEM.md) for the shared typography, waterfall, mobile gesture and bottom-footer rules.
 
 ## App updates
 
-Administrators can open **Settings → App update** and promote a validated source version.
+Administrators can open **Settings → App** and promote a validated source version.
 
 Promotion is intentionally staged:
 

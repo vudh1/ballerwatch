@@ -1667,7 +1667,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=8.8.0", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=8.9.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -3208,17 +3208,18 @@ function renderStandings() {
   for (const card of cards) {
     const slide = document.createElement("article");
     slide.className = "standings-slide";
+    slide.classList.add("bw-card-frame");
     slide.setAttribute("role", "group");
     slide.setAttribute("aria-roledescription", "slide");
     slide.setAttribute("aria-label", `${card.team} league standings`);
 
     const meta = document.createElement("div");
-    meta.className = "standings-team-heading";
+    meta.className = "standings-team-heading bw-card-heading";
     const group = document.createElement("div");
     group.className = "standings-team-copy";
     group.append(
       standingsCell("p", "LEAGUE STANDINGS", "eyebrow"),
-      standingsCell("h2", card.team, "standings-team-name"),
+      standingsCell("h2", card.team, "standings-team-name bw-card-title"),
       standingsCell("span", `${standings.season || "Current season"} · ${card.division || "Division pending"}`,
         "standings-division"),
     );
@@ -3233,11 +3234,14 @@ function renderStandings() {
       matchUpdatedText(standings.updatedAt) || "Updated pending",
       "match-update-credit standings-card-updated");
     freshness.title = "RATS published results · Provisional league standings";
+    const footer = document.createElement("div");
+    footer.className = "bw-card-footer standings-card-footer";
+    footer.append(freshness);
 
     if (!card.ready) {
       slide.append(standingsCell("p", card.message || "Standings are not available yet.",
         "muted standings-message"));
-      slide.append(freshness);
+      slide.append(footer);
       track.append(slide);
       continue;
     }
@@ -3300,7 +3304,7 @@ function renderStandings() {
       slide.append(standingsCell("p", "No scored league matches indexed for this division yet.",
         "muted standings-message"));
     }
-    slide.append(freshness);
+    slide.append(footer);
     track.append(slide);
   }
 

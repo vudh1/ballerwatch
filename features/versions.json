@@ -1,7 +1,26 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.8.0",
+  "currentVersion": "8.9.0",
   "releases": [
+    {
+      "version": "8.9.0",
+      "date": "2026-10-14",
+      "type": "minor",
+      "source": "user-reported",
+      "title": "Canonical card layout and seasonal walk-forward scouting calibration",
+      "webAnnouncement": "BallerWatch 8.9 unifies card title/font sizes, collapses duplicate waterfall layers into exactly the match-card opacity and transparency, anchors standings Updated at the bottom, shortens the README, and improves scouting with leak-free sequential RATS-season backtesting and safe hourly recalibration.",
+      "changes": [
+        "Make match, calendar, standings, install and new card surfaces use a documented bw-card-frame/bw-card-title/bw-card-heading/bw-card-footer contract; match-date title no longer dwarfs other card headings.",
+        "Remove v8.7/v8.8 overlapping standings waterfall CSS and use a single opacity/mask/blur/gradient/easing rule for match and standings, keeping Pickup/League edit priority.",
+        "Move standings Updated labels into flex-pinned bottom-right card footers, including empty scorecards; equalize adjacent train-card heights and inherit shared credit size.",
+        "Keep full version history in GitHub Releases and the version ledger; summarize only the latest 3 releases in a much shorter README.",
+        "Evaluate past RATS seasons forward (Spring→Summer→Fall and onward) using only results from previous seasons; report grouped multiclass Brier score and form-to-next-season correlation without exposing any names or private state.",
+        "Deterministically grid-search recency, opponent-form, division-tier, draw and head-to-head weights; promote only with sufficiently many held-out observations and demonstrated improvement over baseline, otherwise preserve original weights.",
+        "Ensure trained predictions and AI/scouting/standings are produced only by the independent hourly encrypted index job, never at browser view time; retain schema v2 for zero-downtime production transition.",
+        "Add synthetic tests against current/future season leakage, 3-way sum, regression to baseline, footer placement, canonical waterfall and shared card-template rules.",
+        "Update PWA assets and 8.9.0 release handoff; run gated production promotion, verify worker health, refreshed scout index and GitHub Pages, then audit and prune only safely merged stale branches."
+      ]
+    },
     {
       "version": "8.8.0",
       "date": "2026-10-14",
