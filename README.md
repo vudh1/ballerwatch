@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, Calendar sync, and quick answers into one installable app.
 
-**Current source version: 8.5.1**
+**Current source version: 8.5.2**
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
 
@@ -34,6 +34,13 @@ Saturday synthetic pickup is shown simply as **Pickup** and has no RSVP/capacity
 A 22-second walkthrough with a short animated intro. Recorded from the app using synthetic sample data; game details, answers, and notifications are illustrative.
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/)
+
+## BallerWatch 8.5.2 — Faster match data and compact win rate
+
+- **Public schedule first:** `/web/calendar` and `/web/next-game` no longer depend on fetching/decrypting the large RATS history index or calculating per-opponent form. Existing match, weather, location and RSVP data remain available independently of history.
+- **Monitored-team win chip:** League match cards show a short **Win 80%**-style result (when available) only for the selected monitored team. The weighted percentage uses the last ten indexed scored games including 8v8 and 11v11, with the existing 11v11 weight. Opponent comparisons are available by tapping a team in the standings scouting sheet, not on the match card. The optional public Standings response delivers the lightweight win percentages.
+- **Performance:** The match train measures only adjacent team/game cards rather than cloning every published future fixture. Identical calendar data does not trigger redraws; initial calendar hydration gets priority over optional profile, board, history/standings and push tasks. Concurrent cold-cache Worker requests share the same snapshot load.
+- **Resilience:** Failed refreshes continue to preserve last-synced cards already open. The public backend still requires its encrypted runtime-state source; this avoids introducing stale private snapshots or unsafe plaintext fallbacks. A first load while the Worker is genuinely unavailable can still show a temporary unavailable state.
 
 ## BallerWatch 8.5.1 — Faster scouting and resilient live cards
 
