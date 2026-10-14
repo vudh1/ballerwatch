@@ -2357,7 +2357,9 @@ export function privateRsvpNameOptions(snapshot, today = "9999-12-31") {
     .filter(([date]) => date >= today)
     .sort(([left], [right]) => left.localeCompare(right));
   for (const [, event] of dates) {
-    for (const entry of [...(event?.players || []), ...(event?.waitlist || [])]) {
+    const players = Array.isArray(event?.players) ? event.players : [];
+    const waitlist = Array.isArray(event?.waitlist) ? event.waitlist : [];
+    for (const entry of [...players, ...waitlist]) {
       const name = cleanText(entry?.name, 120).replace(/\s+/g, " ").trim();
       if (!name || name.length < 2 || names.size >= 150) continue;
       const unique = name.toLowerCase();
@@ -2560,6 +2562,8 @@ export function directIntent(text) {
   const clean = cleanText(text, 600);
   const lower = clean.toLowerCase();
 
+  if (/\b(?:what(?:'s| is)|show|tell me)\b.*\bmy\s+(?:pickup\s+)?rsvp\s+name\b/.test(lower) ||
+      /\b(?:which|what)\s+(?:pickup\s+)?rsvp\s+name\s+(?:am i|is mine)\b/.test(lower)) return "my_rsvp_name";
   if (/^\/?version\b/.test(lower)) return "version";
   if (/^\/?help\b/.test(lower)) return "help";
   if (
@@ -3264,7 +3268,12 @@ async function webAnswer(env, question, context = {}) {
 
   let reply = "";
   let lastDate = safeContext.lastDate || "";
-  if (intent === "version") reply = `BallerWatch v${snapshot.version}`;
+  if (intent === "my_rsvp_name") {
+    if (!userAuthorized) return { ok: false, intent, error: "Sign in to view your pickup RSVP name." };
+    reply = userRsvpName ? "Your saved pickup RSVP name is " + userRsvpName + "."
+      : "You have not selected a pickup RSVP name yet. Choose one in Settings.";
+  }
+  else if (intent === "version") reply = `BallerWatch v${snapshot.version}`;
   else if (intent === "briefing") {
     const today = localDate();
     const digest = weeklyMatchBriefing({
@@ -3302,6 +3311,7 @@ async function webAnswer(env, question, context = {}) {
     reply = snapshot.teams.length
       ? `Monitoring ${snapshot.teams.length} league team${snapshot.teams.length === 1 ? "" : "s"}:\n${snapshot.teams.map(x => `• ${x}`).join("\n")}`
       : "No league teams are currently configured.";
+    reply += "\nChoose additional teams from the searchable multi-select in Settings.";
   } else if (intent === "today_games") {
     reply = todayGames(snapshot);
     lastDate = localDate();
@@ -3331,6 +3341,9 @@ async function webAnswer(env, question, context = {}) {
       reply = personalPickupAnswer(rawSnapshot, requested, userRsvpName);
     } else {
       reply = pickupStatus(snapshot, requested);
+      if (/\b(?:opponent|versus|vs\.?)\b/i.test(text) && /\bpickup\b/i.test(text)) {
+        reply += "\nPickup is a session, not a published team-versus-team fixture; no opposing team is listed.";
+      }
     }
     lastDate = requested;
   }
