@@ -1667,10 +1667,10 @@ test("standings uses adjacent-card drag train and minimal table, preserving team
   assert.match(app, /setStandingsSlide\(originalIndex \+ step\)/);
   assert.match(css, /\.standings-track\.is-train-dragging \{ transition: none;/);
   assert.match(css, /--standings-train-gap: 12px/);
-  assert.match(css, /\.standings-step-next::before/);
+  assert.match(css, /\.carousel-waterfall-edge:is\(\.spotlight-edge-next, \.standings-step-next\)::before/);
   assert.match(app, /function bindCardEdgeWaterfall\(/);
   assert.match(app, /bindCardEdgeWaterfall\(control, direction\)/);
-  assert.match(css, /:is\(\.spotlight-carousel, \.standings-rail\) > \.carousel-waterfall-edge::before/);
+  assert.match(css, /:is\(\.spotlight-carousel, \.standings-controls\) > \.carousel-waterfall-edge::before/);
   assert.match(app, /\["W-D-L", "Wins, draws, losses"\]/);
   assert.match(app, /openTeamHistory\(\s*row\.name, card\.divisionKey/);
 });
@@ -1898,7 +1898,7 @@ test("match/standings share the EXACT masked waterfall class and responsive touc
   const app = fs.readFileSync("frontend/web/app.js","utf8");
   assert.match(html, /class="spotlight-edge-control carousel-waterfall-edge spotlight-edge-previous"/);
   assert.match(html, /class="standings-step carousel-waterfall-edge standings-step-previous"/);
-  assert.match(css, /:is\(\.spotlight-carousel, \.standings-rail\)[\s\S]*\.carousel-waterfall-edge::before/);
+  assert.match(css, /:is\(\.spotlight-carousel, \.standings-controls\)[\s\S]*\.carousel-waterfall-edge::before/);
   assert.match(css, /\.carousel-waterfall-edge:is\(\.spotlight-edge-next, \.standings-step-next\)::before/);
   assert.match(css, /-webkit-mask-image: linear-gradient\(270deg/);
   assert.match(app, /touchstart/);
@@ -1907,6 +1907,26 @@ test("match/standings share the EXACT masked waterfall class and responsive touc
   assert.match(app, /suppressClickUntil = Date\.now\(\) \+ 550/);
   assert.match(app, /Math\.abs\(dx\) \/ elapsed >= 0\.38/);
 });
+test("waterfall selectors match the ACTUAL nested controls in the DOM", () => {
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  // Regression for the video: standings buttons live in a role=group
+  // wrapper, NOT directly beneath .standings-rail.
+  assert.match(html, /<div class="standings-rail">[\s\S]*?<div class="standings-controls" role="group"[\s\S]*?<button class="standings-step carousel-waterfall-edge standings-step-previous"/);
+  assert.match(html, /<div class="spotlight-carousel"[\s\S]*?<button class="spotlight-edge-control carousel-waterfall-edge spotlight-edge-previous"/);
+  assert.match(css, /\.standings-controls \{ display: contents; \}/);
+  const contract = css.split("/* The *only* waterfall visual contract")[1] || "";
+  assert.match(contract, /:is\(\.spotlight-carousel, \.standings-controls\) > \.carousel-waterfall-edge::before/);
+  assert.match(contract, /:is\(\.spotlight-carousel, \.standings-controls\) > \.carousel-waterfall-edge span/);
+  assert.match(contract, /:is\(\.spotlight-carousel, \.standings-controls\) >\s*\.carousel-waterfall-edge:not\(:disabled\):is\(:hover, :focus-visible\)::before/);
+  assert.doesNotMatch(css, /\.standings-step:not\(:disabled\):is\(:hover, :focus-visible\)::before/);
+  assert.doesNotMatch(css, /--standings-(?:edge|arrow)-opacity/);
+  assert.doesNotMatch(css, /\.standings-step-next::before/);
+  assert.match(app, /bindCardEdgeWaterfall\(els\.spotlightNext, 1\)/);
+  assert.match(app, /bindCardEdgeWaterfall\(control, direction\)/);
+});
+
 test("searchable comboboxes preserve private RSVP names and multi team selections", () => {
   const html = fs.readFileSync("frontend/web/index.html","utf8");
   const app = fs.readFileSync("frontend/web/app.js","utf8");
@@ -1968,7 +1988,7 @@ test("all dashboard cards share one title, kicker and pinned footer contract", (
 test("exactly one canonical waterfall effect owns both opacity and transparency", () => {
   const css = fs.readFileSync("frontend/web/styles.css", "utf8");
   const contract = css.split("/* The *only* waterfall visual contract")[1] || "";
-  assert.match(contract, /:is\(\.spotlight-carousel, \.standings-rail\) > \.carousel-waterfall-edge::before/);
+  assert.match(contract, /:is\(\.spotlight-carousel, \.standings-controls\) > \.carousel-waterfall-edge::before/);
   assert.match(contract, /opacity: var\(--edge-opacity, var\(--bw-edge-background-alpha\)\)/);
   assert.match(contract, /\.carousel-waterfall-edge:not\(:disabled\):is\(:hover, :focus-visible\)::before \{[\s\S]*opacity: var\(--edge-opacity/);
   assert.match(contract, /-webkit-backdrop-filter: var\(--bw-edge-blur\)/);
