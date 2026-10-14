@@ -40,6 +40,22 @@ export function buildScoutingIndex({
   const standings = buildLeagueStandings(
     history, seasonId, monitored, today, fixtures,
   );
+  // A public, name-only team directory is prepared in the same hourly job.
+  // Settings can search it without scanning historical archives on an HTTP GET.
+  const currentSeason = history.seasons.find((item) => item.seasonId === seasonId);
+  const teamDirectory = new Map();
+  for (const entry of currentSeason?.teams || []) {
+    const name = String(entry?.name || "").trim().replace(/\\s+/g, " ");
+    if (!name || name.length > 120) continue;
+    const key = name.toLocaleLowerCase("en");
+    if (!teamDirectory.has(key)) teamDirectory.set(key, name);
+  }
+  for (const name of monitored) {
+    const key = name.toLocaleLowerCase("en");
+    if (!teamDirectory.has(key)) teamDirectory.set(key, name);
+  }
+  const teamOptions = [...teamDirectory.values()]
+    .sort((left, right) => left.localeCompare(right)).slice(0, 450);
   const reports = {};
   for (const card of standings.cards) {
     if (!card.ready) continue;
@@ -53,8 +69,9 @@ export function buildScoutingIndex({
     }
   }
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     seasonId,
+    teamOptions,
     updatedAt: String(history?.updatedAt || ""),
     generatedAt,
     today,
