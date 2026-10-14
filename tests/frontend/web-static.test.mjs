@@ -615,7 +615,7 @@ test("web Live status requires successful runtime-backed reads", () => {
   const config = app.match(/async function loadConfig\(\)[\s\S]*?\n}\n/)?.[0] || "";
   const online = app.match(/window\.addEventListener\("online"[\s\S]*?\n}\);/)?.[0] || "";
 
-  assert.match(refresh, /const \[calendarOk\] = await Promise\.all/);
+  assert.match(refresh, /const calendarOk = await loadCalendar\(\)/);
   assert.match(refresh, /calendarOk \? "live" : currentCalendar \? "stale" : "offline"/);
   assert.doesNotMatch(config, /setSystemState\("live"\)/);
   assert.match(online, /setSystemState\("checking"\)/);
@@ -861,10 +861,10 @@ test("notification center supports filters, synced read state, and account prefe
   assert.match(css, /\.notification-preferences \{/);
   assert.match(html, /<span>App update<\/span>/);
   assert.match(css, /\.notification-preference-options \{[\s\S]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/);
-  assert.match(app, /const notificationProfileRefresh = ownerToken\(\)/);
+  assert.match(app, /ownerToken\(\) \? loadNotificationProfile\(\{ migrateLocal: false \}\)/);
   assert.match(app, /loadNotificationProfile\(\{ migrateLocal: false \}\)/);
-  assert.match(app, /const \[calendarOk\] = await Promise\.all/);
-  assert.match(app, /notificationProfileRefresh\.catch\(\(\) => false\)/);
+  assert.match(app, /const calendarOk = await loadCalendar\(\)/);
+  assert.match(app, /Promise\.allSettled\(\[/);
   assert.match(app, /Synced when active for @/);
 });
 
@@ -1826,7 +1826,7 @@ test("scouting is precomputed hourly and no longer floods the Worker with browse
   assert.match(app, /function scoutReportKey\(teamName, division/);
   assert.doesNotMatch(app, /prefetchScoutReports/);
   assert.doesNotMatch(app, /scoutPrefetchInFlight/);
-  assert.match(app, /currentStandings\.updatedAt/);
+  assert.match(app, /currentStandings\?\.updatedAt/);
   assert.match(app, /encodeURIComponent\(division\)/);
   assert.match(worker, /url\.searchParams\.get\("division"\)/);
   assert.match(worker, /candidate\.divisionKey === division/);
@@ -1865,4 +1865,14 @@ test("scouting preloads once after base data, and status recovery never awaits o
   assert.match(app, /locationParts\.push\(formatMonitoredWin\(matchForm\)\)/);
   assert.match(css, /\.next-game-form \{ display: none !important; \}/);
   assert.match(css, /\.standings-slide \.eyebrow \{\s*color: rgba\(191, 219, 254, 0\.72\)/);
+});
+
+test("scouting index initializes when its workflow is merged or release is promoted", () => {
+  const source = fs.readFileSync(".github/workflows/scouting-index.yml","utf8");
+  assert.match(source, /cron: '7 \* \* \* \*'/);
+  assert.match(source, /branches: \[main\]/);
+  assert.match(source, /scouting-index\.yml'/);
+  assert.match(source, /workflows: \["Promote production release"\]/);
+  assert.match(source, /workflow_run\.conclusion == 'success'/);
+  assert.match(source, /node backend\/league\/scouting-index\.mjs/);
 });
