@@ -1,6 +1,8 @@
 name: Complete BallerWatch 8.7.0 promotion
 
-# One-time release handoff. This does not bypass the production promoter's
+# One-time release handoff. The 8.7.0 ledger was merged before the workflow;
+# later validated main commits must descend from that exact release ledger.
+# This does not bypass the production promoter's
 # verified-candidate, GitHub Release, Worker readiness or Pages gates.
 on:
   workflow_run:
@@ -40,7 +42,7 @@ jobs:
           head_sha="$(git rev-parse HEAD)"
           ledger_sha="$(git log -1 --format=%H HEAD -- features/versions.json)"
           version="$(node -p 'JSON.parse(require("fs").readFileSync("features/versions.json","utf8")).currentVersion')"
-          if [ "$head_sha" != "$VALIDATED_SHA" ] || [ "$head_sha" != "$ledger_sha" ] || [ "$version" != "8.7.0" ]; then
+          if [ "$head_sha" != "$VALIDATED_SHA" ] || [ "$ledger_sha" != "8fc84c6089270d4e4be2ca6c6fa1d1091571ed93" ] || [ "$version" != "8.7.0" ] || ! git merge-base --is-ancestor "$ledger_sha" "$head_sha"; then
             echo "Release handoff not applicable to this validation."
             echo "dispatch=false" >> "$GITHUB_OUTPUT"
             exit 0
