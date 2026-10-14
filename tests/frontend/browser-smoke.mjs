@@ -111,6 +111,23 @@ async function shot(page, name) {
   if (screenshotDir) await page.screenshot({ path: path.join(screenshotDir, `${name}.png`), fullPage: false });
 }
 
+async function alignSyntheticCalendarCacheToToday(page) {
+  // The browser fixtures use year 2099 for stable future game display.
+  // Production cache validation correctly requires a same-day startDate.
+  await page.evaluate(() => {
+    const key = "ballerwatch:v2:public-calendar-device";
+    const saved = JSON.parse(localStorage.getItem(key) || "null");
+    if (!saved?.calendar) throw new Error("Expected a public device cache");
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Los_Angeles", year: "numeric",
+      month: "2-digit", day: "2-digit",
+    }).formatToParts(new Date());
+    const get = (type) => parts.find((part) => part.type === type)?.value;
+    saved.calendar.startDate = [get("year"), get("month"), get("day")].join("-");
+    localStorage.setItem(key, JSON.stringify(saved));
+  });
+}
+
 async function scenario(name, run) {
   await run();
   scenarios += 1;
@@ -257,11 +274,15 @@ try {
           sessionStorage.getItem("ballerwatch-intro-seen-v1"),
           sessionStorage.getItem("ballerwatch-public-calendar-session-v1"),
         ]), ["0", "v1-sentinel", "v1-sentinel"]);
+        await alignSyntheticCalendarCacheToToday(instance.page);
         instance.controls.offlineApi = true;
         await instance.page.reload();
         await instance.page.waitForFunction(() => document.querySelector("#next-game-title").textContent.includes("October 15"));
-        await instance.page.waitForFunction(() => document.querySelector("#system-status").textContent === "Last synced");
-        assert.equal(await instance.page.locator("#system-status").textContent(), "Last synced");
+        // One transient outage is not enough to label saved fixtures stale:
+        // the last-good schedule stays visible with an honest neutral status.
+        await instance.page.waitForFunction(() => document.querySelector("#system-status").textContent === "Ready");
+        assert.equal(await instance.page.locator("#system-status").textContent(), "Ready");
+        assert.match(await instance.page.locator("#calendar-updated").textContent(), /Updated/);
         await instance.context.close();
       });
 
@@ -277,11 +298,15 @@ try {
           const keys = await page.evaluate(() => caches.keys());
           assert.ok(keys.some((key) => /^ballerwatch-v\d/.test(key) && !key.startsWith("ballerwatch-v2-")));
           assert.ok(keys.some((key) => key.startsWith("ballerwatch-v2-") && key.endsWith("-shell")));
+          await alignSyntheticCalendarCacheToToday(page);
           await context.unrouteAll({ behavior: "wait" });
           await context.setOffline(true);
           await page.reload({ waitUntil: "domcontentloaded" });
           assert.equal(new URL(page.url()).pathname, "/ballerwatch/v2/");
           await page.waitForFunction(() => !document.querySelector("#matchday-app").inert);
+          await page.waitForFunction(() =>
+            document.querySelector("#next-game-title").textContent.includes("October 15"),
+            null, { timeout: 2_500 });
           assert.equal(await page.locator("#next-game-title").textContent(), "Thursday, October 15");
           await page.goto(`${origin}/ballerwatch/`, { waitUntil: "domcontentloaded" });
           assert.equal(await page.locator(".brand-lockup h1").textContent(), "BallerWatch");
