@@ -153,6 +153,16 @@ jobs:
             echo "- Release-triggered deployment workflows will deploy this tagged version."
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Prime the independent hourly scouting projection
+        if: steps.candidate.outputs.eligible == 'true' && steps.candidate.outputs.version == '8.6.0'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          # A dispatch runs on the newly promoted source and warms encrypted
+          # projections without using the public Worker to calculate them.
+          gh workflow run scouting.yml --repo "$GITHUB_REPOSITORY" --ref main
+
       - name: Remove safely superseded branches after 7.1.4 is live
         if: steps.candidate.outputs.eligible == 'true' && steps.candidate.outputs.version == '7.1.4'
         env:
