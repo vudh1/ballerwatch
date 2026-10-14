@@ -1835,8 +1835,10 @@ function scoutingProjectionCurrent(index, snapshot) {
 }
 
 async function loadSnapshot(env) {
-  return publicReadCache.get("public-snapshot", 20_000, () => loadSnapshotUncached(env), {
-    staleMs: 3 * 60_000, transientError: transientPublicLoadError,
+  return publicReadCache.get("public-snapshot", 90_000, () => loadSnapshotUncached(env), {
+    // Serve the last known good encrypted-source snapshot during transient
+    // GitHub failures; canonical missing/deleted state still fails closed.
+    staleMs: 6 * 60 * 60_000, transientError: transientPublicLoadError,
   });
 }
 
