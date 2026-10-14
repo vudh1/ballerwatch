@@ -5355,69 +5355,11 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
   font-size: var(--type-caption);
 }
 
-/* Edge controls remain narrow so standings team names take click priority.
- * Their non-interactive gradient reaches into the card like match navigation. */
+/* The standings buttons are intentionally nested inside a role=group wrapper.
+ * Desktop waterfall styles target that real wrapper. Touch devices navigate
+ * with native swipes, just like the match card; no permanent solid edge. */
 .standings-controls { display: contents; }
-
-.standings-step {
-  position: absolute;
-  z-index: 4;
-  top: 50%;
-  width: clamp(1.75rem, 4.5vw, 2.4rem);
-  height: 5rem;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  color: rgba(226, 250, 255, 0.92);
-  background: transparent;
-  transform: translateY(-50%);
-  box-shadow: none;
-  overflow: visible;
-}
-
-.standings-step-previous { left: 0; }
-.standings-step-next { right: 0; }
-
-.standings-step::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  width: 5.3rem;
-  height: var(--standings-edge-height, 100%);
-  background: linear-gradient(90deg, rgba(125, 211, 252, 0.25), rgba(96, 165, 250, 0.08) 52%, transparent);
-  opacity: var(--standings-edge-opacity, 0.10);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
-  mask-image: linear-gradient(90deg, black, transparent);
-  -webkit-mask-image: linear-gradient(90deg, black, transparent);
-  transform: translateY(-50%);
-  pointer-events: none;
-  transition: opacity 130ms ease;
-}
-.standings-step-previous::before { left: 0; }
-.standings-step-next::before {
-  right: 0;
-  background: linear-gradient(270deg, rgba(125, 211, 252, 0.25), rgba(96, 165, 250, 0.08) 52%, transparent);
-  mask-image: linear-gradient(270deg, black, transparent);
-  -webkit-mask-image: linear-gradient(270deg, black, transparent);
-}
-
-.standings-step span {
-  position: relative;
-  z-index: 1;
-  font-size: 2rem;
-  font-weight: 400;
-  opacity: var(--standings-arrow-opacity, 0.60);
-  text-shadow: 0 0 12px rgba(125, 211, 252, 0.44);
-}
-.standings-step:is(:hover, :focus-visible) {
-  border: 0;
-  background: transparent;
-}
-.standings-step:not(:disabled):is(:hover, :focus-visible)::before {
-  opacity: 0.9;
-}
-.standings-step:disabled { opacity: 0; pointer-events: none; }
+.standings-step { display: none; }
 
 @media (max-width: 560px) {
   .standings-slide { padding: 0.95rem 0.55rem; border-radius: 24px; }
@@ -5541,34 +5483,6 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
   margin: 0.75rem 0 0;
   color: rgba(148, 163, 184, 0.72);
   font-size: 0.69rem;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .calendar-carousel .calendar-window-control,
-  .standings-rail .standings-step {
-    top: 0;
-    bottom: 0;
-    width: min(5.75rem, 20%);
-    height: auto;
-    transform: none;
-  }
-  .calendar-carousel .calendar-window-control::before,
-  .standings-rail .standings-step::before {
-    top: 0;
-    height: 100%;
-    transform: none;
-  }
-  .standings-rail .standings-step {
-    --standings-arrow-opacity: 0;
-  }
-  .standings-rail .standings-step::before {
-    width: 100%;
-    -webkit-backdrop-filter: blur(13px) saturate(160%);
-    backdrop-filter: blur(13px) saturate(160%);
-  }
-  .standings-rail .standings-step span {
-    opacity: var(--standings-arrow-opacity, 0);
-  }
 }
 
 @media (max-width: 560px) {
@@ -6252,11 +6166,17 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
   text-align: right;
 }
 
+/* Both matched DOM paths:
+ * .spotlight-carousel > button.carousel-waterfall-edge
+ * .standings-rail > .standings-controls > button.carousel-waterfall-edge
+ * (the .standings-controls element uses display:contents, so its absolutely
+ * positioned buttons remain anchored to .standings-rail).
+ * Shared variables and pseudo-elements apply identically to both. */
 /* The *only* waterfall visual contract for both card carousels.
  * Both pseudo elements get the exact same opacity/blur/mask/gradient/easing.
  * The match right-side control reserves the top-right edit action hit target. */
 @media (hover: hover) and (pointer: fine) {
-  :is(.spotlight-carousel, .standings-rail) > .carousel-waterfall-edge {
+  :is(.spotlight-carousel, .standings-controls) > .carousel-waterfall-edge {
     position: absolute;
     display: flex;
     align-items: center;
@@ -6273,14 +6193,14 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
     transform: none;
     overflow: hidden;
   }
-  :is(.spotlight-carousel, .standings-rail) >
+  :is(.spotlight-carousel, .standings-controls) >
   .carousel-waterfall-edge:is(.spotlight-edge-previous, .standings-step-previous) {
     left: 0;
     justify-content: flex-start;
     padding-left: 0.7rem;
     border-radius: 32px 0 0 32px;
   }
-  :is(.spotlight-carousel, .standings-rail) >
+  :is(.spotlight-carousel, .standings-controls) >
   .carousel-waterfall-edge:is(.spotlight-edge-next, .standings-step-next) {
     right: 0;
     justify-content: flex-end;
@@ -6290,11 +6210,11 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
   /* Override the legacy match-card :hover specificity as well: otherwise
      old hover: opacity 1 would beat the new shared pointer-distance variable,
      making match and standings visibly different on hover. */
-  :is(.spotlight-carousel, .standings-rail) >
+  :is(.spotlight-carousel, .standings-controls) >
   .carousel-waterfall-edge:not(:disabled):is(:hover, :focus-visible)::before {
     opacity: var(--edge-opacity, var(--bw-edge-background-alpha));
   }
-  :is(.spotlight-carousel, .standings-rail) > .carousel-waterfall-edge::before {
+  :is(.spotlight-carousel, .standings-controls) > .carousel-waterfall-edge::before {
     content: "";
     position: absolute;
     inset: 0;
@@ -6308,7 +6228,7 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
     box-shadow: none;
     pointer-events: none;
   }
-  :is(.spotlight-carousel, .standings-rail) >
+  :is(.spotlight-carousel, .standings-controls) >
   .carousel-waterfall-edge:is(.spotlight-edge-previous, .standings-step-previous)::before {
     background: linear-gradient(90deg,
       rgba(186, 230, 253, 0.30) 0%,
@@ -6319,7 +6239,7 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
     -webkit-mask-image: linear-gradient(90deg, #000 0%, rgba(0, 0, 0, 0.86) 36%, transparent 100%);
     mask-image: linear-gradient(90deg, #000 0%, rgba(0, 0, 0, 0.86) 36%, transparent 100%);
   }
-  :is(.spotlight-carousel, .standings-rail) >
+  :is(.spotlight-carousel, .standings-controls) >
   .carousel-waterfall-edge:is(.spotlight-edge-next, .standings-step-next)::before {
     background: linear-gradient(270deg,
       rgba(186, 230, 253, 0.30) 0%,
@@ -6330,8 +6250,8 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
     -webkit-mask-image: linear-gradient(270deg, #000 0%, rgba(0, 0, 0, 0.86) 36%, transparent 100%);
     mask-image: linear-gradient(270deg, #000 0%, rgba(0, 0, 0, 0.86) 36%, transparent 100%);
   }
-  :is(.spotlight-carousel, .standings-rail) > .carousel-waterfall-edge span,
-  :is(.spotlight-carousel, .standings-rail) > .carousel-waterfall-edge:not(:disabled):is(:hover, :focus-visible) span {
+  :is(.spotlight-carousel, .standings-controls) > .carousel-waterfall-edge span,
+  :is(.spotlight-carousel, .standings-controls) > .carousel-waterfall-edge:not(:disabled):is(:hover, :focus-visible) span {
     position: relative;
     z-index: 1;
     display: grid;
@@ -6350,10 +6270,10 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
     transform: translateX(0) scale(0.9);
     transition: opacity 150ms ease, transform 180ms ease;
   }
-  :is(.spotlight-carousel, .standings-rail) > .carousel-waterfall-edge:not(:disabled):is(:hover, :focus-visible) span {
+  :is(.spotlight-carousel, .standings-controls) > .carousel-waterfall-edge:not(:disabled):is(:hover, :focus-visible) span {
     transform: translateX(0) scale(1);
   }
-  :is(.spotlight-carousel, .standings-rail) > .carousel-waterfall-edge:disabled {
+  :is(.spotlight-carousel, .standings-controls) > .carousel-waterfall-edge:disabled {
     opacity: 0;
     pointer-events: none;
   }
@@ -6369,8 +6289,8 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  :is(.spotlight-carousel, .standings-rail) > .carousel-waterfall-edge::before,
-  :is(.spotlight-carousel, .standings-rail) > .carousel-waterfall-edge span {
+  :is(.spotlight-carousel, .standings-controls) > .carousel-waterfall-edge::before,
+  :is(.spotlight-carousel, .standings-controls) > .carousel-waterfall-edge span {
     transition: none;
   }
 }
