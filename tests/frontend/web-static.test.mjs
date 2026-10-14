@@ -604,7 +604,7 @@ test("installed app refreshes data and release updates automatically", () => {
   assert.match(app, /visibilitychange/);
   assert.match(app, /window\.setInterval/);
   assert.match(app, /registration\.update\(\)/);
-  assert.match(app, /calendarOk && boardOk \? "live" : "offline"/);
+  assert.match(app, /calendarOk \? "live" : currentCalendar \? "stale" : "offline"/);
   assert.match(css, /@keyframes ballerwatch-live-pulse/);
   assert.match(css, /\.system-line\.is-live \.system-dot/);
 });
@@ -616,7 +616,7 @@ test("web Live status requires successful runtime-backed reads", () => {
   const online = app.match(/window\.addEventListener\("online"[\s\S]*?\n}\);/)?.[0] || "";
 
   assert.match(refresh, /const \[calendarOk, boardOk\] = await Promise\.all/);
-  assert.match(refresh, /calendarOk && boardOk \? "live" : "offline"/);
+  assert.match(refresh, /calendarOk \? "live" : currentCalendar \? "stale" : "offline"/);
   assert.doesNotMatch(config, /setSystemState\("live"\)/);
   assert.match(online, /setSystemState\("checking"\)/);
   assert.doesNotMatch(online, /setSystemState\("live"\)/);
@@ -917,7 +917,7 @@ test("match spotlight swipe uses connected neighboring cards like a carousel tra
   assert.match(app, /isSpotlightInteractiveTarget\(event\.target\)/);
   assert.match(css, /\/\* v5\.3\.3 connected-card carousel swipe \*\//);
   assert.match(css, /\.spotlight-carousel \{[\s\S]*overflow:\s*hidden;/);
-  assert.match(css, /--spotlight-train-gap:\s*0px/);
+  assert.match(css, /--spotlight-train-gap:\s*12px/);
   assert.match(
     css,
     /\.spotlight-carousel \.spotlight-card\.spotlight-train-card \{[\s\S]*position:\s*absolute;/,
@@ -1664,7 +1664,7 @@ test("standings uses adjacent-card drag train and minimal table, preserving team
   assert.match(app, /is-train-dragging/);
   assert.match(app, /setStandingsSlide\(originalIndex \+ step\)/);
   assert.match(css, /\.standings-track\.is-train-dragging \{ transition: none;/);
-  assert.match(css, /--standings-train-gap: 0px/);
+  assert.match(css, /--standings-train-gap: 12px/);
   assert.match(css, /\.standings-step-next::before/);
   assert.match(app, /\["W-D-L", "Wins, draws, losses"\]/);
   assert.match(app, /openTeamHistory\(row\.name\)/);
@@ -1703,7 +1703,7 @@ test("team stats appear only after team-history API load; standings show no 1/2 
   assert.doesNotMatch(html, /id="standings-updated"/);
   assert.match(html, /id="team-scout-overview"/);
   assert.match(app, /slide\.append\(freshness\)/);
-  assert.match(app, /"standings-footnote standings-card-updated"/);
+  assert.match(app, /"match-update-credit standings-card-updated"/);
   assert.doesNotMatch(app, /els\.standingsPosition/);
   assert.doesNotMatch(app, /els\.standingsUpdated/);
   assert.doesNotMatch(app, /card\.stats/);
@@ -1733,4 +1733,43 @@ test("league schedule match cards show last-ten weighted wins for both teams onl
   assert.match(worker, /withLeagueRecentForm\(withCachedVenue\(webNextGameDetails/);
   assert.match(css, /\.next-game-form \{/);
   assert.doesNotMatch(html, /calendar-window-next/);
+});
+
+test("standings rank pill and timestamp match the game card, both trains have real gaps", () => {
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
+  assert.match(app, /"status-dot standings-rank"/);
+  assert.match(app, /tracked\.rank/);
+  assert.match(app, /matchUpdatedText\(standings.updatedAt\)/);
+  assert.match(app, /RATS published results · Provisional league standings/);
+  assert.match(css, /\.spotlight-carousel \{ --spotlight-train-gap: 12px; \}/);
+  assert.match(css, /\.standings-track \{ --standings-train-gap: 12px; gap: var\(--standings-train-gap\); \}/);
+  assert.match(css, /\.standings-slide \.status-dot\.standings-rank/);
+  assert.match(css, /border-radius: 25px;/);
+});
+
+test("match data retries and preserves last successful data during outages", () => {
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const client = fs.readFileSync("frontend/web/lib/client.js", "utf8");
+  assert.match(client, /temporaryGatewayError = \[502, 503, 504\]/);
+  assert.match(client, /safeGet/);
+  assert.match(app, /api\("\/web\/calendar", \{retryNetwork: true\}\)/);
+  assert.match(app, /loadRsvpStatus\(\)\.catch\(\(\) => false\)/);
+  assert.match(app, /if \(currentCalendar\) \{/);
+  assert.match(app, /Last synced · Reconnecting/);
+  assert.match(app, /if \(currentNextGame\?\.id\) \{/);
+  assert.match(app, /Showing last synced game · Reconnecting/);
+  assert.match(app, /Promise\.allSettled\(\[/);
+  assert.match(app, /state === "stale"/);
+  assert.match(app, /currentCalendar \? "stale" : "offline"/);
+  assert.match(app, /api\(\x60\/web\/team-history\?team=/);
+});
+
+test("last-ten scouting indexes the historical result archive only once per snapshot", () => {
+  const lib = fs.readFileSync("backend/shared/league-standings.mjs", "utf8");
+  assert.match(lib, /const archiveResultCache = new WeakMap\(\)/);
+  assert.match(lib, /const teamGameIndexCache = new WeakMap\(\)/);
+  assert.match(lib, /archiveResultCache\.get\(history\)/);
+  assert.match(lib, /teamGameIndexCache\.get\(matches\)/);
+  assert.match(lib, /byTeam\.get\(historyTeamKey\(teamName\)\)/);
 });
