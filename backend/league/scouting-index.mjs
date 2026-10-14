@@ -45,7 +45,7 @@ export function buildScoutingIndex({
   const currentSeason = history.seasons.find((item) => item.seasonId === seasonId);
   const teamDirectory = new Map();
   for (const entry of currentSeason?.teams || []) {
-    const name = String(entry?.name || "").trim().replace(/\\s+/g, " ");
+    const name = String(entry?.name || "").trim().replace(/\s+/g, " ");
     if (!name || name.length > 120) continue;
     const key = name.toLocaleLowerCase("en");
     if (!teamDirectory.has(key)) teamDirectory.set(key, name);
