@@ -251,7 +251,7 @@ export function divisionStrengthMultiplier(team) {
   // otherwise an unlettered metadata field could mask a specific D2a league.
   const labels = [team.divisionLabel, team.leagueName, team.division]
     .map((part) => String(part || "").trim());
-  const explicit = /(?:^|[^a-z0-9])(?:d|division)[\\s_-]*([123])[\\s_-]*([abc])?(?=$|[^a-z0-9])/i;
+  const explicit = /(?:^|[^a-z0-9])(?:d|division)[\s_-]*([123])[\s_-]*([abc])?(?=$|[^a-z0-9])/i;
   for (const label of labels) {
     const match = explicit.exec(label);
     if (match?.[2]) return DIVISION_WEIGHTS[match[1] + match[2].toLowerCase()];
