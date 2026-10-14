@@ -237,6 +237,10 @@ export function buildScoutingSnapshot(history, seasonId, today = "9999-12-31", f
     ...fixtures,
     ...(season?.matches || []).filter(match => String(match.date || "") >= today),
   ];
+  const fixtureKey = [...new Set(allFixtures.map(game =>
+    [historyTeamKey(game.team || game.homeTeam),
+      historyTeamKey(game.opponent || game.awayTeam)].join("|")))]
+    .sort().join(";");
   for (const game of allFixtures) {
     const team = String(game.team || game.homeTeam || "").trim();
     const opponent = String(game.opponent || game.awayTeam || "").trim();
@@ -251,7 +255,7 @@ export function buildScoutingSnapshot(history, seasonId, today = "9999-12-31", f
     seasonId, season: season?.label || seasonLabel(seasonId),
     sourceUpdatedAt: String(history?.updatedAt || ""),
     updatedAt: new Date().toISOString(),
-    cards, reports, matchups,
+    cards, reports, matchups, fixtureKey,
     method: "Public scored RATS archive; last ten, format-weighted, opponent adjusted; provisional.",
   };
 }
