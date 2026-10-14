@@ -169,7 +169,15 @@ try {
         await page.locator("#spotlight-next").click();
         await page.waitForFunction(() => document.querySelector("#next-game-form")?.textContent.includes("FFC 45%"));
         assert.deepEqual(await page.locator("#next-game-form .win-chance-labels span").allTextContents(),
-          ["FFC 45%", "Tie 20%", "TU 35%"]);
+          ["FFC 45%", "Tie", "TU 35%"]);
+        assert.ok(await page.locator("#next-game-form").evaluate((element) => {
+          const address = document.querySelector("#next-game-location");
+          const capacity = document.querySelector("#next-game-capacity");
+          const style = getComputedStyle(element);
+          return address.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING &&
+            style.gridArea === "form" &&
+            Math.abs(element.getBoundingClientRect().width - capacity.getBoundingClientRect().width) < 2;
+        }));
         const appearance = await page.locator("#next-game-form").evaluate((element) => {
           const css = getComputedStyle(element);
           return { border: css.borderTopWidth, padding: css.paddingTop,
@@ -179,6 +187,23 @@ try {
         assert.equal(appearance.padding, "0px");
         assert.equal(appearance.background, "rgba(0, 0, 0, 0)");
         assert.match(appearance.aria, /Fixture FC win 45%, tie 20%, Test United win 35%/);
+        assert.deepEqual(errors, []);
+        await context.close();
+      });
+
+      await scenario(`${engine}: saved public standings and match odds paint before offline verification`, async () => {
+        const { context, page, controls, errors, calls } = await prepare(browser, { reducedMotion: "reduce" });
+        await ready(page);
+        await page.waitForSelector(".standings-team-link");
+        await alignSyntheticCalendarCacheToToday(page);
+        controls.offlineApi = true;
+        const requestsBeforeReload = calls.length;
+        await page.reload();
+        await page.waitForFunction(() =>
+          document.querySelector("#next-game-title")?.textContent.includes("October 15") &&
+          document.querySelector(".standings-team-link")?.textContent === "Fixture FC");
+        assert.ok(await page.locator(".standings-team-link").count() >= 2);
+        assert.ok(calls.length > requestsBeforeReload, "Background verification should still be attempted");
         assert.deepEqual(errors, []);
         await context.close();
       });
