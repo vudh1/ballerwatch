@@ -23,12 +23,24 @@ jobs:
           ref: production
           fetch-depth: 1
 
+      - name: Check production supports scorer
+        id: scorer
+        run: |
+          if [ -f backend/league/scouting.mjs ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Scouting runs only after the new app is promoted."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Pull encrypted league state
+        if: steps.scorer.outputs.ready == 'true'
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
         run: node backend/shared/runtime-state.mjs pull league
 
       - name: Update scored history when due and precompute scouting
+        if: steps.scorer.outputs.ready == 'true'
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
         run: |
@@ -36,6 +48,7 @@ jobs:
           node backend/league/scouting.mjs
 
       - name: Seal and publish public scouting snapshot
+        if: steps.scorer.outputs.ready == 'true'
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
         run: node backend/shared/runtime-state.mjs push league
