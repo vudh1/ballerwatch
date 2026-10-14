@@ -4893,11 +4893,9 @@ applyInstallState();
 setNotificationFilter("all");
 renderNotificationPreferences();
 setSystemState("checking");
-// The first match card and schedule must not wait for optional history,
-// notification preferences or service worker update checks.
-// Avoid a burst of optional API requests competing with the first schedule
-// request. Install/update can proceed while the schedule hydrates.
-void registerServiceWorker().catch(() => null);
+// Render the last public schedule before the first network await. Defer the
+// Service Worker registration/update download until AFTER the first calendar
+// check: asset update traffic must not compete with initial fixture hydration.
 restorePublicCalendar();
 // Cached fixtures paint synchronously. Remain neutral ("Checking…") until
 // the first network validation, rather than flashing a false "Last synced"
@@ -4905,6 +4903,8 @@ restorePublicCalendar();
 const calendarOk = await loadCalendar().catch(() => false);
 setSystemState(calendarOk ? "live" : currentCalendar ? "stale" : "offline");
 initialLoadComplete = true;
+// Refresh/install the service worker without blocking already visible cards.
+void registerServiceWorker().catch(() => null);
 void Promise.allSettled([
   loadConfig(), loadBoard(), loadStandings(), loadNotificationProfile(),
 ]);
