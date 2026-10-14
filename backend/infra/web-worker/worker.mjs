@@ -1591,7 +1591,7 @@ async function syncDerivedRuntimeFile(env, path, raw) {
     if (value) await kvJsonPut(env, "snapshot:rats-history", value);
   } else if (path === "league/state/scout-index.json") {
     const value = await decryptState(parsed, env);
-    if (value?.schemaVersion === 1) await kvJsonPut(env, "snapshot:scout-index", value);
+    if (value?.schemaVersion === 2) await kvJsonPut(env, "snapshot:scout-index", value);
   } else if (path === "state/user.json") {
     const userState = await userStateDocument(env, parsed);
     if (userState.settings) {
@@ -1804,10 +1804,10 @@ async function loadRatsHistoryUncached(env) {
 // Prefer the encrypted state already projected into KV before making any
 // GitHub API request. Scouting requests never scan raw archive history.
 async function loadScoutingIndex(env) {
-  return publicReadCache.get("prebuilt-scout-index-v2", 90_000,
+  return publicReadCache.get("prebuilt-scout-index-v3", 90_000,
     async () => {
       const local = await kvJsonGet(env, "snapshot:scout-index").catch(() => null);
-      const valid = (value) => value?.schemaVersion === 1 &&
+      const valid = (value) => value?.schemaVersion === 2 &&
         Array.isArray(value.standings?.cards) &&
         value.reports && typeof value.reports === "object";
       // KV can lag behind hourly GitHub-published snapshots; trust it for
