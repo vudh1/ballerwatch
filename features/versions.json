@@ -1,7 +1,25 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.5.4",
+  "currentVersion": "8.6.0",
   "releases": [
+    {
+      "version": "8.6.0",
+      "date": "2026-10-13",
+      "type": "minor",
+      "source": "user-reported",
+      "title": "Isolated hourly scouting cache and reliable read-only match data",
+      "webAnnouncement": "Scouting now reads precomputed hourly team reports instead of calculating large archives when you open a team. Match and calendar reads are protected from scouting request bursts and keep last synced data during temporary upstream issues.",
+      "changes": [
+        "Adds a separate notification-silent GitHub Actions hourly scouting workflow that refreshes scored RATS history and builds a precomputed, AES-GCM encrypted projection of monitored-team standings, matchups and every division opponent's full scout report.",
+        "Extends the canonical encrypted runtime-state registry with league/state/scout-index.json; server reads this compact projection instead of evaluating all historical games on each standings or team-history GET.",
+        "Retains backwards-compatible results-calculation fallback only until a valid new projection exists, and checks projection version, season and monitored teams before using it.",
+        "Stops the browser from opening up to 28 background team-scout HTTP requests per standings refresh. Client-side repeated-tap caching and division-scoped controls remain intact.",
+        "Prevents optional /web/config failures from changing healthy match/calendar state to Offline.",
+        "Extends bounded, transient-only reuse of the last valid public snapshot to six hours and decreases external snapshot load frequency; missing or corrupted canonical state still fails closed.",
+        "Preserves existing last-ten opponent-weighted 8v8/11v11 form, defensive and attacking rates, head-to-head adjustments, and compact match-card win indicator.",
+        "Adds offline synthetic tests for the independent scouting projection, runtime state routing, and exclusion of large scouting loads from the public match/calendar paths."
+      ]
+    },
     {
       "version": "8.5.4",
       "date": "2026-10-13",
