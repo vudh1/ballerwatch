@@ -1592,7 +1592,7 @@ async function syncDerivedRuntimeFile(env, path, raw) {
     if (value) await kvJsonPut(env, "snapshot:rats-history", value);
   } else if (path === "league/state/scout-index.json") {
     const value = await decryptState(parsed, env);
-    if (value?.schemaVersion === 3) await kvJsonPut(env, "snapshot:scout-index", value);
+    if (value?.schemaVersion === 2) await kvJsonPut(env, "snapshot:scout-index", value);
   } else if (path === "state/user.json") {
     const userState = await userStateDocument(env, parsed);
     if (userState.settings) {
@@ -1808,7 +1808,7 @@ async function loadScoutingIndex(env) {
   return publicReadCache.get("prebuilt-scout-index-v4", 90_000,
     async () => {
       const local = await kvJsonGet(env, "snapshot:scout-index").catch(() => null);
-      const valid = (value) => value?.schemaVersion === 3 &&
+      const valid = (value) => value?.schemaVersion === 2 &&
         Array.isArray(value.standings?.cards) &&
         value.reports && typeof value.reports === "object";
       // KV can lag behind hourly GitHub-published snapshots; trust it for
