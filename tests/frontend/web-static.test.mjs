@@ -1970,6 +1970,7 @@ test("exactly one canonical waterfall effect owns both opacity and transparency"
   const contract = css.split("/* The *only* waterfall visual contract")[1] || "";
   assert.match(contract, /:is\(\.spotlight-carousel, \.standings-rail\) > \.carousel-waterfall-edge::before/);
   assert.match(contract, /opacity: var\(--edge-opacity, var\(--bw-edge-background-alpha\)\)/);
+  assert.match(contract, /\.carousel-waterfall-edge:not\(:disabled\):is\(:hover, :focus-visible\)::before \{[\s\S]*opacity: var\(--edge-opacity/);
   assert.match(contract, /-webkit-backdrop-filter: var\(--bw-edge-blur\)/);
   assert.match(contract, /transition: opacity 90ms linear/);
   assert.match(contract, /rgba\(186, 230, 253, 0\.30\) 0%/);
@@ -2001,4 +2002,18 @@ test("README links old version history rather than duplicating dozens of release
   assert.equal(headings.length, 0);
   assert.match(readme, /GitHub Releases/);
   assert.match(readme, /Card design system/);
+});
+
+
+test("safe stale-branch cleanup requires the release, exact PR head and matching deployment", () => {
+  const workflow = fs.readFileSync(".github/workflows/prune-merged-branches-8-9.yml", "utf8");
+  assert.match(workflow, /workflow_run:[\s\S]*Deploy GitHub Pages app/);
+  assert.match(workflow, /workflow_run\.conclusion == 'success'/);
+  assert.match(workflow, /production_sha.*released_sha/);
+  assert.match(workflow, /DEPLOYED_SHA.*released_sha/);
+  assert.match(workflow, /main\|production\|runtime-state\|release\/8\.9\.0/);
+  assert.match(workflow, /head\.sha/);
+  assert.match(workflow, /merged_at != null/);
+  assert.match(workflow, /"\$live" != "\$sha"/);
+  assert.match(workflow, /gh api -X DELETE/);
 });
