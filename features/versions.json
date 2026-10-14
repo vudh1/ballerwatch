@@ -1,7 +1,24 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.5.1",
+  "currentVersion": "8.5.2",
   "releases": [
+    {
+      "version": "8.5.2",
+      "date": "2026-10-13",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Faster public fixtures and compact monitored-team win badge",
+      "webAnnouncement": "BallerWatch match and schedule loading is now independent of expensive RATS scouting requests. Startup prioritizes the calendar, and match cards show only a compact monitored-team win percentage when scored history exists.",
+      "changes": [
+        "Remove RATS historical scoring work from the critical /web/calendar and /web/next-game requests. Deliver monitored team's last-ten weighted win percentage through the optional existing /web/standings API instead of calculating both teams for every fixture.",
+        "Show only the tracked team's small 'Win N%' pill on league match cards, with a short tooltip for games and weights; no opponent win percentage or lengthy description.",
+        "Replace measuring every upcoming match card with at most two neighbor probes around the active card, reducing synchronous browser layout work as the published season grows.",
+        "Skip redundant calendar rerenders when the returned public schedule snapshot matches the current one, keeping the selected card and avoiding repeated layouts.",
+        "Deduplicate concurrent Worker internal cache misses to avoid repeated cold GitHub fetch/decrypt work for snapshot and history data.",
+        "Prioritize calendar hydration over optional settings, notifications, standings and RSVP status calls; preserve last synced fixtures during transient server errors.",
+        "Retain existing soccer carousel spacing, tap/swipe, manual edits, history, encrypted runtime files and notification privacy."
+      ]
+    },
     {
       "version": "8.5.1",
       "date": "2026-10-13",

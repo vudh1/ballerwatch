@@ -1576,7 +1576,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=8.5.1", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=8.5.2", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -2126,6 +2126,21 @@ function matchUpdatedText(value) {
   }).format(date)}`;
 }
 
+function monitoredWinForm(game) {
+  if (game?.kind !== "league" || !game.team) return null;
+  const nameKey = (name) => String(name || "").toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ").replace(/\b(?:fc|sc)\b$/g, "").trim();
+  const tracked = (currentStandings?.cards || []).find(
+    (card) => card.ready && nameKey(card.team) === nameKey(game.team),
+  );
+  const form = tracked?.recentForm;
+  return form?.games > 0 && Number.isFinite(form.weightedWinPct) ? form : null;
+}
+
+function formatMonitoredWin(form) {
+  return form ? `Win ${form.weightedWinPct}%` : "";
+}
+
 function spotlightModel(game, label = "NEXT GAME") {
   if (!game) {
     return {
@@ -2185,12 +2200,7 @@ function spotlightModel(game, label = "NEXT GAME") {
       .filter(Boolean)
       .join(" • "),
     location: locationParts.join(" • "),
-    form: game.kind === "league" && (game.teamForm || game.opponentForm)
-      ? "Weighted win % · Last 10 scored · " + [
-        game.teamForm ? `${game.team || "Our team"}: ${game.teamForm.weightedWinPct}% (${game.teamForm.games})` : "",
-        game.opponentForm ? `${game.opponent || "Opponent"}: ${game.opponentForm.weightedWinPct}% (${game.opponentForm.games})` : "",
-      ].filter(Boolean).join(" · ")
-      : "",
+    form: formatMonitoredWin(monitoredWinForm(game)),
     capacityText,
     capacityPercent,
     spotsText,
@@ -2243,6 +2253,12 @@ function applySpotlightModel(targets, game, label = "NEXT GAME") {
   targets.meta.textContent = model.meta;
   targets.form.textContent = model.form;
   targets.form.hidden = !model.form;
+  if (model.form) {
+    const form = monitoredWinForm(game);
+    targets.form.title = `${game.team} · ${form.wins} wins in ${form.games} scored matches · 11v11-weighted`;
+  } else {
+    targets.form.removeAttribute("title");
+  }
   targets.location.textContent = model.location;
   targets.capacity.hidden = !model.capacityText;
   targets.capacityLabel.textContent = model.capacityText;
@@ -2360,8 +2376,15 @@ function syncSpotlightCardDimensions() {
 
   carousel.style.removeProperty("--spotlight-card-height");
 
+  // Measuring every fixture forces many DOM clones and sync layouts on each
+  // minute refresh. Only the two cards adjacent to the active one can enter
+  // this carousel next, so these are the only offscreen probes needed.
   const probes = [];
-  for (const game of currentCalendar?.games || []) {
+  const neighbors = [
+    adjacentCalendarSelection(-1)?.game,
+    adjacentCalendarSelection(1)?.game,
+  ].filter(Boolean);
+  for (const game of neighbors) {
     const probe = buildSpotlightTrainCard(game);
     probe.classList.add("spotlight-measure-card");
     carousel.append(probe);
@@ -3198,6 +3221,20 @@ async function loadStandings() {
     // Preserve scroll/drag position when a 60-second API poll returns unchanged data.
     if (JSON.stringify(currentStandings) === JSON.stringify(payload.standings)) return true;
     currentStandings = payload.standings;
+    // Scouting is optional: update the tiny badge only after standings arrive.
+    // Match/calendar cards remain usable if results history is offline.
+    if (currentNextGame?.kind === "league") {
+      const form = monitoredWinForm(currentNextGame);
+      els.nextGameForm.textContent = formatMonitoredWin(form);
+      els.nextGameForm.hidden = !form;
+      if (form) {
+        els.nextGameForm.title =
+          `${currentNextGame.team} · ${form.wins} wins in ${form.games} scored matches · 11v11-weighted`;
+      } else {
+        els.nextGameForm.removeAttribute("title");
+      }
+      window.requestAnimationFrame(syncSpotlightCardDimensions);
+    }
     const index = currentStandings.cards?.findIndex((card) => card.team === selectedTeam) ?? -1;
     standingsIndex = index >= 0 ? index : 0;
     renderStandings();
@@ -3553,11 +3590,15 @@ async function loadCalendar() {
   try {
     // The personal RSVP lookup is independent of the public schedule.
     // An auth/profile failure must never blank an otherwise valid calendar.
-    const [payload] = await Promise.all([
-      api("/web/calendar", {retryNetwork: true}),
-      loadRsvpStatus().catch(() => false),
-    ]);
-    renderCalendar(payload.calendar || null);
+    // Public fixtures get the first API slot; the private RSVP refresh is
+    // independent and runs after the schedule request completes.
+    const payload = await api("/web/calendar", {retryNetwork: true});
+    const next = payload.calendar || null;
+    // Keep the active card, scroll position and expensive layout untouched
+    // when the public schedule/weather snapshot is unchanged.
+    if (JSON.stringify(next) !== JSON.stringify(currentCalendar)) {
+      renderCalendar(next);
+    }
     return true;
   } catch (error) {
     // Keep the last successfully loaded fixtures while a request fails.
@@ -3569,6 +3610,8 @@ async function loadCalendar() {
     els.calendarUpdated.textContent = "Calendar temporarily unavailable";
     await loadNextGame();
     return false;
+  } finally {
+    void loadRsvpStatus().catch(() => false);
   }
 }
 
@@ -4593,14 +4636,18 @@ applyInstallState();
 setNotificationFilter("all");
 renderNotificationPreferences();
 setSystemState("checking");
-const initial = await Promise.allSettled([
-  registerServiceWorker(), loadConfig(), loadBoard(),
-  loadCalendar(), loadStandings(), loadNotificationProfile(),
-]);
-const calendarOk = initial[3].status === "fulfilled" && initial[3].value === true;
+// The first match card and schedule must not wait for optional history,
+// notification preferences or service worker update checks.
+// Avoid a burst of optional API requests competing with the first schedule
+// request. Install/update can proceed while the schedule hydrates.
+void registerServiceWorker().catch(() => null);
+const calendarOk = await loadCalendar().catch(() => false);
 setSystemState(calendarOk ? "live" : currentCalendar ? "stale" : "offline");
 initialLoadComplete = true;
-await updatePushStatus();
+void Promise.allSettled([
+  loadConfig(), loadBoard(), loadStandings(), loadNotificationProfile(),
+]);
+void updatePushStatus();
 if (ownerToken()) void syncCurrentPushRegistration();
 
 window.setInterval(() => {

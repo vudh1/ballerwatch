@@ -323,3 +323,15 @@ test("no indexed results are displayed as unavailable, not zero-percent losses",
   assert.equal(match.quality,null);
   assert.equal(match.recentTen,null);
 });
+
+test("tracked standings cards carry only their own optional recent form", () => {
+  const view = buildLeagueStandings(
+    archive(), "fall-2026", ["Third Touch FC"], "2026-10-13",
+  );
+  assert.equal(view.cards.length, 1);
+  assert.equal(view.cards[0].recentForm.team, "Third Touch FC");
+  assert.equal(view.cards[0].recentForm.games, 3);
+  assert.ok(Number.isFinite(view.cards[0].recentForm.weightedWinPct));
+  assert.equal(Object.hasOwn(view.cards[0], "opponentForm"), false);
+  assert.equal(view.cards[0].rows.some((row) => Object.hasOwn(row, "recentForm")), false);
+});

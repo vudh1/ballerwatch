@@ -26,7 +26,7 @@ import { safeForExternalIntent, validatedAiIntent } from "../../shared/ai-intent
 import { answerFixtureQuestion } from "../../shared/fixture-ai.mjs";
 import { weeklyMatchBriefing } from "../../shared/match-briefing.mjs";
 import { answerRatsHistoryQuestion } from "../../shared/rats-history.mjs";
-import { buildLeagueStandings, buildLeagueTeamHistory, buildTeamRecentForm } from "../../shared/league-standings.mjs";
+import { buildLeagueStandings, buildLeagueTeamHistory } from "../../shared/league-standings.mjs";
 import { matchVenue } from "../../shared/venue-directory.mjs";
 import {
   applyFreePickupMatchOverride,
@@ -1627,6 +1627,10 @@ async function runtimeSettings(env) {
   return {};
 }
 
+// Deduplicate simultaneous cache misses in the same Worker isolate. Without
+// single-flight, initial config/calendar/standings requests each re-fetch and
+// decrypt the same runtime snapshot from GitHub on a cold cache.
+const pendingJsonLoads = new Map();
 async function cachedJson(key, ttlSeconds, loader) {
   const request = new Request(`https://ballerwatch.internal/cache/${key}`);
   const hit = await caches.default.match(request);
@@ -1634,14 +1638,24 @@ async function cachedJson(key, ttlSeconds, loader) {
     const value = await hit.json().catch(() => null);
     if (value) return value;
   }
-  const value = await loader();
-  await caches.default.put(
-    request,
-    new Response(JSON.stringify(value), {
-      headers: { "cache-control": `public,max-age=${ttlSeconds}` },
-    }),
-  );
-  return value;
+  if (pendingJsonLoads.has(key)) return pendingJsonLoads.get(key);
+  const promise = (async () => {
+    const value = await loader();
+    // A failed remote request must not poison the next attempt.
+    await caches.default.put(
+      request,
+      new Response(JSON.stringify(value), {
+        headers: { "cache-control": `public,max-age=${ttlSeconds}` },
+      }),
+    ).catch(() => {});
+    return value;
+  })();
+  pendingJsonLoads.set(key, promise);
+  try {
+    return await promise;
+  } finally {
+    if (pendingJsonLoads.get(key) === promise) pendingJsonLoads.delete(key);
+  }
 }
 
 async function loadGitHubSnapshot(env) {
@@ -2837,25 +2851,6 @@ export function webCalendarDetails(
   };
 }
 
-/** Attach only public, scored-history summaries to league fixtures; never infer
- * unrecorded results. Missing archive data must not hide the match itself. */
-export function withLeagueRecentForm(game, history, today = localDate(), cache = new Map()) {
-  if (!game || game.kind !== "league" || !history?.seasons) return game;
-  const formFor = (name) => {
-    if (!name) return null;
-    const key = name.trim().toLowerCase();
-    if (!cache.has(key)) cache.set(key, buildTeamRecentForm(history, name, today));
-    return cache.get(key);
-  };
-  return { ...game, teamForm: formFor(game.team), opponentForm: formFor(game.opponent) };
-}
-function withCalendarRecentForms(calendar, history, today) {
-  if (!history?.seasons || !calendar?.games?.length) return calendar;
-  const cache = new Map();
-  return { ...calendar, games: calendar.games.map((game) =>
-    withLeagueRecentForm(game, history, today, cache)) };
-}
-
 async function loadWebWeather(env) {
   try {
     const encrypted = await githubFile(env, "state/weather.json", "runtime-state");
@@ -3562,19 +3557,17 @@ export default {
     }
     if (request.method === "GET" && url.pathname === "/web/calendar") {
       try {
-        const [snapshot, weather, venues, history] = await Promise.all([
+        // Public fixtures must not wait for history archive decrypt/scan.
+        // Optional last-ten form comes from /web/standings independently.
+        const [snapshot, weather, venues] = await Promise.all([
           loadSnapshot(env),
           loadWebWeather(env),
           loadRatsVenues(env),
-          loadRatsHistory(env).catch(() => null),
         ]);
         const today = localDate();
         return webJson(request, {
           ok: true,
-          calendar: withCalendarRecentForms(
-            webCalendarDetails(snapshot, weather, 14, today, new Date(), venues),
-            history, today,
-          ),
+          calendar: webCalendarDetails(snapshot, weather, 14, today, new Date(), venues),
         });
       } catch {
         return webJson(
@@ -3640,13 +3633,12 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/web/next-game") {
       try {
-        const [snapshot, venues, history] = await Promise.all([
-          loadSnapshot(env), loadRatsVenues(env), loadRatsHistory(env).catch(() => null),
+        const [snapshot, venues] = await Promise.all([
+          loadSnapshot(env), loadRatsVenues(env),
         ]);
         return webJson(request, {
           ok: true,
-          game: withLeagueRecentForm(withCachedVenue(webNextGameDetails(snapshot), venues),
-            history, localDate()),
+          game: withCachedVenue(webNextGameDetails(snapshot), venues),
         });
       } catch {
         return webJson(

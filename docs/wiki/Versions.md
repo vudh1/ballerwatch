@@ -50,6 +50,8 @@ Signed-in Inbox read/delete state is merged into the encrypted user profile so m
 
 ## Current development line
 
+- **8.5.2** — decouples critical match/calendar requests from history scanning, reduces match-card layout probes to immediate neighbors, puts calendar ahead of optional startup calls, deduplicates cold Worker loads and shows only the monitored team's compact weighted win percentage in league match cards.
+
 - **8.5.1** — fixes repeated indexed-history scanning in opponent scouting and match-card weighted win percentages; bounded transient GET retry and preserve-last-good schedules/inbox; restores 12px gaps in match and standings card trains; top-right monitored-team ranking pill and match-style short Updated timestamps.
 
 - **8.5.0** — Last-ten cross-season 11v11-weighted opponent strength and attack/defense ratings; both teams' weighted historical win percentages on league match cards; calendar reverts to static 14-day tap-to-expand; standings cards slide without gaps.

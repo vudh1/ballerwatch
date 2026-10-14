@@ -5893,3 +5893,25 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
     font-size: 0.64rem;
   }
 }
+
+/* v8.5.2: betting-style monitored-team win rate, no stacked sentence. */
+.next-game-form {
+  justify-self: start;
+  align-self: center;
+  width: max-content;
+  max-width: 100%;
+  margin: 0;
+  padding: 0.29rem 0.62rem;
+  border: 1px solid rgba(74, 222, 128, 0.24);
+  border-radius: 999px;
+  background: rgba(34, 197, 94, 0.10);
+  color: #baf7d1;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+@media (max-width: 560px) {
+  .next-game-form { font-size: 0.72rem; padding: 0.28rem 0.55rem; }
+}
