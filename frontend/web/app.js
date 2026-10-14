@@ -141,6 +141,7 @@ const els = {
   deleteAllNotifications: document.querySelector("#delete-all-notifications"),
   testNotificationStatus: document.querySelector("#test-notification-status"),
   calendarCard: document.querySelector("#two-week-calendar"),
+  calendarCarousel: document.querySelector("#calendar-carousel"),
   calendarPrevious: document.querySelector("#calendar-window-previous"),
   calendarNext: document.querySelector("#calendar-window-next"),
   calendarTitle: document.querySelector("#calendar-title"),
@@ -1577,7 +1578,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=8.2.1", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=8.3.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -2491,6 +2492,205 @@ function moveCalendarWindow(direction) {
   return true;
 }
 
+function calendarWindowPreview(direction) {
+  const base = currentCalendar?.startDate || "";
+  const start = calendarWindowStart || base;
+  if (!base || calendarExpanded) return null;
+  const candidate = addIsoDays(start, 14 * direction);
+  const nextStart = candidate < base ? base : candidate;
+  if (nextStart === start) return null;
+
+  const preview = els.calendarCard.cloneNode(true);
+  preview.removeAttribute("id");
+  preview.classList.add("calendar-train-preview");
+  preview.setAttribute("aria-hidden", "true");
+  preview.inert = true;
+  for (const element of preview.querySelectorAll("[id]")) element.removeAttribute("id");
+  const grid = preview.querySelector(".calendar-grid");
+  grid.replaceChildren();
+  const byDate = new Map();
+  for (const game of currentCalendar.games || []) {
+    const list = byDate.get(game.date) || [];
+    list.push(game);
+    byDate.set(game.date, list);
+  }
+  for (let day = 0; day < 14; day += 1) {
+    const date = addIsoDays(nextStart, day);
+    const games = byDate.get(date) || [];
+    const element = document.createElement("div");
+    element.className = "calendar-day calendar-train-day";
+    element.append(
+      standingsCell("span", dateDisplay(date, { weekday: "short" }), "calendar-weekday"),
+      standingsCell("strong", dateDisplay(date, { day: "numeric" }), "calendar-number"),
+      standingsCell("span",
+        games.length > 1 ? String(games.length) : games.length ? "•" : "",
+        games.length ? "calendar-signal has-game" : "calendar-signal"),
+    );
+    if (games.length) {
+      const weatherGame = [...games].sort(
+        (a, b) => gameWeatherRank(b) - gameWeatherRank(a),
+      )[0];
+      element.append(standingsCell("span",
+        weatherGame.weather
+          ? `${weatherGlyph(weatherGame.weather.weatherCode)} ${weatherGame.weather.rainProbability ?? "—"}%`
+          : "⚽", "calendar-mini-weather"));
+    }
+    grid.append(element);
+  }
+  return preview;
+}
+
+/** Like the match train, the next 14-day card stays adjacent while dragging. */
+function installCalendarTrain() {
+  const stage = els.calendarCarousel;
+  const current = els.calendarCard;
+  let start = null;
+  let train = null;
+  let settling = false;
+  let suppressClick = false;
+
+  const reset = () => {
+    if (train?.preview) train.preview.remove();
+    train = null;
+    start = null;
+    settling = false;
+    current.classList.remove("is-train-dragging", "is-train-settling");
+    current.style.removeProperty("transform");
+  };
+
+  const prepare = (direction) => {
+    if (train?.direction === direction) return train;
+    if (train?.preview) train.preview.remove();
+    train = null;
+    const preview = calendarWindowPreview(direction);
+    if (!preview) return null;
+    const width = current.getBoundingClientRect().width;
+    const distance = width;
+    const offset = direction * distance;
+    preview.style.left = `${current.offsetLeft}px`;
+    preview.style.top = `${current.offsetTop}px`;
+    preview.style.width = `${width}px`;
+    preview.style.height = `${current.getBoundingClientRect().height}px`;
+    preview.style.transform = `translate3d(${offset}px, 0, 0)`;
+    stage.append(preview);
+    current.classList.add("is-train-dragging");
+    preview.classList.add("is-train-dragging");
+    train = { direction, preview, distance, offset };
+    return train;
+  };
+
+  const settle = (commit = false) => {
+    if (settling) return;
+    settling = true;
+    const active = train;
+    current.classList.remove("is-train-dragging");
+    current.classList.add("is-train-settling");
+    active?.preview.classList.remove("is-train-dragging");
+    active?.preview.classList.add("is-train-settling");
+    current.style.transform = commit && active
+      ? `translate3d(${-active.direction * active.distance}px, 0, 0)`
+      : "translate3d(0, 0, 0)";
+    if (active?.preview) active.preview.style.transform = commit
+      ? "translate3d(0, 0, 0)"
+      : `translate3d(${active.offset}px, 0, 0)`;
+
+    window.setTimeout(() => {
+      if (commit && active) moveCalendarWindow(active.direction);
+      reset();
+    }, 270);
+  };
+
+  const edgeStep = (direction) => {
+    if (settling || calendarExpanded) return;
+    if (!prepare(direction)) return;
+    window.requestAnimationFrame(() => settle(true));
+  };
+
+  for (const [control, direction] of [
+    [els.calendarPrevious, -1], [els.calendarNext, 1],
+  ]) {
+    control.addEventListener("click", (event) => {
+      event.stopPropagation();
+      edgeStep(direction);
+    });
+    const clear = () => {
+      control.style.setProperty("--edge-opacity", "0.10");
+      control.style.setProperty("--edge-arrow-opacity", "0");
+    };
+    control.addEventListener("pointermove", (event) => {
+      const rect = control.getBoundingClientRect();
+      if (!rect.width) return;
+      const fromBorder = direction < 0
+        ? event.clientX - rect.left : rect.right - event.clientX;
+      const strength = Math.max(0, 1 - Math.max(0, fromBorder) / rect.width);
+      const eased = strength * strength;
+      control.style.setProperty("--edge-opacity", (0.1 + 0.88 * eased).toFixed(3));
+      control.style.setProperty("--edge-arrow-opacity",
+        Math.max(0, (eased - 0.22) / 0.78).toFixed(3));
+    });
+    control.addEventListener("pointerleave", clear);
+    control.addEventListener("blur", clear);
+    control.addEventListener("focus", () => {
+      control.style.setProperty("--edge-opacity", "0.92");
+      control.style.setProperty("--edge-arrow-opacity", "1");
+    });
+    clear();
+  }
+
+  current.addEventListener("pointerdown", (event) => {
+    if (settling || event.button !== 0 ||
+        event.target.closest(".calendar-game-choice, a, input, textarea, select")) return;
+    start = { id: event.pointerId, x: event.clientX, y: event.clientY };
+  });
+
+  current.addEventListener("pointermove", (event) => {
+    if (!start || start.id !== event.pointerId || settling) return;
+    const dx = event.clientX - start.x;
+    const dy = event.clientY - start.y;
+    if (!start.dragging) {
+      if (Math.abs(dx) < 8) return;
+      if (Math.abs(dx) <= Math.abs(dy) * 1.1) {
+        start = null;
+        return;
+      }
+      start.dragging = true;
+      current.setPointerCapture(event.pointerId);
+    }
+    event.preventDefault();
+    const active = prepare(dx < 0 ? 1 : -1);
+    const movement = active
+      ? Math.max(-active.distance, Math.min(active.distance, dx))
+      : dx * 0.18;
+    current.style.transform = `translate3d(${movement}px, 0, 0)`;
+    if (active) {
+      active.preview.style.transform = `translate3d(${active.offset + movement}px, 0, 0)`;
+    }
+  });
+
+  const finish = (event, cancelled = false) => {
+    if (!start || start.id !== event.pointerId || settling) return;
+    const dx = event.clientX - start.x;
+    const dy = event.clientY - start.y;
+    if (!start.dragging) {
+      start = null;
+      return;
+    }
+    suppressClick = true;
+    window.setTimeout(() => { suppressClick = false; }, 0);
+    const commit = !cancelled && Math.abs(dx) >= 56 &&
+      Math.abs(dx) > Math.abs(dy) * 1.2 && Boolean(train);
+    settle(commit);
+  };
+  current.addEventListener("pointerup", (event) => finish(event));
+  current.addEventListener("pointercancel", (event) => finish(event, true));
+  current.addEventListener("click", (event) => {
+    if (!suppressClick) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }, true);
+  window.addEventListener("resize", () => { if (!settling && train) reset(); });
+}
+
 function renderCalendarGrid() {
   if (!currentCalendar?.startDate) return;
   els.calendarGrid.replaceChildren();
@@ -3066,6 +3266,61 @@ function setStandingsSlide(index) {
   }
 }
 
+function standingRankBar(label, rank, detail, supporting = "") {
+  const metric = document.createElement("div");
+  metric.className = "standings-stat";
+  const header = document.createElement("div");
+  header.className = "standings-stat-heading";
+  header.append(standingsCell("span", label), standingsCell("strong",
+    rank ? `#${rank.rank} / ${rank.total}` : "—"));
+  metric.append(header);
+  const track = document.createElement("div");
+  track.className = "standings-stat-track";
+  track.setAttribute("role", "img");
+  track.setAttribute("aria-label", rank
+    ? `${label}: rank ${rank.rank} of ${rank.total}. ${detail}`
+    : `${label}: ranking unavailable.`);
+  const fill = document.createElement("span");
+  fill.className = "standings-stat-fill";
+  if (!rank) metric.classList.add("is-unavailable");
+  // The bars encode rank, not goal counts: more filled means a better rank.
+  fill.style.width = rank ? `${Math.round(
+    100 * (rank.total - rank.rank + 1) / rank.total,
+  )}%` : "0%";
+  track.append(fill);
+  metric.append(track, standingsCell("span", supporting || detail, "standings-stat-detail"));
+  return metric;
+}
+
+function buildStandingStats(stats) {
+  const container = document.createElement("section");
+  container.className = "standings-stats";
+  container.setAttribute("aria-label", "Team league statistics");
+  container.append(standingsCell("p", "TEAM STATS", "eyebrow standings-stats-label"));
+  const chart = document.createElement("div");
+  chart.className = "standings-stats-chart";
+  chart.append(
+    standingRankBar("Attack", stats.attack,
+      stats.attack ? `${stats.attack.perGame} goals scored/game` : "No scored games"),
+    standingRankBar("Defense", stats.defense,
+      stats.defense ? `${stats.defense.perGame} goals conceded/game` : "No scored games"),
+    standingRankBar(
+      stats.previousSeason?.label || stats.previousSeasonLabel || "Last season",
+      stats.previousSeason,
+      stats.previousSeason
+        ? `${stats.previousSeason.division} · ${stats.previousSeason.matches} games`
+        : "Prior season not indexed for this team",
+    ),
+  );
+  container.append(chart);
+  const note = standingsCell("p",
+    "Bars show placement within each division · Scored games only" +
+    (stats.archiveComplete ? "" : " · Partial archive"),
+    "standings-stats-note");
+  container.append(note);
+  return container;
+}
+
 function renderStandings() {
   const standings = currentStandings;
   const cards = Array.isArray(standings?.cards) ? standings.cards : [];
@@ -3095,7 +3350,8 @@ function renderStandings() {
     const group = document.createElement("div");
     group.className = "standings-team-copy";
     group.append(
-      standingsCell("strong", card.team, "standings-team-name"),
+      standingsCell("p", "LEAGUE STANDINGS", "eyebrow"),
+      standingsCell("h2", card.team, "standings-team-name"),
       standingsCell("span", `${standings.season || "Current season"} · ${card.division || "Division pending"}`,
         "standings-division"),
     );
@@ -3170,6 +3426,7 @@ function renderStandings() {
       slide.append(standingsCell("p", "No scored league matches indexed for this division yet.",
         "muted standings-message"));
     }
+    if (card.hasResults && card.stats) slide.append(buildStandingStats(card.stats));
     track.append(slide);
   }
 
@@ -3275,7 +3532,8 @@ function installStandingsSwipe() {
   };
 
   viewport.addEventListener("pointerdown", (event) => {
-    if (event.button !== 0 || event.target.closest("button, a, input, textarea")) return;
+    // A swipe may start on a team row; a tap still opens the history sheet.
+    if (event.button !== 0 || event.target.closest("a, input, textarea, select")) return;
     pointerStart = {
       id: event.pointerId,
       x: event.clientX,
@@ -3342,7 +3600,7 @@ function installStandingsSwipe() {
     control.addEventListener("click", () => setStandingsSlide(standingsIndex + direction));
     const clear = () => {
       control.style.setProperty("--standings-edge-opacity", "0.10");
-      control.style.setProperty("--standings-arrow-opacity", "0.60");
+      control.style.setProperty("--standings-arrow-opacity", "0");
     };
     control.addEventListener("pointermove", (event) => {
       const rect = control.getBoundingClientRect();
@@ -3354,7 +3612,7 @@ function installStandingsSwipe() {
       control.style.setProperty("--standings-edge-opacity",
         (0.1 + 0.85 * strength * strength).toFixed(3));
       control.style.setProperty("--standings-arrow-opacity",
-        (0.6 + 0.4 * strength).toFixed(3));
+        Math.max(0, (strength * strength - 0.22) / 0.78).toFixed(3));
     });
     control.addEventListener("pointerleave", clear);
     control.addEventListener("blur", clear);
@@ -4074,12 +4332,7 @@ function toggleCalendarExpandedFromEvent(event) {
 }
 
 els.calendarCard?.addEventListener("click", toggleCalendarExpandedFromEvent);
-for (const [control, direction] of [[els.calendarPrevious, -1], [els.calendarNext, 1]]) {
-  control?.addEventListener("click", (event) => {
-    event.stopPropagation();
-    moveCalendarWindow(direction);
-  });
-}
+installCalendarTrain();
 
 installSpotlightSwipe();
 installSpotlightEdgeWaterfall();
