@@ -295,8 +295,8 @@ test("last-ten form combines earlier 11v11 with a new 8v8 season and weights 11v
   assert.ok(scout.attack.games === 10 && scout.defense.games === 10);
   const form=buildTeamRecentForm(data,"Club","2026-10-13");
   assert.equal(form.games,10);
-  // Nine 11v11 wins have more say than the one 8v8 loss.
-  assert.equal(form.weightedWinPct,92);
+  // Nine older 11v11 wins outweigh a recent 8v8 loss, but recency matters.
+  assert.equal(form.weightedWinPct,89);
 });
 
 test("last-ten window ignores older results while preserving all-time history", () => {
