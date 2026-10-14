@@ -40,9 +40,8 @@ export async function requestJson(path, options = {}) {
       // the entire PWA on "Checking…" or delay cached scouting cards.
       const controller = new AbortController();
       const deadline = setTimeout(() => controller.abort(), Math.max(1000, timeoutMs));
-      let response;
       try {
-        response = await fetch(API_ORIGIN + path, {
+        const response = await fetch(API_ORIGIN + path, {
           cache: "no-store",
           ...requestOptions,
           signal: requestOptions.signal || controller.signal,
@@ -51,16 +50,22 @@ export async function requestJson(path, options = {}) {
             ...(requestOptions.headers || {}),
           },
         });
+        // The deadline includes reading/parsing the body, not merely receipt
+        // of headers. A stalled response body must never keep the header in
+        // Loading/Ready indefinitely.
+        const payload = await response.json().catch((error) => {
+          if (controller.signal.aborted) throw error;
+          return {};
+        });
+        if (!response.ok || payload.ok === false) {
+          const error = new Error(payload.error || `Request failed (HTTP ${response.status})`);
+          error.status = response.status;
+          throw error;
+        }
+        return payload;
       } finally {
         clearTimeout(deadline);
       }
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok || payload.ok === false) {
-        const error = new Error(payload.error || `Request failed (HTTP ${response.status})`);
-        error.status = response.status;
-        throw error;
-      }
-      return payload;
     } catch (error) {
       lastError = error;
       const networkFailure =
