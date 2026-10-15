@@ -906,7 +906,7 @@ test("match spotlight swipe uses connected neighboring cards like a carousel tra
   assert.match(app, /preview\.style\.height = `\$\{geometry\.height\}px`/);
   assert.doesNotMatch(app, /carousel\.clientWidth \+ gap\(\)/);
   assert.match(app, /committedTrain\.preview\.style\.transform = "translate3d\(0, 0, 0\)"/);
-  assert.match(app, /selectCalendarDate\(committedTrain\.target\.date\)/);
+  assert.match(app, /selectCalendarDate\(committedTrain\.target\.date,\s*\{ gameId: committedTrain\.target\.game\.id \}\)/);
   assert.match(app, /document\.documentElement\.classList\.add\("spotlight-swipe-active"\)/);
   assert.match(
     app,
