@@ -13,6 +13,7 @@ const PUBLIC_GAME_FIELDS = Object.freeze([
   "id", "kind", "date", "dateLabel", "title", "team", "opponent",
   "startTime", "endTime", "time", "location", "address", "mapsQuery",
   "rsvpUrl", "locationUrl", "reserved", "capacity", "jerseyColor",
+  "opponentJerseyColor", "bothMonitored",
   "sourceDate", "sourceStartTime", "sourceEndTime", "sourceLocation",
   "sourceAddress", "sourceMapsQuery", "overrideActive", "overrideUpdatedAt",
   "sourceUpdatedAt", "weatherApproximate", "weatherStale",

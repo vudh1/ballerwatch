@@ -4,21 +4,21 @@
  * intercept remote APIs or persist authenticated responses in frontend caches.
  */
 const IS_V2 = /\/v2\/sw\.js$/.test(self.location.pathname);
-const CACHE = IS_V2 ? "ballerwatch-v2-v8-12-0-shell" : "ballerwatch-v8-12-0-shell";
+const CACHE = IS_V2 ? "ballerwatch-v2-v8-12-1-shell" : "ballerwatch-v8-12-1-shell";
 const SHELL = IS_V2 ? [
   "./",
   "./index.html",
-  "./prepaint.js?v=8.12.0",
-  "./styles.css?v=8.12.0",
-  "./app.js?v=8.12.0",
+  "./prepaint.js?v=8.12.1",
+  "./styles.css?v=8.12.1",
+  "./app.js?v=8.12.1",
   "./timeline.js",
   "./scene-config.mjs",
   "./assets/stadium.svg",
   "./assets/icon-192.png",
   "./assets/icon-512.png",
-  "./manifest.webmanifest?v=8.12.0",
-  "../styles.css?v=8.12.0",
-  "../app.js?v=8.12.0",
+  "./manifest.webmanifest?v=8.12.1",
+  "../styles.css?v=8.12.1",
+  "../app.js?v=8.12.1",
   "../lib/client.js",
   "../lib/experience.js",
   "../lib/public-calendar-cache.js",
@@ -26,14 +26,14 @@ const SHELL = IS_V2 ? [
   "../lib/guest-profile.js",
   "../lib/settings-choice.js",
   "../lib/notification-state.js",
-  "../icon.svg?v=8.12.0",
-  "../apple-touch-icon.png?v=8.12.0",
+  "../icon.svg?v=8.12.1",
+  "../apple-touch-icon.png?v=8.12.1",
 ] : [
   "./",
   "./index.html",
-  "./launch-prepaint.js?v=8.12.0",
-  "./styles.css?v=8.12.0",
-  "./app.js?v=8.12.0",
+  "./launch-prepaint.js?v=8.12.1",
+  "./styles.css?v=8.12.1",
+  "./app.js?v=8.12.1",
   "./lib/client.js",
   "./lib/experience.js",
   "./lib/public-calendar-cache.js",
@@ -41,9 +41,9 @@ const SHELL = IS_V2 ? [
   "./lib/guest-profile.js",
   "./lib/settings-choice.js",
   "./lib/notification-state.js",
-  "./manifest.webmanifest?v=8.12.0",
-  "./icon.svg?v=8.12.0",
-  "./apple-touch-icon.png?v=8.12.0",
+  "./manifest.webmanifest?v=8.12.1",
+  "./icon.svg?v=8.12.1",
+  "./apple-touch-icon.png?v=8.12.1",
 ];
 const API = "https://ballerwatch-web.vudhone.workers.dev";
 const APP_URL = new URL("./", self.location.href).href;

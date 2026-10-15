@@ -81,6 +81,39 @@ test("each monitored team gets standings only for its own current-season divisio
   assert.equal(view.cards[1].rows[0].highlighted, true);
 });
 
+test("rank teams by points, fewer games played, then goal difference", () => {
+  const data = archive();
+  const current = data.seasons.at(-1);
+  current.matches = [
+    { date: "2026-10-01", homeTeam: "Third Touch FC", awayTeam: "Other B",
+      homeScore: 1, awayScore: 0 },
+    { date: "2026-10-02", homeTeam: "Other A", awayTeam: "Other B",
+      homeScore: 3, awayScore: 0 },
+    { date: "2026-10-03", homeTeam: "Third Touch FC", awayTeam: "Other A",
+      homeScore: 1, awayScore: 1 },
+    { date: "2026-10-04", homeTeam: "Other B", awayTeam: "Third Touch FC",
+      homeScore: 0, awayScore: 1 },
+  ];
+  const card = buildLeagueStandings(data, "fall-2026", ["Third Touch FC", "Other A"],
+    "2026-10-13").cards;
+  assert.equal(card.length, 2, "Teams in the same division have separate slides");
+  assert.deepEqual(card[0].rows, card[1].rows.map((row) => ({
+    ...row, highlighted: row.name === "Third Touch FC",
+  })));
+  assert.equal(card[0].rows.length, 3);
+  // Equal points: a team with one game ranks ahead of one with two.
+  current.matches = [
+    { date: "2026-10-01", homeTeam: "Other A", awayTeam: "Other B", homeScore: 2, awayScore: 0 },
+    { date: "2026-10-02", homeTeam: "Third Touch FC", awayTeam: "Other B",
+      homeScore: 1, awayScore: 0 },
+    { date: "2026-10-03", homeTeam: "Third Touch FC", awayTeam: "Other B",
+      homeScore: 0, awayScore: 1 },
+  ];
+  const rows = buildLeagueStandings(data, "fall-2026", ["Other A"], "2026-10-13").cards[0].rows;
+  assert.ok(rows.findIndex((row) => row.name === "Other A") <
+    rows.findIndex((row) => row.name === "Third Touch FC"));
+});
+
 test("club names with an FC suffix may match tracked names without falsely merging divisions", () => {
   const view = buildLeagueStandings(
     archive(), "fall-2026", ["Third Touch", "phosaigon"], "2026-10-13",

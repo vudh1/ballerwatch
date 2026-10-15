@@ -50,6 +50,50 @@ test("web snapshot strips private pickup roster and owner settings", () => {
 });
 
 
+test("monitored head-to-head fixture has one card with each team's published jersey", () => {
+  const now = new Date("2099-10-13T00:00:00Z");
+  const snapshot = {
+    teams: ["Team Alpha", "Team Bravo"],
+    pickup: { dates: [], events: {} },
+    today: { games: [] }, settings: {},
+    league: { teams: [
+      { name: "Team Alpha", matches: [{
+        key: "k:123", sourceMatchId: "123", team: "Team Alpha", opponent: "Team Bravo",
+        date: "2099-10-20", startTime: "19:00", endTime: "21:00",
+        location: "Field One", jerseyColor: "Green", opponentJerseyColor: "White",
+      }] },
+      { name: "Team Bravo", matches: [{
+        key: "k:123", sourceMatchId: "123", team: "Team Bravo", opponent: "Team Alpha",
+        date: "2099-10-20", startTime: "19:00", endTime: "21:00",
+        location: "Field One", jerseyColor: "White", opponentJerseyColor: "Green",
+      }] },
+    ], seasonId: "fall-2099" },
+  };
+  const result = webCalendarDetails(snapshot, {}, 14, "2099-10-13", now);
+  const games = result.games.filter((game) => game.kind === "league");
+  assert.equal(games.length, 1);
+  assert.deepEqual([games[0].team, games[0].opponent,
+    games[0].jerseyColor, games[0].opponentJerseyColor, games[0].bothMonitored],
+  ["Team Alpha", "Team Bravo", "Green", "White", true]);
+});
+
+test("personalized calendar includes indexed future fixtures without any live scouting", () => {
+  const now = new Date("2099-10-13T00:00:00Z");
+  const snapshot = { teams: ["Team Alpha"], pickup: { dates: [], events: {} },
+    today: { games: [] }, settings: {}, league: { seasonId: "fall-2099", teams: [] } };
+  const result = webCalendarDetails(snapshot, {}, 14, "2099-10-13", now, {}, {
+    teams: ["Team Bravo"], matches: [{
+      id: "345", homeTeam: "Team Bravo", awayTeam: "Team Charlie",
+      date: "2099-10-20", startTime: "20:00", location: "Fixture Park",
+      homeColor: "Red", awayColor: "Blue",
+    }],
+  });
+  const game = result.games.find((entry) => entry.kind === "league");
+  assert.equal(game.team, "Team Bravo");
+  assert.equal(game.location, "Fixture Park");
+  assert.equal(game.jerseyColor, "Red");
+});
+
 test("authenticated pickup RSVP view exposes only confirmed and waitlisted dates", () => {
   const view = pickupUserRsvpView({
     pickup: {
