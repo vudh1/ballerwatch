@@ -10,7 +10,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { decryptState, encryptState } from "../shared/state-crypto.mjs";
-import { buildLeagueStandings, buildLeagueTeamHistory } from "../shared/league-standings.mjs";
+import { buildLeagueStandings, buildLeagueTeamHistory, buildMatchupEstimate } from "../shared/league-standings.mjs";
 import { PRODUCTION_SCOUT_WEIGHTS } from "../shared/scout-calibration.mjs";
 
 export const SCOUT_INDEX_FILE = "league/state/scout-index.json";
@@ -72,9 +72,42 @@ export function buildScoutingIndex({
   }
   const teamOptions = [...teamDirectory.values()]
     .sort((left, right) => left.localeCompare(right)).slice(0, 450);
-  // Derive each current-season team's standings only in the hourly worker.
-  // Anonymous devices can select any indexed club without live history work.
-  // Full detailed scouting reports remain bounded to configured divisions.
+  // Precompute the full public current-season fixture catalogue and its
+  // forecasts once per hourly job. Anonymous team changes read only this
+  // snapshot; no browser/API request parses an archive or runs scouting.
+  const availableMatches = (currentSeason?.matches || [])
+    .filter((match) => match?.date >= today && match?.homeTeam && match?.awayTeam)
+    .sort((left, right) => left.date.localeCompare(right.date) ||
+      String(left.startTime || "").localeCompare(String(right.startTime || "")))
+    .slice(0, 1200)
+    .map((match) => ({
+      id: String(match.id || ""), date: match.date,
+      startTime: String(match.startTime || ""), endTime: String(match.endTime || ""),
+      location: String(match.location || ""),
+      homeTeam: match.homeTeam, awayTeam: match.awayTeam,
+      homeColor: String(match.homeColor || ""),
+      awayColor: String(match.awayColor || ""),
+    }));
+  const normalize = (name) => String(name || "").toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ").replace(/\\b(?:fc|sc)\\b$/g, "").trim();
+  const availableMatchups = {};
+  for (const match of availableMatches) {
+    const home = normalize(match.homeTeam), away = normalize(match.awayTeam);
+    const key = [home, away].join("|"), reverse = [away, home].join("|");
+    if (!home || !away || home === away || availableMatchups[key]) continue;
+    const estimate = buildMatchupEstimate(
+      history, match.homeTeam, match.awayTeam, today, calibration.weights);
+    if (!estimate) continue;
+    availableMatchups[key] = estimate;
+    // Reversing a single fixture doesn't create an additional sporting event.
+    availableMatchups[reverse] = {
+      ...estimate, team: match.awayTeam, opponent: match.homeTeam,
+      winPct: estimate.lossPct, lossPct: estimate.winPct,
+      teamGames: estimate.opponentGames, opponentGames: estimate.teamGames,
+    };
+  }
+  standings.matchups = { ...availableMatchups, ...standings.matchups };
+  // A distinct card per monitored team, even if two share the same division.
   const availableCards = buildLeagueStandings(
     history, seasonId, teamOptions, today, [], calibration.weights,
   ).cards;
@@ -101,6 +134,7 @@ export function buildScoutingIndex({
     monitoredTeams: monitored,
     standings,
     availableCards,
+    availableMatches,
     model: calibration,
     reports,
   };

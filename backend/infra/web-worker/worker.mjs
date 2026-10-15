@@ -2067,6 +2067,48 @@ function leagueMatches(snapshot) {
     .filter((game) => !matchHidden(settings, game.overrideId || leagueOverrideId(game)));
 }
 
+/** Collapse two monitored perspectives into ONE fixture without losing colors. */
+function mergedLeagueMatches(snapshot, selection = null) {
+  const names = Array.isArray(selection?.teams) && selection.teams.length
+    ? selection.teams : snapshot.teams || [];
+  const monitored = new Set(names.map((name) => String(name).trim().toLowerCase()));
+  const indexed = Array.isArray(selection?.matches) ? selection.matches.map((match) => ({
+    key: match.id ? "indexed:" + match.id : "",
+    sourceMatchId: match.id || "",
+    team: match.homeTeam, opponent: match.awayTeam,
+    date: match.date, startTime: match.startTime, endTime: match.endTime,
+    location: match.location || "",
+    jerseyColor: match.homeColor || "", opponentJerseyColor: match.awayColor || "",
+  })) : [];
+  const unique = new Map();
+  const normalize = (name) => String(name || "").trim().toLowerCase();
+  for (const game of [...leagueMatches(snapshot), ...indexed]) {
+    const team = normalize(game.team), opponent = normalize(game.opponent);
+    if (!team || !opponent || team === opponent ||
+        !monitored.has(team) && !monitored.has(opponent)) continue;
+    const pair = [team, opponent].sort().join("|");
+    const time = String(game.startTime || game.start || "").slice(0, 8);
+    const key = [String(game.date || ""), time, pair].join("|");
+    const found = unique.get(key);
+    if (!found) {
+      unique.set(key, { ...game });
+      continue;
+    }
+    // Both monitored sides may supply independent team/away jersey details.
+    const sameOrientation = team === normalize(found.team);
+    if (!found.jerseyColor) found.jerseyColor = sameOrientation
+      ? game.jerseyColor : game.opponentJerseyColor;
+    if (!found.opponentJerseyColor) found.opponentJerseyColor = sameOrientation
+      ? game.opponentJerseyColor : game.jerseyColor;
+    if (!found.location) found.location = game.location || "";
+    if (!found.locationUrl) found.locationUrl = game.locationUrl || "";
+  }
+  return [...unique.values()].map((game) => ({
+    ...game, bothMonitored: monitored.has(normalize(game.team)) &&
+      monitored.has(normalize(game.opponent)),
+  }));
+}
+
 function sourceScheduleHorizon(snapshot) {
   return furthestIsoDate([
     ...allSourcePickupDates(snapshot)
@@ -2787,6 +2829,7 @@ export function webCalendarDetails(
   startDate = localDate(),
   now = new Date(),
   venueDirectory = {},
+  selection = null,
 ) {
   const safe = webSafeSnapshot(snapshot);
   const endDate = addDays(startDate, Math.max(1, Number(days) || 14) - 1);
@@ -2883,7 +2926,7 @@ export function webCalendarDetails(
     }));
   }
 
-  for (const game of leagueMatches(safe)) {
+  for (const game of mergedLeagueMatches(safe, selection)) {
     const date = String(game?.date || "");
     // Keep the near-term pickup/weather strip bounded, but expose every
     // future published league match so spotlight navigation is not truncated.
@@ -2916,6 +2959,8 @@ export function webCalendarDetails(
       reserved: null,
       capacity: null,
       jerseyColor: cleanText(game?.jerseyColor, 80),
+      opponentJerseyColor: cleanText(game?.opponentJerseyColor, 80),
+      bothMonitored: Boolean(game?.bothMonitored),
       sourceDate: cleanText(game?.sourceDate, 20),
       sourceStartTime: clock(game?.sourceStartTime),
       sourceEndTime: clock(game?.sourceEndTime),
@@ -3017,7 +3062,7 @@ export function webNextGameDetails(snapshot, now = new Date()) {
     }
   }
 
-  for (const game of leagueMatches(safe)) {
+  for (const game of mergedLeagueMatches(safe)) {
     const date = String(game?.date || "");
     const startTime = clock(game?.start || game?.startTime);
     const endTime = clock(game?.end || game?.endTime);
@@ -3712,6 +3757,13 @@ export default {
     }
     if (request.method === "GET" && url.pathname === "/web/calendar") {
       try {
+        const requested = url.searchParams.get("teams");
+        const teams = requested ? [...new Set(requested.split(",")
+          .map((name) => name.trim()).filter((name) =>
+            name.length >= 2 && name.length <= 120))] : [];
+        if (requested && (!teams.length || teams.length > 8 || requested.length > 1200)) {
+          return webJson(request, { ok: false, error: "Choose 1–8 valid teams." }, { status: 400 });
+        }
         // Public fixtures must not wait for history archive decrypt/scan.
         // Optional last-ten form comes from /web/standings independently.
         // The core fixture snapshot is the only required dependency.
@@ -3720,7 +3772,14 @@ export default {
         const weatherPending = loadWebWeather(env).catch(() => null);
         const venuesPending = loadRatsVenues(env).catch(() => ({ venues: [] }));
         ctx?.waitUntil?.(Promise.allSettled([weatherPending, venuesPending]));
-        const snapshot = await loadSnapshot(env);
+        const [snapshot, index] = await Promise.all([
+          loadSnapshot(env), teams.length ? loadScoutingIndex(env) : Promise.resolve(null),
+        ]);
+        if (teams.length && (!scoutingProjectionCurrent(index, snapshot) ||
+            !Array.isArray(index.availableMatches))) {
+          return webJson(request,
+            { ok: false, error: "Prepared team fixtures are refreshing." }, { status: 503 });
+        }
         const [weather, venues] = await Promise.all([
           optionalCalendarResult(weatherPending, null),
           optionalCalendarResult(venuesPending, { venues: [] }),
@@ -3728,7 +3787,8 @@ export default {
         const today = localDate();
         return webJson(request, {
           ok: true,
-          calendar: webCalendarDetails(snapshot, weather, 14, today, new Date(), venues),
+          calendar: webCalendarDetails(snapshot, weather, 14, today, new Date(), venues,
+            teams.length ? { teams, matches: index.availableMatches } : null),
         });
       } catch {
         return webJson(

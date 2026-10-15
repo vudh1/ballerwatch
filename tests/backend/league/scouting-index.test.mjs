@@ -50,6 +50,8 @@ test("the hourly projection includes quick standings, forecasts and full scout p
   assert.deepEqual(index.monitoredTeams, ["Tracked FC"]);
   assert.equal(index.standings.cards.length, 1);
   assert.equal(index.availableCards.length, 2);
+  assert.deepEqual(index.availableMatches, []);
+  assert.equal(index.availableCards.filter((card) => card.ready).length, 2);
   assert.ok(index.availableCards.some((card) => card.team === "Sitting Ducks" && card.ready));
   const division = index.standings.cards[0].divisionKey;
   assert.equal(index.standings.cards[0].rows.length, 2);

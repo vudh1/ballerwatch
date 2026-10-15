@@ -101,6 +101,7 @@ function divisionStandings(season, trackedTeam, today) {
 
   const rows = [...unique.values()].sort((a, b) =>
     b.points - a.points ||
+    a.played - b.played ||
     b.goalDifference - a.goalDifference ||
     b.goalsFor - a.goalsFor ||
     a.name.localeCompare(b.name));
@@ -163,7 +164,7 @@ export function buildLeagueStandings(
     season: season?.label || seasonLabel(seasonId),
     updatedAt: String(history?.updatedAt || ""),
     source: "RATS public results archive",
-    method: "Calculated: 3 points per win, 1 per draw; ranked by points, goal difference, goals for",
+    method: "Calculated: 3 points per win, 1 per draw; ranked by points, fewer matches played, goal difference, then goals for",
     official: false,
     // Only the upcoming monitored-team pairings. Results are computed from
     // the already-shared archive/index, never on the calendar fast path.
