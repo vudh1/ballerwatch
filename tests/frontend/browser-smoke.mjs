@@ -233,7 +233,7 @@ try {
 
       await scenario(`${engine}: full-screen stadium and foreground action surround borderless feature text`, async () => {
         const { context, page, errors } = await prepare(browser, {
-          viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true,
+          viewport: { width: 390, height: 760 }, isMobile: true, hasTouch: true,
         });
         await context.addInitScript(() => { Object.defineProperty(navigator, "standalone", { value: true }); });
         await ready(page);
