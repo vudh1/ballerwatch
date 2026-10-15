@@ -31,10 +31,12 @@ const server = https.createServer({ key: fs.readFileSync(`${temporary}/key.pem`)
   } catch { response.writeHead(404).end(); }
 });
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
-const origin = `https://127.0.0.1:${server.address().port}`;
+const remoteOrigin = process.env.BALLERWATCH_DEMO_ORIGIN || "";
+const origin = remoteOrigin || `https://127.0.0.1:${server.address().port}`;
+if (remoteOrigin && remoteOrigin !== "https://vudh1.github.io") throw new Error("Unsupported production demo origin");
 let capturing = false;
 let captureTask = null;
-const browser = await chromium.launch({ headless: true, args: ["--no-sandbox", "--disable-gpu", "--ignore-certificate-errors"] });
+const browser = await chromium.launch({ headless: true, ...(remoteOrigin && process.env.HTTPS_PROXY ? { proxy: { server: process.env.HTTPS_PROXY } } : {}), args: ["--no-sandbox", "--disable-gpu", "--ignore-certificate-errors"] });
 try {
   const context = await browser.newContext({ viewport: { width: 480, height: 890 }, deviceScaleFactor: 1,
     isMobile: true, hasTouch: true, ignoreHTTPSErrors: true, serviceWorkers: "block" });
@@ -57,7 +59,7 @@ try {
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   console.log("Recording branded launch and feature tour…");
-  await page.goto(`${origin}/ballerwatch/v2/`);
+  await page.goto(`${origin}/ballerwatch/`);
   // Lossless UI frames avoid the video-compression noise that inflates GIFs.
   capturing = true;
   captureTask = (async () => {
@@ -66,7 +68,7 @@ try {
       const file = path.join(temporary, `frame-${String(frames.length).padStart(4, "0")}.png`);
       await page.screenshot({ path: file });
       frames.push({ file, at });
-      await new Promise((resolve) => setTimeout(resolve, Math.max(0, 125 - (performance.now() - at))));
+      await new Promise((resolve) => setTimeout(resolve, Math.max(0, 50 - (performance.now() - at))));
     }
   })();
   await page.waitForFunction(() => document.documentElement.dataset.timelineReady === "true" &&
@@ -104,7 +106,7 @@ try {
   await page.waitForTimeout(1600);
   await page.locator("#league-standings").evaluate((el) => el.scrollIntoView({ behavior: "smooth", block: "start" }));
   await page.waitForTimeout(2000);
-  console.log("Recording AI, Inbox and version settings…");
+  console.log("Recording AI, Inbox and personal settings…");
   await page.locator("#chat-launcher").click();
   await page.locator("#question").fill("What jersey color for our next league game?");
   await page.locator('#question-form button[type="submit"]').click();
@@ -120,12 +122,13 @@ try {
   capturing = false;
   await captureTask;
   await context.close();
+  console.log(`Captured ${frames.length} lossless frames (${(frames.length * 1000 / (frames.at(-1).at - frames[0].at)).toFixed(1)} fps) from ${remoteOrigin || "local source"}`);
   const list = path.join(temporary, "frames.txt");
   fs.writeFileSync(list, frames.map((frame, index) =>
     `file '${frame.file}'\nduration ${index + 1 < frames.length ? (frames[index + 1].at - frame.at) / 1000 : 0.4}\n`).join(""));
   fs.mkdirSync(path.dirname(output), { recursive: true });
   execFileSync("ffmpeg", ["-y", "-f", "concat", "-safe", "0", "-i", list, "-vf",
-    "fps=8,scale=420:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=96:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle",
+    "fps=20,scale=420:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=96:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle",
     "-loop", "0", output], { stdio: "ignore" });
   console.log(`V2 demo recorded: ${output} (${(fs.statSync(output).size / 1024 / 1024).toFixed(1)} MiB)`);
 } finally {

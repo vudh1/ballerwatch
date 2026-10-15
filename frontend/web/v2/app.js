@@ -9,26 +9,14 @@ void timeline.catch(() => {
   document.querySelector("#matchday-app").inert = false;
 });
 
-document.querySelector("#replay-intro").addEventListener("click", async () => {
-  try {
-    const controller = await timeline;
-    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      document.querySelector("#settings-dialog").close();
-    }
-    controller.replayIntro();
-  } catch {
-    document.querySelector("#motion-note").hidden = false;
-    document.querySelector("#motion-note").textContent = "The intro is unavailable. Your matches are ready.";
-  }
-});
 document.querySelector("#clear-v2-caches").addEventListener("click", async (event) => {
   const button = event.currentTarget;
   button.disabled = true;
   try {
     const keys = await caches.keys();
-    await Promise.all(keys.filter((key) => /^ballerwatch-v2-.*-shell$/.test(key))
+    await Promise.all(keys.filter((key) => !key.startsWith("ballerwatch-v2-") && /^ballerwatch-v\d.*-shell$/.test(key))
       .map((key) => caches.delete(key)));
-    document.querySelector("#v2-cache-status").textContent = "V2 frontend cache cleared. Reconnect before opening offline.";
+    document.querySelector("#v2-cache-status").textContent = "App frontend cache cleared. Reconnect before opening offline.";
   } catch {
     document.querySelector("#v2-cache-status").textContent = "Cache controls are unavailable in this browser.";
   } finally { button.disabled = false; }

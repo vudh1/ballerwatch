@@ -2,7 +2,7 @@
  * V2 branded entry and layered native-scroll soccer hero, before V1 cards.
  * Baseline: v8.14.0. Transforms/opacity only; no API work or data polling.
  */
-import { SCENE, featureStory, scenePose, clamp } from "./scene-config.mjs";
+import { SCENE, featureStory, scenePose, cameraFlash, clamp } from "./scene-config.mjs";
 
 const root = document.documentElement;
 const intro = document.querySelector("#soccer-intro");
@@ -37,6 +37,7 @@ function dismissLaunch() {
 function revealApp(ready) {
   root.classList.toggle("v2-app-ready", ready);
   app.inert = !ready;
+  if (ready) document.querySelector(".v2-quick-actions").inert = false;
   intro.setAttribute("aria-hidden", String(ready));
 }
 export function finishIntro({ focus = false } = {}) {
@@ -63,6 +64,7 @@ function render() {
     root.style.setProperty("--app-reveal", String(pose.reveal));
     root.classList.toggle("v2-revealing", progress >= SCENE.revealStart);
     revealApp(pose.reveal >= 0.1);
+    document.querySelector(".v2-quick-actions").inert = pose.reveal <= 0;
     const set = (name, value) => elements[name].setAttribute("transform", value);
     const camera = `translate(${sceneWidth / 2 - pose.focus} 0)`;
     set("world", camera);
@@ -72,6 +74,9 @@ function render() {
     set("player-body", `translate(${-pose.kick * 0.12} 0) rotate(${-pose.kick * 0.05})`);
     set("keeper", `translate(${pose.keeper.x} ${pose.keeper.y}) rotate(${pose.keeper.rotation})`);
     set("net", `translate(${pose.netPulse * 9} ${pose.netPulse * 3}) scale(${1 + pose.netPulse * 0.025} 1)`);
+    document.querySelectorAll("[data-camera-flash]").forEach((flash, index) => {
+      flash.setAttribute("opacity", String(cameraFlash(progress, index)));
+    });
     elements.grass.style.opacity = String(pose.grass);
     elements.flash.style.opacity = String(pose.impactFlash);
     elements.progress.style.transform = `scaleX(${progress})`;
@@ -122,9 +127,8 @@ function listen() {
   window.addEventListener("resize", measure, { passive: true });
   document.addEventListener("visibilitychange", visibilityChanged);
 }
-export function replayIntro() {
+function startIntro() {
   if (motion.matches) {
-    document.querySelector("#motion-note").hidden = false;
     return;
   }
   dismissLaunch();
@@ -138,6 +142,9 @@ export function replayIntro() {
   measure();
   document.querySelector("#skip-intro").focus({ preventScroll: true });
 }
+// Retain the old module export for already-open pre-migration documents.
+export { startIntro as replayIntro };
+
 try {
   if (!Object.values(elements).every(Boolean)) throw new Error("Incomplete scene");
   root.style.setProperty("--scroll-screens", SCENE.scrollScreens);
@@ -165,7 +172,7 @@ try {
     root.classList.toggle("v2-reduced", motion.matches);
     document.querySelector(".v2-static-welcome").hidden = !motion.matches;
     if (motion.matches) finishIntro();
-    else replayIntro();
+    else startIntro();
   });
   // Optional local artwork can fail independently of the shared app/data path.
   const stadium = new Image();

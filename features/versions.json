@@ -1,7 +1,23 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.14.1",
+  "currentVersion": "9.0.0",
   "releases": [
+    {
+      "version": "9.0.0",
+      "date": "2026-10-15",
+      "type": "major",
+      "source": "user-requested",
+      "title": "One BallerWatch: cinematic root app with crowd and camera flashes",
+      "webAnnouncement": "The cinematic BallerWatch is now the main app. Enjoy the stadium crowd and camera flashes, cleaner controls that appear with your match cards, and aligned Inbox preferences. Old V2 links take you to the main address.",
+      "changes": [
+        "Promote the cinematic frontend to /ballerwatch/ with every original controller hook, match/calendar/standings card, account/admin action, RSVP, AI, music, notifications and install identity preserved; deprecate /v2/ through a deep-link-preserving redirect.",
+        "Retain the narrow legacy worker for installed V2 push subscriptions and links, route notification targets to the canonical app, and verify cached offline redirects after the root shell is installed. Preserve existing account/device state and migrate only absent root presentation keys from retired V2 preferences.",
+        "Add a stylized stadium audience and six localized scroll-synchronized camera flashes beneath feature captions; keep ball and keeper above the words and exact reverse choreography.",
+        "Show Settings and Inbox only as the main page reveals, with identical opacity, bounded horizontal layout and independent tap priority above the fading scene. Remove the introduction replay and obsolete version-switch controls.",
+        "Size native notification preference checkboxes explicitly so Pickup, League and App labels stay beside them in portrait and landscape. Restore the original standalone status-area treatment.",
+        "Upgrade the reproducible demo recorder to 20 fps with an isolated production-assets mode and synthetic API fixtures. Refresh the public demo only after the production rollout is verified."
+      ]
+    },
     {
       "version": "8.14.1",
       "date": "2026-10-15",

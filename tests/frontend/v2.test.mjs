@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
 import test from "node:test";
-import { SCENE, scenePose, featureStory } from "../../frontend/web/v2/scene-config.mjs";
+import { SCENE, scenePose, featureStory, cameraFlash } from "../../frontend/web/v2/scene-config.mjs";
 
 const read = (name) => fs.readFileSync(`frontend/web/${name}`, "utf8");
 
@@ -29,8 +29,8 @@ test("ball contact, curved flight, goalkeeper and upper-corner impact stay synch
 test("V2 separates a brief launch and scroll hero from unchanged V1 cards", () => {
   const timeline = read("v2/timeline.js");
   const css = read("v2/styles.css");
-  const html = read("v2/index.html");
-  const v1 = read("index.html");
+  const html = read("index.html");
+  const v1 = fs.readFileSync("tests/frontend/fixtures/v1-8.14.1.html", "utf8");
   assert.equal(SCENE.launchMs, 2000);
   assert.match(timeline, /intro.offsetHeight - height/);
   assert.match(timeline, /revealApp\(pose.reveal >= 0.1\)/);
@@ -48,7 +48,7 @@ test("V2 separates a brief launch and scroll hero from unchanged V1 cards", () =
 
 test("the scroll tour introduces actual capabilities independently of shot phases", () => {
   const examples = [[0, /Pickup and league/], [.2, /RSVP capacity/], [.35, /standings/],
-    [.5, /follow-up/], [.7, /Web Push/], [.85, /V1\/V2/]];
+    [.5, /follow-up/], [.7, /Web Push/], [.85, /Home Screen/]];
   for (const [progress, expected] of examples) assert.match(featureStory(progress).description, expected);
   assert.equal(featureStory(.85), featureStory(1));
   assert.equal(featureStory(.35), featureStory(.35));
@@ -56,7 +56,7 @@ test("the scroll tour introduces actual capabilities independently of shot phase
 
 test("hero covers dynamic viewport while keeping stable scroll travel and layered action", () => {
   const css = read("v2/styles.css");
-  const html = read("v2/index.html");
+  const html = read("index.html");
   assert.match(css, /--scene-height: 100dvh/);
   assert.match(css, /--scene-travel: calc\(100svh \* var\(--scroll-screens/);
   assert.match(css, /height: calc\(var\(--scene-travel\) \+ var\(--scene-height\)\)/);
@@ -114,14 +114,14 @@ test("landscape safe areas protect the V2 cards and cinematic controls", () => {
 });
 
 test("V2 retains every functional controller hook and loads exactly one shared controller", () => {
-  const v1 = read("index.html");
-  const v2 = read("v2/index.html");
+  const v1 = fs.readFileSync("tests/frontend/fixtures/v1-8.14.1.html", "utf8");
+  const v2 = read("index.html");
   const ids = (html) => [...html.matchAll(/\sid="([^"]+)"/g)].map((match) => match[1]);
   assert.equal(new Set(ids(v2)).size, ids(v2).length);
-  for (const id of ids(v1).filter((id) => id !== "launch-intro")) {
+  for (const id of ids(v1).filter((id) => !["launch-intro", "app-version-heading", "app-version-v1", "app-version-v2"].includes(id))) {
     assert.ok(ids(v2).includes(id), `Missing shared hook: ${id}`);
   }
-  assert.equal([...v2.matchAll(/src="\.\.\/app\.js\?v=/g)].length, 1);
+  assert.equal([...v2.matchAll(/src="\.\/app\.js\?v=/g)].length, 1);
   assert.doesNotMatch(read("v2/app.js") + read("v2/timeline.js"), /fetch\(|setInterval\(/);
   assert.match(v2, /viewport-fit=cover/);
   assert.match(v2, /apple-mobile-web-app-capable/);
@@ -129,15 +129,30 @@ test("V2 retains every functional controller hook and loads exactly one shared c
   assert.match(read("v2/prepaint.js"), /2500/);
 });
 
-test("V2 presentation keys are isolated while the original V1 keys are preserved", () => {
-  for (const [pathname, expected] of [["/ballerwatch/", "old-v1"], ["/ballerwatch/v2/", "ballerwatch:v2:music"]]) {
-    const context = vm.createContext({ window: { location: { pathname } } });
-    vm.runInContext(read("lib/experience.js").replaceAll("export ", ""), context);
-    assert.equal(vm.runInContext('experienceKey("old-v1", "music")', context), expected);
-  }
+test("canonical preferences preserve root settings and migrate only missing retired V2 values", () => {
+  const makeStore = (values) => ({ getItem: (k) => values[k] ?? null, setItem: (k, v) => { values[k] = v; } });
+  const local = { "ballerwatch:v2:music": "1", "old-v1": "0" };
+  const session = { "ballerwatch:v2:music": "1" };
+  const context = vm.createContext({ window: { location: { pathname: "/ballerwatch/" }, localStorage: makeStore(local), sessionStorage: makeStore(session) } });
+  vm.runInContext(read("lib/experience.js").replaceAll("export ", ""), context);
+  assert.equal(vm.runInContext('experienceKey("old-v1", "music")', context), "old-v1");
+  assert.equal(local["old-v1"], "0");
+  assert.equal(session["old-v1"], "1");
   assert.match(read("lib/client.js"), /SESSION_TOKEN_KEY = "ballerwatch-owner-token"/);
   assert.match(read("lib/client.js"), /cache: "no-store"/);
   assert.doesNotMatch(read("v2/timeline.js"), /localStorage|fetch\(|setInterval/);
+});
+
+test("camera flashes are localized behind captions and reverse with scroll", () => {
+  for (const [index, moment] of [.22, .40, .55, .69, .78, .87].entries()) {
+    assert.equal(cameraFlash(moment, index), .8);
+    assert.equal(cameraFlash(moment + .03, index), 0);
+    assert.equal(cameraFlash(moment - .03, index), 0);
+  }
+  const html = read("index.html");
+  assert.ok(html.indexOf('data-camera-flash="0"') < html.indexOf('id="scene-copy"'));
+  assert.doesNotMatch(html, /id="replay-intro"|id="app-version-v1"|id="app-version-v2"/);
+  assert.match(read("v2/index.html"), /http-equiv="refresh" content="5;url=\.\.\//);
 });
 
 function workerHarness(version) {
@@ -199,15 +214,16 @@ test("offline navigation is route-specific and missing scripts never receive HTM
     // Request objects are needed only for network-first construction.
     worker.context.Request = class { constructor(request) { Object.assign(this, request); } };
     fire(worker.scope, "navigate");
-    assert.equal(await (await task).text(), `V${version}`);
+    if (version === 1) assert.equal(await (await task).text(), "V1");
+    else assert.equal((await task).headers.get("location"), "https://example.com/ballerwatch/");
     fire(`${worker.scope}missing.js`, "cors");
     assert.equal((await task).type, "error");
     if (version === 1) {
       task = null;
       fire(`${worker.scope}v2/`, "navigate");
-      assert.equal(task, null);
+      assert.equal((await task).headers.get("location"), worker.scope);
     }
-    assert.equal(vm.runInContext('safeAppUrl("https://evil.example/")', worker.context), worker.scope);
-    assert.equal(vm.runInContext('safeAppUrl("/ballerwatch/")', worker.context), worker.scope);
+    assert.equal(vm.runInContext('safeAppUrl("https://evil.example/")', worker.context), "https://example.com/ballerwatch/");
+    assert.equal(vm.runInContext('safeAppUrl("/ballerwatch/")', worker.context), "https://example.com/ballerwatch/");
   }
 });

@@ -31,7 +31,7 @@ import {
 } from "./lib/notification-state.js";
 import { createSettingsChoice } from "./lib/settings-choice.js";
 import { readGuestProfile, saveGuestProfile, MAX_GUEST_TEAMS } from "./lib/guest-profile.js";
-import { experienceKey, isV2 } from "./lib/experience.js";
+import { experienceKey } from "./lib/experience.js";
 import { PUBLIC_CALENDAR_LOCAL_KEY, readPublicCalendar, todaySeattleKey,
   writePublicCalendar } from "./lib/public-calendar-cache.js";
 import { PUBLIC_STANDINGS_LOCAL_KEY, readPublicStandings, writePublicStandings }
@@ -1789,8 +1789,7 @@ async function registerServiceWorker() {
   let previousController = navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     const nextController = navigator.serviceWorker.controller;
-    const firstClaim = !previousController || (isV2 &&
-      !new URL(previousController.scriptURL).pathname.endsWith("/v2/sw.js"));
+    const firstClaim = !previousController;
     previousController = nextController;
     if (firstClaim) return;
     if (refreshing) return;
@@ -1802,7 +1801,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=8.14.1", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=9.0.0", {
     scope: "./",
     updateViaCache: "none",
   });

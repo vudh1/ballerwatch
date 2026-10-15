@@ -4,51 +4,36 @@
  * intercept remote APIs or persist authenticated responses in frontend caches.
  */
 const IS_V2 = /\/v2\/sw\.js$/.test(self.location.pathname);
-const CACHE = IS_V2 ? "ballerwatch-v2-v8-14-1-shell" : "ballerwatch-v8-14-1-shell";
-const SHELL = IS_V2 ? [
+const CACHE = IS_V2 ? "ballerwatch-v2-v9-0-0-shell" : "ballerwatch-v9-0-0-shell";
+const ROOT_SHELL = [
   "./",
   "./index.html",
-  "./prepaint.js?v=8.14.1",
-  "./styles.css?v=8.14.1",
-  "./app.js?v=8.14.1",
-  "./timeline.js",
-  "./scene-config.mjs",
-  "./assets/stadium.svg",
-  "./assets/icon-192.png",
-  "./assets/icon-512.png",
-  "./manifest.webmanifest?v=8.14.1",
-  "../styles.css?v=8.14.1",
-  "../app.js?v=8.14.1",
-  "../lib/client.js",
-  "../lib/experience.js",
-  "../lib/public-calendar-cache.js",
-  "../lib/public-standings-cache.js",
-  "../lib/guest-profile.js",
-  "../lib/settings-choice.js",
-  "../lib/notification-state.js",
-  "../icon.svg?v=8.14.1",
-  "../apple-touch-icon.png?v=8.14.1",
-] : [
-  "./",
-  "./index.html",
-  "./launch-prepaint.js?v=8.14.1",
-  "./styles.css?v=8.14.1",
-  "./app.js?v=8.14.1",
+  "./v2/prepaint.js?v=9.0.0",
+  "./styles.css?v=9.0.0",
+  "./v2/styles.css?v=9.0.0",
+  "./app.js?v=9.0.0",
+  "./v2/app.js?v=9.0.0",
+  "./v2/timeline.js",
+  "./v2/scene-config.mjs",
+  "./v2/assets/stadium.svg",
+  "./manifest.webmanifest?v=9.0.0",
+  "./icon.svg?v=9.0.0",
+  "./apple-touch-icon.png?v=9.0.0",
+  "./icon-192.png",
+  "./icon-512.png",
+  "./v2/index.html",
+  "./v2/redirect.js",
   "./lib/client.js",
   "./lib/experience.js",
   "./lib/public-calendar-cache.js",
   "./lib/public-standings-cache.js",
   "./lib/guest-profile.js",
   "./lib/settings-choice.js",
-  "./lib/notification-state.js",
-  "./manifest.webmanifest?v=8.14.1",
-  "./icon.svg?v=8.14.1",
-  "./apple-touch-icon.png?v=8.14.1",
-  "./icon-192.png",
-  "./icon-512.png",
+  "./lib/notification-state.js"
 ];
+const SHELL = IS_V2 ? ["./", "./index.html", "./redirect.js", "./manifest.webmanifest"] : ROOT_SHELL;
 const API = "https://ballerwatch-web.vudhone.workers.dev";
-const APP_URL = new URL("./", self.location.href).href;
+const APP_URL = new URL(IS_V2 ? "../" : "./", self.location.href).href;
 const ICON_URL = new URL(IS_V2 ? "../icon.svg" : "./icon.svg", self.location.href).href;
 const DEVICE_STATE_CACHE = IS_V2 ? "ballerwatch-v2-device-state-v1" : "ballerwatch-device-state-v1";
 const BADGE_STATE_URL = new URL("./.badge-state", self.location.href).href;
@@ -187,13 +172,8 @@ function safeAppUrl(value) {
     const url = new URL(String(value || APP_URL), APP_URL);
     if (url.origin !== new URL(APP_URL).origin) return APP_URL;
     if (!url.pathname.startsWith("/ballerwatch/")) return APP_URL;
-    // Board links describe the shared product. Keep each installed app inside
-    // its own launch identity when the board supplies the original root URL.
-    if (IS_V2 && !url.pathname.startsWith(new URL(APP_URL).pathname)) {
-      const destination = new URL(APP_URL);
-      destination.search = url.search;
-      destination.hash = url.hash;
-      return destination.href;
+    if (/\/v2(?:\/|$)/.test(url.pathname)) {
+      url.pathname = new URL(APP_URL).pathname;
     }
     return url.href;
   } catch {
@@ -224,10 +204,14 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
-  // A navigation controlled by the parent V1 worker must never receive the
-  // root document as a V2 offline fallback before the narrower scope claims it.
-  const inRoute = IS_V2 || !/\/v2(?:\/|$)/.test(url.pathname);
-  if (event.request.mode === "navigate" && !inRoute) return;
+  // Retired links converge on the root, including when its shell is cached.
+  if (event.request.mode === "navigate" && /\/v2(?:\/|$)/.test(url.pathname)) {
+    const destination = new URL(APP_URL);
+    destination.search = url.search;
+    destination.hash = url.hash;
+    event.respondWith(Promise.resolve(Response.redirect(destination.href, 302)));
+    return;
+  }
 
   const networkRequest = new Request(event.request, { cache: "no-store" });
 

@@ -15,7 +15,7 @@ export const FEATURE_STORIES = Object.freeze([
   { start: 0.64, label: "STAY IN THE LOOP", title: ["The updates", "that matter."],
     description: "Inbox filters, Web Push reminders, unread badges and personal notification preferences. Real schedule changes sync to Google Calendar." },
   { start: 0.80, label: "MAKE IT YOURS", title: ["Your teams.", "Your BallerWatch."],
-    description: "Your name and teams, optional music, V1/V2 layouts, Home Screen/offline access, secure accounts and authorized match administration." },
+    description: "Your name and teams, optional music, Home Screen/offline access, secure accounts and authorized match administration." },
 ]);
 
 export const SCENE = Object.freeze({
@@ -85,4 +85,11 @@ export function scenePose(value, settings = SCENE) {
     impactFlash: Math.max(0, 1 - Math.abs(progress - settings.contact) / 0.025) * 0.12,
     grass: Math.max(0, 1 - Math.abs(progress - (settings.contact + 0.025)) / 0.045),
   };
+}
+
+// Localized camera pops follow scroll and reverse exactly; no looping strobes.
+export function cameraFlash(progress, index) {
+  const moments = [0.22, 0.40, 0.55, 0.69, 0.78, 0.87];
+  const distance = Math.abs(clamp(Number(progress) || 0) - moments[index]);
+  return Math.max(0, 1 - distance / 0.018) ** 2 * 0.8;
 }

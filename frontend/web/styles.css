@@ -6397,3 +6397,14 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
 #v2-offline-tools summary::after { content: "+"; margin-left: .6rem; }
 #v2-offline-tools[open] summary::after { content: "−"; }
 #v2-offline-tools button { margin-top: .65rem; }
+
+/* v9.0.0 keep native notification checks beside their label text. */
+.notification-preference-options input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  min-width: 1rem;
+  flex: 0 0 1rem;
+  padding: 0;
+  margin: 0;
+  align-self: center;
+}

@@ -6,8 +6,8 @@
   "start_url": "/ballerwatch/",
   "scope": "/ballerwatch/",
   "display": "standalone",
-  "background_color": "#020617",
-  "theme_color": "#06101f",
+  "background_color": "#061a18",
+  "theme_color": "#061a18",
   "icons": [
     {
       "src": "./icon-192.png",
@@ -22,7 +22,7 @@
       "purpose": "any maskable"
     },
     {
-      "src": "./icon.svg?v=8.14.1",
+      "src": "./icon.svg?v=9.0.0",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
