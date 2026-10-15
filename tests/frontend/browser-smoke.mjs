@@ -157,7 +157,9 @@ try {
         await shot(page, `${engine}-intro-goal`);
         await atProgress(page, 1);
         assert.equal(await page.locator("#matchday-app").evaluate((el) => el.inert), false);
-        assert.ok(await page.locator("#panel-matchday .v2-match-grid").evaluate((el) => Number(getComputedStyle(el).opacity) > 0.95));
+        await page.waitForFunction(() =>
+          Number(getComputedStyle(document.querySelector("#panel-matchday .v2-match-grid")).opacity) > 0.95,
+        { timeout: 5000 });
         await shot(page, `${engine}-matchday-desktop`);
         assert.deepEqual(errors, []);
         await context.close();
