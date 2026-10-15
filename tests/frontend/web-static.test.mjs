@@ -2125,7 +2125,7 @@ test("optional weather and venue lookups cannot block the main calendar", () => 
   const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs","utf8");
   const route = worker.split('url.pathname === "/web/calendar"')[1]
     ?.split('url.pathname === "/web/standings"')[0] || "";
-  assert.match(route, /const snapshot = await loadSnapshot\(env\)/);
+  assert.match(route, /const \[snapshot, index\] = await Promise\.all\(\[\s*loadSnapshot\(env\),\s*teams\.length \? loadScoutingIndex\(env\) : Promise\.resolve\(null\)/);
   assert.match(route, /optionalCalendarResult\(weatherPending, null\)/);
   assert.match(route, /optionalCalendarResult\(venuesPending, \{ venues: \[\] \}\)/);
   assert.match(route, /ctx\?\.waitUntil\?\.\(Promise\.allSettled/);
