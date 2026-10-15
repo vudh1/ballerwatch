@@ -1,7 +1,23 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.12.0",
+  "currentVersion": "8.12.1",
   "releases": [
+    {
+      "version": "8.12.1",
+      "date": "2026-10-14",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Instant monitored teams, unique match cards and calendar dots",
+      "webAnnouncement": "BallerWatch 8.12.1 refreshes team-specific fixtures and standings immediately after saving, merges tracked head-to-head matches into one card with both jersey colors, shows one green dot per same-day fixture, and ranks ties by fewer games played.",
+      "changes": [
+        "Precompute current-season public fixtures and win estimates for all known RATS clubs in an hourly independent encrypted snapshot; serve personalized visitor calendars and standings without request-time historical calculations.",
+        "Save monitored-team selection locally and request both calendar and standings immediately, with stable visible cards, no hourly wait, and a confirmation once both have loaded.",
+        "Deduplicate reciprocal monitored club match records into one card while retaining the published jersey color for each team; still show an independent standings slide for each monitored team even in the same division.",
+        "Replace numeric multiple-match calendar badge with individual green dots, remove same-day match-choice pills and make card swipes navigate each fixture, including multiple fixtures on one date.",
+        "Rank standings by points, fewer games played, goal difference, goals scored and name; retain the independent rank per monitored team.",
+        "Refresh both PWA shells and add backend/browser regression coverage."
+      ]
+    },
     {
       "version": "8.12.0",
       "date": "2026-10-14",

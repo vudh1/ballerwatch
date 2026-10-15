@@ -100,8 +100,7 @@ test("rank teams by points, fewer games played, then goal difference", () => {
   assert.deepEqual(card[0].rows, card[1].rows.map((row) => ({
     ...row, highlighted: row.name === "Third Touch FC",
   })));
-  assert.deepEqual(card[0].rows.map((row) => row.name),
-    ["Other A", "Third Touch FC", "Other B"].sort(() => 0).length ? card[0].rows.map((row) => row.name) : []);
+  assert.equal(card[0].rows.length, 3);
   // Equal points: a team with one game ranks ahead of one with two.
   current.matches = [
     { date: "2026-10-01", homeTeam: "Other A", awayTeam: "Other B", homeScore: 2, awayScore: 0 },
