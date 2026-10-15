@@ -1,32 +1,26 @@
 /**
  * V2 branded entry and reversible native-scroll soccer hero, before V1 cards.
- * Baseline: v8.13.0. Transforms/opacity only; no API work or data polling.
+ * Baseline: v8.14.0. Transforms/opacity only; no API work or data polling.
  */
-import { SCENE, scenePose, clamp } from "./scene-config.mjs";
+import { SCENE, featureStory, scenePose, clamp } from "./scene-config.mjs";
 
 const root = document.documentElement;
 const intro = document.querySelector("#soccer-intro");
 const app = document.querySelector("#matchday-app");
 const stage = document.querySelector("#soccer-stage");
 const launch = document.querySelector("#v2-launch");
+const topLine = document.querySelector(".intro-topline");
 const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
-const labels = [
-  ["THE BUILD-UP", "Before the match.", "One moment."],
-  ["THE STRIKE", "Find your angle.", "Make it count."],
-  ["THE FLIGHT", "Follow", "the beautiful game."],
-  ["THE REACH", "A game", "of fine margins."],
-  ["THE FINISH", "Nothing beats", "that feeling."],
-  ["YOUR MATCHDAY", "The moment is yours.", "Let’s play."],
-];
 const elements = Object.fromEntries([
   "world", "ball", "shooting-leg", "player-body", "keeper", "net",
-  "grass", "flash", "phase", "headline", "progress", "scene-content",
+  "grass", "flash", "phase", "headline", "description", "progress", "scene-content", "copy",
 ].map((name) => [name, document.querySelector(`#scene-${name}`)]));
 let frame = 0;
 let launchTimer = 0;
+let launchDeadline = Infinity;
 let sceneWidth = 1440;
 let distance = 1;
-let lastPhase = -1;
+let lastStory = null;
 let lastProgress = -1;
 let active = root.classList.contains("v2-cinematic");
 let listening = false;
@@ -50,7 +44,7 @@ export function finishIntro({ focus = false } = {}) {
   cancelAnimationFrame(frame);
   frame = 0;
   dismissLaunch();
-  root.classList.remove("v2-cinematic");
+  root.classList.remove("v2-cinematic", "v2-revealing");
   root.style.setProperty("--app-reveal", "1");
   revealApp(true);
   remember("intro-seen");
@@ -67,7 +61,8 @@ function render() {
     const pose = scenePose(progress);
     root.dataset.sceneProgress = progress.toFixed(4);
     root.style.setProperty("--app-reveal", String(pose.reveal));
-    revealApp(pose.reveal >= 0.999);
+    root.classList.toggle("v2-revealing", progress >= SCENE.revealStart);
+    revealApp(pose.reveal >= 0.1);
     const set = (name, value) => elements[name].setAttribute("transform", value);
     set("world", `translate(${sceneWidth / 2 - pose.focus} 0)`);
     set("ball", `translate(${pose.ball.x} ${pose.ball.y}) scale(${pose.ball.scale}) rotate(${pose.ball.rotation})`);
@@ -79,16 +74,21 @@ function render() {
     elements.flash.style.opacity = String(pose.impactFlash);
     elements.progress.style.transform = `scaleX(${progress})`;
     elements["scene-content"].style.opacity = String(1 - pose.reveal);
-    document.querySelector(".intro-topline").style.opacity = String(1 - pose.reveal);
+    const copyOpacity = 1 - clamp((progress - (SCENE.revealStart - 0.06)) / 0.06);
+    elements.copy.style.opacity = String(copyOpacity);
+    elements["scene-content"].style.filter = pose.reveal > 0 ? `blur(${pose.reveal * 10}px)` : "none";
+    topLine.style.opacity = String(copyOpacity);
     if (progress === 1) remember("intro-seen");
-    if (pose.phase !== lastPhase) {
-      elements.phase.textContent = labels[pose.phase][0];
-      elements.headline.replaceChildren(...labels[pose.phase].slice(1).map((line) => {
+    const story = featureStory(progress);
+    if (story !== lastStory) {
+      elements.phase.textContent = story.label;
+      elements.description.textContent = story.description;
+      elements.headline.replaceChildren(...story.title.map((line) => {
         const span = document.createElement("span");
         span.textContent = line;
         return span;
       }));
-      lastPhase = pose.phase;
+      lastStory = story;
     }
   } catch { finishIntro(); }
 }
@@ -107,7 +107,7 @@ function measure() {
 function visibilityChanged() {
   if (document.hidden) { cancelAnimationFrame(frame); frame = 0; }
   else {
-    if (performance.now() >= SCENE.launchMs) dismissLaunch();
+    if (performance.now() >= launchDeadline) dismissLaunch();
     requestRender();
   }
 }
@@ -126,6 +126,7 @@ export function replayIntro() {
   dismissLaunch();
   active = true;
   root.classList.add("v2-cinematic");
+  root.classList.remove("v2-revealing");
   root.style.setProperty("--app-reveal", "0");
   revealApp(false);
   listen();
@@ -172,7 +173,9 @@ try {
     revealApp(false);
     measure();
     if (root.classList.contains("v2-launching")) {
-      launchTimer = setTimeout(dismissLaunch, Math.max(0, SCENE.launchMs - performance.now()));
+      const started = Number(root.dataset.launchStarted);
+      launchDeadline = (Number.isFinite(started) ? started : performance.now()) + SCENE.launchMs;
+      launchTimer = setTimeout(dismissLaunch, Math.max(0, launchDeadline - performance.now()));
     } else dismissLaunch();
   } else {
     dismissLaunch();

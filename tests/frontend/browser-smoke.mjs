@@ -153,6 +153,8 @@ try {
         assert.equal(await page.locator("#matchday-app").evaluate((el) => getComputedStyle(el).opacity), "0");
         await shot(page, `${engine}-brand-launch`);
         await page.clock.runFor(1500);
+        assert.equal(await page.locator("#v2-launch").isVisible(), true);
+        await page.clock.runFor(600);
         assert.equal(await page.locator("#v2-launch").isVisible(), false);
         assert.equal(await page.locator("#soccer-intro").isVisible(), true);
         assert.equal(await page.locator("#matchday-app").evaluate((el) => el.inert), true);
@@ -197,6 +199,56 @@ try {
         await page.emulateMedia({ reducedMotion: "reduce" });
         await ready(page, "");
         assert.deepEqual(await cardAppearance(), v2Cards, "V2 uses the exact V1 card appearance");
+        assert.deepEqual(errors, []);
+        await context.close();
+      });
+
+      await scenario(`${engine}: glass feature tour keeps Settings and Inbox tappable during the reveal`, async () => {
+        const { context, page, errors } = await prepare(browser);
+        await ready(page);
+        await page.waitForFunction(() => !document.documentElement.classList.contains("v2-launching"));
+        for (const [progress, text] of [[.05, "Pickup and league"], [.2, "RSVP capacity"], [.4, "standings"],
+          [.55, "follow-up"], [.7, "Web Push"], [.85, "V1/V2"]]) {
+          await atProgress(page, progress);
+          assert.ok((await page.locator("#scene-description").textContent()).includes(text));
+        }
+        await atProgress(page, .94);
+        const before = await page.locator("#settings-button").boundingBox();
+        await atProgress(page, .98);
+        assert.deepEqual(await page.locator("#settings-button").boundingBox(), before);
+        for (const [button, dialog, close] of [["#settings-button", "#settings-dialog", "#close-settings"],
+          ["#notification-bell", "#notification-dialog", "#close-notifications"]]) {
+          assert.equal(await page.locator(button).evaluate((el) => {
+            const rect = el.getBoundingClientRect();
+            return document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)?.closest("button") === el;
+          }), true, "The fading hero must not intercept utility controls");
+          await page.locator(button).click();
+          assert.equal(await page.locator(dialog).evaluate((el) => el.open), true);
+          await page.locator(close).click();
+        }
+        await shot(page, `${engine}-glass-reveal`);
+        assert.deepEqual(errors, []);
+        await context.close();
+      });
+
+      await scenario(`${engine}: Settings version switch preserves device preferences in both directions`, async () => {
+        const { context, page, errors } = await prepare(browser, { reducedMotion: "reduce" });
+        await ready(page, "");
+        await page.locator("#settings-button").click();
+        await page.locator("#guest-name").fill("Sample visitor");
+        await page.waitForFunction(() => JSON.parse(localStorage.getItem("ballerwatch-visitor-profile-v1"))?.name === "Sample visitor");
+        assert.equal(await page.locator("#app-version-v1").getAttribute("aria-current"), "page");
+        await page.locator("#app-version-v2").click();
+        await page.waitForURL(`${origin}/ballerwatch/v2/`);
+        await page.waitForFunction(() => !document.querySelector("#matchday-app").inert);
+        await page.locator("#settings-button").click();
+        assert.equal(await page.locator("#guest-name").inputValue(), "Sample visitor");
+        assert.equal(await page.locator("#app-version-v2").getAttribute("aria-current"), "page");
+        assert.equal(await page.locator("#replay-intro").isVisible(), true);
+        await page.locator("#app-version-v1").click();
+        await page.waitForURL(`${origin}/ballerwatch/`);
+        await page.locator("#settings-button").click();
+        assert.equal(await page.locator("#guest-name").inputValue(), "Sample visitor");
         assert.deepEqual(errors, []);
         await context.close();
       });
@@ -368,7 +420,7 @@ try {
           document.documentElement.style.removeProperty("--v2-safe-left");
           document.documentElement.style.removeProperty("--v2-safe-right");
         });
-        await page.locator(".v2-experience-tools").evaluate((el) => { el.open = true; });
+        await page.locator("#settings-button").click();
         await page.locator("#replay-intro").click();
         await atProgress(page, 0.7);
         await page.setViewportSize({ width: 390, height: 760 });
@@ -387,6 +439,10 @@ try {
         assert.equal(await reduced.page.locator("#install-card").count(), 0);
         assert.equal(await reduced.page.locator("#matchday-app").evaluate((el) => el.inert), false);
         await shot(reduced.page, `${engine}-reduced-standalone`);
+        await reduced.page.locator("#settings-button").click();
+        await reduced.page.locator("#replay-intro").click();
+        assert.equal(await reduced.page.locator("#settings-dialog").evaluate((el) => el.open), true);
+        assert.equal(await reduced.page.locator("#motion-note").isVisible(), true);
         await reduced.context.close();
         for (const failure of ["animationFailure", "scriptFailure"]) {
           const instance = await prepare(browser, { serviceWorkers: "block" });
@@ -483,8 +539,8 @@ try {
           // Cache controls never unregister either service worker or clear account storage.
           await page.goto(`${origin}/ballerwatch/v2/`);
           await page.waitForFunction(() => !document.querySelector("#matchday-app").inert);
-          await page.locator(".v2-experience-tools").evaluate((el) => { el.open = true; });
-          await page.locator(".v2-experience-tools details").evaluate((el) => { el.open = true; });
+          await page.locator("#settings-button").click();
+          await page.locator("#v2-offline-tools").evaluate((el) => { el.open = true; });
           await page.locator("#clear-v2-caches").click();
           await page.waitForFunction(() => document.querySelector("#v2-cache-status").textContent.includes("cleared"));
           const remaining = await page.evaluate(() => caches.keys());

@@ -6384,3 +6384,16 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
 .calendar-signal { display:flex; align-items:center; justify-content:center; gap:0.18rem; min-height:0.72rem; }
 .calendar-signal-dot { display:block; width:0.29rem; height:0.29rem; flex:0 0 auto; background:#4ade80; border-radius:50%; box-shadow:0 0 5px rgba(74,222,128,0.25); }
 .calendar-game-picker { display:none !important; }
+
+/* v8.14.0 explicit route switch; each installed app keeps its own launch identity. */
+.app-version-settings { display: grid; gap: .65rem; margin-bottom: 1rem; }
+.app-version-settings .hint { margin: 0; }
+.app-version-switch { display: grid; grid-template-columns: 1fr 1fr; gap: .35rem; padding: .3rem; border: 1px solid var(--border); border-radius: 16px; background: rgba(6, 18, 22, .35); }
+.app-version-switch a { display: grid; place-items: center; min-height: 44px; padding: .65rem .5rem; border: 1px solid transparent; border-radius: 12px; color: var(--muted); font-size: var(--type-small); font-weight: 600; text-decoration: none; }
+.app-version-switch a[aria-current="page"] { color: #e0f2fe; border-color: rgba(125, 211, 252, .22); background: linear-gradient(135deg, rgba(56, 189, 248, .15), rgba(52, 211, 153, .08)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12); }
+.app-version-settings > button { justify-self: start; }
+#v2-offline-tools { color: var(--muted); font-size: var(--type-small); }
+#v2-offline-tools summary { display: flex; align-items: center; min-height: 44px; cursor: pointer; }
+#v2-offline-tools summary::after { content: "+"; margin-left: .6rem; }
+#v2-offline-tools[open] summary::after { content: "−"; }
+#v2-offline-tools button { margin-top: .65rem; }

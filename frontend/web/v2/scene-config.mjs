@@ -3,8 +3,23 @@
  * Baseline: v8.10.0. No network, storage, physics engine or production data.
  * Coordinates refer to the 1440 × 900 scene; edit these controls to retime play.
  */
+export const FEATURE_STORIES = Object.freeze([
+  { start: 0, label: "YOUR MATCHDAY", title: ["Every kickoff.", "One place."],
+    description: "Pickup and league matches, your next game and a calendar built around the teams you follow." },
+  { start: 0.16, label: "BE MATCH-READY", title: ["Know before", "you go."],
+    description: "RSVP capacity and rosters, match weather, venues, directions and quick field sharing." },
+  { start: 0.32, label: "KNOW YOUR CLUB", title: ["The bigger", "picture."],
+    description: "League standings, opponent scouting, match history, recent form and win forecasts." },
+  { start: 0.48, label: "BALLERWATCH AI", title: ["Your game,", "explained."],
+    description: "Ask about fixtures, opponents, jersey colors, fields and results, with follow-up questions." },
+  { start: 0.64, label: "STAY IN THE LOOP", title: ["The updates", "that matter."],
+    description: "Inbox filters, Web Push reminders, unread badges and personal notification preferences. Real schedule changes sync to Google Calendar." },
+  { start: 0.80, label: "MAKE IT YOURS", title: ["Your teams.", "Your BallerWatch."],
+    description: "Your name and teams, optional music, V1/V2 layouts, Home Screen/offline access, secure accounts and authorized match administration." },
+]);
+
 export const SCENE = Object.freeze({
-  launchMs: 1400,
+  launchMs: 2000,
   scrollScreens: 3.2,
   setupEnd: 0.15,
   contact: 0.30,
@@ -25,6 +40,13 @@ export const SCENE = Object.freeze({
 });
 
 export const clamp = (value, min = 0, max = 1) => Math.min(max, Math.max(min, value));
+export function featureStory(value) {
+  const progress = clamp(Number(value) || 0);
+  let index = 0;
+  while (index + 1 < FEATURE_STORIES.length && progress >= FEATURE_STORIES[index + 1].start) index += 1;
+  return FEATURE_STORIES[index];
+}
+
 const mix = (start, end, progress) => start + (end - start) * progress;
 const segment = (progress, start, end) => clamp((progress - start) / (end - start));
 const ease = (value) => value * value * (3 - 2 * value);
