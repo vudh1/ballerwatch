@@ -16,6 +16,11 @@ export const fixtureCalendar = {
     dateLabel: "Sunday, October 18", title: "Fixture FC vs Test United",
     team: "Fixture FC", opponent: "Test United", jerseyColor: "White",
     time: "10 AM–12 PM", location: "Fixture League Field", mapsQuery: "Fixture League Field",
+  }, {
+    id: "league:2099-10-18-later", kind: "league", date: "2099-10-18",
+    dateLabel: "Sunday, October 18", title: "Fixture FC vs Second FC",
+    team: "Fixture FC", opponent: "Second FC", jerseyColor: "Green",
+    time: "12 PM–2 PM", location: "Fixture League Field", mapsQuery: "Fixture League Field",
   }],
 };
 export const fixtureStandings = {

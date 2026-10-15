@@ -6379,3 +6379,8 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
 .admin-settings-details[open] > summary { color: var(--accent, #4ade80); }
 .win-chance-labels { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .win-chance-labels span:nth-child(2) { text-align: right; color: #fecdd3; }
+
+/* v8.12.1: individual match dots, not a number or extra selection pills. */
+.calendar-signal { display:flex; align-items:center; justify-content:center; gap:0.18rem; min-height:0.72rem; }
+.calendar-signal-dot { display:block; width:0.29rem; height:0.29rem; flex:0 0 auto; background:#4ade80; border-radius:50%; box-shadow:0 0 5px rgba(74,222,128,0.25); }
+.calendar-game-picker { display:none !important; }

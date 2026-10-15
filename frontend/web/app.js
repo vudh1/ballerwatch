@@ -1467,6 +1467,7 @@ async function loadGuestTeamOptions() {
     }
   } catch { /* Existing team choices remain usable offline. */ }
 }
+let guestSettingsRefreshVersion = 0;
 function saveGuestSettings() {
   const before = JSON.stringify(guestProfile.teams);
   const next = {name: els.guestName.value, teams: guestSelector().getValues()};
@@ -1475,10 +1476,22 @@ function saveGuestSettings() {
     return;
   }
   guestProfile = readGuestProfile(localStorage);
-  els.guestSettingsStatus.textContent = "Saved only on this device.";
+  els.guestSettingsStatus.textContent = "Saved on this device.";
   if (JSON.stringify(guestProfile.teams) !== before) {
-    try { localStorage.removeItem(PUBLIC_STANDINGS_DEVICE_KEY); } catch {}
-    void loadStandings({initial: true});
+    const version = ++guestSettingsRefreshVersion;
+    try {
+      localStorage.removeItem(PUBLIC_STANDINGS_DEVICE_KEY);
+      localStorage.removeItem(PUBLIC_CALENDAR_DEVICE_KEY);
+      sessionStorage.removeItem(PUBLIC_CALENDAR_CACHE_KEY);
+    } catch {}
+    els.guestSettingsStatus.textContent = "Updating match and standings cards…";
+    void Promise.all([loadStandings({ initial: true }), loadCalendar({ initial: true })])
+      .then(([standingsReady, calendarReady]) => {
+        if (version !== guestSettingsRefreshVersion) return;
+        els.guestSettingsStatus.textContent = standingsReady && calendarReady
+          ? "Saved. Match and standings cards are ready."
+          : "Saved on this device. Team data is temporarily unavailable; reopen Settings to retry.";
+      });
   }
 }
 
@@ -2440,7 +2453,14 @@ function spotlightModel(game, label = "NEXT GAME") {
   if (!locationParts.length && game.kind === "pickup") {
     locationParts.push("Venue to be announced");
   }
-  if (game.jerseyColor) locationParts.push(`${game.jerseyColor} jersey`);
+  if (game.kind === "league" && game.bothMonitored) {
+    locationParts.push(
+      `${game.team}: ${game.jerseyColor || "TBD"} jersey`,
+      `${game.opponent}: ${game.opponentJerseyColor || "TBD"} jersey`,
+    );
+  } else if (game.jerseyColor) {
+    locationParts.push(`${game.jerseyColor} jersey`);
+  }
 
   const capacity = Number(game.capacity);
   const reserved = Number(game.reserved);
@@ -2687,39 +2707,10 @@ function gameWeatherRank(game) {
   return Number(game?.weather?.rainProbability ?? -1);
 }
 
-function renderCalendarGamePicker(games, selectedId = "") {
+function renderCalendarGamePicker() {
+  // Multiple matches are reached by swiping the match cards, not extra pills.
   els.calendarGamePicker.replaceChildren();
-
-  if (!Array.isArray(games) || games.length <= 1) {
-    els.calendarGamePicker.hidden = true;
-    return;
-  }
-
-  els.calendarGamePicker.hidden = false;
-  for (const game of games) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "calendar-game-choice";
-    button.dataset.gameId = game.id || "";
-    button.setAttribute("aria-pressed", String(game.id === selectedId));
-
-    const title = document.createElement("strong");
-    title.textContent = game.title || "Game";
-    const time = document.createElement("span");
-    time.textContent = game.time || "";
-    button.append(title, time);
-
-    button.addEventListener("click", () => {
-      selectedCalendarGameId = game.id || "";
-      for (const item of els.calendarGamePicker.querySelectorAll(".calendar-game-choice")) {
-        item.setAttribute("aria-pressed", String(item === button));
-      }
-      renderNextGame(game, "SELECTED GAME");
-      els.nextGameCard.classList.add("spotlight-selected");
-      scheduleSpotlightIdleReset();
-    });
-    els.calendarGamePicker.append(button);
-  }
+  els.calendarGamePicker.hidden = true;
 }
 
 function isoDayDistance(startDate, endDate) {
@@ -2791,7 +2782,16 @@ function renderCalendarGrid() {
 
     const signal = document.createElement("span");
     signal.className = games.length ? "calendar-signal has-game" : "calendar-signal";
-    signal.textContent = games.length > 1 ? String(games.length) : games.length ? "•" : "";
+    for (let i = 0; i < Math.min(games.length, 5); i += 1) {
+      const dot = document.createElement("i");
+      dot.className = "calendar-signal-dot";
+      dot.setAttribute("aria-hidden", "true");
+      signal.append(dot);
+    }
+    if (games.length) {
+      button.setAttribute("aria-label",
+        `${dateDisplay(date, { weekday: "long", month: "short", day: "numeric" })}: ${games.length} match${games.length === 1 ? "" : "es"}`);
+    }
 
     button.append(weekday, day, signal);
 
@@ -2852,7 +2852,7 @@ function scheduleSpotlightIdleReset() {
   }, SPOTLIGHT_IDLE_RESET_MS);
 }
 
-function selectCalendarDate(date, { scrollToSpotlight = false } = {}) {
+function selectCalendarDate(date, { scrollToSpotlight = false, gameId = "" } = {}) {
   if (!currentCalendar) return;
   const games = (currentCalendar.games || []).filter((game) => game.date === date);
   if (!games.length) return;
@@ -2862,7 +2862,7 @@ function selectCalendarDate(date, { scrollToSpotlight = false } = {}) {
     button.setAttribute("aria-selected", String(button.dataset.date === date));
   }
 
-  const game = games[0];
+  const game = games.find((candidate) => candidate.id === gameId) || games[0];
   selectedCalendarGameId = game.id || "";
   renderCalendarGamePicker(games, game.id || "");
   renderNextGame(game, "SELECTED GAME");
@@ -2886,24 +2886,20 @@ function calendarGameDates() {
 }
 
 function adjacentCalendarSelection(direction) {
-  const gameDates = calendarGameDates();
-  if (!gameDates.length || !direction) return null;
-
-  const currentDate = selectedCalendarDate || currentNextGame?.date || gameDates[0];
-  let currentIndex = gameDates.indexOf(currentDate);
-  if (currentIndex < 0) currentIndex = direction > 0 ? -1 : gameDates.length;
-
-  const targetDate = gameDates[currentIndex + Math.sign(direction)];
-  if (!targetDate) return null;
-
-  const game = (currentCalendar?.games || []).find((item) => item.date === targetDate);
-  return game ? { date: targetDate, game } : null;
+  const games = currentCalendar?.games || [];
+  if (!games.length || !direction) return null;
+  const activeId = selectedCalendarGameId || currentNextGame?.id;
+  const currentIndex = games.findIndex((game) => game.id === activeId);
+  const targetIndex = currentIndex < 0
+    ? (direction > 0 ? 0 : games.length - 1) : currentIndex + Math.sign(direction);
+  const game = games[targetIndex];
+  return game ? { date: game.date, game } : null;
 }
 
 function selectAdjacentCalendarGameDate(direction) {
   const selection = adjacentCalendarSelection(direction);
   if (!selection) return false;
-  selectCalendarDate(selection.date);
+  selectCalendarDate(selection.date, { gameId: selection.game.id });
   return true;
 }
 
@@ -3501,11 +3497,13 @@ function restorePublicStandings() {
 
 async function loadStandings({ initial = false } = {}) {
   try {
+    const teamKey = JSON.stringify(guestProfile.teams);
     const query = guestProfile.teams.length
       ? `?teams=${encodeURIComponent(guestProfile.teams.join(","))}` : "";
     const payload = await api(`/web/standings${query}`, {
       retryNetwork: !initial, timeoutMs: initial ? 3_800 : 4_000,
     });
+    if (teamKey !== JSON.stringify(guestProfile.teams)) return false;
     if (!payload?.ok || !payload.standings) throw new Error("Standings unavailable");
     rememberPublicStandings(payload.standings);
     // Avoid unnecessary DOM replacement and layout on unchanged snapshots.
@@ -4034,9 +4032,13 @@ async function loadCalendar({ initial = false } = {}) {
   try {
     // Startup makes a single bounded verification attempt. Cached cards have
     // already rendered; an 8+ second retry chain must not hold the app shell.
-    const payload = await api("/web/calendar", {
+    const teamKey = JSON.stringify(guestProfile.teams);
+    const query = guestProfile.teams.length
+      ? `?teams=${encodeURIComponent(guestProfile.teams.join(","))}` : "";
+    const payload = await api(`/web/calendar${query}`, {
       retryNetwork: !initial, timeoutMs: initial ? 3_800 : 4_000,
     });
+    if (teamKey !== JSON.stringify(guestProfile.teams)) return false;
     const prepared = payload.calendar || null;
     if (!prepared?.startDate || !Array.isArray(prepared.games)) {
       throw new Error("Calendar snapshot is incomplete.");

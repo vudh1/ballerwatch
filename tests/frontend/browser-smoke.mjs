@@ -225,6 +225,22 @@ try {
         await context.close();
       });
 
+      await scenario(`${engine}: two same-day matches display two dots and both match cards`, async () => {
+        const { context, page, errors } = await prepare(browser, { reducedMotion: "reduce" });
+        await ready(page);
+        const day = page.locator('.calendar-day[data-date="2099-10-18"]');
+        assert.equal(await day.locator(".calendar-signal-dot").count(), 2);
+        assert.equal(await page.locator("#calendar-game-picker").isVisible(), false);
+        await day.click();
+        assert.match(await page.locator("#next-game-meta").textContent(), /Fixture FC vs Test United/);
+        await page.locator("#spotlight-next").click();
+        assert.match(await page.locator("#next-game-meta").textContent(), /Fixture FC vs Second FC/);
+        await page.locator("#spotlight-previous").click();
+        assert.match(await page.locator("#next-game-meta").textContent(), /Fixture FC vs Test United/);
+        assert.deepEqual(errors, []);
+        await context.close();
+      });
+
       await scenario(`${engine}: saved public standings and match odds paint before offline verification`, async () => {
         const { context, page, controls, errors, calls } = await prepare(browser, { reducedMotion: "reduce" });
         await ready(page);
