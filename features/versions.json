@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.14.0",
+  "currentVersion": "8.14.1",
   "releases": [
+    {
+      "version": "8.14.1",
+      "date": "2026-10-15",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Full-screen V2 stadium with borderless captions and foreground action",
+      "webAnnouncement": "V2 now fills the visible screen throughout the soccer introduction. Feature text blends into the stadium, with the ball and diving keeper in front and no scroll instructions.",
+      "changes": [
+        "Remove the scroll/rewind instructions and caption panel border, fill, shadow and blur so feature introductions sit directly inside the stadium.",
+        "Separate the stadium background from the foreground soccer action; synchronize both camera transforms and viewports so the ball and diving goalkeeper occlude feature text without changing the shot choreography.",
+        "Cover the dynamic visible viewport with an opaque scene background until the final reveal, while retaining stable small-viewport scroll travel and the exact original V1 cards.",
+        "Preserve the independent Settings/Inbox toolbar, Skip, replay, reduced-motion and asset-failure recovery, shared data/session behavior and isolated PWA caches.",
+        "Refresh the V2 GIF and add actual painted-pixel foreground hit tests, borderless caption checks and portrait/landscape full-screen coverage regressions."
+      ]
+    },
     {
       "version": "8.14.0",
       "date": "2026-10-15",

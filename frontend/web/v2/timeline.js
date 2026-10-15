@@ -1,5 +1,5 @@
 /**
- * V2 branded entry and reversible native-scroll soccer hero, before V1 cards.
+ * V2 branded entry and layered native-scroll soccer hero, before V1 cards.
  * Baseline: v8.14.0. Transforms/opacity only; no API work or data polling.
  */
 import { SCENE, featureStory, scenePose, clamp } from "./scene-config.mjs";
@@ -12,7 +12,7 @@ const launch = document.querySelector("#v2-launch");
 const topLine = document.querySelector(".intro-topline");
 const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const elements = Object.fromEntries([
-  "world", "ball", "shooting-leg", "player-body", "keeper", "net",
+  "world", "background-world", "ball", "shooting-leg", "player-body", "keeper", "net",
   "grass", "flash", "phase", "headline", "description", "progress", "scene-content", "copy",
 ].map((name) => [name, document.querySelector(`#scene-${name}`)]));
 let frame = 0;
@@ -64,7 +64,9 @@ function render() {
     root.classList.toggle("v2-revealing", progress >= SCENE.revealStart);
     revealApp(pose.reveal >= 0.1);
     const set = (name, value) => elements[name].setAttribute("transform", value);
-    set("world", `translate(${sceneWidth / 2 - pose.focus} 0)`);
+    const camera = `translate(${sceneWidth / 2 - pose.focus} 0)`;
+    set("world", camera);
+    set("background-world", camera);
     set("ball", `translate(${pose.ball.x} ${pose.ball.y}) scale(${pose.ball.scale}) rotate(${pose.ball.rotation})`);
     set("shooting-leg", `rotate(${pose.kick} 13 18)`);
     set("player-body", `translate(${-pose.kick * 0.12} 0) rotate(${-pose.kick * 0.05})`);
@@ -98,8 +100,10 @@ function requestRender() {
 function measure() {
   if (!active) return;
   const height = stage.clientHeight || window.innerHeight;
-  sceneWidth = Math.max(360, 900 * stage.clientWidth / height);
-  document.querySelector("#soccer-scene").setAttribute("viewBox", `0 0 ${sceneWidth} 900`);
+  sceneWidth = Math.max(1, 900 * stage.clientWidth / height);
+  document.querySelectorAll(".soccer-scene").forEach((scene) => {
+    scene.setAttribute("viewBox", `0 0 ${sceneWidth} 900`);
+  });
   distance = Math.max(1, intro.offsetHeight - height);
   lastProgress = -1;
   requestRender();

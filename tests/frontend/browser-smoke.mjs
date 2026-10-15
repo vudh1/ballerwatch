@@ -203,7 +203,7 @@ try {
         await context.close();
       });
 
-      await scenario(`${engine}: glass feature tour keeps Settings and Inbox tappable during the reveal`, async () => {
+      await scenario(`${engine}: feature tour keeps Settings and Inbox tappable during the reveal`, async () => {
         const { context, page, errors } = await prepare(browser);
         await ready(page);
         await page.waitForFunction(() => !document.documentElement.classList.contains("v2-launching"));
@@ -227,6 +227,72 @@ try {
           await page.locator(close).click();
         }
         await shot(page, `${engine}-glass-reveal`);
+        assert.deepEqual(errors, []);
+        await context.close();
+      });
+
+      await scenario(`${engine}: full-screen stadium and foreground action surround borderless feature text`, async () => {
+        const { context, page, errors } = await prepare(browser, {
+          viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true,
+        });
+        await context.addInitScript(() => { Object.defineProperty(navigator, "standalone", { value: true }); });
+        await ready(page);
+        await page.waitForFunction(() => !document.documentElement.classList.contains("v2-launching"));
+        assert.doesNotMatch(await page.locator("#soccer-intro").textContent(), /scroll to explore|reverse to rewind/i);
+        const caption = await page.locator("#scene-copy").evaluate((el) => {
+          const css = getComputedStyle(el);
+          return [css.borderTopWidth, css.backgroundColor, css.boxShadow, css.backdropFilter];
+        });
+        assert.deepEqual(caption, ["0px", "rgba(0, 0, 0, 0)", "none", "none"]);
+        await atProgress(page, .78);
+        const occlusion = await page.evaluate(() => {
+          const copy = document.querySelector("#scene-copy");
+          const action = document.querySelector("#soccer-scene");
+          // Hit-test painted SVG pixels at their real positions over the caption.
+          copy.style.pointerEvents = "auto";
+          action.style.pointerEvents = "auto";
+          const points = [
+            ["#scene-ball", 0, 0], ["#scene-keeper", -120, -120],
+          ];
+          const result = points.map(([selector, x, y]) => {
+            const element = document.querySelector(selector);
+            const point = new DOMPoint(x, y).matrixTransform(element.getScreenCTM());
+            const front = Boolean(document.elementFromPoint(point.x, point.y)?.closest(selector));
+            action.style.visibility = "hidden";
+            const overCopy = Boolean(document.elementFromPoint(point.x, point.y)?.closest("#scene-copy"));
+            action.style.visibility = "";
+            return { front, overCopy };
+          });
+          copy.style.pointerEvents = "";
+          action.style.pointerEvents = "";
+          return result;
+        });
+        assert.deepEqual(occlusion, [{ front: true, overCopy: true }, { front: true, overCopy: true }]);
+        await shot(page, `${engine}-foreground-text`);
+        for (const viewport of [{ width: 390, height: 950 }, { width: 844, height: 390 }, { width: 390, height: 844 }]) {
+          await page.setViewportSize(viewport);
+          await atProgress(page, .85);
+          const coverage = await page.evaluate(() => {
+            const stage = document.querySelector("#soccer-stage").getBoundingClientRect();
+            const content = document.querySelector("#scene-scene-content");
+            const screenHeight = window.visualViewport?.height || window.innerHeight;
+            const scenes = [...document.querySelectorAll(".soccer-scene")];
+            return {
+              top: stage.top, bottom: stage.bottom, screenHeight,
+              background: getComputedStyle(content).backgroundColor,
+              opacity: getComputedStyle(content).opacity,
+              atBottom: Boolean(document.elementFromPoint(window.innerWidth / 2, screenHeight - 4)?.closest("#scene-scene-content")),
+              views: scenes.map((el) => el.getAttribute("viewBox")),
+              cameras: ["#scene-world", "#scene-background-world"].map((id) => document.querySelector(id).getAttribute("transform")),
+            };
+          });
+          assert.ok(Math.abs(coverage.top) <= 1 && coverage.bottom >= coverage.screenHeight - 1);
+          assert.equal(coverage.atBottom, true, "The animation must cover the viewport footer before the reveal");
+          assert.equal(coverage.background, "rgb(6, 26, 24)");
+          assert.equal(coverage.opacity, "1");
+          assert.equal(coverage.views[0], coverage.views[1]);
+          assert.equal(coverage.cameras[0], coverage.cameras[1]);
+        }
         assert.deepEqual(errors, []);
         await context.close();
       });

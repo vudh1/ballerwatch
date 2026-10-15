@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="v2" data-entry-revision="glass-features">
+<html lang="en" class="v2" data-entry-revision="foreground-scene">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -11,12 +11,12 @@
   <meta name="apple-mobile-web-app-title" content="BallerWatch V2">
   <meta name="description" content="A moment of football. Then everything you need for your next match.">
   <title>BallerWatch V2 — Your matchday</title>
-  <link rel="manifest" href="./manifest.webmanifest?v=8.14.0">
-  <link rel="icon" href="../icon.svg?v=8.14.0" type="image/svg+xml">
-  <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png?v=8.14.0">
-  <script src="./prepaint.js?v=8.14.0"></script>
-  <link rel="stylesheet" href="../styles.css?v=8.14.0">
-  <link rel="stylesheet" href="./styles.css?v=8.14.0">
+  <link rel="manifest" href="./manifest.webmanifest?v=8.14.1">
+  <link rel="icon" href="../icon.svg?v=8.14.1" type="image/svg+xml">
+  <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png?v=8.14.1">
+  <script src="./prepaint.js?v=8.14.1"></script>
+  <link rel="stylesheet" href="../styles.css?v=8.14.1">
+  <link rel="stylesheet" href="./styles.css?v=8.14.1">
 </head>
 <body>
   <a class="v2-skip-link" href="#matchday-app">Skip to matches</a>
@@ -53,8 +53,11 @@
     <div id="soccer-stage" class="soccer-stage">
       <div class="intro-topline"><a href="../" class="v2-wordmark" aria-label="Open original BallerWatch">BallerWatch<span>V2</span></a><button id="skip-intro" type="button">Skip intro <span aria-hidden="true">↗</span></button></div>
       <div id="scene-scene-content" class="scene-content">
+        <svg id="soccer-stadium" class="soccer-scene scene-backdrop" viewBox="0 0 1440 900" aria-hidden="true" focusable="false">
+          <g id="scene-background-world"><image href="./assets/stadium.svg" x="-1000" y="0" width="3400" height="900"/></g>
+        </svg>
         <div id="scene-copy" class="scene-copy"><p id="scene-phase" class="eyebrow">YOUR MATCHDAY</p><h1 id="scene-headline"><span>Every kickoff.</span><span>One place.</span></h1><p id="scene-description">Pickup and league matches, your next game and a calendar built around the teams you follow.</p></div>
-        <svg id="soccer-scene" class="soccer-scene" viewBox="0 0 1440 900" aria-hidden="true" focusable="false">
+        <svg id="soccer-scene" class="soccer-scene scene-action" viewBox="0 0 1440 900" aria-hidden="true" focusable="false">
           <defs>
             <linearGradient id="kit" x2="1" y2="1"><stop stop-color="#e0f2fe"/><stop offset="1" stop-color="#38bdf8"/></linearGradient>
             <linearGradient id="keeper-kit" x2="1" y2="1"><stop stop-color="#5eead4"/><stop offset="1" stop-color="#0f766e"/></linearGradient>
@@ -62,7 +65,6 @@
             <pattern id="net-grid" width="18" height="18" patternUnits="userSpaceOnUse"><path d="M18 0H0V18" fill="none" stroke="#e3efeb" stroke-opacity=".38" stroke-width="1"/></pattern>
           </defs>
           <g id="scene-world">
-            <image href="./assets/stadium.svg" x="-1000" y="0" width="3400" height="900"/>
             <g id="scene-goal"><path d="m1000 380 310-15 35 230-330 9Z" fill="#061214" fill-opacity=".62"/><g id="scene-net"><path d="m1000 380 310-15 35 230-330 9Z" fill="url(#net-grid)"/><path d="m1000 380 30 28 280-15M1030 408l15 185M1310 365l-6 228" fill="none" stroke="#d9e6e1" stroke-opacity=".25"/></g><path d="m1015 604-15-224 310-15 35 230" fill="none" stroke="#dce8e2" stroke-width="7" stroke-linecap="round"/><path d="m1015 604 330-9" stroke="#94aaa4" stroke-width="2"/></g>
             <g id="scene-keeper" transform="translate(1120 570)">
               <ellipse cx="0" cy="35" rx="46" ry="9" fill="#000" opacity=".2"/>
@@ -78,7 +80,6 @@
           </g>
         </svg>
         <div id="scene-flash" class="scene-flash"></div>
-        <div class="intro-bottomline"><p><span class="scroll-glyph" aria-hidden="true">↓</span> Scroll to explore <span class="intro-reverse">· Reverse to rewind</span></p></div>
         <div class="scene-progress" aria-hidden="true"><span id="scene-progress"></span></div>
       </div>
     </div>
@@ -87,7 +88,7 @@
     <p class="v2-static-welcome" hidden>Matchday, at your pace. Motion is reduced on this device.</p>
     <header class="hero">
       <div class="brand-lockup">
-        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="../icon.svg?v=8.14.0" alt=""></div>
+        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="../icon.svg?v=8.14.1" alt=""></div>
         <div>
           <p class="eyebrow">SOCCER AT A GLANCE</p>
           <h1 id="matchday-heading" tabindex="-1">BallerWatch</h1>
@@ -665,7 +666,7 @@
     </form>
   </dialog>
 
-  <script type="module" src="../app.js?v=8.14.0"></script>
-  <script type="module" src="./app.js?v=8.14.0"></script>
+  <script type="module" src="../app.js?v=8.14.1"></script>
+  <script type="module" src="./app.js?v=8.14.1"></script>
 </body>
 </html>
