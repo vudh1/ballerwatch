@@ -12,6 +12,7 @@
   scroll-behavior: auto;
 }
 .v2 body { overflow-x: clip; }
+.v2.v2-cinematic .status-bar-glass { opacity: var(--app-reveal, 0); }
 .v2 :focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 .v2 button, .v2 a.button-link { min-height: 44px; }
 .v2 input, .v2 textarea { font-size: 1rem; }
