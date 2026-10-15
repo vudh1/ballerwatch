@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="v2">
+<html lang="en" class="v2" data-entry-revision="glass-features">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -11,29 +11,49 @@
   <meta name="apple-mobile-web-app-title" content="BallerWatch V2">
   <meta name="description" content="A moment of football. Then everything you need for your next match.">
   <title>BallerWatch V2 — Your matchday</title>
-  <link rel="manifest" href="./manifest.webmanifest?v=8.13.0">
-  <link rel="icon" href="../icon.svg?v=8.13.0" type="image/svg+xml">
-  <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png?v=8.13.0">
-  <script src="./prepaint.js?v=8.13.0"></script>
-  <link rel="stylesheet" href="../styles.css?v=8.13.0">
-  <link rel="stylesheet" href="./styles.css?v=8.13.0">
+  <link rel="manifest" href="./manifest.webmanifest?v=8.14.0">
+  <link rel="icon" href="../icon.svg?v=8.14.0" type="image/svg+xml">
+  <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png?v=8.14.0">
+  <script src="./prepaint.js?v=8.14.0"></script>
+  <link rel="stylesheet" href="../styles.css?v=8.14.0">
+  <link rel="stylesheet" href="./styles.css?v=8.14.0">
 </head>
 <body>
   <a class="v2-skip-link" href="#matchday-app">Skip to matches</a>
-  <section id="v2-launch" class="v2-launch" aria-label="Welcome to BallerWatch">
-    <div class="v2-launch-pitch" aria-hidden="true"></div>
-    <div class="v2-launch-brand">
-      <svg class="v2-launch-ball" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m26 20 14 2 5 13-12 9-13-9Zm-18 0 12 3m25 0 11-5M11 47l12-5m21 0 9 6M32 3v12m0 34v12" fill="none" stroke="currentColor" stroke-width="2"/></svg>
-      <p class="v2-launch-name">BallerWatch<span aria-hidden="true">.</span></p>
-      <p class="v2-launch-caption">THE MOMENT BEFORE THE MATCH</p>
+  <section id="v2-launch" class="v2-launch launch-intro is-active" aria-label="Welcome to BallerWatch">
+    <div class="launch-intro-stage">
+      <div class="launch-intro-beam launch-intro-beam-a"></div>
+      <div class="launch-intro-beam launch-intro-beam-b"></div>
+      <div class="launch-intro-beam launch-intro-beam-c"></div>
+      <div class="launch-intro-word" aria-label="BallerWatch">
+        <span class="launch-intro-word-shadow" aria-hidden="true">BallerWatch</span>
+        <span class="launch-intro-word-main">BallerWatch</span>
+      </div>
+      <div class="launch-intro-pulse" aria-hidden="true"></div>
     </div>
     <button id="skip-launch" class="secondary" type="button">Skip to matches</button>
   </section>
+  <div class="hero-actions v2-quick-actions">
+        <button class="utility-button" id="settings-button" type="button"
+          aria-label="Open settings" aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/>
+            <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.09a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3v-4h.04A1.7 1.7 0 0 0 4.6 8.94a1.7 1.7 0 0 0-.34-1.88L4.2 7l2.83-2.83.06.06a1.7 1.7 0 0 0 1.88.34A1.7 1.7 0 0 0 10 3.01V3h4v.01a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06L19.8 7l-.06.06a1.7 1.7 0 0 0-.34 1.88 1.7 1.7 0 0 0 1.56 1.03H21v4h-.04A1.7 1.7 0 0 0 19.4 15Z"/>
+          </svg>
+        </button>
+        <button class="bell-button utility-button" id="notification-bell" type="button"
+          aria-label="Open notifications" aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>
+          </svg>
+          <span class="notification-badge" id="notification-badge" hidden>0</span>
+        </button>
+      </div>
   <section id="soccer-intro" class="soccer-intro" aria-label="Interactive soccer introduction">
     <div id="soccer-stage" class="soccer-stage">
       <div class="intro-topline"><a href="../" class="v2-wordmark" aria-label="Open original BallerWatch">BallerWatch<span>V2</span></a><button id="skip-intro" type="button">Skip intro <span aria-hidden="true">↗</span></button></div>
       <div id="scene-scene-content" class="scene-content">
-        <div class="scene-copy"><p id="scene-phase" class="eyebrow">01 / THE BUILD-UP</p><h1 id="scene-headline"><span>Before the match.</span><span>One moment.</span></h1></div>
+        <div id="scene-copy" class="scene-copy"><p id="scene-phase" class="eyebrow">YOUR MATCHDAY</p><h1 id="scene-headline"><span>Every kickoff.</span><span>One place.</span></h1><p id="scene-description">Pickup and league matches, your next game and a calendar built around the teams you follow.</p></div>
         <svg id="soccer-scene" class="soccer-scene" viewBox="0 0 1440 900" aria-hidden="true" focusable="false">
           <defs>
             <linearGradient id="kit" x2="1" y2="1"><stop stop-color="#e0f2fe"/><stop offset="1" stop-color="#38bdf8"/></linearGradient>
@@ -58,7 +78,7 @@
           </g>
         </svg>
         <div id="scene-flash" class="scene-flash"></div>
-        <div class="intro-bottomline"><p><span class="scroll-glyph" aria-hidden="true">↓</span> Scroll to shoot <span class="intro-reverse">· Reverse to rewind</span></p><span>YOUR MATCHDAY AWAITS</span></div>
+        <div class="intro-bottomline"><p><span class="scroll-glyph" aria-hidden="true">↓</span> Scroll to explore <span class="intro-reverse">· Reverse to rewind</span></p></div>
         <div class="scene-progress" aria-hidden="true"><span id="scene-progress"></span></div>
       </div>
     </div>
@@ -67,28 +87,12 @@
     <p class="v2-static-welcome" hidden>Matchday, at your pace. Motion is reduced on this device.</p>
     <header class="hero">
       <div class="brand-lockup">
-        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="../icon.svg?v=8.13.0" alt=""></div>
+        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="../icon.svg?v=8.14.0" alt=""></div>
         <div>
           <p class="eyebrow">SOCCER AT A GLANCE</p>
           <h1 id="matchday-heading" tabindex="-1">BallerWatch</h1>
           <p class="subtitle">Pickup + RATS monitor</p>
         </div>
-      </div>
-      <div class="hero-actions">
-        <button class="utility-button" id="settings-button" type="button"
-          aria-label="Open settings" aria-haspopup="dialog">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/>
-            <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.09a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3v-4h.04A1.7 1.7 0 0 0 4.6 8.94a1.7 1.7 0 0 0-.34-1.88L4.2 7l2.83-2.83.06.06a1.7 1.7 0 0 0 1.88.34A1.7 1.7 0 0 0 10 3.01V3h4v.01a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06L19.8 7l-.06.06a1.7 1.7 0 0 0-.34 1.88 1.7 1.7 0 0 0 1.56 1.03H21v4h-.04A1.7 1.7 0 0 0 19.4 15Z"/>
-          </svg>
-        </button>
-        <button class="bell-button utility-button" id="notification-bell" type="button"
-          aria-label="Open notifications" aria-haspopup="dialog">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>
-          </svg>
-          <span class="notification-badge" id="notification-badge" hidden>0</span>
-        </button>
       </div>
     </header>
 
@@ -188,12 +192,6 @@
       </div>
     </section>
 
-    <details class="v2-experience-tools">
-      <summary>V2 experience</summary>
-      <div class="v2-experience-actions"><button id="replay-intro" class="secondary" type="button">Replay the moment</button><a href="../">Open V1</a></div>
-      <details><summary>Offline storage</summary><p>Clear V2 frontend files while keeping V1, your sign-in and device preferences.</p><button id="clear-v2-caches" class="secondary" type="button">Clear V2 frontend cache</button><p id="v2-cache-status" role="status"></p></details>
-      <p id="motion-note" role="status" hidden>Reduced motion is enabled. Your matchday is ready.</p>
-    </details>
     <footer>
       <section class="card footer-install bw-card-frame" id="install-card">
         <div class="footer-install-copy">
@@ -429,6 +427,19 @@
       </div>
 
 
+      <section class="app-version-settings" aria-labelledby="app-version-heading">
+        <h3 class="settings-subheading" id="app-version-heading">App version</h3>
+        <nav class="app-version-switch" aria-label="Choose BallerWatch version">
+          <a id="app-version-v1" href="../">V1 · Original</a>
+          <a id="app-version-v2" href="./" aria-current="page">V2 · Cinematic</a>
+        </nav>
+        <p class="hint">Switch this view. Your matches, teams and sign-in are shared.</p>
+        <button id="replay-intro" class="secondary compact-button" type="button">Replay introduction</button>
+        <p id="motion-note" class="hint" role="status" hidden>Reduced motion is enabled. Your matches are ready.</p>
+        <details id="v2-offline-tools"><summary>Offline files</summary><p class="hint">Clear V2 frontend files while keeping V1, your sign-in and device preferences.</p><button id="clear-v2-caches" class="secondary compact-button" type="button">Clear V2 frontend cache</button><p id="v2-cache-status" class="hint" role="status"></p></details>
+      </section>
+      <div class="settings-divider"></div>
+
       <section id="guest-settings-view" aria-label="Personal preferences on this device">
         <p class="muted">Use BallerWatch without an account. Your name, followed teams and notification preferences stay on this device.</p>
         <div id="guest-settings-form" class="settings-form">
@@ -654,7 +665,7 @@
     </form>
   </dialog>
 
-  <script type="module" src="../app.js?v=8.13.0"></script>
-  <script type="module" src="./app.js?v=8.13.0"></script>
+  <script type="module" src="../app.js?v=8.14.0"></script>
+  <script type="module" src="./app.js?v=8.14.0"></script>
 </body>
 </html>

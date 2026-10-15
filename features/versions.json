@@ -1,7 +1,24 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.13.0",
+  "currentVersion": "8.14.0",
   "releases": [
+    {
+      "version": "8.14.0",
+      "date": "2026-10-15",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Glass feature tour, cinematic launch and in-app version switching",
+      "webAnnouncement": "BallerWatch V2 now introduces your matchday features through glass panels over the soccer hero, opens with a two-second cinematic wordmark, and keeps Settings and Inbox easy to tap during the reveal. Switch V1/V2 in Settings and look for the new glass soccer-ball icon.",
+      "changes": [
+        "Extend the V2 brand launch to two seconds using the existing V1 light-beam, wordmark shine, blur and pulse animation in the shared green-pitch palette.",
+        "Replace shot-phase slogans with six glass feature panels covering schedules, RSVP/rosters, weather/venues/sharing, standings/scouting/history/forecasts, contextual AI, notifications, Calendar sync, personalization, offline installation, music and secure accounts/admin tools.",
+        "Keep actual Settings and Inbox controls in a stable independent glass toolbar throughout the hero/reveal; release scene hit testing and fade story text before cards appear, with a lightweight stadium blur.",
+        "Add explicit V1/V2 route links to Settings in both experiences, retaining shared preferences/session state and each installed manifest start URL. Move replay and scoped offline-cache controls into V2 Settings and remove the extra experience footer.",
+        "Refresh the original SVG favicon, Apple icon and 192/512px install PNGs with an original glass soccer ball/watch ring; keep separate install identities and versioned shell cleanup.",
+        "Record a real browser V2 GIF walkthrough with synthetic fixtures, add it beside the existing V1 README demo, and keep a reproducible local HTTPS recorder.",
+        "Add mid-reveal hit tests, stable toolbar bounds, feature-tour content and bidirectional route-switch regressions while retaining the existing V1/V2 data/auth/offline checks."
+      ]
+    },
     {
       "version": "8.13.0",
       "date": "2026-10-15",

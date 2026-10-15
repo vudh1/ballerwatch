@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
 import test from "node:test";
-import { SCENE, scenePose } from "../../frontend/web/v2/scene-config.mjs";
+import { SCENE, scenePose, featureStory } from "../../frontend/web/v2/scene-config.mjs";
 
 const read = (name) => fs.readFileSync(`frontend/web/${name}`, "utf8");
 
@@ -31,18 +31,27 @@ test("V2 separates a brief launch and scroll hero from unchanged V1 cards", () =
   const css = read("v2/styles.css");
   const html = read("v2/index.html");
   const v1 = read("index.html");
-  assert.equal(SCENE.launchMs, 1400);
+  assert.equal(SCENE.launchMs, 2000);
   assert.match(timeline, /intro.offsetHeight - height/);
-  assert.match(timeline, /revealApp\(pose.reveal >= 0.999\)/);
+  assert.match(timeline, /revealApp\(pose.reveal >= 0.1\)/);
   assert.match(css, /\.soccer-stage \{[^}]*position: sticky/);
   assert.doesNotMatch(css, /\.v2 \.(?:card|next-game-card|calendar-card|standings-slide)\s*\{/);
-  assert.doesNotMatch(html, /v2-sidebar|v2-editorial|v2-shortcuts|v2-bottom-nav/);
+  assert.doesNotMatch(html, /v2-sidebar|v2-editorial|v2-shortcuts|v2-bottom-nav|V2 experience/);
+  assert.ok(html.indexOf('class="hero-actions v2-quick-actions"') < html.indexOf('<main id="matchday-app"'));
   assert.match(html, /id="scene-player-number"[^>]*>10<\/text>/);
   assert.doesNotMatch(html, /M6-70h14l-11 28/);
   const cardFeed = (source, end) => source.slice(source.indexOf('    <div class="spotlight-carousel"'), source.indexOf(end));
-  assert.equal(cardFeed(html, '    <details class="v2-experience-tools"'), cardFeed(v1, '    <footer>'));
+  assert.equal(cardFeed(html, '    <footer>'), cardFeed(v1, '    <footer>'));
   assert.match(read("v2/prepaint.js"), /ballerwatch:v2:intro-seen/);
   assert.match(read("v2/prepaint.js"), /ballerwatch:v2:launch-seen/);
+});
+
+test("the scroll tour introduces actual capabilities independently of shot phases", () => {
+  const examples = [[0, /Pickup and league/], [.2, /RSVP capacity/], [.35, /standings/],
+    [.5, /follow-up/], [.7, /Web Push/], [.85, /V1\/V2/]];
+  for (const [progress, expected] of examples) assert.match(featureStory(progress).description, expected);
+  assert.equal(featureStory(.85), featureStory(1));
+  assert.equal(featureStory(.35), featureStory(.35));
 });
 
 test("every pose reverses exactly with scroll, clamps input and stays finite", () => {

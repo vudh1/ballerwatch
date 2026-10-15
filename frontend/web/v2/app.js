@@ -1,6 +1,6 @@
 /**
  * V2 experience controls around the unchanged V1 card feed/controller.
- * Baseline: v8.13.0. No API client, runtime store or polling scheduler.
+ * Baseline: v8.14.0. No API client, runtime store or polling scheduler.
  */
 const timeline = import("./timeline.js");
 void timeline.catch(() => {
@@ -10,6 +10,7 @@ void timeline.catch(() => {
 });
 
 document.querySelector("#replay-intro").addEventListener("click", async () => {
+  document.querySelector("#settings-dialog").close();
   try { (await timeline).replayIntro(); } catch {
     document.querySelector("#motion-note").hidden = false;
     document.querySelector("#motion-note").textContent = "The intro is unavailable. Your matches are ready.";

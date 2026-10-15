@@ -1,55 +1,34 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
   <title id="title">BallerWatch</title>
-  <desc id="desc">A soccer pitch with a soccer ball</desc>
+  <desc id="desc">A luminous glass soccer ball inside a cyan and emerald watch ring</desc>
   <defs>
-    <linearGradient id="pitch" x1="72" y1="52" x2="440" y2="464" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#22a862"/>
-      <stop offset="0.52" stop-color="#14804d"/>
-      <stop offset="1" stop-color="#075638"/>
-    </linearGradient>
-    <radialGradient id="glow" cx="0" cy="0" r="1" gradientTransform="translate(120 82) rotate(45) scale(420)">
-      <stop offset="0" stop-color="#8df2bd" stop-opacity=".24"/>
-      <stop offset=".72" stop-color="#0d6b43" stop-opacity="0"/>
-    </radialGradient>
-    <filter id="ballShadow" x="-50%" y="-50%" width="200%" height="200%">
-      <feDropShadow dx="0" dy="15" stdDeviation="14" flood-color="#02140c" flood-opacity=".42"/>
-    </filter>
+    <linearGradient id="glass" x1="48" y1="20" x2="444" y2="500" gradientUnits="userSpaceOnUse"><stop stop-color="#205e50"/><stop offset=".48" stop-color="#0b3b34"/><stop offset="1" stop-color="#041d20"/></linearGradient>
+    <radialGradient id="glow" cx=".2" cy=".1" r=".9"><stop stop-color="#a7f3d0" stop-opacity=".3"/><stop offset="1" stop-color="#a7f3d0" stop-opacity="0"/></radialGradient>
+    <linearGradient id="ring" x1="110" y1="90" x2="404" y2="410" gradientUnits="userSpaceOnUse"><stop stop-color="#b9f4ff"/><stop offset=".45" stop-color="#7dd3fc"/><stop offset="1" stop-color="#34d399" stop-opacity=".45"/></linearGradient>
+    <radialGradient id="ball" cx=".3" cy=".2" r=".85"><stop stop-color="#fff"/><stop offset=".65" stop-color="#e5f7f0"/><stop offset="1" stop-color="#b0d4c9"/></radialGradient>
+    <clipPath id="ball-clip"><circle cx="256" cy="256" r="99"/></clipPath>
   </defs>
-
-  <rect width="512" height="512" rx="112" fill="#063c29"/>
-  <rect x="18" y="18" width="476" height="476" rx="98" fill="url(#pitch)"/>
-
-  <g opacity=".10" fill="#ffffff">
-    <path d="M18 18h79v476H18z"/>
-    <path d="M176 18h79v476h-79z"/>
-    <path d="M334 18h79v476h-79z"/>
+  <rect width="512" height="512" fill="#041d1c"/>
+  <rect x="14" y="14" width="484" height="484" rx="104" fill="url(#glass)"/>
+  <rect x="14" y="14" width="484" height="484" rx="104" fill="url(#glow)"/>
+  <rect x="24" y="24" width="464" height="464" rx="96" fill="none" stroke="#e4fff4" stroke-opacity=".16" stroke-width="2"/>
+  <path d="M52 152Q52 52 152 52h208" fill="none" stroke="#e4fff4" stroke-opacity=".12" stroke-width="3" stroke-linecap="round"/>
+  <ellipse cx="256" cy="383" rx="110" ry="22" fill="#010f10" opacity=".3"/>
+  <circle cx="256" cy="256" r="159" fill="#031b1b" fill-opacity=".24" stroke="#d1fae5" stroke-opacity=".08" stroke-width="2"/>
+  <path d="M118 333a158 158 0 1 1 276-154" fill="none" stroke="url(#ring)" stroke-width="15" stroke-linecap="round"/>
+  <path d="M395 194a158 158 0 0 1-96 214" fill="none" stroke="url(#ring)" stroke-opacity=".32" stroke-width="7" stroke-linecap="round"/>
+  <path d="m254 79 2 22M99 256h22M379 256h23M156 374l15-17" stroke="#c4fff0" stroke-opacity=".5" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="256" cy="260" r="104" fill="#001b19" opacity=".5"/>
+  <circle cx="256" cy="256" r="100" fill="url(#ball)"/>
+  <g clip-path="url(#ball-clip)" fill="#0b3933" stroke="#24534b" stroke-width="3" stroke-linejoin="round">
+    <path d="m256 213 41 30-16 48h-50l-16-48Z"/>
+    <path d="m222 156 34-16 34 16-10 31h-48Z"/>
+    <path d="m340 188 29 17 10 37-35 8-26-35Z"/>
+    <path d="m345 306-3 35-34 22-19-30 16-27Z"/>
+    <path d="m208 363-36-22-4-35h40l16 27Z"/>
+    <path d="m133 242 10-37 29-17 22 27-26 35Z"/>
+    <path d="m256 213-24-26m65 56 21-28m-37 76 24 15m-74-15-23 15m7-63-21-28" fill="none" stroke-width="5"/>
   </g>
-  <rect x="18" y="18" width="476" height="476" rx="98" fill="url(#glow)"/>
-
-  <g fill="none" stroke="#eefcf4" stroke-width="13" stroke-linecap="round" stroke-linejoin="round" opacity=".92">
-    <rect x="70" y="70" width="372" height="372" rx="22"/>
-    <path d="M256 70v372"/>
-    <circle cx="256" cy="256" r="54"/>
-    <circle cx="256" cy="256" r="5" fill="#eefcf4" stroke="none"/>
-    <path d="M70 167h73v178H70"/>
-    <path d="M442 167h-73v178h73"/>
-    <path d="M70 210h31v92H70"/>
-    <path d="M442 210h-31v92h31"/>
-  </g>
-
-  <g transform="translate(347 344)" filter="url(#ballShadow)">
-    <circle r="84" fill="#f8fafc"/>
-    <circle r="84" fill="none" stroke="#d7e1dc" stroke-width="6"/>
-    <g fill="#14211b">
-      <path d="M0-28 27-9 17 23h-34L-27-9z"/>
-      <path d="m-61-38 26-13 22 19-9 28-31 2z"/>
-      <path d="m61-38-26-13-22 19 9 28 31 2z"/>
-      <path d="m-65 29 10-30 31-2 14 27-18 25z"/>
-      <path d="m65 29-10-30-31-2-14 27 18 25z"/>
-      <path d="M0 73-29 51-10 24h20l29 27z"/>
-    </g>
-    <g fill="none" stroke="#14211b" stroke-width="6" stroke-linecap="round" opacity=".95">
-      <path d="M-27-9-35-51M27-9l8-42M17 23l38 5M-17 23l-38 5M0 73V52"/>
-    </g>
-  </g>
+  <circle cx="256" cy="256" r="99" fill="none" stroke="#f0fff9" stroke-opacity=".65" stroke-width="2"/>
+  <path d="M189 197q32-35 73-26" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="8" stroke-linecap="round"/>
 </svg>

@@ -11,11 +11,11 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="BallerWatch">
   <title>BallerWatch</title>
-  <link rel="manifest" href="./manifest.webmanifest?v=8.13.0">
-  <link rel="icon" href="./icon.svg?v=8.13.0" type="image/svg+xml">
-  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=8.13.0">
-  <script src="./launch-prepaint.js?v=8.13.0"></script>
-  <link rel="stylesheet" href="./styles.css?v=8.13.0">
+  <link rel="manifest" href="./manifest.webmanifest?v=8.14.0">
+  <link rel="icon" href="./icon.svg?v=8.14.0" type="image/svg+xml">
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=8.14.0">
+  <script src="./launch-prepaint.js?v=8.14.0"></script>
+  <link rel="stylesheet" href="./styles.css?v=8.14.0">
 </head>
 <body>
   <div class="launch-intro" id="launch-intro" aria-hidden="true">
@@ -35,7 +35,7 @@
   <main class="shell">
     <header class="hero">
       <div class="brand-lockup">
-        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=8.13.0" alt=""></div>
+        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=8.14.0" alt=""></div>
         <div>
           <p class="eyebrow">SOCCER AT A GLANCE</p>
           <h1>BallerWatch</h1>
@@ -391,6 +391,16 @@
       </div>
 
 
+      <section class="app-version-settings" aria-labelledby="app-version-heading">
+        <h3 class="settings-subheading" id="app-version-heading">App version</h3>
+        <nav class="app-version-switch" aria-label="Choose BallerWatch version">
+          <a id="app-version-v1" href="./" aria-current="page">V1 · Original</a>
+          <a id="app-version-v2" href="./v2/">V2 · Cinematic</a>
+        </nav>
+        <p class="hint">Switch this view. Your matches, teams and sign-in are shared.</p>
+      </section>
+      <div class="settings-divider"></div>
+
       <section id="guest-settings-view" aria-label="Personal preferences on this device">
         <p class="muted">Use BallerWatch without an account. Your name, followed teams and notification preferences stay on this device.</p>
         <div id="guest-settings-form" class="settings-form">
@@ -616,6 +626,6 @@
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=8.13.0"></script>
+  <script type="module" src="./app.js?v=8.14.0"></script>
 </body>
 </html>
