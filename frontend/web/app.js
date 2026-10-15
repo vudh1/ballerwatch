@@ -1451,7 +1451,11 @@ function guestSelector() {
 }
 function renderGuestSettings() {
   els.guestName.value = guestProfile.name;
-  guestSelector().setValue(guestProfile.teams);
+  // An empty override means use the original monitored defaults. Display
+  // those as already selected so "add another team" appends rather than
+  // accidentally replacing the visitor's two existing teams.
+  const defaults = (currentStandings?.cards || []).map((card) => card.team);
+  guestSelector().setValue(guestProfile.teams.length ? guestProfile.teams : defaults);
 }
 async function loadGuestTeamOptions() {
   const selector = guestSelector();

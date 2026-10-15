@@ -196,23 +196,31 @@ try {
       await scenario(`${engine}: guest settings, local notifications and favorite teams need no sign-in`, async () => {
         const { context, page, errors, calls } = await prepare(browser, { reducedMotion: "reduce" });
         await ready(page);
+        await page.waitForSelector(".standings-team-link");
         await page.locator("#settings-button").click();
         assert.equal(await page.locator("#guest-settings-view").isVisible(), true);
         assert.equal(await page.locator("#settings-login-view").evaluate((el) => el.open), false);
         await page.locator("#guest-name").fill("Visitor");
         await page.locator("#guest-teams-trigger").click();
-        await page.locator("#guest-teams-search").fill("Fixture FC");
+        assert.match(await page.locator("#guest-teams-display").textContent(), /1 team selected/);
+        await page.locator("#guest-teams-search").fill("Test United");
         await page.locator('#guest-teams-options [role="option"]').first().click();
         await page.waitForFunction(() => {
           const raw = localStorage.getItem("ballerwatch-visitor-profile-v1");
           if (!raw) return false;
           const profile = JSON.parse(raw);
-          return profile.name === "Visitor" && profile.teams.includes("Fixture FC");
+          return profile.name === "Visitor" &&
+            profile.teams.includes("Fixture FC") && profile.teams.includes("Test United");
         });
-        assert.match(await page.locator("#guest-settings-status").textContent(), /device/);
+        await page.waitForFunction(() =>
+          document.querySelector("#guest-settings-status")?.textContent.startsWith("Saved."));
         const profile = await page.evaluate(() => JSON.parse(localStorage.getItem("ballerwatch-visitor-profile-v1")));
         assert.equal(profile.name, "Visitor");
-        assert.deepEqual(profile.teams, ["Fixture FC"]);
+        assert.deepEqual(profile.teams, ["Fixture FC", "Test United"]);
+        assert.ok(calls.filter((call) => call.path === "/web/calendar").length >= 2,
+          "Adding a monitored team fetches personalized fixtures immediately");
+        assert.ok(calls.filter((call) => call.path === "/web/standings").length >= 2,
+          "Adding a monitored team refreshes standings immediately");
         assert.equal(calls.filter((call) => call.path === "/web/user/settings" && call.method === "POST").length, 0);
         await page.locator("#close-settings").click();
         await page.locator("#notification-bell").click();
