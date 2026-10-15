@@ -244,9 +244,11 @@ try {
         await day.click();
         assert.match(await page.locator("#next-game-meta").textContent(), /Fixture FC vs Test United/);
         await page.locator("#spotlight-next").click();
-        assert.match(await page.locator("#next-game-meta").textContent(), /Fixture FC vs Second FC/);
+        await page.waitForFunction(() =>
+          document.querySelector("#next-game-meta")?.textContent.includes("Fixture FC vs Second FC"));
         await page.locator("#spotlight-previous").click();
-        assert.match(await page.locator("#next-game-meta").textContent(), /Fixture FC vs Test United/);
+        await page.waitForFunction(() =>
+          document.querySelector("#next-game-meta")?.textContent.includes("Fixture FC vs Test United"));
         assert.deepEqual(errors, []);
         await context.close();
       });

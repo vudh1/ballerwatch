@@ -3071,7 +3071,7 @@ function installSpotlightSwipe() {
     committedTrain.preview.style.transform = "translate3d(0, 0, 0)";
 
     window.setTimeout(() => {
-      selectCalendarDate(committedTrain.target.date);
+      selectCalendarDate(committedTrain.target.date, { gameId: committedTrain.target.game.id });
 
       current.classList.remove("is-train-settling");
       current.style.transition = "none";
