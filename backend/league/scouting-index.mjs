@@ -89,7 +89,7 @@ export function buildScoutingIndex({
       awayColor: String(match.awayColor || ""),
     }));
   const normalize = (name) => String(name || "").toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ").replace(/\\b(?:fc|sc)\\b$/g, "").trim();
+    .replace(/[^a-z0-9]+/g, " ").replace(/\b(?:fc|sc)\b$/g, "").trim();
   const availableMatchups = {};
   for (const match of availableMatches) {
     const home = normalize(match.homeTeam), away = normalize(match.awayTeam);

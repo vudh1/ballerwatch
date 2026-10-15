@@ -2072,6 +2072,13 @@ function mergedLeagueMatches(snapshot, selection = null) {
   const names = Array.isArray(selection?.teams) && selection.teams.length
     ? selection.teams : snapshot.teams || [];
   const monitored = new Set(names.map((name) => String(name).trim().toLowerCase()));
+  // Some legacy/current read-only paths omit snapshot.teams even though the
+  // league snapshot has tracked clubs. Preserve their published fixtures.
+  if (!monitored.size) {
+    for (const game of leagueMatches(snapshot)) {
+      if (game?.team) monitored.add(String(game.team).trim().toLowerCase());
+    }
+  }
   const indexed = Array.isArray(selection?.matches) ? selection.matches.map((match) => ({
     key: match.id ? "indexed:" + match.id : "",
     sourceMatchId: match.id || "",
