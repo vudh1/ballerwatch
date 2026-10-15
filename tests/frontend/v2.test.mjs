@@ -54,6 +54,18 @@ test("the scroll tour introduces actual capabilities independently of shot phase
   assert.equal(featureStory(.35), featureStory(.35));
 });
 
+test("hero covers dynamic viewport while keeping stable scroll travel and layered action", () => {
+  const css = read("v2/styles.css");
+  const html = read("v2/index.html");
+  assert.match(css, /--scene-height: 100dvh/);
+  assert.match(css, /--scene-travel: calc\(100svh \* var\(--scroll-screens/);
+  assert.match(css, /height: calc\(var\(--scene-travel\) \+ var\(--scene-height\)\)/);
+  assert.match(css, /\.scene-content \{ background: var\(--v2-night\)/);
+  assert.doesNotMatch(html, /Scroll to explore|Reverse to rewind|intro-bottomline/);
+  assert.match(html, /id="soccer-stadium"[^>]*class="soccer-scene scene-backdrop"/);
+  assert.match(html, /id="soccer-scene"[^>]*class="soccer-scene scene-action"/);
+});
+
 test("every pose reverses exactly with scroll, clamps input and stays finite", () => {
   const steps = Array.from({ length: 101 }, (_, index) => index / 100);
   const forward = steps.map((progress) => scenePose(progress));
