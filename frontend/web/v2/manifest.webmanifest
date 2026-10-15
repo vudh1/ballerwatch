@@ -6,8 +6,8 @@
   "start_url": "/ballerwatch/v2/",
   "scope": "/ballerwatch/v2/",
   "display": "standalone",
-  "background_color": "#080f14",
-  "theme_color": "#080f14",
+  "background_color": "#061a18",
+  "theme_color": "#061a18",
   "icons": [
     {
       "src": "../apple-touch-icon.png",

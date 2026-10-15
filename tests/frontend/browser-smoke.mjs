@@ -99,7 +99,9 @@ async function ready(page, route = "v2/") {
 
 async function atProgress(page, progress) {
   await page.evaluate((value) => {
-    window.scrollTo(0, (document.documentElement.scrollHeight - window.innerHeight) * value);
+    const intro = document.querySelector("#soccer-intro");
+    const stage = document.querySelector("#soccer-stage");
+    window.scrollTo(0, (intro.offsetHeight - stage.clientHeight) * value);
   }, progress);
   await page.waitForFunction((value) => Math.abs(Number(document.documentElement.dataset.sceneProgress) - value) < 0.002, progress);
   return page.locator("#scene-ball").getAttribute("transform");
@@ -127,6 +129,7 @@ async function alignSyntheticCalendarCacheToToday(page) {
 }
 
 async function scenario(name, run) {
+  if (process.env.BALLERWATCH_SCENARIO && !name.includes(process.env.BALLERWATCH_SCENARIO)) return;
   await run();
   scenarios += 1;
   console.log(`PASS ${name}`);
@@ -140,11 +143,36 @@ try {
       args: ["--no-sandbox", "--disable-gpu", "--allow-insecure-localhost", "--ignore-certificate-errors", ...(shell ? ["--disable-blink-features=Badging"] : [])],
     } : {}) });
     try {
+      await scenario(`${engine}: brief brand launch leads to the hero before any cards appear`, async () => {
+        const { context, page, calls, errors } = await prepare(browser);
+        await page.clock.install({ time: new Date("2026-10-15T19:00:00Z") });
+        await page.clock.pauseAt(new Date("2026-10-15T19:00:01Z"));
+        await page.goto(`${origin}/ballerwatch/v2/`);
+        assert.equal(await page.locator("#v2-launch").isVisible(), true);
+        assert.equal(await page.locator("#matchday-app").evaluate((el) => el.inert), true);
+        assert.equal(await page.locator("#matchday-app").evaluate((el) => getComputedStyle(el).opacity), "0");
+        await shot(page, `${engine}-brand-launch`);
+        await page.clock.runFor(1500);
+        assert.equal(await page.locator("#v2-launch").isVisible(), false);
+        assert.equal(await page.locator("#soccer-intro").isVisible(), true);
+        assert.equal(await page.locator("#matchday-app").evaluate((el) => el.inert), true);
+        assert.ok(calls.some((call) => call.path === "/web/calendar"));
+        await page.locator("#skip-intro").click();
+        assert.equal(await page.locator("#matchday-app").evaluate((el) => el.inert), false);
+        await page.reload();
+        assert.equal(await page.locator("#v2-launch").isVisible(), false);
+        assert.equal(await page.locator("#soccer-intro").isVisible(), false);
+        assert.deepEqual(errors, []);
+        await context.close();
+      });
+
       await scenario(`${engine}: critical data loads during a reversible scroll intro; natural goal reveal`, async () => {
         const { context, page, calls, errors } = await prepare(browser);
         await ready(page);
-        assert.equal(await page.locator("#matchday-app").evaluate((el) => el.inert), false);
+        assert.equal(await page.locator("#matchday-app").evaluate((el) => el.inert), true);
         assert.equal(await page.locator("#soccer-intro").isVisible(), true);
+        await page.waitForFunction(() => !document.documentElement.classList.contains("v2-launching"));
+        assert.equal(await page.locator("#scene-player-number").textContent(), "10");
         assert.equal(calls.filter((call) => call.path === "/web/calendar").length, 1);
         await shot(page, `${engine}-intro-setup`);
         const forward = await atProgress(page, 0.44);
@@ -158,9 +186,17 @@ try {
         await atProgress(page, 1);
         assert.equal(await page.locator("#matchday-app").evaluate((el) => el.inert), false);
         await page.waitForFunction(() =>
-          Number(getComputedStyle(document.querySelector("#panel-matchday .v2-match-grid")).opacity) > 0.95,
+          Number(getComputedStyle(document.querySelector("#matchday-app")).opacity) > 0.95,
         { timeout: 5000 });
         await shot(page, `${engine}-matchday-desktop`);
+        const cardAppearance = () => page.evaluate(() => ["#next-game-card", "#two-week-calendar"].map((selector) => {
+          const style = getComputedStyle(document.querySelector(selector));
+          return [style.backgroundImage, style.backgroundColor, style.borderRadius, style.padding, style.fontFamily];
+        }));
+        const v2Cards = await cardAppearance();
+        await page.emulateMedia({ reducedMotion: "reduce" });
+        await ready(page, "");
+        assert.deepEqual(await cardAppearance(), v2Cards, "V2 uses the exact V1 card appearance");
         assert.deepEqual(errors, []);
         await context.close();
       });
@@ -273,6 +309,8 @@ try {
       await scenario(`${engine}: skip, direct refresh, navigation, iPhone portrait and landscape`, async () => {
         const { context, page, errors } = await prepare(browser, { ...playwright.devices["iPhone 13"], defaultBrowserType: undefined });
         await ready(page);
+        await page.waitForFunction(() => !document.documentElement.classList.contains("v2-launching"));
+        await shot(page, `${engine}-intro-iphone`);
         if (engine === "chromium") {
           const cdp = await context.newCDPSession(page);
           await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: 190, y: 550, id: 1 }] });
@@ -292,26 +330,28 @@ try {
         assert.equal(navigations, 0);
         await page.waitForFunction(() => !document.querySelector("#matchday-app").inert);
         await shot(page, `${engine}-matchday-iphone`);
+        assert.ok(await page.locator("#matchday-heading").evaluate((el) =>
+          el.getBoundingClientRect().right < document.querySelector("#settings-button").getBoundingClientRect().left),
+        "The mobile brand must not overlap the settings control");
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
-        await page.locator('.v2-bottom-nav [data-v2-target="schedule"]').click();
-        assert.equal(await page.locator("#panel-schedule").isVisible(), true);
+        await page.locator("#two-week-calendar").scrollIntoViewIfNeeded();
+        assert.equal(await page.locator("#two-week-calendar").isVisible(), true);
         await page.locator('.calendar-day[aria-disabled="false"]').first().click();
-        assert.equal(await page.locator("#panel-matchday").isVisible(), true);
-        await page.locator('.v2-bottom-nav [data-v2-target="club"]').click();
+        assert.equal(await page.locator("#next-game-card").isVisible(), true);
+        await page.locator("#league-standings").scrollIntoViewIfNeeded();
         await page.waitForSelector(".standings-team-link");
-        assert.equal(await page.locator("#panel-club").isVisible(), true);
+        assert.equal(await page.locator("#league-standings").isVisible(), true);
         await shot(page, `${engine}-club-iphone`);
-        await page.locator("#v2-inbox").click();
+        await page.locator("#notification-bell").click();
         assert.equal(await page.locator("#notification-dialog").evaluate((el) => el.open), true);
         await page.locator("#close-notifications").click();
-        await page.locator('.v2-bottom-nav [data-v2-target="matchday"]').click();
-        await page.locator("#v2-ai").click();
+        await page.locator("#chat-launcher").click();
         assert.equal(await page.locator("#chat-dialog").evaluate((el) => el.open), true);
         await page.locator("#close-chat").click();
         await page.reload();
         await page.waitForFunction(() => !document.querySelector("#matchday-app").inert);
         assert.equal(new URL(page.url()).pathname, "/ballerwatch/v2/");
-        assert.equal(await page.locator("#soccer-intro").isVisible(), true);
+        assert.equal(await page.locator("#soccer-intro").isVisible(), false);
         await page.setViewportSize({ width: 844, height: 390 });
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
         // Device emulation reports zero hardware safe areas. Inject asymmetric
@@ -320,7 +360,7 @@ try {
           document.documentElement.style.setProperty("--v2-safe-left", "59px");
           document.documentElement.style.setProperty("--v2-safe-right", "34px");
         });
-        assert.ok(await page.locator(".v2-sidebar").evaluate((el) => el.getBoundingClientRect().left >= 59));
+        assert.ok(await page.locator("#next-game-card").evaluate((el) => el.getBoundingClientRect().left >= 59));
         assert.ok(await page.locator("#settings-button").evaluate((el) => el.getBoundingClientRect().right <= window.innerWidth - 34));
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
         await shot(page, `${engine}-matchday-landscape`);
@@ -328,6 +368,7 @@ try {
           document.documentElement.style.removeProperty("--v2-safe-left");
           document.documentElement.style.removeProperty("--v2-safe-right");
         });
+        await page.locator(".v2-experience-tools").evaluate((el) => { el.open = true; });
         await page.locator("#replay-intro").click();
         await atProgress(page, 0.7);
         await page.setViewportSize({ width: 390, height: 760 });
@@ -442,6 +483,7 @@ try {
           // Cache controls never unregister either service worker or clear account storage.
           await page.goto(`${origin}/ballerwatch/v2/`);
           await page.waitForFunction(() => !document.querySelector("#matchday-app").inert);
+          await page.locator(".v2-experience-tools").evaluate((el) => { el.open = true; });
           await page.locator(".v2-experience-tools details").evaluate((el) => { el.open = true; });
           await page.locator("#clear-v2-caches").click();
           await page.waitForFunction(() => document.querySelector("#v2-cache-status").textContent.includes("cleared"));

@@ -26,15 +26,23 @@ test("ball contact, curved flight, goalkeeper and upper-corner impact stay synch
   assert.equal(scenePose(1).reveal, 1);
 });
 
-test("V2 keeps the shared app live with the scroll timeline in the background", () => {
+test("V2 separates a brief launch and scroll hero from unchanged V1 cards", () => {
   const timeline = read("v2/timeline.js");
   const css = read("v2/styles.css");
   const html = read("v2/index.html");
-  assert.match(timeline, /app\.inert = false/);
-  assert.match(timeline, /document\.documentElement\.scrollHeight - window\.innerHeight/);
-  assert.match(css, /\.v2 \.soccer-intro \{[\s\S]*position: fixed/);
-  assert.match(css, /--v2-cards-visible/);
+  const v1 = read("index.html");
+  assert.equal(SCENE.launchMs, 1400);
+  assert.match(timeline, /intro.offsetHeight - height/);
+  assert.match(timeline, /revealApp\(pose.reveal >= 0.999\)/);
+  assert.match(css, /\.soccer-stage \{[^}]*position: sticky/);
+  assert.doesNotMatch(css, /\.v2 \.(?:card|next-game-card|calendar-card|standings-slide)\s*\{/);
+  assert.doesNotMatch(html, /v2-sidebar|v2-editorial|v2-shortcuts|v2-bottom-nav/);
   assert.match(html, /id="scene-player-number"[^>]*>10<\/text>/);
+  assert.doesNotMatch(html, /M6-70h14l-11 28/);
+  const cardFeed = (source, end) => source.slice(source.indexOf('    <div class="spotlight-carousel"'), source.indexOf(end));
+  assert.equal(cardFeed(html, '    <details class="v2-experience-tools"'), cardFeed(v1, '    <footer>'));
+  assert.match(read("v2/prepaint.js"), /ballerwatch:v2:intro-seen/);
+  assert.match(read("v2/prepaint.js"), /ballerwatch:v2:launch-seen/);
 });
 
 test("every pose reverses exactly with scroll, clamps input and stays finite", () => {
@@ -77,11 +85,11 @@ test("V2 installation identity is distinct and every icon is locally available",
   }
 });
 
-test("landscape safe areas protect the entire V2 grid, including desktop navigation", () => {
+test("landscape safe areas protect the V2 cards and cinematic controls", () => {
   const css = read("v2/styles.css");
   assert.match(css, /--v2-safe-left: env\(safe-area-inset-left, 0px\)/);
   assert.match(css, /--v2-safe-right: env\(safe-area-inset-right, 0px\)/);
-  assert.match(css, /\.v2-shell \{[^}]*padding-left: var\(--v2-safe-left\);[^}]*padding-right: var\(--v2-safe-right\)/);
+  assert.match(css, /\.v2-shell \{[^}]*padding-left: max\([^;]*var\(--v2-safe-left\)\);[^}]*padding-right: max\([^;]*var\(--v2-safe-right\)\)/);
 });
 
 test("V2 retains every functional controller hook and loads exactly one shared controller", () => {

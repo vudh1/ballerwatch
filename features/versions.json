@@ -1,7 +1,23 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.12.2",
+  "currentVersion": "8.13.0",
   "releases": [
+    {
+      "version": "8.13.0",
+      "date": "2026-10-15",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "A quieter V2: branded launch, scroll hero, then original matchday cards",
+      "webAnnouncement": "BallerWatch V2 now opens with a brief branded moment, followed by the scroll-controlled soccer hero and the familiar original matchday cards. The scene shares the original green-pitch palette, and the shooter wears number 10.",
+      "changes": [
+        "Replace the busy V2 sidebar, editorial tile, shortcut cards and bottom navigation with the exact original V1 match, calendar and standings card markup and styles in a single feed.",
+        "Add a 1.4-second V2-only branded launch that fades into the native-scroll hero; finish or Skip reveals the real already-loading cards. Completed intros are skipped for the rest of the V2 session, with replay available below the cards.",
+        "Match stadium, player kit, lighting and launch colors to the original green pitch, glass cards and cool blue accents; remove the old number-7 vector mark so number 10 moves with the shooter jersey.",
+        "Keep critical data/session startup independent, reduced-motion direct entry, failed-asset/module recovery, reverse scrolling, background pause and back-forward cache listener restoration.",
+        "Preserve asymmetric iPhone safe areas, distinct V1/V2 installation identities and scoped caches; rotate both shell versions without changing V1 layout, shared API behavior or canonical runtime-state.",
+        "Add brand-to-hero timing, exact computed V1/V2 card appearance and compact mobile header regressions; retain guest settings, auth, offline and production data contract coverage."
+      ]
+    },
     {
       "version": "8.12.2",
       "date": "2026-10-14",
