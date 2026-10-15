@@ -439,6 +439,10 @@ try {
         assert.equal(await reduced.page.locator("#install-card").count(), 0);
         assert.equal(await reduced.page.locator("#matchday-app").evaluate((el) => el.inert), false);
         await shot(reduced.page, `${engine}-reduced-standalone`);
+        await reduced.page.locator("#settings-button").click();
+        await reduced.page.locator("#replay-intro").click();
+        assert.equal(await reduced.page.locator("#settings-dialog").evaluate((el) => el.open), true);
+        assert.equal(await reduced.page.locator("#motion-note").isVisible(), true);
         await reduced.context.close();
         for (const failure of ["animationFailure", "scriptFailure"]) {
           const instance = await prepare(browser, { serviceWorkers: "block" });

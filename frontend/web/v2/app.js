@@ -10,8 +10,13 @@ void timeline.catch(() => {
 });
 
 document.querySelector("#replay-intro").addEventListener("click", async () => {
-  document.querySelector("#settings-dialog").close();
-  try { (await timeline).replayIntro(); } catch {
+  try {
+    const controller = await timeline;
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      document.querySelector("#settings-dialog").close();
+    }
+    controller.replayIntro();
+  } catch {
     document.querySelector("#motion-note").hidden = false;
     document.querySelector("#motion-note").textContent = "The intro is unavailable. Your matches are ready.";
   }
