@@ -33,6 +33,7 @@ const server = https.createServer({ key: fs.readFileSync(key), cert: fs.readFile
   }
   let file = path.resolve(root, decodeURIComponent(url.pathname.slice("/ballerwatch/".length)));
   if (!file.startsWith(root)) { response.writeHead(403).end(); return; }
+  if (url.pathname === "/ballerwatch/v1-reference.html") file = path.resolve("tests/frontend/fixtures/v1-8.14.1.html");
   try {
     if (fs.statSync(file).isDirectory()) file = path.join(file, "index.html");
     response.writeHead(200, { "content-type": mime[path.extname(file)] || "application/octet-stream", "cache-control": "no-store" });
@@ -86,7 +87,7 @@ async function prepare(browser, options = {}) {
   return { context, page, calls, errors, controls };
 }
 
-async function ready(page, route = "v2/") {
+async function ready(page, route = "") {
   await page.goto(`${origin}/ballerwatch/${route}`);
   try {
     await page.waitForFunction(() => document.querySelector("#next-game-title").textContent.includes("October 15"), null, { timeout: 10000 });
@@ -115,7 +116,7 @@ async function alignSyntheticCalendarCacheToToday(page) {
   // The browser fixtures use year 2099 for stable future game display.
   // Production cache validation correctly requires a same-day startDate.
   await page.evaluate(() => {
-    const key = "ballerwatch:v2:public-calendar-device";
+    const key = "ballerwatch-public-calendar-device-v1";
     const saved = JSON.parse(localStorage.getItem(key) || "null");
     if (!saved?.calendar) throw new Error("Expected a public device cache");
     const parts = new Intl.DateTimeFormat("en-US", {
@@ -147,7 +148,7 @@ try {
         const { context, page, calls, errors } = await prepare(browser);
         await page.clock.install({ time: new Date("2026-10-15T19:00:00Z") });
         await page.clock.pauseAt(new Date("2026-10-15T19:00:01Z"));
-        await page.goto(`${origin}/ballerwatch/v2/`);
+        await page.goto(`${origin}/ballerwatch/`);
         assert.equal(await page.locator("#v2-launch").isVisible(), true);
         assert.equal(await page.locator("#matchday-app").evaluate((el) => el.inert), true);
         assert.equal(await page.locator("#matchday-app").evaluate((el) => getComputedStyle(el).opacity), "0");
@@ -191,14 +192,18 @@ try {
           Number(getComputedStyle(document.querySelector("#matchday-app")).opacity) > 0.95,
         { timeout: 5000 });
         await shot(page, `${engine}-matchday-desktop`);
-        const cardAppearance = () => page.evaluate(() => ["#next-game-card", "#two-week-calendar"].map((selector) => {
+        const cardAppearance = (target = page) => target.evaluate(() => ["#next-game-card", "#two-week-calendar"].map((selector) => {
           const style = getComputedStyle(document.querySelector(selector));
           return [style.backgroundImage, style.backgroundColor, style.borderRadius, style.padding, style.fontFamily];
         }));
         const v2Cards = await cardAppearance();
         await page.emulateMedia({ reducedMotion: "reduce" });
-        await ready(page, "");
-        assert.deepEqual(await cardAppearance(), v2Cards, "V2 uses the exact V1 card appearance");
+        const reference = await context.newPage();
+        reference.on("pageerror", (error) => errors.push(error.message));
+        await reference.emulateMedia({ reducedMotion: "reduce" });
+        await reference.goto(`${origin}/ballerwatch/v1-reference.html`);
+        assert.deepEqual(await cardAppearance(reference), v2Cards, "The canonical app uses the exact V1 card appearance");
+        await reference.close();
         assert.deepEqual(errors, []);
         await context.close();
       });
@@ -208,9 +213,16 @@ try {
         await ready(page);
         await page.waitForFunction(() => !document.documentElement.classList.contains("v2-launching"));
         for (const [progress, text] of [[.05, "Pickup and league"], [.2, "RSVP capacity"], [.4, "standings"],
-          [.55, "follow-up"], [.7, "Web Push"], [.85, "V1/V2"]]) {
+          [.55, "follow-up"], [.7, "Web Push"], [.85, "Home Screen"]]) {
           await atProgress(page, progress);
           assert.ok((await page.locator("#scene-description").textContent()).includes(text));
+        }
+        await atProgress(page, .7);
+        assert.equal(await page.locator(".v2-quick-actions").isVisible(), false);
+        for (const progress of [.94, .96, .98, 1]) {
+          await atProgress(page, progress);
+          const opacity = await page.evaluate(() => [".v2-quick-actions", "#matchday-app"].map((selector) => getComputedStyle(document.querySelector(selector)).opacity));
+          assert.equal(opacity[0], opacity[1]);
         }
         await atProgress(page, .94);
         const before = await page.locator("#settings-button").boundingBox();
@@ -297,24 +309,28 @@ try {
         await context.close();
       });
 
-      await scenario(`${engine}: Settings version switch preserves device preferences in both directions`, async () => {
+      await scenario(`${engine}: legacy V2 links converge on the root and notification checks sit beside text`, async () => {
         const { context, page, errors } = await prepare(browser, { reducedMotion: "reduce" });
-        await ready(page, "");
-        await page.locator("#settings-button").click();
-        await page.locator("#guest-name").fill("Sample visitor");
-        await page.waitForFunction(() => JSON.parse(localStorage.getItem("ballerwatch-visitor-profile-v1"))?.name === "Sample visitor");
-        assert.equal(await page.locator("#app-version-v1").getAttribute("aria-current"), "page");
-        await page.locator("#app-version-v2").click();
-        await page.waitForURL(`${origin}/ballerwatch/v2/`);
-        await page.waitForFunction(() => !document.querySelector("#matchday-app").inert);
+        await context.addInitScript(() => localStorage.setItem("ballerwatch-visitor-profile-v1", JSON.stringify({ name: "Sample visitor", teams: [] })));
+        await ready(page, "v2/?from=legacy#matches");
+        assert.equal(new URL(page.url()).pathname, "/ballerwatch/");
+        assert.equal(new URL(page.url()).search, "?from=legacy");
+        assert.equal(new URL(page.url()).hash, "#matches");
         await page.locator("#settings-button").click();
         assert.equal(await page.locator("#guest-name").inputValue(), "Sample visitor");
-        assert.equal(await page.locator("#app-version-v2").getAttribute("aria-current"), "page");
-        assert.equal(await page.locator("#replay-intro").isVisible(), true);
-        await page.locator("#app-version-v1").click();
-        await page.waitForURL(`${origin}/ballerwatch/`);
-        await page.locator("#settings-button").click();
-        assert.equal(await page.locator("#guest-name").inputValue(), "Sample visitor");
+        assert.equal(await page.locator("#replay-intro,#app-version-v1,#app-version-v2").count(), 0);
+        await page.locator("#close-settings").click();
+        await page.locator("#notification-bell").click();
+        for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }]) {
+          await page.setViewportSize(viewport);
+          const checks = await page.locator(".notification-preference-options label").evaluateAll((labels) => labels.map((label) => {
+            const check = label.querySelector("input").getBoundingClientRect();
+            const text = label.querySelector("span").getBoundingClientRect();
+            return check.width <= 18 && text.left - check.right >= 0 && text.left - check.right < 12 && Math.abs(check.y + check.height / 2 - text.y - text.height / 2) < 3;
+          }));
+          assert.deepEqual(checks, [true, true, true]);
+        }
+        await shot(page, `${engine}-notification-alignment`);
         assert.deepEqual(errors, []);
         await context.close();
       });
@@ -468,7 +484,7 @@ try {
         await page.locator("#close-chat").click();
         await page.reload();
         await page.waitForFunction(() => !document.querySelector("#matchday-app").inert);
-        assert.equal(new URL(page.url()).pathname, "/ballerwatch/v2/");
+        assert.equal(new URL(page.url()).pathname, "/ballerwatch/");
         assert.equal(await page.locator("#soccer-intro").isVisible(), false);
         await page.setViewportSize({ width: 844, height: 390 });
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
@@ -486,8 +502,9 @@ try {
           document.documentElement.style.removeProperty("--v2-safe-left");
           document.documentElement.style.removeProperty("--v2-safe-right");
         });
-        await page.locator("#settings-button").click();
-        await page.locator("#replay-intro").click();
+        await page.evaluate(() => sessionStorage.removeItem("ballerwatch:v2:intro-seen"));
+        await page.reload();
+        await page.waitForFunction(() => document.documentElement.dataset.timelineReady === "true");
         await atProgress(page, 0.7);
         await page.setViewportSize({ width: 390, height: 760 });
         assert.ok(await page.locator("#skip-intro").isVisible());
@@ -506,9 +523,7 @@ try {
         assert.equal(await reduced.page.locator("#matchday-app").evaluate((el) => el.inert), false);
         await shot(reduced.page, `${engine}-reduced-standalone`);
         await reduced.page.locator("#settings-button").click();
-        await reduced.page.locator("#replay-intro").click();
-        assert.equal(await reduced.page.locator("#settings-dialog").evaluate((el) => el.open), true);
-        assert.equal(await reduced.page.locator("#motion-note").isVisible(), true);
+        assert.equal(await reduced.page.locator("#replay-intro").count(), 0);
         await reduced.context.close();
         for (const failure of ["animationFailure", "scriptFailure"]) {
           const instance = await prepare(browser, { serviceWorkers: "block" });
@@ -542,7 +557,7 @@ try {
         await context.close();
       });
 
-      await scenario(`${engine}: optional failures preserve match data, experience storage stays isolated`, async () => {
+      await scenario(`${engine}: optional failures preserve match data and original root preferences`, async () => {
         const instance = await prepare(browser, { reducedMotion: "reduce" });
         await instance.context.addInitScript(() => {
           localStorage.setItem("ballerwatch-music-enabled-v1", "0");
@@ -555,8 +570,8 @@ try {
         assert.deepEqual(await instance.page.evaluate(() => [
           localStorage.getItem("ballerwatch-music-enabled-v1"),
           sessionStorage.getItem("ballerwatch-intro-seen-v1"),
-          sessionStorage.getItem("ballerwatch-public-calendar-session-v1"),
-        ]), ["0", "v1-sentinel", "v1-sentinel"]);
+        ]), ["0", "v1-sentinel"]);
+        assert.equal(await instance.page.evaluate(() => JSON.parse(sessionStorage.getItem("ballerwatch-public-calendar-session-v1")).calendar.games[0].id), "pickup:2099-10-15");
         await alignSyntheticCalendarCacheToToday(instance.page);
         instance.controls.offlineApi = true;
         await instance.page.reload();
@@ -570,47 +585,34 @@ try {
       });
 
       if (engine === "chromium") {
-        await scenario("chromium: two service-worker scopes coexist, offline routes stay correct and cache clearing preserves V1", async () => {
+        await scenario("chromium: legacy installed worker migrates to canonical root; offline redirects and scoped cache clearing", async () => {
           const { context, page, errors } = await prepare(browser, { reducedMotion: "reduce", serviceWorkers: "allow" });
-          await ready(page, "");
-          await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
           await ready(page);
-          await page.waitForFunction(() => navigator.serviceWorker.controller?.scriptURL.includes("/v2/sw.js"));
-          const registrations = await page.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).map((r) => r.scope).sort());
-          assert.deepEqual(registrations, [`${origin}/ballerwatch/`, `${origin}/ballerwatch/v2/`]);
-          const keys = await page.evaluate(() => caches.keys());
-          assert.ok(keys.some((key) => /^ballerwatch-v\d/.test(key) && !key.startsWith("ballerwatch-v2-")));
-          assert.ok(keys.some((key) => key.startsWith("ballerwatch-v2-") && key.endsWith("-shell")));
-          // The synthetic fixtures point to 2099; offline restoration correctly
-          // rejects a cache that is not anchored to the current local day.
-          // Make the fixture current before testing service-worker offline use.
+          await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
+          await page.evaluate(async () => {
+            const legacy = await navigator.serviceWorker.register("./v2/sw.js", { scope: "./v2/", updateViaCache: "none" });
+            if (!legacy.active) await new Promise((resolve) => {
+              const worker = legacy.installing || legacy.waiting;
+              worker.addEventListener("statechange", () => { if (worker.state === "activated") resolve(); });
+            });
+          });
+          await ready(page, "v2/");
+          assert.equal(new URL(page.url()).pathname, "/ballerwatch/");
           await alignSyntheticCalendarCacheToToday(page);
           await context.unrouteAll({ behavior: "wait" });
           await context.setOffline(true);
-          await page.reload({ waitUntil: "domcontentloaded" });
-          assert.equal(new URL(page.url()).pathname, "/ballerwatch/v2/");
-          await page.waitForFunction(() => !document.querySelector("#matchday-app").inert);
-          // The V2 background no longer gates interactivity, so wait for the
-          // independently restored public fixture rather than the old intro.
-          await page.waitForFunction(() => document.querySelector("#next-game-title")
-            ?.textContent === "Thursday, October 15", null, { timeout: 8000 });
-          assert.equal(await page.locator("#next-game-title").textContent(), "Thursday, October 15");
-          await page.goto(`${origin}/ballerwatch/`, { waitUntil: "domcontentloaded" });
-          assert.equal(await page.locator(".brand-lockup h1").textContent(), "BallerWatch");
-          await context.route("**ballerwatch-web.vudhone.workers.dev/**", (route) => route.fulfill({
-            headers: { "access-control-allow-origin": origin },
-            contentType: "application/json", body: JSON.stringify(fixtureResponse(new URL(route.request().url()).pathname)),
-          }));
-          await context.setOffline(false);
-          // Cache controls never unregister either service worker or clear account storage.
-          await page.goto(`${origin}/ballerwatch/v2/`);
-          await page.waitForFunction(() => !document.querySelector("#matchday-app").inert);
+          await page.goto(`${origin}/ballerwatch/v2/`, { waitUntil: "domcontentloaded" });
+          assert.equal(new URL(page.url()).pathname, "/ballerwatch/");
+          await page.waitForFunction(() => document.querySelector("#next-game-title")?.textContent === "Thursday, October 15", null, { timeout: 8000 });
+          const before = await page.evaluate(() => caches.keys());
+          assert.ok(before.some((key) => key.startsWith("ballerwatch-v2-") && key.endsWith("-shell")));
           await page.locator("#settings-button").click();
           await page.locator("#v2-offline-tools").evaluate((el) => { el.open = true; });
           await page.locator("#clear-v2-caches").click();
           await page.waitForFunction(() => document.querySelector("#v2-cache-status").textContent.includes("cleared"));
-          const remaining = await page.evaluate(() => caches.keys());
-          assert.ok(remaining.some((key) => /^ballerwatch-v\d/.test(key) && !key.startsWith("ballerwatch-v2-")));
+          const after = await page.evaluate(() => caches.keys());
+          assert.ok(after.some((key) => key.startsWith("ballerwatch-v2-") && key.endsWith("-shell")));
+          assert.ok(after.includes("ballerwatch-device-state-v1"));
           assert.deepEqual(errors, []);
           await context.close();
         });

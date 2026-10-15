@@ -1,24 +1,27 @@
 <!doctype html>
-<html lang="en" class="launch-intro-pending">
+<html lang="en" class="v2" data-entry-revision="canonical-stadium">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#182235">
+  <meta name="theme-color" content="#061a18">
   <meta name="referrer" content="no-referrer">
-  <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; connect-src 'self' https://ballerwatch-web.vudhone.workers.dev; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; upgrade-insecure-requests">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://ballerwatch-web.vudhone.workers.dev; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; upgrade-insecure-requests">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="BallerWatch">
-  <title>BallerWatch</title>
-  <link rel="manifest" href="./manifest.webmanifest?v=8.14.1">
-  <link rel="icon" href="./icon.svg?v=8.14.1" type="image/svg+xml">
-  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=8.14.1">
-  <script src="./launch-prepaint.js?v=8.14.1"></script>
-  <link rel="stylesheet" href="./styles.css?v=8.14.1">
+  <meta name="description" content="A moment of football. Then everything you need for your next match.">
+  <title>BallerWatch — Your matchday</title>
+  <link rel="manifest" href="./manifest.webmanifest?v=9.0.0">
+  <link rel="icon" href="./icon.svg?v=9.0.0" type="image/svg+xml">
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=9.0.0">
+  <script src="./v2/prepaint.js?v=9.0.0"></script>
+  <link rel="stylesheet" href="./styles.css?v=9.0.0">
+  <link rel="stylesheet" href="./v2/styles.css?v=9.0.0">
 </head>
 <body>
-  <div class="launch-intro" id="launch-intro" aria-hidden="true">
+  <div class="status-bar-glass" aria-hidden="true"></div>
+  <a class="v2-skip-link" href="#matchday-app">Skip to matches</a>
+  <section id="v2-launch" class="v2-launch launch-intro is-active" aria-label="Welcome to BallerWatch">
     <div class="launch-intro-stage">
       <div class="launch-intro-beam launch-intro-beam-a"></div>
       <div class="launch-intro-beam launch-intro-beam-b"></div>
@@ -29,20 +32,9 @@
       </div>
       <div class="launch-intro-pulse" aria-hidden="true"></div>
     </div>
-  </div>
-
-  <div class="status-bar-glass" aria-hidden="true"></div>
-  <main class="shell">
-    <header class="hero">
-      <div class="brand-lockup">
-        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=8.14.1" alt=""></div>
-        <div>
-          <p class="eyebrow">SOCCER AT A GLANCE</p>
-          <h1>BallerWatch</h1>
-          <p class="subtitle">Pickup + RATS monitor</p>
-        </div>
-      </div>
-      <div class="hero-actions">
+    <button id="skip-launch" class="secondary" type="button">Skip to matches</button>
+  </section>
+  <div class="hero-actions v2-quick-actions">
         <button class="utility-button" id="settings-button" type="button"
           aria-label="Open settings" aria-haspopup="dialog">
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -57,6 +49,53 @@
           </svg>
           <span class="notification-badge" id="notification-badge" hidden>0</span>
         </button>
+      </div>
+  <section id="soccer-intro" class="soccer-intro" aria-label="Interactive soccer introduction">
+    <div id="soccer-stage" class="soccer-stage">
+      <div class="intro-topline"><a href="./" class="v2-wordmark" aria-label="BallerWatch home">BallerWatch</a><button id="skip-intro" type="button">Skip intro <span aria-hidden="true">↗</span></button></div>
+      <div id="scene-scene-content" class="scene-content">
+        <svg id="soccer-stadium" class="soccer-scene scene-backdrop" viewBox="0 0 1440 900" aria-hidden="true" focusable="false">
+          <defs><radialGradient id="camera-glow"><stop stop-color="#e4faff" stop-opacity=".8"/><stop offset="1" stop-color="#c8f7ff" stop-opacity="0"/></radialGradient></defs>
+          <g id="scene-background-world"><image href="./v2/assets/stadium.svg" x="-1000" y="0" width="3400" height="900"/><g data-camera-flash="0" transform="translate(360 365)" opacity="0"><circle r="24" fill="url(#camera-glow)"/><path d="M-9 0H9M0-9V9" stroke="#e4faff" stroke-width="1.5"/><circle r="2.5" fill="#fff"/></g><g data-camera-flash="1" transform="translate(780 415)" opacity="0"><circle r="24" fill="url(#camera-glow)"/><path d="M-9 0H9M0-9V9" stroke="#e4faff" stroke-width="1.5"/><circle r="2.5" fill="#fff"/></g><g data-camera-flash="2" transform="translate(910 380)" opacity="0"><circle r="24" fill="url(#camera-glow)"/><path d="M-9 0H9M0-9V9" stroke="#e4faff" stroke-width="1.5"/><circle r="2.5" fill="#fff"/></g><g data-camera-flash="3" transform="translate(1080 440)" opacity="0"><circle r="24" fill="url(#camera-glow)"/><path d="M-9 0H9M0-9V9" stroke="#e4faff" stroke-width="1.5"/><circle r="2.5" fill="#fff"/></g><g data-camera-flash="4" transform="translate(1290 370)" opacity="0"><circle r="24" fill="url(#camera-glow)"/><path d="M-9 0H9M0-9V9" stroke="#e4faff" stroke-width="1.5"/><circle r="2.5" fill="#fff"/></g><g data-camera-flash="5" transform="translate(1150 410)" opacity="0"><circle r="24" fill="url(#camera-glow)"/><path d="M-9 0H9M0-9V9" stroke="#e4faff" stroke-width="1.5"/><circle r="2.5" fill="#fff"/></g></g>
+        </svg>
+        <div id="scene-copy" class="scene-copy"><p id="scene-phase" class="eyebrow">YOUR MATCHDAY</p><h1 id="scene-headline"><span>Every kickoff.</span><span>One place.</span></h1><p id="scene-description">Pickup and league matches, your next game and a calendar built around the teams you follow.</p></div>
+        <svg id="soccer-scene" class="soccer-scene scene-action" viewBox="0 0 1440 900" aria-hidden="true" focusable="false">
+          <defs>
+            <linearGradient id="kit" x2="1" y2="1"><stop stop-color="#e0f2fe"/><stop offset="1" stop-color="#38bdf8"/></linearGradient>
+            <linearGradient id="keeper-kit" x2="1" y2="1"><stop stop-color="#5eead4"/><stop offset="1" stop-color="#0f766e"/></linearGradient>
+            <radialGradient id="ball-shade" cx=".3" cy=".25"><stop stop-color="#fff"/><stop offset="1" stop-color="#a4b2b7"/></radialGradient>
+            <pattern id="net-grid" width="18" height="18" patternUnits="userSpaceOnUse"><path d="M18 0H0V18" fill="none" stroke="#e3efeb" stroke-opacity=".38" stroke-width="1"/></pattern>
+          </defs>
+          <g id="scene-world">
+            <g id="scene-goal"><path d="m1000 380 310-15 35 230-330 9Z" fill="#061214" fill-opacity=".62"/><g id="scene-net"><path d="m1000 380 310-15 35 230-330 9Z" fill="url(#net-grid)"/><path d="m1000 380 30 28 280-15M1030 408l15 185M1310 365l-6 228" fill="none" stroke="#d9e6e1" stroke-opacity=".25"/></g><path d="m1015 604-15-224 310-15 35 230" fill="none" stroke="#dce8e2" stroke-width="7" stroke-linecap="round"/><path d="m1015 604 330-9" stroke="#94aaa4" stroke-width="2"/></g>
+            <g id="scene-keeper" transform="translate(1120 570)">
+              <ellipse cx="0" cy="35" rx="46" ry="9" fill="#000" opacity=".2"/>
+              <g stroke-linecap="round" stroke-linejoin="round"><path d="m-10-5-20 47-17 13M13-5l25 42 24 11" fill="none" stroke="#17222d" stroke-width="19"/><path d="M-13-62Q-57-86-112-115M12-62Q38-75 59-111" fill="none" stroke="url(#keeper-kit)" stroke-width="17"/><path d="m-112-115-8-5M59-111l3-8" stroke="#e7eadb" stroke-width="14"/><path d="m-17-75 35 1 7 65-45 3Z" fill="url(#keeper-kit)"/><circle cy="-97" r="16" fill="#99735a"/><path d="M-14-104q14-21 29 0" fill="#16212a"/></g>
+            </g>
+            <ellipse cx="380" cy="750" rx="68" ry="12" fill="#000" opacity=".3"/>
+            <g id="scene-player" transform="translate(350 605)">
+              <g id="scene-player-body"><path d="m-5 15-25 61 10 58" fill="none" stroke="#171f27" stroke-width="24" stroke-linecap="round"/><path d="m-22 130 27 8" stroke="#e4ecd8" stroke-width="13" stroke-linecap="round"/><path d="m-7-82-27 33-29 6M24-81l27 26 23-18" fill="none" stroke="#95765c" stroke-width="15" stroke-linecap="round"/><path d="m-15-98 43 5 11 87-52 6Z" fill="url(#kit)"/><path d="M1-90 8-8" stroke="#f0ffd4" stroke-opacity=".35" stroke-width="3"/><path d="m-13-4 51-2-1 32-45-1Z" fill="#111c24"/><path d="m1-103 3-17" stroke="#95765c" stroke-width="16"/><circle cx="8" cy="-139" r="21" fill="#a37e61"/><path d="M-12-144q3-32 36-17l7 17-15-10-26 15Z" fill="#131d24"/><text id="scene-player-number" x="11" y="-44" text-anchor="middle" fill="#102534" font-size="30" font-weight="800">10</text></g>
+              <g id="scene-shooting-leg"><path d="m13 18 32 57 35 56" fill="none" stroke="#171f27" stroke-width="23" stroke-linecap="round"/><path d="m78 129 28 2" stroke="#7dd3fc" stroke-width="14" stroke-linecap="round"/></g>
+            </g>
+            <g id="scene-grass" opacity="0" fill="#86efac"><path d="m430 739-28-24 9 21Zm0 0 36-13-20 24Zm0 0-6-38-9 23Zm0 0 42 20-32-5Z"/></g>
+            <g id="scene-ball" transform="translate(477 741)"><circle r="20" fill="url(#ball-shade)"/><path d="m-4-10 11 1 5 9-7 8-11-3-3-10ZM-19-5l5-9 3 4-5 8ZM14-14l4 5-2 7-4-2ZM-11 14l8 5 6-3-5-6ZM14 9l3 4-8 5-1-6Z" fill="#1b2a32"/><circle r="19" fill="none" stroke="#e5efe8" stroke-opacity=".4"/></g>
+          </g>
+        </svg>
+        <div id="scene-flash" class="scene-flash"></div>
+        <div class="scene-progress" aria-hidden="true"><span id="scene-progress"></span></div>
+      </div>
+    </div>
+  </section>
+  <main id="matchday-app" class="shell v2-shell" inert>
+    <p class="v2-static-welcome" hidden>Matchday, at your pace. Motion is reduced on this device.</p>
+    <header class="hero">
+      <div class="brand-lockup">
+        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=9.0.0" alt=""></div>
+        <div>
+          <p class="eyebrow">SOCCER AT A GLANCE</p>
+          <h1 id="matchday-heading" tabindex="-1">BallerWatch</h1>
+          <p class="subtitle">Pickup + RATS monitor</p>
+        </div>
       </div>
     </header>
 
@@ -224,7 +263,7 @@
             </svg>
           </span>
           <div>
-            <p class="eyebrow">MATCH INTELLIGENCE · V8.8</p>
+            <p class="eyebrow">YOUR MATCH ANALYST</p>
             <h2>BallerWatch AI</h2>
           </div>
         </div>
@@ -391,13 +430,8 @@
       </div>
 
 
-      <section class="app-version-settings" aria-labelledby="app-version-heading">
-        <h3 class="settings-subheading" id="app-version-heading">App version</h3>
-        <nav class="app-version-switch" aria-label="Choose BallerWatch version">
-          <a id="app-version-v1" href="./" aria-current="page">V1 · Original</a>
-          <a id="app-version-v2" href="./v2/">V2 · Cinematic</a>
-        </nav>
-        <p class="hint">Switch this view. Your matches, teams and sign-in are shared.</p>
+      <section aria-label="Offline files">
+        <details id="v2-offline-tools"><summary>Offline files</summary><p class="hint">Clear frontend files while keeping your sign-in and device preferences.</p><button id="clear-v2-caches" class="secondary compact-button" type="button">Clear app frontend cache</button><p id="v2-cache-status" class="hint" role="status"></p></details>
       </section>
       <div class="settings-divider"></div>
 
@@ -626,6 +660,7 @@
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=8.14.1"></script>
+  <script type="module" src="./app.js?v=9.0.0"></script>
+  <script type="module" src="./v2/app.js?v=9.0.0"></script>
 </body>
 </html>

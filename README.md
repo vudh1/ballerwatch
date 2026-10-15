@@ -2,15 +2,15 @@
 
 BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, Calendar sync, and quick answers into one installable app.
 
-**Current source version: 8.14.1**
+**Current source version: 9.0.0**
 
-[Open original BallerWatch](https://vudh1.github.io/ballerwatch/) · [Open V2](https://vudh1.github.io/ballerwatch/v2/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
+[Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
 
 > `main` is reviewed source. `production` is the exact released commit. The live app changes only after a validated promotion.
 
 ## What you can do
 
-- **Try V2 at [/v2/](https://vudh1.github.io/ballerwatch/v2/):** a two-second cinematic launch, a borderless feature tour within the full-screen reversible soccer hero, the original matchday cards, and a separate iPhone Home Screen install. Switch layouts from Settings. V1 stays at the root. Both use the same backend, account, matches, Inbox and canonical encrypted runtime-state. See the [V2 implementation and operations guide](docs/wiki/V2.md).
+- **One BallerWatch at the main address:** a two-second brand launch, full-screen scroll hero with a stadium audience and camera flashes behind feature text, then the original matchday cards. Settings and Inbox fade in with the cards and stay easy to tap. Old `/v2/` links redirect to the root; account, RSVP, Calendar, AI, notification and administration features use the same controller and encrypted backend. See the [cinematic app and migration guide](docs/wiki/V2.md).
 
 - See the next **Pickup** or **League** match with a cleaner visual hierarchy for location, weather, RSVP, and secondary actions. Newly published RSVP dates remain in the match-card carousel and expanded calendar even beyond the initial 14-day grid; missing field details show *Venue to be announced* until the RSVP source publishes a location.
 - See RSVP capacity for pickup games; tap the capacity area to open the full-width roster sheet and RSVP from inside it.
@@ -37,19 +37,15 @@ A 22-second walkthrough with a short animated intro. Recorded from the app using
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/)
 
-![BallerWatch V2 demo: cinematic launch, borderless feature tour, foreground soccer shot, match cards, calendar, standings, AI, Inbox and version settings](docs/demo-v2.gif)
-
-V2 recorded from the running mobile interface with synthetic sample data. The original V1 demo stays above. No production accounts, RSVP, notifications or Calendar entries are used.
-
-[Open BallerWatch V2](https://vudh1.github.io/ballerwatch/v2/)
+The smoother canonical-app demo will replace the walkthrough above after 9.0.0 is verified in production.
 
 ## What's new
+
+**v9.0.0** — The cinematic app takes over the main address. Add audience/camera flashes, fade Settings/Inbox with the card reveal, remove replay/version controls, and align notification checks. Old V2 links redirect to the canonical app.
 
 **v8.14.1** — Full-screen V2 stadium coverage, borderless feature captions and ball/keeper action in front of the words. Remove the scroll instructions and refresh the V2 demo.
 
 **v8.14.0** — A two-second cinematic wordmark, glass panels introducing the site's features, and fixed Settings/Inbox controls throughout the V2 reveal. Switch V1/V2 in Settings, use the new glass soccer-ball icon, and watch the V2 demo above.
-
-**v8.13.0** — The scroll hero leads into the original match/calendar/standings cards, with the shooter wearing #10 and the busy sidebar/shortcut layout removed.
 
 That's the recent summary. Older release details live in [GitHub Releases](https://github.com/vudh1/ballerwatch/releases) and the [Versions guide](https://github.com/vudh1/ballerwatch/wiki/Versions). The project keeps the full ledger in [features/versions.json](features/versions.json) rather than repeating it in this README.
 

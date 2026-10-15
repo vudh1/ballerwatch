@@ -3,4 +3,4 @@
  * Baseline: v8.10.0. The imported implementation uses this registration's URL
  * to select V2 launch targets and cache namespaces, independently of V1.
  */
-importScripts("../sw.js?v=8.14.1");
+importScripts("../sw.js?v=9.0.0");

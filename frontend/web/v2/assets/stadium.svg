@@ -3,7 +3,7 @@
     <linearGradient id="sky" x2="0" y2="1"><stop stop-color="#061a18"/><stop offset="1" stop-color="#173b35"/></linearGradient>
     <linearGradient id="pitch" x2="0" y2="1"><stop stop-color="#164b39"/><stop offset="1" stop-color="#08251f"/></linearGradient>
     <radialGradient id="light"><stop stop-color="#e9f9ff" stop-opacity=".7"/><stop offset="1" stop-color="#b8e9ff" stop-opacity="0"/></radialGradient>
-    <pattern id="crowd" width="27" height="20" patternUnits="userSpaceOnUse"><circle cx="6" cy="6" r="1.5" fill="#879b9e" opacity=".5"/><circle cx="21" cy="14" r="1.2" fill="#a7c8bc" opacity=".4"/></pattern>
+    <pattern id="crowd" width="44" height="30" patternUnits="userSpaceOnUse"><g opacity=".65"><circle cx="9" cy="8" r="3.4" fill="#8cafa8"/><path d="M3 20q0-9 6-9t6 9" fill="#3e6860"/><path d="m4 15-4-7m14 7 5-8" stroke="#618c81" stroke-width="2.5" stroke-linecap="round"/><circle cx="31" cy="19" r="3" fill="#759d98"/><path d="M25 30q0-8 6-8t6 8" fill="#335b60"/></g></pattern>
   </defs>
   <path fill="url(#sky)" d="M-1000 0h3400v900h-3400z"/>
   <g id="stadium"><path d="M-1000 240Q700 530 2400 240v360H-1000Z" fill="#0b2725"/><path d="M-1000 270Q700 510 2400 270v280H-1000Z" fill="url(#crowd)"/><path d="M-1000 400Q700 565 2400 400M-1000 460Q700 595 2400 460" fill="none" stroke="#4c666a" stroke-opacity=".22" stroke-width="4"/><path d="M-1000 548H2400v40H-1000Z" fill="#123b33"/><path d="M-1000 563H2400" stroke="#7dd3fc" stroke-opacity=".18" stroke-width="2"/></g>
