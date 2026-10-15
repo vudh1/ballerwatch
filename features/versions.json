@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "8.12.1",
+  "currentVersion": "8.12.2",
   "releases": [
+    {
+      "version": "8.12.2",
+      "date": "2026-10-14",
+      "type": "patch",
+      "source": "user-reported",
+      "title": "Resilient personalized calendar status after monitored-team changes",
+      "webAnnouncement": "BallerWatch 8.12.2 keeps personalized matches and standings available when default monitored teams change: device selections use the current precomputed season, without waiting for an exact global-team cache match.",
+      "changes": [
+        "Fix 503s on the personalized calendar/standings when the global monitored-team snapshot differs from the independently published scouting-index monitored team list; per-device public selections are validated by season instead.",
+        "Keep the stricter monitored-team guard for default global standings and scouting reports; never compute historical scoring in the public request path.",
+        "Manually refresh the encrypted hourly scouting cache and add regressions for changed defaults, wrong-season rejection, and stable public-calendar cache availability.",
+        "Rotate V1/V2 PWA shell versions and use validated Worker/Pages release gates."
+      ]
+    },
     {
       "version": "8.12.1",
       "date": "2026-10-14",
