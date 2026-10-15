@@ -3,32 +3,41 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#080f14">
+  <meta name="theme-color" content="#061a18">
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://ballerwatch-web.vudhone.workers.dev; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; upgrade-insecure-requests">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="BallerWatch V2">
-  <meta name="description" content="Your next match. Your club. Your game. A new BallerWatch experience over the same trusted soccer data.">
+  <meta name="description" content="A moment of football. Then everything you need for your next match.">
   <title>BallerWatch V2 — Your matchday</title>
-  <link rel="manifest" href="./manifest.webmanifest?v=8.12.2">
-  <link rel="icon" href="../icon.svg?v=8.12.2" type="image/svg+xml">
-  <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png?v=8.12.2">
-  <script src="./prepaint.js?v=8.12.2"></script>
-  <link rel="stylesheet" href="../styles.css?v=8.12.2">
-  <link rel="stylesheet" href="./styles.css?v=8.12.2">
+  <link rel="manifest" href="./manifest.webmanifest?v=8.13.0">
+  <link rel="icon" href="../icon.svg?v=8.13.0" type="image/svg+xml">
+  <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png?v=8.13.0">
+  <script src="./prepaint.js?v=8.13.0"></script>
+  <link rel="stylesheet" href="../styles.css?v=8.13.0">
+  <link rel="stylesheet" href="./styles.css?v=8.13.0">
 </head>
 <body>
-  <a class="v2-skip-link" href="#matchday-heading">Skip to matchday</a>
+  <a class="v2-skip-link" href="#matchday-app">Skip to matches</a>
+  <section id="v2-launch" class="v2-launch" aria-label="Welcome to BallerWatch">
+    <div class="v2-launch-pitch" aria-hidden="true"></div>
+    <div class="v2-launch-brand">
+      <svg class="v2-launch-ball" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m26 20 14 2 5 13-12 9-13-9Zm-18 0 12 3m25 0 11-5M11 47l12-5m21 0 9 6M32 3v12m0 34v12" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+      <p class="v2-launch-name">BallerWatch<span aria-hidden="true">.</span></p>
+      <p class="v2-launch-caption">THE MOMENT BEFORE THE MATCH</p>
+    </div>
+    <button id="skip-launch" class="secondary" type="button">Skip to matches</button>
+  </section>
   <section id="soccer-intro" class="soccer-intro" aria-label="Interactive soccer introduction">
     <div id="soccer-stage" class="soccer-stage">
-      <div class="intro-topline"><a href="../" class="v2-wordmark" aria-label="BallerWatch V1">BW<span> / V2</span></a><button id="skip-intro" type="button">Skip intro <span aria-hidden="true">↗</span></button></div>
+      <div class="intro-topline"><a href="../" class="v2-wordmark" aria-label="Open original BallerWatch">BallerWatch<span>V2</span></a><button id="skip-intro" type="button">Skip intro <span aria-hidden="true">↗</span></button></div>
       <div id="scene-scene-content" class="scene-content">
-        <div class="scene-copy"><p id="scene-phase" class="eyebrow">01 / THE BUILD-UP</p><h1 id="scene-headline"><span>Every game starts</span><span>with a moment.</span></h1></div>
+        <div class="scene-copy"><p id="scene-phase" class="eyebrow">01 / THE BUILD-UP</p><h1 id="scene-headline"><span>Before the match.</span><span>One moment.</span></h1></div>
         <svg id="soccer-scene" class="soccer-scene" viewBox="0 0 1440 900" aria-hidden="true" focusable="false">
           <defs>
-            <linearGradient id="kit" x2="1" y2="1"><stop stop-color="#dfff95"/><stop offset="1" stop-color="#83ad3b"/></linearGradient>
-            <linearGradient id="keeper-kit" x2="1" y2="1"><stop stop-color="#d5a27a"/><stop offset="1" stop-color="#70452d"/></linearGradient>
+            <linearGradient id="kit" x2="1" y2="1"><stop stop-color="#e0f2fe"/><stop offset="1" stop-color="#38bdf8"/></linearGradient>
+            <linearGradient id="keeper-kit" x2="1" y2="1"><stop stop-color="#5eead4"/><stop offset="1" stop-color="#0f766e"/></linearGradient>
             <radialGradient id="ball-shade" cx=".3" cy=".25"><stop stop-color="#fff"/><stop offset="1" stop-color="#a4b2b7"/></radialGradient>
             <pattern id="net-grid" width="18" height="18" patternUnits="userSpaceOnUse"><path d="M18 0H0V18" fill="none" stroke="#e3efeb" stroke-opacity=".38" stroke-width="1"/></pattern>
           </defs>
@@ -41,35 +50,30 @@
             </g>
             <ellipse cx="380" cy="750" rx="68" ry="12" fill="#000" opacity=".3"/>
             <g id="scene-player" transform="translate(350 605)">
-              <g id="scene-player-body"><path d="m-5 15-25 61 10 58" fill="none" stroke="#171f27" stroke-width="24" stroke-linecap="round"/><path d="m-22 130 27 8" stroke="#e4ecd8" stroke-width="13" stroke-linecap="round"/><path d="m-7-82-27 33-29 6M24-81l27 26 23-18" fill="none" stroke="#95765c" stroke-width="15" stroke-linecap="round"/><path d="m-15-98 43 5 11 87-52 6Z" fill="url(#kit)"/><path d="M1-90 8-8" stroke="#f0ffd4" stroke-opacity=".35" stroke-width="3"/><path d="m-13-4 51-2-1 32-45-1Z" fill="#111c24"/><path d="m1-103 3-17" stroke="#95765c" stroke-width="16"/><circle cx="8" cy="-139" r="21" fill="#a37e61"/><path d="M-12-144q3-32 36-17l7 17-15-10-26 15Z" fill="#131d24"/><path d="M6-70h14l-11 28" stroke="#17281b" stroke-width="4" fill="none"/></g>
-              <text id="scene-player-number" x="11" y="-44" text-anchor="middle" fill="#10201a" font-size="32" font-weight="800" stroke="#e4ffba" stroke-width=".7">10</text>
-               <g id="scene-shooting-leg"><path d="m13 18 32 57 35 56" fill="none" stroke="#171f27" stroke-width="23" stroke-linecap="round"/><path d="m78 129 28 2" stroke="#d6ff75" stroke-width="14" stroke-linecap="round"/></g>
+              <g id="scene-player-body"><path d="m-5 15-25 61 10 58" fill="none" stroke="#171f27" stroke-width="24" stroke-linecap="round"/><path d="m-22 130 27 8" stroke="#e4ecd8" stroke-width="13" stroke-linecap="round"/><path d="m-7-82-27 33-29 6M24-81l27 26 23-18" fill="none" stroke="#95765c" stroke-width="15" stroke-linecap="round"/><path d="m-15-98 43 5 11 87-52 6Z" fill="url(#kit)"/><path d="M1-90 8-8" stroke="#f0ffd4" stroke-opacity=".35" stroke-width="3"/><path d="m-13-4 51-2-1 32-45-1Z" fill="#111c24"/><path d="m1-103 3-17" stroke="#95765c" stroke-width="16"/><circle cx="8" cy="-139" r="21" fill="#a37e61"/><path d="M-12-144q3-32 36-17l7 17-15-10-26 15Z" fill="#131d24"/><text id="scene-player-number" x="11" y="-44" text-anchor="middle" fill="#102534" font-size="30" font-weight="800">10</text></g>
+              <g id="scene-shooting-leg"><path d="m13 18 32 57 35 56" fill="none" stroke="#171f27" stroke-width="23" stroke-linecap="round"/><path d="m78 129 28 2" stroke="#7dd3fc" stroke-width="14" stroke-linecap="round"/></g>
             </g>
-            <g id="scene-grass" opacity="0" fill="#bed895"><path d="m430 739-28-24 9 21Zm0 0 36-13-20 24Zm0 0-6-38-9 23Zm0 0 42 20-32-5Z"/></g>
+            <g id="scene-grass" opacity="0" fill="#86efac"><path d="m430 739-28-24 9 21Zm0 0 36-13-20 24Zm0 0-6-38-9 23Zm0 0 42 20-32-5Z"/></g>
             <g id="scene-ball" transform="translate(477 741)"><circle r="20" fill="url(#ball-shade)"/><path d="m-4-10 11 1 5 9-7 8-11-3-3-10ZM-19-5l5-9 3 4-5 8ZM14-14l4 5-2 7-4-2ZM-11 14l8 5 6-3-5-6ZM14 9l3 4-8 5-1-6Z" fill="#1b2a32"/><circle r="19" fill="none" stroke="#e5efe8" stroke-opacity=".4"/></g>
           </g>
         </svg>
         <div id="scene-flash" class="scene-flash"></div>
-        <div class="intro-bottomline"><p><span class="scroll-glyph" aria-hidden="true">↓</span> Scroll to play <span class="intro-reverse">· Reverse to rewind</span></p><span>THE GAME, CLOSER.</span></div>
+        <div class="intro-bottomline"><p><span class="scroll-glyph" aria-hidden="true">↓</span> Scroll to shoot <span class="intro-reverse">· Reverse to rewind</span></p><span>YOUR MATCHDAY AWAITS</span></div>
         <div class="scene-progress" aria-hidden="true"><span id="scene-progress"></span></div>
       </div>
     </div>
   </section>
-  <main id="matchday-app" class="v2-shell" inert>
-    <aside class="v2-sidebar" aria-label="BallerWatch navigation">
-      <a class="v2-wordmark" href="./">BW<span> / V2</span></a>
-      <p class="sidebar-caption">YOUR GAME.<br>ALL IN ONE PLACE.</p>
-      <nav class="desktop-nav" aria-label="Main">
-        <button data-v2-target="matchday" aria-controls="panel-matchday" aria-current="page" type="button"><span aria-hidden="true">◉</span> Matchday</button>
-        <button data-v2-target="schedule" aria-controls="panel-schedule" type="button"><span aria-hidden="true">▦</span> Schedule</button>
-        <button data-v2-target="club" aria-controls="panel-club" type="button"><span aria-hidden="true">⚑</span> Club</button>
-      </nav>
-      <div class="sidebar-bottom"><span class="v2-edition">THE MATCHDAY EDITION</span><a href="../">Open V1 ↗</a></div>
-    </aside>
-    <div class="v2-content">
-      <header class="v2-header">
-        <a class="mobile-wordmark v2-wordmark" href="./">BW<span> / V2</span></a>
-        <p class="v2-header-label">BALLERWATCH <span>/ YOUR SOCCER HQ</span></p>
+  <main id="matchday-app" class="shell v2-shell" inert>
+    <p class="v2-static-welcome" hidden>Matchday, at your pace. Motion is reduced on this device.</p>
+    <header class="hero">
+      <div class="brand-lockup">
+        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="../icon.svg?v=8.13.0" alt=""></div>
+        <div>
+          <p class="eyebrow">SOCCER AT A GLANCE</p>
+          <h1 id="matchday-heading" tabindex="-1">BallerWatch</h1>
+          <p class="subtitle">Pickup + RATS monitor</p>
+        </div>
+      </div>
       <div class="hero-actions">
         <button class="utility-button" id="settings-button" type="button"
           aria-label="Open settings" aria-haspopup="dialog">
@@ -86,13 +90,13 @@
           <span class="notification-badge" id="notification-badge" hidden>0</span>
         </button>
       </div>
+    </header>
 
-      </header>
-      <section class="v2-static-welcome"><p class="eyebrow">WELCOME TO V2</p><p>Your game. At your pace.</p><span>The cinematic is paused for your motion preference. Your matchday is ready below.</span></section>
-      <section id="panel-matchday" data-v2-panel="matchday" class="v2-panel">
-        <div class="v2-page-heading"><div><p class="eyebrow">THE BEAUTIFUL GAME, ORGANIZED.</p><h2 id="matchday-heading" tabindex="-1">Your matchday<span>.</span></h2></div><div class="system-line"><span class="system-dot" aria-hidden="true"></span><span id="system-status">Connecting…</span></div></div>
-        <div class="v2-match-grid">
-          <div class="v2-editorial"><div class="pitch-art" aria-hidden="true"></div><div class="editorial-top"><span>01 / GAME ON</span><span aria-hidden="true">↗</span></div><div class="editorial-copy"><p>Less planning.<br><em>More playing.</em></p><span>Pickup & league. One place to be ready.</span></div><span class="editorial-caption">SEE YOU ON THE PITCH.</span></div>
+    <div class="system-line">
+      <span class="system-dot" aria-hidden="true"></span>
+      <span id="system-status">Connecting…</span>
+    </div>
+
     <div class="spotlight-carousel" id="spotlight-carousel">
       <button class="spotlight-edge-control carousel-waterfall-edge spotlight-edge-previous" id="spotlight-previous"
         type="button" aria-label="Previous game" disabled>
@@ -155,17 +159,6 @@
       </section>
     </div>
 
-
-        </div>
-        <div class="v2-section-label"><span>THE REST OF YOUR GAME</span><span>02 — 04</span></div>
-        <div class="v2-shortcuts">
-          <button data-v2-target="schedule" type="button"><span class="shortcut-number">02 / PLAN AHEAD</span><strong>Your schedule</strong><span>Every kickoff, in view. <b aria-hidden="true">↗</b></span></button>
-          <button data-v2-target="club" type="button"><span class="shortcut-number">03 / KNOW YOUR CLUB</span><strong>The bigger picture</strong><span>Standings, form & opponents. <b aria-hidden="true">↗</b></span></button>
-          <button id="v2-ai" type="button"><span class="shortcut-number">04 / MATCH INTELLIGENCE</span><strong>Ask BallerWatch</strong><span>Your game, explained. <b aria-hidden="true">↗</b></span></button>
-        </div>
-      </section>
-      <section id="panel-schedule" data-v2-panel="schedule" class="v2-panel" hidden>
-        <div class="v2-page-heading"><div><p class="eyebrow">MAKE ROOM FOR THE GAME.</p><h2 tabindex="-1">The schedule<span>.</span></h2><p class="muted">Pick a day. Find your next kickoff.</p></div></div>
     <section class="card calendar-card bw-card-frame" id="two-week-calendar" aria-expanded="false">
         <div class="section-heading calendar-heading bw-card-heading">
           <div>
@@ -180,10 +173,6 @@
         </div>
     </section>
 
-
-      </section>
-      <section id="panel-club" data-v2-panel="club" class="v2-panel" hidden>
-        <div class="v2-page-heading"><div><p class="eyebrow">KNOW WHERE YOU STAND.</p><h2 tabindex="-1">Your club<span>.</span></h2><p class="muted">Swipe teams. Tap a rival to explore their form.</p></div></div>
     <section class="standings-card" id="league-standings" aria-label="Current season standings">
       <div class="standings-rail">
         <div id="standings-viewport" class="standings-viewport" aria-roledescription="carousel"
@@ -199,13 +188,12 @@
       </div>
     </section>
 
-
-      </section>
-      <section class="v2-experience-tools" aria-label="V2 experience">
-        <button id="replay-intro" type="button">↻ Replay the moment</button><a href="../">Open original BallerWatch ↗</a>
-        <details><summary>V2 offline storage</summary><p>Clear only this version’s frontend files. Your sign-in, account, notifications and V1 stay available.</p><button id="clear-v2-caches" type="button">Clear V2 frontend cache</button><p id="v2-cache-status" role="status"></p></details>
-        <p id="motion-note" role="status" hidden>Reduced motion is enabled on your device. The cinematic stays paused; all matchday features are available.</p>
-      </section>
+    <details class="v2-experience-tools">
+      <summary>V2 experience</summary>
+      <div class="v2-experience-actions"><button id="replay-intro" class="secondary" type="button">Replay the moment</button><a href="../">Open V1</a></div>
+      <details><summary>Offline storage</summary><p>Clear V2 frontend files while keeping V1, your sign-in and device preferences.</p><button id="clear-v2-caches" class="secondary" type="button">Clear V2 frontend cache</button><p id="v2-cache-status" role="status"></p></details>
+      <p id="motion-note" role="status" hidden>Reduced motion is enabled. Your matchday is ready.</p>
+    </details>
     <footer>
       <section class="card footer-install bw-card-frame" id="install-card">
         <div class="footer-install-copy">
@@ -225,15 +213,8 @@
         <span class="copyright">© 2026 BallerWatch. All rights reserved.</span>
       </div>
     </footer>
-
-    </div>
   </main>
-  <nav class="v2-bottom-nav" aria-label="Mobile navigation">
-    <button data-v2-target="matchday" aria-controls="panel-matchday" aria-current="page" type="button"><span aria-hidden="true">◉</span>Matchday</button>
-    <button data-v2-target="schedule" aria-controls="panel-schedule" type="button"><span aria-hidden="true">▦</span>Schedule</button>
-    <button data-v2-target="club" aria-controls="panel-club" type="button"><span aria-hidden="true">⚑</span>Club</button>
-    <button id="v2-inbox" type="button" aria-haspopup="dialog"><span aria-hidden="true">▱</span>Inbox</button>
-  </nav>
+
   <dialog id="team-history-dialog" class="team-history-dialog"
     aria-labelledby="team-history-title">
     <div class="team-history-shell">
@@ -673,8 +654,7 @@
     </form>
   </dialog>
 
-
-  <script type="module" src="../app.js?v=8.12.2"></script>
-  <script type="module" src="./app.js?v=8.12.2"></script>
+  <script type="module" src="../app.js?v=8.13.0"></script>
+  <script type="module" src="./app.js?v=8.13.0"></script>
 </body>
 </html>

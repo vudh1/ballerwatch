@@ -4,6 +4,7 @@
  * Coordinates refer to the 1440 × 900 scene; edit these controls to retime play.
  */
 export const SCENE = Object.freeze({
+  launchMs: 1400,
   scrollScreens: 3.2,
   setupEnd: 0.15,
   contact: 0.30,

@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, Calendar sync, and quick answers into one installable app.
 
-**Current source version: 8.11.0**
+**Current source version: 8.13.0**
 
 [Open original BallerWatch](https://vudh1.github.io/ballerwatch/) · [Open V2](https://vudh1.github.io/ballerwatch/v2/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
 
@@ -10,7 +10,7 @@ BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS leag
 
 ## What you can do
 
-- **Try V2 at [/v2/](https://vudh1.github.io/ballerwatch/v2/):** a new Matchday / Schedule / Club layout, a reversible scroll-controlled soccer intro, and a separate iPhone Home Screen install. V1 stays at the root. Both use the same backend, account, matches, Inbox and canonical encrypted runtime-state. See the [V2 implementation and operations guide](docs/wiki/V2.md).
+- **Try V2 at [/v2/](https://vudh1.github.io/ballerwatch/v2/):** a brief branded launch, a reversible scroll-controlled soccer hero, the familiar original matchday cards, and a separate iPhone Home Screen install. V1 stays at the root. Both use the same backend, account, matches, Inbox and canonical encrypted runtime-state. See the [V2 implementation and operations guide](docs/wiki/V2.md).
 
 - See the next **Pickup** or **League** match with a cleaner visual hierarchy for location, weather, RSVP, and secondary actions. Newly published RSVP dates remain in the match-card carousel and expanded calendar even beyond the initial 14-day grid; missing field details show *Venue to be announced* until the RSVP source publishes a location.
 - See RSVP capacity for pickup games; tap the capacity area to open the full-width roster sheet and RSVP from inside it.
@@ -38,6 +38,8 @@ A 22-second walkthrough with a short animated intro. Recorded from the app using
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/)
 
 ## What's new
+
+**v8.13.0** — A quieter V2: a 1.4-second branded launch, a green-pitch scroll hero with the #10 shooter, then the original V1 match/calendar/standings cards. Removed the sidebar, promotional tiles and extra navigation. Skip and replay remain available.
 
 **v8.11.0** — Three-way win/tie/loss bar on V1 and V2 match cards; V2 soccer scene moves to a reversible scrolling background while matchday cards stay interactive in front, with the striker wearing #10. Adds safe read-only weekly scouting benchmarks.
 
