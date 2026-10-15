@@ -1835,8 +1835,20 @@ async function loadScoutingIndex(env) {
   );
 }
 
+/**
+ * Visitor-selected teams are independent of the administrator's global
+ * monitored teams. All-team fixtures/cards are precomputed for a season,
+ * so they stay valid even while that separate global team list changes.
+ * This avoids turning healthy public calendar requests into 503s after a
+ * team change, without doing historical calculations in the Worker.
+ */
+export function scoutingSeasonCurrent(index, snapshot) {
+  return Boolean(index?.seasonId &&
+    index.seasonId === String(snapshot?.league?.seasonId || ""));
+}
+
 function scoutingProjectionCurrent(index, snapshot) {
-  if (!index || index.seasonId !== String(snapshot?.league?.seasonId || "")) return false;
+  if (!scoutingSeasonCurrent(index, snapshot)) return false;
   const tracked = Array.isArray(snapshot?.teams) ? snapshot.teams : [];
   const indexed = Array.isArray(index.monitoredTeams) ? index.monitoredTeams : [];
   const normalize = (list) => list.map((name) => String(name || "").trim().toLowerCase()).sort();
@@ -3782,7 +3794,7 @@ export default {
         const [snapshot, index] = await Promise.all([
           loadSnapshot(env), teams.length ? loadScoutingIndex(env) : Promise.resolve(null),
         ]);
-        if (teams.length && (!scoutingProjectionCurrent(index, snapshot) ||
+        if (teams.length && (!scoutingSeasonCurrent(index, snapshot) ||
             !Array.isArray(index.availableMatches))) {
           return webJson(request,
             { ok: false, error: "Prepared team fixtures are refreshing." }, { status: 503 });
@@ -3822,8 +3834,14 @@ export default {
         const [snapshot, index] = await Promise.all([
           loadSnapshot(env), loadScoutingIndex(env),
         ]);
-        if (scoutingProjectionCurrent(index, snapshot)) {
-          const requested = url.searchParams.get("teams");
+        const requested = url.searchParams.get("teams");
+        // Default cards still require the exact monitored-team snapshot.
+        // Anonymous device-selected cards come from the full season index
+        // and must not fail just because the administrator changed defaults.
+        const indexReady = requested
+          ? scoutingSeasonCurrent(index, snapshot) && Array.isArray(index.availableCards)
+          : scoutingProjectionCurrent(index, snapshot);
+        if (indexReady) {
           if (!requested) return webJson(request, { ok: true, standings: index.standings });
           const teams = [...new Set(requested.split(",")
             .map((name) => name.trim().toLocaleLowerCase("en"))

@@ -17,6 +17,7 @@ import {
   webCalendarDetails,
   webNextGameDetails,
   webSafeSnapshot,
+  scoutingSeasonCurrent,
   withCachedVenue,
 } from "../../../../backend/infra/web-worker/worker.mjs";
 
@@ -75,6 +76,19 @@ test("monitored head-to-head fixture has one card with each team's published jer
   assert.deepEqual([games[0].team, games[0].opponent,
     games[0].jerseyColor, games[0].opponentJerseyColor, games[0].bothMonitored],
   ["Team Alpha", "Team Bravo", "Green", "White", true]);
+});
+
+test("visitor-selected fixtures survive a changed default monitored-team list", () => {
+  const snapshot = { league: { seasonId: "fall-2026" }, teams: ["Recently Changed Club"] };
+  const index = { seasonId: "fall-2026", monitoredTeams: ["Previous Default Club"],
+    availableMatches: [{ homeTeam: "Visitor FC", awayTeam: "Another FC", date: "2026-10-20" }],
+    availableCards: [{ team: "Visitor FC", rows: [] }] };
+  assert.equal(scoutingSeasonCurrent(index, snapshot), true,
+    "A device-specific public calendar should not be invalidated by global settings changes");
+  assert.equal(scoutingSeasonCurrent({ ...index, seasonId: "summer-2026" }, snapshot), false,
+    "Never serve another season's fixtures");
+  assert.equal(scoutingSeasonCurrent(null, snapshot), false);
+  assert.equal(scoutingSeasonCurrent(index, { league: {} }), false);
 });
 
 test("personalized calendar includes indexed future fixtures without any live scouting", () => {

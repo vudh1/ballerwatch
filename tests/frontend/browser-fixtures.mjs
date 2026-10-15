@@ -1,6 +1,6 @@
 /**
  * Synthetic public/private API contracts for notification-silent browser tests.
- * Baseline: v8.12.1. No real users, runtime documents, push or Calendar writes.
+ * Baseline: v8.12.2. No real users, runtime documents, push or Calendar writes.
  */
 export const fixtureGame = {
   id: "pickup:2099-10-15", kind: "pickup", date: "2099-10-15",
@@ -46,7 +46,7 @@ export function fixtureResponse(pathname, method = "GET") {
   }
   if (method !== "GET") throw new Error(`Unexpected synthetic mutation: ${method} ${pathname}`);
   const responses = {
-    "/web/config": { ok: true, version: "8.12.1", push: { ready: false } },
+    "/web/config": { ok: true, version: "8.12.2", push: { ready: false } },
     "/web/calendar": { ok: true, calendar: fixtureCalendar },
     "/web/next-game": { ok: true, game: fixtureGame },
     "/web/standings": { ok: true, standings: fixtureStandings },

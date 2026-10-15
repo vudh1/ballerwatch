@@ -1802,7 +1802,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=8.12.1", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=8.12.2", {
     scope: "./",
     updateViaCache: "none",
   });
