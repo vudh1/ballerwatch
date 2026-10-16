@@ -2059,7 +2059,7 @@ test("cached calendar renders its real Updated timestamp without false reconnect
     startup.indexOf("const calendarOk = await loadCalendar({ initial: true })"));
   assert.ok(startup.indexOf("const calendarOk = await loadCalendar({ initial: true })") <
     startup.indexOf("void registerServiceWorker().catch"));
-  assert.match(startup, /initialLoadComplete = true;/);
+  assert.doesNotMatch(startup, /appRefreshDeferred/);
   assert.doesNotMatch(startup.split("const calendarOk = await loadCalendar")[0], /setSystemState\("stale"\)/);
   assert.match(worker, /url\.pathname === "\/web\/calendar"[\s\S]*?webCalendarDetails\(snapshot, weather/);
   assert.doesNotMatch(worker, /buildMatchupEstimate\(|tuneScoutingWeights\(|buildLeagueStandings\(/);
@@ -2147,4 +2147,16 @@ test("first-install worker takeover never reloads the cinematic introduction", (
   assert.doesNotMatch(section, /location\.reload|appRefreshDeferred/);
   const prepaint = fs.readFileSync("frontend/web/v2/prepaint.js", "utf8");
   assert.match(prepaint, /if \(firstLaunch\) sessionStorage\.setItem\("ballerwatch:v2:launch-seen", "1"\)/);
+});
+
+test("retired Google Calendar bridge cannot reappear in deployment or runtime paths", () => {
+  const workflows = fs.readdirSync(".github/workflows").filter((name) => name.endsWith(".yml"));
+  assert.equal(workflows.includes("deploy-apps-script.yml"), false);
+  assert.equal(fs.existsSync("backend/league/google_apps_script/Code.gs"), false);
+  assert.equal(fs.existsSync("backend/league/google-calendar-sync.mjs"), false);
+  const productionWorkflows = workflows.map((name) =>
+    fs.readFileSync(".github/workflows/" + name, "utf8")).join("\n");
+  assert.doesNotMatch(productionWorkflows, /GOOGLE_CALENDAR_WEBHOOK|google-calendar-sync|calendar-gate/);
+  const runtimePaths = fs.readFileSync("backend/shared/runtime-paths.mjs", "utf8");
+  assert.doesNotMatch(runtimePaths, /calendar-snapshot/);
 });
