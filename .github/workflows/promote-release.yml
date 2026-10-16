@@ -1,8 +1,6 @@
 name: Promote production release
 
 on:
-  schedule:
-    - cron: "37 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -27,7 +25,6 @@ jobs:
         id: candidate
         env:
           GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
-          EVENT_NAME: ${{ github.event_name }}
         shell: bash
         run: |
           set -euo pipefail
@@ -74,19 +71,6 @@ jobs:
             if [ "$tag_sha" != "$sha" ]; then
               echo "::error::Draft release $tag points to $tag_sha instead of candidate $sha."
               exit 1
-            fi
-          fi
-
-          if [ "$EVENT_NAME" = "schedule" ]; then
-            version_commit_epoch="$(git log -1 "$sha" --format=%ct -- features/versions.json)"
-            now_epoch="$(date +%s)"
-            age_seconds="$((now_epoch - version_commit_epoch))"
-            if [ "$age_seconds" -lt 86400 ]; then
-              remaining="$((86400 - age_seconds))"
-              echo "eligible=false" >> "$GITHUB_OUTPUT"
-              echo "reason=Candidate is still inside the 24-hour soak window ($remaining seconds remaining)." >> "$GITHUB_OUTPUT"
-              echo "Candidate $tag is only $age_seconds seconds old; waiting for the 24-hour rollout window."
-              exit 0
             fi
           fi
 

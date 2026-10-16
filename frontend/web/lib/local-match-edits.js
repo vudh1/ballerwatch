@@ -2,7 +2,12 @@
  * They alter only the displayed calendar and cards on this device; public
  * fixture caches stay canonical and scheduled push still follows RATS/RSVP.
  */
-export const LOCAL_MATCH_EDITS_KEY = "ballerwatch:local-match-edits:v1";
+// Beta testers can correct/hide fixtures without changing the production
+// view on the same phone. Both remain private and persistent per device.
+export const LOCAL_MATCH_EDITS_KEY = typeof window !== "undefined" &&
+  /^\/ballerwatch\/beta(?:\/|$)/.test(window.location?.pathname || "")
+  ? "ballerwatch:beta:local-match-edits:v1"
+  : "ballerwatch:local-match-edits:v1";
 const MAX_ITEMS = 100;
 const MAX_BYTES = 48_000;
 const validId = (id) => /^(pickup|league|free):[^\u0000-\u001f\u007f]{1,300}$/.test(String(id || ""));

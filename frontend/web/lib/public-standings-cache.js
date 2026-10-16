@@ -6,7 +6,9 @@
  */
 import { todaySeattleKey } from "./public-calendar-cache.js";
 
-export const PUBLIC_STANDINGS_LOCAL_KEY = "ballerwatch-public-standings-device-v1";
+export const PUBLIC_STANDINGS_LOCAL_KEY = typeof window !== "undefined" &&
+  /^\/ballerwatch\/beta(?:\/|$)/.test(window.location?.pathname || "")
+  ? "ballerwatch-beta-public-standings-device-v1" : "ballerwatch-public-standings-device-v1";
 export const PUBLIC_STANDINGS_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 const MAX_BYTES = 250_000;
 const CARD_FIELDS = ["team", "division", "divisionKey", "ready", "hasResults", "message"];

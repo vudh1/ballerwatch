@@ -323,15 +323,17 @@ try {
         await context.close();
       });
 
-      await scenario(`${engine}: legacy V2 links converge on the root and notification checks sit beside text`, async () => {
+      await scenario(`${engine}: legacy V2 links converge on beta and notification checks sit beside text`, async () => {
         const { context, page, errors } = await prepare(browser, { reducedMotion: "reduce" });
         await context.addInitScript(() => localStorage.setItem("ballerwatch-visitor-profile-v1-24h", JSON.stringify({ schema:1, expiresAt:Date.now()+86_400_000, data:{ name:"Sample visitor", teams:[] } })));
         await ready(page, "v2/?from=legacy#matches");
-        assert.equal(new URL(page.url()).pathname, "/ballerwatch/");
+        assert.equal(new URL(page.url()).pathname, "/ballerwatch/beta/");
         assert.equal(new URL(page.url()).search, "?from=legacy");
         assert.equal(new URL(page.url()).hash, "#matches");
         await openHubTab(page, "settings");
-        assert.equal(await page.locator("#guest-name").inputValue(), "Sample visitor");
+        assert.equal(await page.locator("#guest-name").inputValue(), "");
+        assert.ok(await page.evaluate(() => localStorage.getItem("ballerwatch-visitor-profile-v1-24h")),
+          "legacy production identity must not be migrated or erased by beta");
         assert.equal(await page.locator("#replay-intro,#app-version-v1,#app-version-v2").count(), 0);
         await page.locator("#close-settings").click();
         await openHubTab(page, "notifications");
@@ -457,6 +459,41 @@ try {
           /Fixture Park Soccer/);
         assert.deepEqual(second.errors,[]);
         await second.context.close();
+      });
+
+      await scenario(`${engine}: beta match edits need no login and never alter production preferences`, async () => {
+        const { context, page, calls, errors } = await prepare(browser, { reducedMotion: "reduce" });
+        await ready(page, "beta/");
+        assert.equal(new URL(page.url()).pathname, "/ballerwatch/beta/");
+        await page.locator("#next-game-menu-trigger").click();
+        await page.locator("#next-game-menu-edit").click();
+        await page.locator("#match-override-location").fill("Beta-only Fixture Field");
+        await page.locator('#match-override-form button[type="submit"]').click();
+        await page.waitForFunction(() =>
+          document.querySelector("#next-game-location")?.textContent.includes("Beta-only Fixture Field"));
+        assert.equal(await page.evaluate(() =>
+          Boolean(localStorage.getItem("ballerwatch:beta:local-match-edits:v1"))), true);
+        assert.equal(await page.evaluate(() =>
+          localStorage.getItem("ballerwatch:local-match-edits:v1")), null);
+        await page.goto(`${origin}/ballerwatch/`);
+        await page.waitForFunction(() =>
+          document.querySelector("#next-game-location")?.textContent.includes("Fixture Park Soccer"));
+        assert.match(await page.locator("#next-game-location").textContent(), /Fixture Park Soccer/);
+        await page.goto(`${origin}/ballerwatch/beta/`);
+        await page.waitForFunction(() =>
+          document.querySelector("#next-game-location")?.textContent.includes("Beta-only Fixture Field"));
+        page.once("dialog", (dialog) => dialog.accept());
+        await page.locator("#next-game-menu-trigger").click();
+        await page.locator("#next-game-menu-delete").click();
+        await openHubTab(page, "settings");
+        await page.locator("#deleted-match-list [data-restore-match-id]").click();
+        await page.locator("#close-settings").click();
+        await page.waitForFunction(() =>
+          document.querySelector("#next-game-location")?.textContent.includes("Beta-only Fixture Field"));
+        assert.equal(calls.some(call => call.path.startsWith("/web/user/match") &&
+          call.method !== "GET"), false);
+        assert.deepEqual(errors, []);
+        await context.close();
       });
 
       await scenario(`${engine}: two same-day matches display two dots and both match cards`, async () => {
@@ -648,7 +685,7 @@ try {
       });
 
       if (engine === "chromium") {
-        await scenario("chromium: legacy installed worker migrates to canonical root; offline redirects and scoped cache clearing", async () => {
+        await scenario("chromium: legacy installed worker redirects to beta offline without changing production caches", async () => {
           const { context, page, errors } = await prepare(browser, { reducedMotion: "reduce", serviceWorkers: "allow" });
           await ready(page);
           await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
@@ -660,13 +697,19 @@ try {
             });
           });
           await ready(page, "v2/");
-          assert.equal(new URL(page.url()).pathname, "/ballerwatch/");
+          assert.equal(new URL(page.url()).pathname, "/ballerwatch/beta/");
           await alignSyntheticCalendarCacheToToday(page);
           await context.unrouteAll({ behavior: "wait" });
           await context.setOffline(true);
           await page.goto(`${origin}/ballerwatch/v2/`, { waitUntil: "domcontentloaded" });
-          assert.equal(new URL(page.url()).pathname, "/ballerwatch/");
-          await page.waitForFunction(() => document.querySelector("#next-game-title")?.textContent === "Thursday, October 15", null, { timeout: 8000 });
+          assert.equal(new URL(page.url()).pathname, "/ballerwatch/beta/");
+          // Offline entry must return to beta with its real app shell. A restored
+          // fixture may use the shorter date label while the cache refreshes.
+          await page.waitForFunction(() =>
+            document.querySelector("#matchday-app") &&
+            document.querySelector("#next-game-card") &&
+            !document.querySelector("#matchday-app").inert,
+          null, { timeout: 8000 });
           const before = await page.evaluate(() => caches.keys());
           assert.ok(before.some((key) => key.startsWith("ballerwatch-v2-") && key.endsWith("-shell")));
           await openHubTab(page, "settings");

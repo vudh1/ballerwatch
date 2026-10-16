@@ -4,7 +4,7 @@ Always read the current `README.md`, this file, and `features/versions.json` fro
 
 ## Architecture and privacy
 
-- `main` is reviewed integration code; `production` is the exact promoted release commit; `runtime-state` is generated encrypted state only.
+- `main` is reviewed integration code and automatically publishes a **frontend-only beta** after successful main CI; `production` is the exact promoted release commit behind the root URL; `runtime-state` is generated encrypted state only. Never deploy a beta commit as the root app or silently advance `production` from a beta update.
 - Every canonical `runtime-state` file must be a complete hardened AES-GCM envelope. Never persist readable runtime JSON, rosters, settings, chat text, notification data, identifiers, timestamps, secrets, push endpoints, or VAPID private material.
 - The installable GitHub Pages PWA is the only user surface. Cloudflare hosts the web API, authentication, read-only Q&A, Web Push registration, runtime reads/writes, health, and edge refresh helpers.
 - Core web operation requires `TRACKER_STATE_KEY`. Do not add a fallback encryption/signing secret.
@@ -40,9 +40,9 @@ Product release flow:
 7. Squash merge only after checks are green.
 8. Production promotion publishes the GitHub Release and advances `production`.
 9. Release-driven Worker deployment must pass runtime migration/audit plus live `/health`, `/web/config`, `/web/next-game`, and `/web/calendar` checks before it dispatches Pages deployment.
-10. Pages always checks out `production`. A path-scoped `main` trigger exists only to recover the Pages workflow itself.
+10. Pages composes its root from `production` and its `/beta/` subtree from a pinned, successfully validated `main` commit. Successful `main` CI publishes beta automatically; an explicit production rollout still follows the release/Worker readiness gate. Legacy `/v2/` routes alias beta.
 
-`RELEASE_GITHUB_TOKEN` is repository-scoped and needs Contents read/write, Workflows read/write, Pages read/write, and Administration read/write. Promotion/deployment fails closed if required release, runtime, or Pages actions cannot complete. The default automatic path waits 24 hours; only then may a published GitHub Release/tag promote the validated commit.
+`RELEASE_GITHUB_TOKEN` is repository-scoped and needs Contents read/write, Workflows read/write, Pages read/write, and Administration read/write. Promotion/deployment fails closed if required release, runtime, or Pages actions cannot complete. Production promotion is manual-only through protected administrator action; merging to main never automatically advances production or publishes a GitHub Release.
 
 ## Notification policy
 

@@ -1,36 +1,100 @@
 name: Deploy GitHub Pages app
 
 on:
-  workflow_dispatch:
-  push:
+  workflow_run:
+    workflows: ["Validate code"]
+    types: [completed]
     branches: [main]
-    paths:
-      - ".github/workflows/pages.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 
 concurrency:
   group: ballerwatch-pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main')
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 6
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      # Production is NEVER sourced from main on a beta update.
+      - name: Checkout released production
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           ref: production
+          path: production-src
           fetch-depth: 1
+
+      - name: Checkout main for the beta candidate
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: main
+          path: main-src
+          fetch-depth: 0
+
+      - name: Choose validated main commit
+        id: beta
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          VALIDATED_SHA: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          main_sha="$(git -C main-src rev-parse HEAD)"
+          if [ "$EVENT_NAME" = "workflow_run" ]; then
+            # Ignore a late completed validation from an older main commit.
+            if [ "$VALIDATED_SHA" != "$main_sha" ]; then
+              echo "publish=false" >> "$GITHUB_OUTPUT"
+              echo "A newer main commit exists; its own validation will publish beta."
+              exit 0
+            fi
+            sha="$VALIDATED_SHA"
+          else
+            # Production-triggered/manual Pages rebuilds must reuse validated
+            # main code even when an unvalidated PR has just merged.
+            sha="$(gh api -X GET "/repos/$GITHUB_REPOSITORY/actions/workflows/validate.yml/runs?branch=main&event=push&status=success&per_page=50" \
+              --jq '.workflow_runs[0].head_sha // empty')"
+            test -n "$sha" || { echo "::error::No validated main commit for beta."; exit 1; }
+            git -C main-src merge-base --is-ancestor "$sha" "$main_sha" || {
+              echo "::error::Validated beta SHA is not in main history."; exit 1;
+            }
+          fi
+          git -C main-src cat-file -e "$sha^{commit}"
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      - name: Pin beta checkout to validated main
+        if: steps.beta.outputs.publish == 'true'
+        shell: bash
+        env:
+          BETA_SHA: ${{ steps.beta.outputs.sha }}
+        run: git -C main-src checkout --detach "$BETA_SHA"
+
+      - name: Compose production and beta static apps
+        if: steps.beta.outputs.publish == 'true'
+        env:
+          BETA_SHA: ${{ steps.beta.outputs.sha }}
+        run: |
+          node main-src/scripts/build-pages.mjs \
+            production-src/frontend/web main-src/frontend/web \
+            /tmp/ballerwatch-pages "$BETA_SHA"
+          test -f /tmp/ballerwatch-pages/index.html
+          test -f /tmp/ballerwatch-pages/beta/index.html
+          test -f /tmp/ballerwatch-pages/beta/sw.js
 
       - name: Check GitHub Pages activation
         id: pages
+        if: steps.beta.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -53,21 +117,23 @@ jobs:
           exit 1
 
       - name: Enable GitHub Pages when missing
-        if: steps.pages.outputs.enabled != 'true'
+        if: steps.beta.outputs.publish == 'true' && steps.pages.outputs.enabled != 'true'
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
         with:
           enablement: true
           token: ${{ secrets.RELEASE_GITHUB_TOKEN }}
 
       - name: Configure GitHub Pages
-        if: steps.pages.outputs.enabled == 'true'
+        if: steps.beta.outputs.publish == 'true' && steps.pages.outputs.enabled == 'true'
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
 
-      - name: Upload static PWA
+      - name: Upload production root and validated beta
+        if: steps.beta.outputs.publish == 'true'
         uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
         with:
-          path: frontend/web
+          path: /tmp/ballerwatch-pages
 
       - name: Deploy
+        if: steps.beta.outputs.publish == 'true'
         id: deployment
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

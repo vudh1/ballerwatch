@@ -14,6 +14,9 @@ for (const route of ["", "v2/"]) {
   const html = fs.readFileSync(path.join(source, route, "index.html"), "utf8");
   for (const match of html.matchAll(/(?:src|href)="([^"#]+)"/g)) {
     if (!match[1].startsWith(".")) continue;
+    // /beta/ is generated from the validated main checkout below, not
+    // checked in as a duplicate source directory.
+    if (route === "v2/" && match[1] === "../beta/") continue;
     const file = path.resolve(source, route, match[1].split("?")[0]);
     if (!file.startsWith(source) || !fs.existsSync(file)) {
       throw new Error(`Missing local asset in /${route}: ${match[1]}`);
@@ -24,6 +27,8 @@ for (const route of ["", "v2/"]) {
     throw new Error(`Incorrect production base path for /${route}`);
   }
 }
-fs.mkdirSync(destination, { recursive: true });
-fs.cpSync(source, destination, { recursive: true });
-console.log(`Static production build ready: ${destination} (canonical app + legacy redirect)`);
+// Test and local preview output uses the same source as both inputs; CI Pages
+// supplies a separate pinned production checkout and validated main checkout.
+const { composePages } = await import("./build-pages.mjs");
+composePages(source, source, destination, "0000000000000000000000000000000000000000");
+console.log(`Static test build ready: ${destination} (root + beta + legacy alias)`);

@@ -2,8 +2,12 @@
  * Only notifications use 24-hour leases. Keep RSVP name and monitored teams
  * until this device edits them, or the browser/user clears site storage.
  */
-export const GUEST_PROFILE_KEY = "ballerwatch-visitor-profile-v1";
-export const DEVICE_GUEST_PROFILE_KEY = "ballerwatch-visitor-profile-v2";
+const BETA_PROFILE = typeof window !== "undefined" &&
+  /^\/ballerwatch\/beta(?:\/|$)/.test(window.location?.pathname || "");
+export const GUEST_PROFILE_KEY = BETA_PROFILE
+  ? "ballerwatch-beta-visitor-profile-v1" : "ballerwatch-visitor-profile-v1";
+export const DEVICE_GUEST_PROFILE_KEY = BETA_PROFILE
+  ? "ballerwatch-beta-visitor-profile-v2" : "ballerwatch-visitor-profile-v2";
 export const MAX_GUEST_TEAMS = 8;
 const clean = (value) => String(value || "").trim().replace(/\s+/g, " ").slice(0, 120);
 

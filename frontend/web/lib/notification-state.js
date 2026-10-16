@@ -1,6 +1,10 @@
 import { readDeviceLease, writeDeviceLease } from "./device-lease.js";
-export const LOCAL_NOTIFICATION_READ_KEY = "ballerwatch-notification-read-v1";
-export const LOCAL_NOTIFICATION_DELETED_KEY = "ballerwatch-notification-deleted-v1";
+const BETA_NOTIFICATIONS = typeof window !== "undefined" &&
+  /^\/ballerwatch\/beta(?:\/|$)/.test(window.location?.pathname || "");
+export const LOCAL_NOTIFICATION_READ_KEY = BETA_NOTIFICATIONS
+  ? "ballerwatch-beta-notification-read-v1" : "ballerwatch-notification-read-v1";
+export const LOCAL_NOTIFICATION_DELETED_KEY = BETA_NOTIFICATIONS
+  ? "ballerwatch-beta-notification-deleted-v1" : "ballerwatch-notification-deleted-v1";
 
 export function localNotificationIds(key, storage = localStorage) {
   try {
@@ -58,8 +62,10 @@ export function normalizedNotificationProfile(value = {}) {
   };
 }
 
-export const LOCAL_NOTIFICATION_CHANNELS_KEY = "ballerwatch-notification-channels-v1";
-export const DEVICE_NOTIFICATION_CHANNELS_KEY = "ballerwatch-notification-channels-v2";
+export const LOCAL_NOTIFICATION_CHANNELS_KEY = BETA_NOTIFICATIONS
+  ? "ballerwatch-beta-notification-channels-v1" : "ballerwatch-notification-channels-v1";
+export const DEVICE_NOTIFICATION_CHANNELS_KEY = BETA_NOTIFICATIONS
+  ? "ballerwatch-beta-notification-channels-v2" : "ballerwatch-notification-channels-v2";
 export function readLocalNotificationChannels(storage) {
   try {
     const existing=storage.getItem(DEVICE_NOTIFICATION_CHANNELS_KEY);

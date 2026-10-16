@@ -4,21 +4,23 @@
  * intercept remote APIs or persist authenticated responses in frontend caches.
  */
 const IS_V2 = /\/v2\/sw\.js$/.test(self.location.pathname);
-const CACHE = IS_V2 ? "ballerwatch-v2-v9-1-2-shell" : "ballerwatch-v11-0-2-shell";
+const IS_BETA = /\/beta\/sw\.js$/.test(self.location.pathname);
+const CACHE = IS_BETA ? "ballerwatch-beta-__BETA_BUILD_ID__-shell"
+  : IS_V2 ? "ballerwatch-v2-v9-1-2-shell" : "ballerwatch-v11-1-0-shell";
 const ROOT_SHELL = [
   "./",
   "./index.html",
-  "./v2/prepaint.js?v=11.0.2",
-  "./styles.css?v=11.0.2",
-  "./v2/styles.css?v=11.0.2",
-  "./app.js?v=11.0.2",
-  "./v2/app.js?v=11.0.2",
+  "./v2/prepaint.js?v=11.1.0",
+  "./styles.css?v=11.1.0",
+  "./v2/styles.css?v=11.1.0",
+  "./app.js?v=11.1.0",
+  "./v2/app.js?v=11.1.0",
   "./v2/timeline.js",
   "./v2/scene-config.mjs",
   "./v2/assets/stadium.svg",
-  "./manifest.webmanifest?v=11.0.2",
-  "./icon.svg?v=11.0.2",
-  "./apple-touch-icon.png?v=11.0.2",
+  "./manifest.webmanifest?v=11.1.0",
+  "./icon.svg?v=11.1.0",
+  "./apple-touch-icon.png?v=11.1.0",
   "./icon-192.png",
   "./icon-512.png",
   "./v2/index.html",
@@ -34,9 +36,10 @@ const ROOT_SHELL = [
 ];
 const SHELL = IS_V2 ? ["./", "./index.html", "./redirect.js", "./manifest.webmanifest"] : ROOT_SHELL;
 const API = "https://ballerwatch-web.vudhone.workers.dev";
-const APP_URL = new URL(IS_V2 ? "../" : "./", self.location.href).href;
+const APP_URL = new URL(IS_V2 ? "../beta/" : "./", self.location.href).href;
 const ICON_URL = new URL(IS_V2 ? "../icon.svg" : "./icon.svg", self.location.href).href;
-const DEVICE_STATE_CACHE = IS_V2 ? "ballerwatch-v2-device-state-v2" : "ballerwatch-device-state-v2";
+const DEVICE_STATE_CACHE = IS_BETA ? "ballerwatch-beta-device-state-v1"
+  : IS_V2 ? "ballerwatch-v2-device-state-v2" : "ballerwatch-device-state-v2";
 const DEVICE_LEASE_MS=24*60*60*1000;
 const BADGE_STATE_URL = new URL("./.badge-state", self.location.href).href;
 const NOTIFICATION_PREFS_URL = new URL("./.notification-prefs", self.location.href).href;
@@ -161,6 +164,7 @@ function safeAppUrl(value) {
     const url = new URL(String(value || APP_URL), APP_URL);
     if (url.origin !== new URL(APP_URL).origin) return APP_URL;
     if (!url.pathname.startsWith("/ballerwatch/")) return APP_URL;
+    if ((IS_BETA || IS_V2) && !url.pathname.startsWith("/ballerwatch/beta/")) return APP_URL;
     if (/\/v2(?:\/|$)/.test(url.pathname)) {
       url.pathname = new URL(APP_URL).pathname;
     }
@@ -181,12 +185,14 @@ self.addEventListener("activate", (event) => {
       .then((keys) => Promise.all(
         keys
           .filter((key) => key !== CACHE && key.endsWith("-shell") &&
-            (IS_V2 ? key.startsWith("ballerwatch-v2-") :
+            (IS_BETA ? key.startsWith("ballerwatch-beta-") :
+              IS_V2 ? key.startsWith("ballerwatch-v2-") :
               /^ballerwatch-v\d/.test(key) && !key.startsWith("ballerwatch-v2-")))
           .map((key) => caches.delete(key)),
       caches.keys().then(keys=>Promise.all(keys
         .filter(key => key !== DEVICE_STATE_CACHE &&
-          /^ballerwatch-(?:v2-)?device-state-v\d+$/.test(key))
+          (IS_BETA ? /^ballerwatch-beta-device-state-v\d+$/.test(key) :
+            /^ballerwatch-(?:v2-)?device-state-v\d+$/.test(key)))
         .map(key=>caches.delete(key)))),
       ))
       .then(() => self.clients.claim()),
@@ -197,9 +203,10 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
-  // Retired links converge on the root, including when its shell is cached.
+  // Retired V2 installs now point to beta; an isolated beta scope never
+  // claims or erases the production worker's offline cache.
   if (event.request.mode === "navigate" && /\/v2(?:\/|$)/.test(url.pathname)) {
-    const destination = new URL(APP_URL);
+    const destination = new URL(IS_BETA || IS_V2 ? "./" : "./beta/", APP_URL);
     destination.search = url.search;
     destination.hash = url.hash;
     event.respondWith(Promise.resolve(Response.redirect(destination.href, 302)));

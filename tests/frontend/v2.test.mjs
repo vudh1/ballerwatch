@@ -175,7 +175,7 @@ test("camera flashes are localized behind captions and reverse with scroll", () 
   const html = read("index.html");
   assert.ok(html.indexOf('data-camera-flash="0"') < html.indexOf('id="scene-copy"'));
   assert.doesNotMatch(html, /id="replay-intro"|id="app-version-v1"|id="app-version-v2"/);
-  assert.match(read("v2/index.html"), /http-equiv="refresh" content="5;url=\.\.\//);
+  assert.match(read("v2/index.html"), /http-equiv="refresh" content="5;url=\.\.\/beta\//);
 });
 
 function workerHarness(version) {
@@ -243,16 +243,17 @@ test("offline navigation is route-specific and missing scripts never receive HTM
     worker.context.Request = class { constructor(request) { Object.assign(this, request); } };
     fire(worker.scope, "navigate");
     if (version === 1) assert.equal(await (await task).text(), "V1");
-    else assert.equal((await task).headers.get("location"), "https://example.com/ballerwatch/");
+    else assert.equal((await task).headers.get("location"), "https://example.com/ballerwatch/beta/");
     fire(`${worker.scope}missing.js`, "cors");
     assert.equal((await task).type, "error");
     if (version === 1) {
       task = null;
       fire(`${worker.scope}v2/`, "navigate");
-      assert.equal((await task).headers.get("location"), worker.scope);
+      assert.equal((await task).headers.get("location"), worker.scope + "beta/");
     }
-    assert.equal(vm.runInContext('safeAppUrl("https://evil.example/")', worker.context), "https://example.com/ballerwatch/");
-    assert.equal(vm.runInContext('safeAppUrl("/ballerwatch/")', worker.context), "https://example.com/ballerwatch/");
+    const expectedApp = "https://example.com/ballerwatch/" + (version === 2 ? "beta/" : "");
+    assert.equal(vm.runInContext('safeAppUrl("https://evil.example/")', worker.context), expectedApp);
+    assert.equal(vm.runInContext('safeAppUrl("/ballerwatch/")', worker.context), expectedApp);
   }
 });
 

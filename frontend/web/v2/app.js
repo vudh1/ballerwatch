@@ -14,7 +14,10 @@ document.querySelector("#clear-v2-caches").addEventListener("click", async (even
   button.disabled = true;
   try {
     const keys = await caches.keys();
-    await Promise.all(keys.filter((key) => !key.startsWith("ballerwatch-v2-") && /^ballerwatch-v\d.*-shell$/.test(key))
+    const beta = /^\/ballerwatch\/beta(?:\/|$)/.test(window.location.pathname);
+    await Promise.all(keys.filter((key) => beta
+      ? key.startsWith("ballerwatch-beta-") && key.endsWith("-shell")
+      : !key.startsWith("ballerwatch-v2-") && /^ballerwatch-v\d.*-shell$/.test(key))
       .map((key) => caches.delete(key)));
     document.querySelector("#v2-cache-status").textContent = "App frontend cache cleared. Reconnect before opening offline.";
   } catch {

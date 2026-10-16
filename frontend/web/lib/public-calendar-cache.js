@@ -5,7 +5,9 @@
  * write signed-in RSVP status, person names, push tokens or scouting histories.
  * Keep the allowlist tight when adding new calendar API fields.
  */
-export const PUBLIC_CALENDAR_LOCAL_KEY = "ballerwatch-public-calendar-device-v1";
+export const PUBLIC_CALENDAR_LOCAL_KEY = typeof window !== "undefined" &&
+  /^\/ballerwatch\/beta(?:\/|$)/.test(window.location?.pathname || "")
+  ? "ballerwatch-beta-public-calendar-device-v1" : "ballerwatch-public-calendar-device-v1";
 export const PUBLIC_CALENDAR_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 const MAX_SERIALIZED_BYTES = 250_000;
 
