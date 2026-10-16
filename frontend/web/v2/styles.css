@@ -24,10 +24,12 @@
 .v2-launching .v2-launch { position: fixed; display: grid; place-items: center; inset: 0; z-index: 10000; opacity: 1; visibility: visible; pointer-events: auto; overflow: hidden; animation: v2-launch-out var(--launch-ms, 2000ms) linear both; }
 .v2-launch .launch-intro-word-main, .v2-launch .launch-intro-word-shadow { font-weight: 800; font-size: clamp(2.6rem, 10vw, 6.8rem); }
 .v2-launch .launch-intro-word-main { color: #eafff5; text-shadow: 0 0 12px #86efac55, 0 0 38px #38bdf82e; }
-#skip-launch { position: absolute; bottom: max(1.5rem, calc(env(safe-area-inset-bottom) + 1rem)); background: transparent; color: #b7d1cb; font-size: var(--type-small); border-color: #a7f3d026; }
 @keyframes v2-launch-out { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
 .v2 .hero { padding-right: 0; }
 .v2 .chat-launcher { opacity: var(--app-reveal, 1); right: max(1rem, calc(var(--v2-safe-right) + .65rem)); }
+.app-hub-header { display: flex; align-items: center; gap: .55rem; width: 100%; margin-bottom: 1rem; }
+.app-hub-header .app-hub-tabs { flex: 1 1 auto; min-width: 0; margin: 0; }
+.app-hub-header .app-hub-close { display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; min-height: 44px; padding: 0; margin-left: auto; border-radius: 50%; font-size: 1.5rem; line-height: 1; }
 .app-hub-tabs { display: flex; gap: .35rem; padding: .35rem; margin: 0 0 1rem; border-radius: 18px; background: #061a1870; border: 1px solid #ffffff12; }
 .app-hub-tabs button { flex: 1; min-width: 0; padding: .65rem .35rem; border: 0; background: transparent; color: var(--muted); font-size: var(--type-small); border-radius: 14px; }
 .app-hub-tabs button[aria-current="true"] { color: var(--text); background: #c2fff018; box-shadow: inset 0 1px 0 #ffffff20; }
