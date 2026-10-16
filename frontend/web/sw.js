@@ -36,7 +36,7 @@ const ROOT_SHELL = [
 ];
 const SHELL = IS_V2 ? ["./", "./index.html", "./redirect.js", "./manifest.webmanifest"] : ROOT_SHELL;
 const API = "https://ballerwatch-web.vudhone.workers.dev";
-const APP_URL = new URL(IS_V2 ? "../" : "./", self.location.href).href;
+const APP_URL = new URL(IS_V2 ? "../beta/" : "./", self.location.href).href;
 const ICON_URL = new URL(IS_V2 ? "../icon.svg" : "./icon.svg", self.location.href).href;
 const DEVICE_STATE_CACHE = IS_BETA ? "ballerwatch-beta-device-state-v1"
   : IS_V2 ? "ballerwatch-v2-device-state-v2" : "ballerwatch-device-state-v2";
@@ -164,7 +164,7 @@ function safeAppUrl(value) {
     const url = new URL(String(value || APP_URL), APP_URL);
     if (url.origin !== new URL(APP_URL).origin) return APP_URL;
     if (!url.pathname.startsWith("/ballerwatch/")) return APP_URL;
-    if (IS_BETA && !url.pathname.startsWith("/ballerwatch/beta/")) return APP_URL;
+    if ((IS_BETA || IS_V2) && !url.pathname.startsWith("/ballerwatch/beta/")) return APP_URL;
     if (/\/v2(?:\/|$)/.test(url.pathname)) {
       url.pathname = new URL(APP_URL).pathname;
     }
@@ -206,7 +206,7 @@ self.addEventListener("fetch", (event) => {
   // Retired V2 installs now point to beta; an isolated beta scope never
   // claims or erases the production worker's offline cache.
   if (event.request.mode === "navigate" && /\/v2(?:\/|$)/.test(url.pathname)) {
-    const destination = new URL(IS_BETA ? "./" : "./beta/", APP_URL);
+    const destination = new URL(IS_BETA || IS_V2 ? "./" : "./beta/", APP_URL);
     destination.search = url.search;
     destination.hash = url.hash;
     event.respondWith(Promise.resolve(Response.redirect(destination.href, 302)));
