@@ -810,7 +810,7 @@ test("notification filters and preferences are accountless and local to the devi
   assert.match(app,/Device-only · expires after 24 hours/);
   assert.match(app,/saveLocalNotificationChannels/);
   assert.match(sw,/DEVICE_LEASE_MS/);
-  assert.match(sw,/cachedDeviceValue\(NOTIFICATION_PREFS_URL\)/);
+  assert.match(sw,/cachedDeviceValue\(NOTIFICATION_PREFS_URL,\{persistent:true\}\)/);
   assert.match(css,/\.notification-preferences \{/);
 });
 
