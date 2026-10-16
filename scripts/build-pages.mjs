@@ -99,6 +99,13 @@ destination.search = window.location.search;
 destination.hash = window.location.hash;
 window.location.replace(destination.href);
 `);
+    // Previously installed /v2/ Home Screen apps still own a V2-scoped SW.
+    // Upgrade that registration to the validated beta worker, preserving
+    // its push ability and redirecting cached offline launches to beta.
+    fs.writeFileSync(path.join(legacy, "sw.js"),
+      `/** V2 install bridge to validated BallerWatch Beta. */
+importScripts("../beta/sw.js?beta=${rev}");
+`);
   }
   // Fail closed if an old production subtree shadows the assembled beta.
   if (!fs.existsSync(path.join(beta, "v2", "timeline.js")) ||
