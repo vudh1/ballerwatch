@@ -1685,6 +1685,7 @@ async function syncServiceWorkerNotificationPreferences(channels = notificationC
     worker?.postMessage({
       type: "ballerwatch:notification-preferences",
       channels: normalizedNotificationChannels(channels),
+      teams: guestProfile.teams,
     });
   } catch {}
 }
