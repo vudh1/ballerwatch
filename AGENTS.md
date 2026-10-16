@@ -42,7 +42,7 @@ Product release flow:
 9. Release-driven Worker deployment must pass runtime migration/audit plus live `/health`, `/web/config`, `/web/next-game`, and `/web/calendar` checks before it dispatches Pages deployment.
 10. Pages composes its root from `production` and its `/beta/` subtree from a pinned, successfully validated `main` commit. Successful `main` CI publishes beta automatically; an explicit production rollout still follows the release/Worker readiness gate. Legacy `/v2/` routes alias beta.
 
-`RELEASE_GITHUB_TOKEN` is repository-scoped and needs Contents read/write, Workflows read/write, Pages read/write, and Administration read/write. Promotion/deployment fails closed if required release, runtime, or Pages actions cannot complete. The default automatic path waits 24 hours; only then may a published GitHub Release/tag promote the validated commit.
+`RELEASE_GITHUB_TOKEN` is repository-scoped and needs Contents read/write, Workflows read/write, Pages read/write, and Administration read/write. Promotion/deployment fails closed if required release, runtime, or Pages actions cannot complete. Production promotion is manual-only through protected administrator action; merging to main never automatically advances production or publishes a GitHub Release.
 
 ## Notification policy
 
