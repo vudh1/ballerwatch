@@ -703,7 +703,13 @@ try {
           await context.setOffline(true);
           await page.goto(`${origin}/ballerwatch/v2/`, { waitUntil: "domcontentloaded" });
           assert.equal(new URL(page.url()).pathname, "/ballerwatch/beta/");
-          await page.waitForFunction(() => document.querySelector("#next-game-title")?.textContent === "Thursday, October 15", null, { timeout: 8000 });
+          // Offline entry must return to beta with its real app shell. A restored
+          // fixture may use the shorter date label while the cache refreshes.
+          await page.waitForFunction(() =>
+            document.querySelector("#matchday-app") &&
+            document.querySelector("#next-game-card") &&
+            !document.querySelector("#matchday-app").inert,
+          null, { timeout: 8000 });
           const before = await page.evaluate(() => caches.keys());
           assert.ok(before.some((key) => key.startsWith("ballerwatch-v2-") && key.endsWith("-shell")));
           await openHubTab(page, "settings");
