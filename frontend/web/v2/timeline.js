@@ -160,7 +160,6 @@ try {
   root.style.setProperty("--scroll-screens", SCENE.scrollScreens);
   root.style.setProperty("--launch-ms", `${SCENE.launchMs}ms`);
   document.querySelector("#skip-intro").addEventListener("click", skipIntro);
-  document.querySelector("#skip-launch").addEventListener("click", skipIntro);
   document.querySelector(".v2-skip-link").addEventListener("click", (event) => {
     event.preventDefault();
     skipIntro();
