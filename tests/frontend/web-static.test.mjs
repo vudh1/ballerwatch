@@ -25,7 +25,7 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v11-0-0-shell/);
+  assert.match(sw, /ballerwatch-v11-0-1-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -1104,7 +1104,10 @@ test("README demo and public, account-free preferences remain accessible", () =>
   assert.match(readme,/!\[BallerWatch animated demo[^\]]*\]\(docs\/demo\.gif\)/);
   assert.equal(fs.readFileSync("docs/demo.gif").subarray(0,6).toString(),"GIF89a");
   assert.match(html,/id="guest-settings-view"/);
-  assert.match(html,/Your preferences expire 24 hours/);
+  assert.match(html,/Your RSVP name and followed teams stay saved on this device/);
+  assert.match(html,/only notifications expire after 24 hours/);
+  assert.match(app,/setLocalMatchOverride\(localStorage/);
+  assert.doesNotMatch(app,/api\("\/web\/user\/match-override"/);
   assert.doesNotMatch(html,/id="user-management"|id="owner-login-username"/);
   assert.doesNotMatch(app,/api\("\/web\/user\/users"/);
 });
@@ -1126,13 +1129,13 @@ test("match override editor uses the type pill action sheet and local Reset", ()
   assert.match(app, /matchSourceState/);
   assert.match(app, /sourceGameView/);
   assert.match(app, /fillMatchOverrideForm/);
-  assert.match(app, /Source values restored locally/);
-  assert.match(app, /persistedOverride/);
-  assert.match(app, /method: "DELETE"/);
-  assert.match(app, /pendingMatchAdminAction/);
-  assert.match(app, /matchAdminSettings\("match-override"\)/);
-  assert.match(app, /await openSettings\(\{ pendingAction \}\)/);
-  assert.match(app, /resumeMatchAction/);
+  assert.match(app, /Source values restored/);
+  assert.match(app, /clearLocalMatchOverride\(localStorage/);
+  assert.match(app, /setLocalMatchOverride\(localStorage/);
+  assert.match(app, /setLocalMatchHidden\(localStorage/);
+  assert.match(app, /renderDeviceCalendar\(\)/);
+  assert.doesNotMatch(app, /matchAdminSettings\("match-override"\)/);
+  assert.doesNotMatch(app, /api\("\/web\/user\/match-override"/);
   assert.match(html, /id="next-game-menu-trigger"/);
   assert.match(html, /id="next-game-menu-edit"/);
   assert.match(html, /id="next-game-menu-delete"/);
@@ -2123,3 +2126,17 @@ test("RATS standings startup automatically retries rather than staying unavailab
   assert.match(cache, /entries\.length > 96/);
 });
 
+
+
+test("only notifications expire; local match edits, monitored teams and RSVP name are persistent",()=>{
+  const guest=fs.readFileSync("frontend/web/lib/guest-profile.js","utf8");
+  const local=fs.readFileSync("frontend/web/lib/local-match-edits.js","utf8");
+  const notifications=fs.readFileSync("frontend/web/lib/notification-state.js","utf8");
+  const sw=fs.readFileSync("frontend/web/sw.js","utf8");
+  assert.match(guest,/DEVICE_GUEST_PROFILE_KEY/);
+  assert.doesNotMatch(guest,/writeDeviceLease|readDeviceLease|expiresAt: now/);
+  assert.match(local,/LOCAL_MATCH_EDITS_KEY/);
+  assert.match(notifications,/writeDeviceLease/);
+  assert.match(sw,/DEVICE_LEASE_MS=24\*60\*60\*1000/);
+  assert.match(sw,/\.\/lib\/local-match-edits\.js/);
+});
