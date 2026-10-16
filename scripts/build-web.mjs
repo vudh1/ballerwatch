@@ -24,6 +24,8 @@ for (const route of ["", "v2/"]) {
     throw new Error(`Incorrect production base path for /${route}`);
   }
 }
-fs.mkdirSync(destination, { recursive: true });
-fs.cpSync(source, destination, { recursive: true });
-console.log(`Static production build ready: ${destination} (canonical app + legacy redirect)`);
+// Test and local preview output uses the same source as both inputs; CI Pages
+// supplies a separate pinned production checkout and validated main checkout.
+const { composePages } = await import("./build-pages.mjs");
+composePages(source, source, destination, "0000000000000000000000000000000000000000");
+console.log(`Static test build ready: ${destination} (root + beta + legacy alias)`);
