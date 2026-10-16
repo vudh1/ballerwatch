@@ -1855,6 +1855,44 @@ function scoutingProjectionCurrent(index, snapshot) {
   return JSON.stringify(normalize(tracked)) === JSON.stringify(normalize(indexed));
 }
 
+/**
+ * Only send the selected standings cards and the predictions relevant to them.
+ * The hourly scout index includes every match in the RATS season (1,600+
+ * prediction keys in October 2026). Sending all of those on each standings GET
+ * made the payload >800 KB and prevented the device's 35-item cache from saving
+ * even a single team. Do not recompute model predictions on an HTTP request.
+ */
+export const MAX_PUBLIC_STANDINGS_MATCHUPS = 96;
+const standingsTeamKey = (name) => String(name || "").toLocaleLowerCase("en")
+  .replace(/[^a-z0-9]+/g, " ").replace(/\\b(?:fc|sc)\\b$/g, "").trim();
+
+export function publicStandingsProjection(index, requestedTeams) {
+  const standings = index?.standings || {};
+  const defaultNames = (Array.isArray(standings.cards) ? standings.cards : [])
+    .map((card) => card.team);
+  const teams = Array.isArray(requestedTeams) ? requestedTeams : defaultNames;
+  const available = Array.isArray(index?.availableCards)
+    ? index.availableCards : standings.cards || [];
+  const byName = new Map(available.map((card) => [standingsTeamKey(card.team), card]));
+  for (const card of standings.cards || []) {
+    if (!byName.has(standingsTeamKey(card.team))) {
+      byName.set(standingsTeamKey(card.team), card);
+    }
+  }
+  const chosen = teams.map((name) => byName.get(standingsTeamKey(name)) || {
+    team: name, division: "", ready: false, rows: [],
+    message: "Current-season results for this team are being indexed.",
+  });
+  const selected = new Set(teams.map(standingsTeamKey).filter(Boolean));
+  const matchups = Object.fromEntries(
+    Object.entries(standings.matchups || {})
+      .filter(([, prediction]) => selected.has(standingsTeamKey(prediction?.team)))
+      // Index order follows upcoming fixtures. Keep the next relevant games.
+      .slice(0, MAX_PUBLIC_STANDINGS_MATCHUPS),
+  );
+  return { ...standings, cards: chosen, matchups };
+}
+
 async function loadSnapshot(env) {
   return publicReadCache.get("public-snapshot", 90_000, () => loadSnapshotUncached(env), {
     // Serve the last known good encrypted-source snapshot during transient
@@ -3831,37 +3869,31 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/web/standings") {
       try {
+        const requested = url.searchParams.get("teams");
+        const teams = requested ? [...new Set(requested.split(",")
+          .map((name) => name.trim()).filter(Boolean))] : null;
+        if (requested !== null && (!teams.length || teams.length > 8 ||
+            requested.length > 1200 || teams.some((name) =>
+              name.length < 2 || name.length > 120))) {
+          return webJson(request, { ok: false, error: "Choose 1–8 valid teams." },
+            { status: 400 });
+        }
         const [snapshot, index] = await Promise.all([
           loadSnapshot(env), loadScoutingIndex(env),
         ]);
-        const requested = url.searchParams.get("teams");
-        // Default cards still require the exact monitored-team snapshot.
-        // Anonymous device-selected cards come from the full season index
-        // and must not fail just because the administrator changed defaults.
-        const indexReady = requested
-          ? scoutingSeasonCurrent(index, snapshot) && Array.isArray(index.availableCards)
-          : scoutingProjectionCurrent(index, snapshot);
-        if (indexReady) {
-          if (!requested) return webJson(request, { ok: true, standings: index.standings });
-          const teams = [...new Set(requested.split(",")
-            .map((name) => name.trim().toLocaleLowerCase("en"))
-            .filter((name) => name.length >= 2 && name.length <= 120))];
-          if (!teams.length || teams.length > 8 || requested.length > 1200) {
-            return webJson(request, { ok: false, error: "Choose 1–8 valid teams." }, { status: 400 });
-          }
-          const indexed = Array.isArray(index.availableCards) ? index.availableCards : [];
-          const byName = new Map(indexed.map((card) => [
-            String(card.team || "").toLocaleLowerCase("en"), card,
-          ]));
-          const cards = teams.map((name) => byName.get(name)).filter(Boolean);
-          if (!cards.length) {
+        // A new monitored-team preference must not blank the default cards
+        // until the next hourly projection; all-season cards already exist.
+        if (scoutingSeasonCurrent(index, snapshot) &&
+            Array.isArray(index.availableCards)) {
+          const selected = teams || snapshot.teams;
+          const standings = publicStandingsProjection(index, selected);
+          if (teams && !standings.cards.some((card) => card.ready)) {
             return webJson(request, { ok: false,
-              error: "Selected teams are not indexed in the current RATS season." }, { status: 404 });
+              error: "Selected teams are not indexed in the current RATS season." },
+            { status: 404 });
           }
-          return webJson(request, { ok: true, standings: { ...index.standings, cards } });
+          return webJson(request, { ok: true, standings });
         }
-        // Missing or mismatched projections are reported as unavailable
-        // instead of rebuilding years of historical results during a GET.
         return webJson(request, {
           ok: false, error: "Prepared standings are refreshing. Last synced data remains visible.",
         }, { status: 503 });
@@ -3872,9 +3904,6 @@ export default {
       }
     }
 
-    // Bulk read is deliberately optional and compact compared with history
-    // calculation. The browser preloads this after the calendar is usable;
-    // subsequent team taps read its local copy without a network round trip.
     if (request.method === "GET" && url.pathname === "/web/scouting-reports") {
       try {
         const [snapshot, index] = await Promise.all([
