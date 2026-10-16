@@ -44,3 +44,19 @@ test("guest notification channels persist on device", () => {
   assert.equal(saveLocalNotificationChannels(s,{pickup:false,league:true,version:false}),true);
   assert.deepEqual(readLocalNotificationChannels(s),{pickup:false,league:true,version:false});
 });
+
+test("notification categories persist despite old 24h lease expiration",()=>{
+  const s=storage();
+  s.setItem("ballerwatch-notification-channels-v1-24h",JSON.stringify({
+    schema:1,expiresAt:1,data:{channels:{pickup:false,league:true,version:false}},
+  }));
+  assert.deepEqual(readLocalNotificationChannels(s),{
+    pickup:false,league:true,version:false,
+  });
+  assert.equal(s.getItem("ballerwatch-notification-channels-v1-24h"),null);
+  assert.ok(s.getItem("ballerwatch-notification-channels-v2"));
+  assert.equal(saveLocalNotificationChannels(s,{pickup:true,league:false,version:true}),true);
+  assert.deepEqual(readLocalNotificationChannels(s),{
+    pickup:true,league:false,version:true,
+  });
+});

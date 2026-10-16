@@ -2139,6 +2139,13 @@ test("only notifications expire; local match edits, monitored teams and RSVP nam
   assert.doesNotMatch(guest,/writeDeviceLease|readDeviceLease|expiresAt: now/);
   assert.match(local,/LOCAL_MATCH_EDITS_KEY/);
   assert.match(notifications,/writeDeviceLease/);
+  assert.match(notifications,/DEVICE_NOTIFICATION_CHANNELS_KEY/);
+  assert.match(notifications,/schema:2,channels:normalizedNotificationChannels/);
   assert.match(sw,/DEVICE_LEASE_MS=24\*60\*60\*1000/);
+  assert.match(sw,/teams:event\.data\?\.teams/);
+  assert.match(sw,/persistent:true/);
+  const push=fs.readFileSync("backend/shared/web-push.mjs","utf8");
+  assert.doesNotMatch(push,/PUSH_LEASE_MS/);
+  assert.match(push,/expirationTime/);
   assert.match(sw,/\.\/lib\/local-match-edits\.js/);
 });

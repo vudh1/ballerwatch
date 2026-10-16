@@ -16,7 +16,7 @@ test("migration removes ordinary accounts and profiles but protects operator pri
   assert.deepEqual(cleaned.settings.webOwnerPassword,{digest:"admin-safe"});
   assert.doesNotMatch(JSON.stringify(cleaned),/teammate|Secret Name/);
 });
-test("legacy push credentials are scrubbed, keeping only an expiring device lease",()=>{
+test("legacy identities are scrubbed while provider-valid push subscriptions remain",()=>{
   const now=new Date("2026-10-16T08:00:00Z");
   const result=scrubPushIdentity({vapid:{privateJwk:{d:"test"}},subscriptions:[{
     endpoint:"https://web.push.apple.com/Q2/test",userId:"someone",
@@ -24,6 +24,6 @@ test("legacy push credentials are scrubbed, keeping only an expiring device leas
   }]},now);
   assert.equal(result.subscriptions.length,1);
   assert.equal(result.subscriptions[0].userId,undefined);
-  assert.equal(result.subscriptions[0].expiresAt,"2026-10-17T08:00:00.000Z");
+  assert.equal(result.subscriptions[0].expiresAt,undefined);
   assert.equal(result.subscriptions[0].channels.league,false);
 });

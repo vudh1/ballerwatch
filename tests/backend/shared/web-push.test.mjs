@@ -12,7 +12,6 @@ import {
   buildVapidAuthorization,
   ensureWebPushState,
   pruneDeviceSubscriptions,
-  PUSH_LEASE_MS,
   loadWebPushState,
   publicWebPushConfig,
   sendWebPushSignals,
@@ -46,7 +45,6 @@ function writeSubscriptionState(subscription) {
     keys: { p256dh: "x", auth: "y" },
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now()+PUSH_LEASE_MS).toISOString(),
     ...subscription,
   }];
   fs.writeFileSync(
@@ -138,7 +136,7 @@ test("applies encrypted subscribe and unsubscribe registration events", (t) => {
   assert.equal(loadWebPushState().subscriptions.length, 0);
 });
 
-test("subscription registration stores short-lived device teams and notification categories", (t) => {
+test("subscription registration retains device teams and notification categories", (t) => {
   inTempDir(t);
   ensureWebPushState();
   const subscription = {
@@ -158,7 +156,8 @@ test("subscription registration stores short-lived device teams and notification
   const saved = loadWebPushState().subscriptions[0];
   assert.equal(saved.userId, undefined);
   assert.deepEqual(saved.teams,["Example FC"]);
-  assert.ok(Date.parse(saved.expiresAt) > Date.now());
+  assert.equal(saved.expiresAt,undefined);
+  assert.equal(saved.expirationTime,null);
   assert.deepEqual(saved.channels, {
     pickup: true,
     league: false,
@@ -316,11 +315,21 @@ test("push sender suppresses booked device via encrypted private name tags", asy
   assert.equal(calls,1);
 });
 
-test("24-hour push leases are physically pruned, and no user identity survives",t=>{
+test("legacy 24h leases never block healthy Web Push",t=>{
   inTempDir(t);
   writeSubscriptionState({endpoint:MOZILLA_ENDPOINT,
     expiresAt:"2020-01-01T00:00:00Z",userId:"legacy-name"});
+  assert.equal(loadWebPushState().subscriptions.length,1);
+  assert.equal(pruneDeviceSubscriptions(),0);
+  assert.equal(loadWebPushState().subscriptions[0].userId,undefined);
+  assert.equal(loadWebPushState().subscriptions[0].expiresAt,undefined);
+});
+test("only native provider expiration removes Web Push registration",t=>{
+  inTempDir(t);
+  writeSubscriptionState({endpoint:MOZILLA_ENDPOINT,expirationTime:Date.now()-1000});
   assert.equal(pruneDeviceSubscriptions(),1);
   assert.equal(loadWebPushState().subscriptions.length,0);
-  assert.doesNotMatch(JSON.stringify(loadWebPushState()),/legacy-name/);
+  writeSubscriptionState({endpoint:MOZILLA_ENDPOINT,expirationTime:null});
+  assert.equal(pruneDeviceSubscriptions(),0);
+  assert.equal(loadWebPushState().subscriptions.length,1);
 });

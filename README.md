@@ -38,9 +38,9 @@ The original 727-frame walkthrough of the deployed 9.1.1 app, retimed from 36.4 
 
 ## What's new
 
-**v11.0.1** — RSVP names and selected teams stay on each device indefinitely (unless the browser clears site data). Only notification data retains a 24-hour expiration. Match-card corrections, hides and resets are local to the editing device; older shared-write endpoints are retired. All-season RATS team statistics remain independently precomputed.
+**v11.0.1** — RSVP names and selected teams stay on each device indefinitely (unless the browser clears site data). Only notification messages/read markers and badges expire after 24 hours; choices and valid push subscriptions remain active. Match-card corrections, hides and resets are local to the editing device; older shared-write endpoints are retired. All-season RATS team statistics remain independently precomputed.
 
-**v11.0.0** — Public, accountless visitor experience (initial 24-hour device preference policy, revised in 11.0.1). Private RSVP name matches use encrypted precomputed HMAC tags, never a public player directory. Push subscriptions need an active app visit to renew after 24 hours; all-server edits and releases stay behind protected maintenance authentication.
+**v11.0.0** — Public, accountless visitor experience (initial 24-hour device preference policy, revised in 11.0.1). Private RSVP name matches use encrypted precomputed HMAC tags, never a public player directory. The initial push expiry policy was corrected in 11.0.1; releases still require protected maintenance authentication.
 
 **v10.0.1** — Restore dependable RATS standings by sending only monitored/selected team predictions, keeping the response small enough for on-device caching, and automatically retrying after transient cold-start failures.\n\n**v10.0.0** — A single uninterrupted first-install launch; Google Calendar integration is retired. BallerWatch's own match calendar, schedule alerts, and Web Push remain available to every visitor without a Google connection.
 
@@ -130,7 +130,7 @@ The encrypted `runtime-state` branch intentionally keeps stable storage paths su
 
 Regular visitors do not register or sign in. The RSVP name and monitored RATS teams are saved in browser-local storage for that installation until the user changes them or clears the browser's site data. These fields are never kept in shared web-user profiles. Match date/time/venue corrections and hidden games are also private to that browser, and never change other visitors' cards or the RATS/RSVP source.
 
-Only **notifications** have a 24-hour retention window: read/deleted state, channel preferences, app badges and encrypted Web Push registrations. Reopening BallerWatch can renew an enabled push subscription; after a full day without opening it, the server's registration expires and notifications stop until renewal.
+Only **notification messages**, their read/deleted status and unread app badges expire after 24 hours. Notification category selections and Web Push registrations stay enabled until the user changes/disables them or the push provider invalidates a subscription, so reminders continue even when the app has not opened recently.
 
 The protected administrator maintenance password remains available for releases and private roster access. Maintenance recovery uses the repository-admin password workflow; it is not a visitor sign-in system.
 
@@ -138,7 +138,7 @@ The protected administrator maintenance password remains available for releases 
 
 The public source repository is never used as readable application-data storage.
 
-Canonical shared runtime documents are stored as hardened AES-GCM envelopes on the dedicated `runtime-state` branch, including maintenance credentials, schedules, weather/geocode cache, short-lived Web Push registrations, notification-board state, and retained feedback/feature-request state. Visitor RSVP names, selected teams and local match edits are not stored in shared runtime-state.
+Canonical shared runtime documents are stored as hardened AES-GCM envelopes on the dedicated `runtime-state` branch, including maintenance credentials, schedules, weather/geocode cache, user-enabled Web Push registrations, notification-board state, and retained feedback/feature-request state. Visitor RSVP names, selected teams and local match edits are not stored in shared runtime-state.
 
 Other important boundaries:
 

@@ -410,7 +410,7 @@ try {
         await openHubTab(page, "notifications");
         await page.locator("#notification-pref-pickup").uncheck();
         assert.equal(await page.evaluate(() =>
-          JSON.parse(localStorage.getItem("ballerwatch-notification-channels-v1-24h")).data.channels.pickup), false);
+          JSON.parse(localStorage.getItem("ballerwatch-notification-channels-v2")).channels.pickup), false);
         await page.reload();
         await ready(page);
         await openHubTab(page, "settings");
