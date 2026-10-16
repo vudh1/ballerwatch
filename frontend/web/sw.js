@@ -184,7 +184,7 @@ self.addEventListener("activate", (event) => {
           .map((key) => caches.delete(key)),
       caches.keys().then(keys=>Promise.all(keys
         .filter(key => key !== DEVICE_STATE_CACHE &&
-          /^(?:ballerwatch-v2-)?device-state-v\d+$/.test(key))
+          /^ballerwatch-(?:v2-)?device-state-v\d+$/.test(key))
         .map(key=>caches.delete(key)))),
       ))
       .then(() => self.clients.claim()),
