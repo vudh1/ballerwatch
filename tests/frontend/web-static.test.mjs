@@ -1219,7 +1219,8 @@ test("match type pill opens a touch-safe Edit/Delete action sheet and freshness 
   assert.match(app, /toggleMatchCardMenu/);
   assert.match(app, /deleteSelectedMatch/);
   assert.match(app, /restoreDeletedMatch/);
-  assert.match(app, /\/web\/user\/match/);
+  assert.match(app, /setLocalMatchHidden\(localStorage/);
+  assert.doesNotMatch(app, /api\("\/web\/user\/match"/);
   assert.match(html, /class="match-card-action-dialog"/);
   assert.doesNotMatch(html, /match-card-menu-glyph/);
   assert.match(app, /nextGameMenu\.showModal\(\)/);
@@ -1730,7 +1731,7 @@ test("cold-start work and card measurements stay bounded regardless of full sche
   assert.match(size, /adjacentCalendarSelection\(-1\)\?\.game/);
   assert.match(size, /adjacentCalendarSelection\(1\)\?\.game/);
   assert.doesNotMatch(size, /for \(const game of currentCalendar\?\.games \|\| \[\]\)/);
-  assert.match(app, /JSON\.stringify\(next\) !== JSON\.stringify\(currentCalendar\)/);
+  assert.match(app, /JSON\.stringify\(personal\) !== JSON\.stringify\(currentCalendar\)/);
   assert.match(app, /const calendarOk = await loadCalendar\(\{ initial: true \}\)\.catch/);
   assert.match(app, /const calendarOk = await loadCalendar\(\{ initial: true \}\)\.catch/);
   assert.match(worker, /const pendingJsonLoads = new Map\(\)/);
@@ -1998,12 +1999,13 @@ test("cached calendar renders its real Updated timestamp without false reconnect
   const getCalendar = app.match(/async function loadCalendar\(\{ initial = false \} = \{\}\)[\s\S]*?\n\}/)?.[0] || "";
   const startup = app.split('document.documentElement.classList.toggle("is-standalone"')[1] || "";
   const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
-  assert.match(cacheRestore, /renderCalendar\(cached\)/);
+  assert.match(cacheRestore, /currentCanonicalCalendar = cached/);
+  assert.match(cacheRestore, /renderDeviceCalendar\(\)/);
   assert.doesNotMatch(cacheRestore, /els\.calendarUpdated\.textContent = "Last synced|setSystemState\("stale"\)/);
   assert.match(getCalendar, /if \(!prepared\?\.startDate \|\| !Array\.isArray\(prepared\.games\)\)/);
-  assert.match(getCalendar, /JSON\.stringify\(next\) !== JSON\.stringify\(currentCalendar\)/);
+  assert.match(getCalendar, /JSON\.stringify\(personal\) !== JSON\.stringify\(currentCalendar\)/);
   assert.match(getCalendar, /else \{\s*els\.calendarUpdated\.textContent = matchUpdatedText\(next\.updatedAt\)/);
-  assert.match(getCalendar, /retainVerifiedFixtureDetails\(prepared, currentCalendar\)/);
+  assert.match(getCalendar, /retainVerifiedFixtureDetails\(prepared, currentCanonicalCalendar\)/);
   assert.doesNotMatch(getCalendar, /els\.calendarUpdated\.textContent = "Last synced/);
   assert.doesNotMatch(getCalendar, /els\.calendarUpdated\.textContent = "Last synced · Reconnecting"/);
   assert.match(startup, /setSystemState\(restoredPublicCalendar \? "ready" : "checking"\)/);
