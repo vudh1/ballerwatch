@@ -54,7 +54,7 @@ export function fixtureResponse(pathname, method = "GET") {
     "/web/user/rsvp-status": { ok: true, rsvp: { confirmedDates: [], waitlistedDates: [] } },
     "/web/user/notifications": { ok: true, profile: { readIds: [], deletedIds: [], channels: { pickup: true, league: true, version: true } } },
     "/web/user/settings": { ok: true, settings: { username: "admin", canManageMatches: true, canManageUsers:false, passwordConfigured:true, deletedMatches:[], teams:["Fixture FC"] } },
-    "/web/user/rsvp-roster": { ok: true, roster: { players: [{ name: "Fixture Player", participantCount: 1 }], waitlist: [] } },
+    "/web/rsvp-roster": { ok: true, roster: { players: [{ name: "Fixture Player", participantCount: 1 }], waitlist: [] } },
     "/web/teams": { ok: true, teams: ["Fixture FC", "Test United"] },
   };
   return responses[pathname] || { ok: true, reports: [], choices: { rsvpNames: ["Fixture Player"], teams: ["Fixture FC"] } };
