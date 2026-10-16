@@ -1667,14 +1667,8 @@ function notificationTimeText(item) {
       }).format(date);
 }
 
-function accountNotificationStateActive() {
-  return false;
-}
-
 function notificationChannels() {
-  return accountNotificationStateActive()
-    ? normalizedNotificationChannels(currentNotificationProfile.channels)
-    : readLocalNotificationChannels(localStorage);
+  return readLocalNotificationChannels(localStorage);
 }
 
 async function syncServiceWorkerNotificationPreferences(channels = notificationChannels()) {
@@ -1721,61 +1715,35 @@ async function loadNotificationProfile() {
 }
 
 function notificationViewState(entries = currentBoardEntries) {
-  const read = accountNotificationStateActive()
-    ? new Set(currentNotificationProfile.readIds)
-    : storedNotificationIds(NOTIFICATION_READ_KEY);
-  const deleted = accountNotificationStateActive()
-    ? new Set(currentNotificationProfile.deletedIds)
-    : storedNotificationIds(NOTIFICATION_DELETED_KEY);
+  const read = storedNotificationIds(NOTIFICATION_READ_KEY);
+  const deleted = storedNotificationIds(NOTIFICATION_DELETED_KEY);
   const channels = notificationChannels();
   const allVisible = entries.filter((item) =>
     !deleted.has(notificationId(item)) && !skipPersonalPickupAlert(item) &&
     channels[String(item?.channel || "")] !== false);
-  const visible = notificationFilter === "all"
-    ? allVisible
-    : allVisible.filter((item) => String(item?.channel || "") === notificationFilter);
-  const unreadCount = allVisible.filter((item) => !read.has(notificationId(item))).length;
+  const visible = notificationFilter === "all" ? allVisible
+    : allVisible.filter(item => String(item?.channel || "") === notificationFilter);
+  const unreadCount = allVisible.filter(item => !read.has(notificationId(item))).length;
   return { read, deleted, visible, allVisible, unreadCount };
 }
-
 function markNotificationRead(item) {
-  const id = notificationId(item);
-  if (accountNotificationStateActive()) {
-    optimisticNotificationProfile({ readIds: [id] });
-    void persistNotificationProfile({ readIds: [id] });
-  } else {
-    const read = storedNotificationIds(NOTIFICATION_READ_KEY);
-    read.add(id);
-    saveNotificationIds(NOTIFICATION_READ_KEY, read);
-  }
+  const read=storedNotificationIds(NOTIFICATION_READ_KEY);
+  read.add(notificationId(item));
+  saveNotificationIds(NOTIFICATION_READ_KEY,read);
   updateNotificationBadge(notificationViewState().unreadCount);
 }
-
 function markAllNotificationsRead() {
-  const { allVisible } = notificationViewState();
-  const ids = allVisible.map(notificationId);
-  if (!ids.length) return;
-  if (accountNotificationStateActive()) {
-    optimisticNotificationProfile({ readIds: ids });
-    void persistNotificationProfile({ readIds: ids });
-  } else {
-    const read = storedNotificationIds(NOTIFICATION_READ_KEY);
-    ids.forEach((id) => read.add(id));
-    saveNotificationIds(NOTIFICATION_READ_KEY, read);
-  }
+  const {allVisible}=notificationViewState();
+  if (!allVisible.length) return;
+  const read=storedNotificationIds(NOTIFICATION_READ_KEY);
+  allVisible.forEach(item=>read.add(notificationId(item)));
+  saveNotificationIds(NOTIFICATION_READ_KEY,read);
   renderBoard(currentBoardEntries);
 }
-
 function persistDeletedNotifications(items) {
-  const ids = items.map(notificationId);
-  if (accountNotificationStateActive()) {
-    optimisticNotificationProfile({ deletedIds: ids });
-    void persistNotificationProfile({ deletedIds: ids });
-  } else {
-    const deleted = storedNotificationIds(NOTIFICATION_DELETED_KEY);
-    ids.forEach((id) => deleted.add(id));
-    saveNotificationIds(NOTIFICATION_DELETED_KEY, deleted);
-  }
+  const deleted=storedNotificationIds(NOTIFICATION_DELETED_KEY);
+  items.forEach(item=>deleted.add(notificationId(item)));
+  saveNotificationIds(NOTIFICATION_DELETED_KEY,deleted);
 }
 
 function deleteNotification(item) {
@@ -4711,16 +4679,10 @@ async function saveNotificationPreferencesFromUi() {
     league: Boolean(els.notificationPrefLeague?.checked),
     version: Boolean(els.notificationPrefVersion?.checked),
   };
-  if (accountNotificationStateActive()) {
-    optimisticNotificationProfile({ channels });
-    renderNotificationPreferences();
-    await persistNotificationProfile({ channels }, { refreshPush: true });
-  } else {
-    saveLocalNotificationChannels(localStorage, channels);
-    renderNotificationPreferences();
-    renderBoard(currentBoardEntries);
-    void syncCurrentPushRegistration({ force: true });
-  }
+  saveLocalNotificationChannels(localStorage, channels);
+  renderNotificationPreferences();
+  renderBoard(currentBoardEntries);
+  void syncCurrentPushRegistration({force:true});
 }
 
 els.chatLauncher?.addEventListener("click", openChat);
