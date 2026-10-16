@@ -39,6 +39,14 @@ test("V2 separates a brief launch and scroll hero from unchanged V1 cards", () =
   assert.doesNotMatch(html, /v2-sidebar|v2-editorial|v2-shortcuts|v2-bottom-nav|V2 experience/);
   assert.doesNotMatch(html, /hero-actions v2-quick-actions/);
   assert.equal((html.match(/class="app-hub-tabs"/g) || []).length, 3);
+  assert.doesNotMatch(html, /id="skip-launch"|Skip to matches/);
+  assert.doesNotMatch(timeline, /#skip-launch/);
+  assert.doesNotMatch(css, /#skip-launch/);
+  assert.equal((html.match(/class="app-hub-header"/g) || []).length, 3);
+  for (const id of ["close-chat", "close-notifications", "close-settings"]) {
+    assert.match(html, new RegExp(`class="icon-button app-hub-close" id="${id}"`));
+    assert.equal((html.match(new RegExp(`id="${id}"`, "g")) || []).length, 1);
+  }
   assert.match(html, /id="scene-captain-band"/);
   assert.match(html, /id="scene-player-number"[^>]*>10<\/text>/);
   assert.doesNotMatch(html, /M6-70h14l-11 28/);
