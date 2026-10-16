@@ -1,0 +1,27 @@
+name: Retime demo (release preparation)
+on:
+  push:
+    branches: [release/9.1.2-intro-hub-demo]
+permissions:
+  contents: write
+jobs:
+  retime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: release/9.1.2-intro-hub-demo
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Retime all existing demo frames, without re-encoding
+        run: node scripts/retime-demo-gif.mjs docs/demo.gif 22
+      - name: Commit retimed GIF if necessary
+        run: |
+          if ! git diff --quiet -- docs/demo.gif; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add docs/demo.gif
+            git commit -m "Retime all README demo frames to 22 seconds"
+            git push origin HEAD:release/9.1.2-intro-hub-demo
+          fi
