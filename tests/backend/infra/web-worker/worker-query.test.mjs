@@ -124,6 +124,16 @@ test("private RSVP roster is ordered without exposing private ordering metadata"
   ]);
   assert.equal("voteOrder" in roster.players[0], false);
   assert.equal("firstSeenAt" in roster.players[0], false);
+  assert.equal("email" in roster.players[0], false);
+  assert.equal("phone" in roster.players[0], false);
+});
+
+test("public pickup roster rejects unpublished and malformed dates", () => {
+  const data = snapshot();
+  assert.throws(() => pickupRsvpRosterView(data, "../private"), /Invalid pickup date/);
+  assert.throws(() => pickupRsvpRosterView(data, "2099-10-09"), /unavailable/);
+  data.pickup.events["2099-10-08"].ok = false;
+  assert.throws(() => pickupRsvpRosterView(data, "2099-10-08"), /unavailable/);
 });
 
 test("pickup-specific dated detail does not mix in league facts", () => {
