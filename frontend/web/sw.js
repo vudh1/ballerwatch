@@ -108,13 +108,25 @@ function normalizedChannels(value) {
   };
 }
 
-async function readNotificationChannels() {
-  return normalizedChannels((await cachedDeviceValue(NOTIFICATION_PREFS_URL))?.channels);
+function teamKey(name) {
+  return String(name||"").trim().replace(/\s+/g," ").toLocaleLowerCase("en");
 }
-async function writeNotificationChannels(channels) {
-  const normalized=normalizedChannels(channels);
-  await storeDeviceValue(NOTIFICATION_PREFS_URL,{channels:normalized});
-  return normalized;
+function alertMatchesDeviceTeams(entry, teams = []) {
+  if (entry?.channel !== "league" || !teams.length ||
+      !Array.isArray(entry?.teams) || !entry.teams.length) return true;
+  const chosen = new Set(teams.map(teamKey));
+  return entry.teams.some(name => chosen.has(teamKey(name)));
+}
+async function readNotificationChannels() {
+  const stored=await cachedDeviceValue(NOTIFICATION_PREFS_URL) || {};
+  return { channels:normalizedChannels(stored.channels),
+    teams:Array.isArray(stored.teams) ? stored.teams.slice(0,8) : [] };
+}
+async function writeNotificationChannels(data) {
+  const channels=normalizedChannels(data?.channels || data);
+  const teams=[...new Set((Array.isArray(data?.teams) ? data.teams : [])
+    .map(name=>String(name||"").trim().slice(0,120)).filter(Boolean))].slice(0,8);
+  await storeDeviceValue(NOTIFICATION_PREFS_URL,{channels,teams});
 }
 
 function cleanRsvpDates(value) {
@@ -252,7 +264,7 @@ self.addEventListener("push", (event) => {
   event.waitUntil((async () => {
     let entry = null;
     try {
-      const [response, channels, rsvpState] = await Promise.all([
+      const [response, devicePrefs, rsvpState] = await Promise.all([
         fetch(API + "/web/board?limit=30", { cache: "no-store" }),
         readNotificationChannels(),
         readRsvpState(),
@@ -261,7 +273,8 @@ self.addEventListener("push", (event) => {
       // A suppressed new alert must not replay an older notification.
       const candidate = Array.isArray(payload?.entries) ? payload.entries[0] : null;
       const channel = String(candidate?.channel || "");
-      entry = candidate && (!channel || channels[channel] !== false) &&
+      entry = candidate && (!channel || devicePrefs.channels[channel] !== false) &&
+        alertMatchesDeviceTeams(candidate, devicePrefs.teams) &&
         !skipBookedRsvpAlert(candidate, rsvpState) ? candidate : null;
     } catch {}
 
