@@ -60,3 +60,11 @@ test("bounded team-specific projections persist but global season projections ar
   assert.equal(writePublicStandings(s,PUBLIC_STANDINGS_LOCAL_KEY,{...base,matchups:mk(97)},now,"2026-10-14"),false);
 });
 
+
+test("public standings cache remains separate from expiring personal preferences", () => {
+  const s = storage(), now = Date.parse("2026-10-16T08:00:00Z");
+  assert.equal(writePublicStandings(s, PUBLIC_STANDINGS_LOCAL_KEY, example(),
+    now, "2026-10-16"), true);
+  assert.equal(readPublicStandings(s, PUBLIC_STANDINGS_LOCAL_KEY,
+    now + 1000, "2026-10-16").cards.length, 1);
+});

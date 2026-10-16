@@ -1,9 +1,11 @@
+import { readDeviceLease, writeDeviceLease } from "./device-lease.js";
 export const LOCAL_NOTIFICATION_READ_KEY = "ballerwatch-notification-read-v1";
 export const LOCAL_NOTIFICATION_DELETED_KEY = "ballerwatch-notification-deleted-v1";
 
 export function localNotificationIds(key) {
   try {
-    const value = JSON.parse(localStorage.getItem(key) || "[]");
+    const value = readDeviceLease(localStorage, key + "-24h")?.ids;
+    localStorage.removeItem(key); // purge legacy unexpiring notification state
     return new Set(Array.isArray(value) ? value.map(String) : []);
   } catch {
     return new Set();
@@ -12,7 +14,8 @@ export function localNotificationIds(key) {
 
 export function saveLocalNotificationIds(key, values) {
   try {
-    localStorage.setItem(key, JSON.stringify([...values].slice(-300)));
+    writeDeviceLease(localStorage, key + "-24h",
+      { ids: [...values].slice(-300) });
   } catch {}
 }
 
@@ -27,6 +30,8 @@ export function clearLocalNotificationProfile() {
   try {
     localStorage.removeItem(LOCAL_NOTIFICATION_READ_KEY);
     localStorage.removeItem(LOCAL_NOTIFICATION_DELETED_KEY);
+    localStorage.removeItem(LOCAL_NOTIFICATION_READ_KEY + "-24h");
+    localStorage.removeItem(LOCAL_NOTIFICATION_DELETED_KEY + "-24h");
   } catch {}
 }
 
@@ -55,16 +60,11 @@ export function normalizedNotificationProfile(value = {}) {
 
 export const LOCAL_NOTIFICATION_CHANNELS_KEY = "ballerwatch-notification-channels-v1";
 export function readLocalNotificationChannels(storage) {
-  try {
-    const raw=storage.getItem(LOCAL_NOTIFICATION_CHANNELS_KEY);
-    return raw && raw.length <= 512 ? normalizedNotificationChannels(JSON.parse(raw))
-      : normalizedNotificationChannels();
-  } catch { return normalizedNotificationChannels(); }
+  try { storage.removeItem(LOCAL_NOTIFICATION_CHANNELS_KEY); } catch {}
+  return normalizedNotificationChannels(
+    readDeviceLease(storage, LOCAL_NOTIFICATION_CHANNELS_KEY + "-24h")?.channels || {});
 }
 export function saveLocalNotificationChannels(storage, channels) {
-  try {
-    storage.setItem(LOCAL_NOTIFICATION_CHANNELS_KEY,
-      JSON.stringify(normalizedNotificationChannels(channels)));
-    return true;
-  } catch { return false; }
+  return writeDeviceLease(storage, LOCAL_NOTIFICATION_CHANNELS_KEY + "-24h",
+    { channels: normalizedNotificationChannels(channels) });
 }
