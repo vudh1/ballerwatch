@@ -2,19 +2,19 @@ import { readDeviceLease, writeDeviceLease } from "./device-lease.js";
 export const LOCAL_NOTIFICATION_READ_KEY = "ballerwatch-notification-read-v1";
 export const LOCAL_NOTIFICATION_DELETED_KEY = "ballerwatch-notification-deleted-v1";
 
-export function localNotificationIds(key) {
+export function localNotificationIds(key, storage = localStorage) {
   try {
-    const value = readDeviceLease(localStorage, key + "-24h")?.ids;
-    localStorage.removeItem(key); // purge legacy unexpiring notification state
+    const value = readDeviceLease(storage, key + "-24h")?.ids;
+    storage.removeItem(key); // purge legacy unexpiring notification state
     return new Set(Array.isArray(value) ? value.map(String) : []);
   } catch {
     return new Set();
   }
 }
 
-export function saveLocalNotificationIds(key, values) {
+export function saveLocalNotificationIds(key, values, storage = localStorage) {
   try {
-    writeDeviceLease(localStorage, key + "-24h",
+    writeDeviceLease(storage, key + "-24h",
       { ids: [...values].slice(-300) });
   } catch {}
 }
