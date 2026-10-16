@@ -41,19 +41,19 @@ export const fixtureStandings = {
 };
 
 export function fixtureResponse(pathname, method = "GET") {
-  if (method === "POST" && pathname === "/web/user/login") {
-    return { ok: true, token: "synthetic-browser-session", username: "fixture" };
+  if (method === "POST" && pathname === "/web/admin/unlock") {
+    return { ok: true, token: "synthetic-browser-session", username: "admin" };
   }
   if (method !== "GET") throw new Error(`Unexpected synthetic mutation: ${method} ${pathname}`);
   const responses = {
-    "/web/config": { ok: true, version: "9.1.1", push: { ready: false } },
+    "/web/config": { ok: true, version: "11.0.0", push: { ready: false } },
     "/web/calendar": { ok: true, calendar: fixtureCalendar },
     "/web/next-game": { ok: true, game: fixtureGame },
     "/web/standings": { ok: true, standings: fixtureStandings },
     "/web/board": { ok: true, entries: [{ id: "fixture-notice", title: "Fixture match update", body: "Synthetic browser test only.", channel: "pickup", at: "2099-10-14T20:00:00Z" }] },
     "/web/user/rsvp-status": { ok: true, rsvp: { confirmedDates: [], waitlistedDates: [] } },
     "/web/user/notifications": { ok: true, profile: { readIds: [], deletedIds: [], channels: { pickup: true, league: true, version: true } } },
-    "/web/user/settings": { ok: true, settings: { username: "fixture", ownerRsvpName: "Fixture Player", canManageMatches: false, teams: ["Fixture FC"] } },
+    "/web/user/settings": { ok: true, settings: { username: "admin", canManageMatches: true, canManageUsers:false, passwordConfigured:true, deletedMatches:[], teams:["Fixture FC"] } },
     "/web/user/rsvp-roster": { ok: true, roster: { players: [{ name: "Fixture Player", participantCount: 1 }], waitlist: [] } },
     "/web/teams": { ok: true, teams: ["Fixture FC", "Test United"] },
   };
