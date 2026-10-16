@@ -293,12 +293,19 @@ export function applyRegistrationEvent(event, { now = new Date() } = {}) {
 }
 
 export function pruneDeviceSubscriptions({ now = new Date() } = {}) {
-  const state = ensureWebPushState();
-  const active = activeDeviceSubscriptions(state.subscriptions, now);
-  if (active.length === state.subscriptions.length) return 0;
-  const count = state.subscriptions.length - active.length;
-  state.subscriptions = active;
-  saveWebPushState(state);
+  let envelope;
+  try {
+    envelope = JSON.parse(fs.readFileSync(STATE_PATH,"utf8"));
+  } catch { return 0; }
+  const source = decryptState(envelope);
+  if (!Array.isArray(source?.subscriptions) || !source.vapid?.privateJwk) {
+    throw new Error("Cannot prune unreadable encrypted push registrations.");
+  }
+  const active = activeDeviceSubscriptions(source.subscriptions, now);
+  const count = source.subscriptions.length-active.length;
+  if (count > 0) {
+    saveWebPushState({ ...source, subscriptions: active });
+  }
   return count;
 }
 
