@@ -475,9 +475,11 @@ try {
           Boolean(localStorage.getItem("ballerwatch:beta:local-match-edits:v1"))), true);
         assert.equal(await page.evaluate(() =>
           localStorage.getItem("ballerwatch:local-match-edits:v1")), null);
-        await ready(page);
+        await page.goto(`${origin}/ballerwatch/`);
+        await page.waitForFunction(() =>
+          document.querySelector("#next-game-location")?.textContent.includes("Fixture Park Soccer"));
         assert.match(await page.locator("#next-game-location").textContent(), /Fixture Park Soccer/);
-        await ready(page, "beta/");
+        await page.goto(`${origin}/ballerwatch/beta/`);
         await page.waitForFunction(() =>
           document.querySelector("#next-game-location")?.textContent.includes("Beta-only Fixture Field"));
         page.once("dialog", (dialog) => dialog.accept());
