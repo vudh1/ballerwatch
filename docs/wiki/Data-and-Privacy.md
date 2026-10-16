@@ -25,3 +25,7 @@ Recovery uses the manual **Reset web user password** workflow. The temporary rec
 ## Public projections
 
 Public PWA/API responses and notification-board entries must never expose RSVP/waitlist names, private settings, tokens, secrets, or user-specific status.
+
+## Device-local retention (11.0.1)
+
+RSVP name, monitored teams and match-card corrections/hides are stored only on the browser installation, without a fixed expiration. The user can replace them in Settings or the match-card menu; clearing site data also clears them. Notification board messages, read/deleted state and device badges expire after 24 hours. Notification category choices and validated Web Push registrations persist until changed, disabled or provider-expired. Shared RATS/RSVP data stays canonical for other visitors; private HMAC RSVP indices remain encrypted.

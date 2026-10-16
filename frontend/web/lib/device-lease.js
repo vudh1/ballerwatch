@@ -1,7 +1,8 @@
-/** Accountless device preferences expire 24h after the last explicit change.
- * Browser storage cannot wake up to delete itself while the site is closed.
- * Expired records are actively removed the next time they are accessed.
- * Public fixture/scouting caches contain no personal data and remain separate.
+/** Expiring notification message/read/badge state only.
+ * Anonymous RSVP name, monitored teams, match edits and notification category
+ * choices are separate non-expiring browser records.
+ * Browsers delete expired notification records on the next read (they cannot
+ * wake while closed). Public fixture/scouting caches remain separate.
  */
 export const DEVICE_LEASE_MS = 24 * 60 * 60 * 1000;
 

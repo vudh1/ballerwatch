@@ -1,7 +1,23 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.0.0",
+  "currentVersion": "11.0.1",
   "releases": [
+    {
+      "version": "11.0.1",
+      "date": "2026-10-16",
+      "type": "patch",
+      "source": "user-clarification",
+      "title": "Persistent device preferences and private match edits",
+      "webAnnouncement": "RSVP name, monitored teams, match edits and notification categories stay on this device until changed. Only notification messages/read state/badges expire after 24 hours. Push delivery remains active until unsubscribed or invalidated by the provider.",
+      "changes": [
+        "Replace the 24-hour visitor-name/team lease with persistent browser storage; migrate older device preferences, even a saved lease that passed its former expiration, without restoring account-backed profiles.",
+        "Keep a one-day limit for notification board messages, read/deleted markers and unread badges. Notification category selections and encrypted provider-valid Web Push subscriptions persist until changed, disabled or rejected by the push provider; do not silence reminders because the app was closed for a day.",
+        "Apply and cache match date/time/venue corrections and hidden matches on the editing device only. Changes immediately update match cards, calendar dots, directions and share details; Reset/Restore are local and do not require sign-in.",
+        "Serve canonical RATS and pickup fixtures without legacy shared overrides or hidden-match state. Reject retired shared match-write endpoints, including calls from older app versions.",
+        "Precompute current-season team data as before, while storing the selected teams locally with RSVP name; add browser, privacy and cross-device isolation regression checks.",
+        "Apply a 24-hour message cutoff during notification-board writes and Worker reads, and permit fresh notifications with tags matching messages from prior days."
+      ]
+    },
     {
       "version": "11.0.0",
       "date": "2026-10-16",

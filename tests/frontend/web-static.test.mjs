@@ -13,19 +13,19 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
 
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   assert.match(html, /manifest\.webmanifest/);
-  assert.match(html, /apple-touch-icon\.png\?v=11\.0\.0/);
+  assert.match(html, /apple-touch-icon\.png\?v=11\.0\.1/);
   assert.match(html, /class="brand-icon"/);
-  assert.match(html, /icon\.svg\?v=11\.0\.0/);
+  assert.match(html, /icon\.svg\?v=11\.0\.1/);
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=11\.0\.0/);
-  assert.match(html, /app\.js\?v=11\.0\.0/);
+  assert.match(html, /styles\.css\?v=11\.0\.1/);
+  assert.match(html, /app\.js\?v=11\.0\.1/);
 
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v11-0-0-shell/);
+  assert.match(sw, /ballerwatch-v11-0-1-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -94,7 +94,7 @@ test("promotion watches Worker and Pages then refreshes the open PWA", () => {
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=11\.0\.0/);
+  assert.match(app, /sw\.js\?v=11\.0\.1/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -791,7 +791,7 @@ test("page uses a soccer-pitch backdrop with readable translucent cards", () => 
   assert.match(icon, /glass soccer ball.*watch ring/);
   assert.match(icon, /<circle cx="256" cy="256" r="100" fill="url\(#ball\)"\/>/);
   assert.match(icon, /stroke="url\(#ring\)"/);
-  assert.match(manifest, /icon\.svg\?v=11\.0\.0/);
+  assert.match(manifest, /icon\.svg\?v=11\.0\.1/);
   assert.match(css, /\.card,[\s\S]*\.footer-install \{[\s\S]*rgba\(6, 18, 22, 0\.57\)/);
   assert.match(css, /\.spotlight-card \{[\s\S]*rgba\(4, 16, 22, 0\.72\)/);
   assert.match(css, /backdrop-filter:\s*blur\(24px\) saturate\(135%\)/);
@@ -810,7 +810,7 @@ test("notification filters and preferences are accountless and local to the devi
   assert.match(app,/Device-only · expires after 24 hours/);
   assert.match(app,/saveLocalNotificationChannels/);
   assert.match(sw,/DEVICE_LEASE_MS/);
-  assert.match(sw,/cachedDeviceValue\(NOTIFICATION_PREFS_URL\)/);
+  assert.match(sw,/cachedDeviceValue\(NOTIFICATION_PREFS_URL,\{persistent:true\}\)/);
   assert.match(css,/\.notification-preferences \{/);
 });
 
@@ -1104,7 +1104,10 @@ test("README demo and public, account-free preferences remain accessible", () =>
   assert.match(readme,/!\[BallerWatch animated demo[^\]]*\]\(docs\/demo\.gif\)/);
   assert.equal(fs.readFileSync("docs/demo.gif").subarray(0,6).toString(),"GIF89a");
   assert.match(html,/id="guest-settings-view"/);
-  assert.match(html,/Your preferences expire 24 hours/);
+  assert.match(html,/Your RSVP name and followed teams stay saved on this device/);
+  assert.match(html,/only notifications expire after 24 hours/);
+  assert.match(app,/setLocalMatchOverride\(localStorage/);
+  assert.doesNotMatch(app,/api\("\/web\/user\/match-override"/);
   assert.doesNotMatch(html,/id="user-management"|id="owner-login-username"/);
   assert.doesNotMatch(app,/api\("\/web\/user\/users"/);
 });
@@ -1126,13 +1129,13 @@ test("match override editor uses the type pill action sheet and local Reset", ()
   assert.match(app, /matchSourceState/);
   assert.match(app, /sourceGameView/);
   assert.match(app, /fillMatchOverrideForm/);
-  assert.match(app, /Source values restored locally/);
-  assert.match(app, /persistedOverride/);
-  assert.match(app, /method: "DELETE"/);
-  assert.match(app, /pendingMatchAdminAction/);
-  assert.match(app, /matchAdminSettings\("match-override"\)/);
-  assert.match(app, /await openSettings\(\{ pendingAction \}\)/);
-  assert.match(app, /resumeMatchAction/);
+  assert.match(app, /Source values restored/);
+  assert.match(app, /clearLocalMatchOverride\(localStorage/);
+  assert.match(app, /setLocalMatchOverride\(localStorage/);
+  assert.match(app, /setLocalMatchHidden\(localStorage/);
+  assert.match(app, /renderDeviceCalendar\(\)/);
+  assert.doesNotMatch(app, /matchAdminSettings\("match-override"\)/);
+  assert.doesNotMatch(app, /api\("\/web\/user\/match-override"/);
   assert.match(html, /id="next-game-menu-trigger"/);
   assert.match(html, /id="next-game-menu-edit"/);
   assert.match(html, /id="next-game-menu-delete"/);
@@ -1216,7 +1219,8 @@ test("match type pill opens a touch-safe Edit/Delete action sheet and freshness 
   assert.match(app, /toggleMatchCardMenu/);
   assert.match(app, /deleteSelectedMatch/);
   assert.match(app, /restoreDeletedMatch/);
-  assert.match(app, /\/web\/user\/match/);
+  assert.match(app, /setLocalMatchHidden\(localStorage/);
+  assert.doesNotMatch(app, /api\("\/web\/user\/match"/);
   assert.match(html, /class="match-card-action-dialog"/);
   assert.doesNotMatch(html, /match-card-menu-glyph/);
   assert.match(app, /nextGameMenu\.showModal\(\)/);
@@ -1288,7 +1292,7 @@ test("canonical cinematic launch owns first paint and remains reduced-motion saf
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const gate = fs.readFileSync("frontend/web/v2/prepaint.js", "utf8");
   assert.match(html, /<html lang="en" class="v2"/);
-  assert.match(html, /<script src="\.\/v2\/prepaint\.js\?v=11\.0\.0"><\/script>[\s\S]*<link rel="stylesheet"/);
+  assert.match(html, /<script src="\.\/v2\/prepaint\.js\?v=11\.0\.1"><\/script>[\s\S]*<link rel="stylesheet"/);
   assert.match(html, /id="v2-launch"/);
   assert.match(html, /launch-intro-beam-a/);
   assert.match(gate, /prefers-reduced-motion: reduce/);
@@ -1727,7 +1731,7 @@ test("cold-start work and card measurements stay bounded regardless of full sche
   assert.match(size, /adjacentCalendarSelection\(-1\)\?\.game/);
   assert.match(size, /adjacentCalendarSelection\(1\)\?\.game/);
   assert.doesNotMatch(size, /for \(const game of currentCalendar\?\.games \|\| \[\]\)/);
-  assert.match(app, /JSON\.stringify\(next\) !== JSON\.stringify\(currentCalendar\)/);
+  assert.match(app, /JSON\.stringify\(personal\) !== JSON\.stringify\(currentCalendar\)/);
   assert.match(app, /const calendarOk = await loadCalendar\(\{ initial: true \}\)\.catch/);
   assert.match(app, /const calendarOk = await loadCalendar\(\{ initial: true \}\)\.catch/);
   assert.match(worker, /const pendingJsonLoads = new Map\(\)/);
@@ -1995,12 +1999,13 @@ test("cached calendar renders its real Updated timestamp without false reconnect
   const getCalendar = app.match(/async function loadCalendar\(\{ initial = false \} = \{\}\)[\s\S]*?\n\}/)?.[0] || "";
   const startup = app.split('document.documentElement.classList.toggle("is-standalone"')[1] || "";
   const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
-  assert.match(cacheRestore, /renderCalendar\(cached\)/);
+  assert.match(cacheRestore, /currentCanonicalCalendar = cached/);
+  assert.match(cacheRestore, /renderDeviceCalendar\(\)/);
   assert.doesNotMatch(cacheRestore, /els\.calendarUpdated\.textContent = "Last synced|setSystemState\("stale"\)/);
   assert.match(getCalendar, /if \(!prepared\?\.startDate \|\| !Array\.isArray\(prepared\.games\)\)/);
-  assert.match(getCalendar, /JSON\.stringify\(next\) !== JSON\.stringify\(currentCalendar\)/);
+  assert.match(getCalendar, /JSON\.stringify\(personal\) !== JSON\.stringify\(currentCalendar\)/);
   assert.match(getCalendar, /else \{\s*els\.calendarUpdated\.textContent = matchUpdatedText\(next\.updatedAt\)/);
-  assert.match(getCalendar, /retainVerifiedFixtureDetails\(prepared, currentCalendar\)/);
+  assert.match(getCalendar, /retainVerifiedFixtureDetails\(prepared, currentCanonicalCalendar\)/);
   assert.doesNotMatch(getCalendar, /els\.calendarUpdated\.textContent = "Last synced/);
   assert.doesNotMatch(getCalendar, /els\.calendarUpdated\.textContent = "Last synced · Reconnecting"/);
   assert.match(startup, /setSystemState\(restoredPublicCalendar \? "ready" : "checking"\)/);
@@ -2123,3 +2128,24 @@ test("RATS standings startup automatically retries rather than staying unavailab
   assert.match(cache, /entries\.length > 96/);
 });
 
+
+
+test("only notifications expire; local match edits, monitored teams and RSVP name are persistent",()=>{
+  const guest=fs.readFileSync("frontend/web/lib/guest-profile.js","utf8");
+  const local=fs.readFileSync("frontend/web/lib/local-match-edits.js","utf8");
+  const notifications=fs.readFileSync("frontend/web/lib/notification-state.js","utf8");
+  const sw=fs.readFileSync("frontend/web/sw.js","utf8");
+  assert.match(guest,/DEVICE_GUEST_PROFILE_KEY/);
+  assert.doesNotMatch(guest,/writeDeviceLease|readDeviceLease|expiresAt: now/);
+  assert.match(local,/LOCAL_MATCH_EDITS_KEY/);
+  assert.match(notifications,/writeDeviceLease/);
+  assert.match(notifications,/DEVICE_NOTIFICATION_CHANNELS_KEY/);
+  assert.match(notifications,/schema:2,channels:normalizedNotificationChannels/);
+  assert.match(sw,/DEVICE_LEASE_MS=24\*60\*60\*1000/);
+  assert.match(sw,/teams:event\.data\?\.teams/);
+  assert.match(sw,/persistent:true/);
+  const push=fs.readFileSync("backend/shared/web-push.mjs","utf8");
+  assert.doesNotMatch(push,/PUSH_LEASE_MS/);
+  assert.match(push,/expirationTime/);
+  assert.match(sw,/\.\/lib\/local-match-edits\.js/);
+});

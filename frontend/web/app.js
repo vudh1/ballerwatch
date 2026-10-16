@@ -31,6 +31,10 @@ import {
 } from "./lib/notification-state.js";
 import { createSettingsChoice } from "./lib/settings-choice.js";
 import { readGuestProfile, saveGuestProfile, MAX_GUEST_TEAMS } from "./lib/guest-profile.js";
+import {
+  applyLocalMatchEdits, readLocalMatchEdits, setLocalMatchOverride,
+  clearLocalMatchOverride, setLocalMatchHidden,
+} from "./lib/local-match-edits.js";
 import { experienceKey } from "./lib/experience.js";
 import { PUBLIC_CALENDAR_LOCAL_KEY, readPublicCalendar, todaySeattleKey,
   writePublicCalendar } from "./lib/public-calendar-cache.js";
@@ -186,6 +190,7 @@ const els = {
 let config = null;
 let currentNextGame = null;
 let currentCalendar = null;
+let currentCanonicalCalendar = null;
 let currentBoardEntries = [];
 let selectedCalendarDate = "";
 let selectedCalendarGameId = "";
@@ -1163,6 +1168,12 @@ function renderDeletedMatches(matches) {
   }
 }
 
+function renderDeviceHiddenMatches() {
+  const hidden = Object.values(readLocalMatchEdits(localStorage).hidden);
+  els.deletedMatchManagement.hidden = hidden.length === 0;
+  renderDeletedMatches(hidden);
+}
+
 function showOwnerSettings(settings) {
   currentUserSettings = settings || null;
   els.settingsLoginView.hidden = false;
@@ -1171,9 +1182,9 @@ function showOwnerSettings(settings) {
   els.currentUserSummary.textContent = "Administrator maintenance unlocked for this session.";
   const deletedMatches = Array.isArray(settings?.deletedMatches) ? settings.deletedMatches : [];
   els.deletedMatchManagement.hidden =
-    !settings?.canManageMatches || deletedMatches.length === 0;
+    Object.keys(readLocalMatchEdits(localStorage).hidden).length === 0;
   els.releaseManagement.hidden = !settings?.canManageMatches;
-  if (settings?.canManageMatches) renderDeletedMatches(deletedMatches);
+  renderDeviceHiddenMatches();
   if (!settings?.canManageMatches) {
     currentReleaseStatus = null;
     els.promoteRelease.disabled = true;
@@ -1366,7 +1377,7 @@ function saveGuestSettings() {
   }
   guestProfile = readGuestProfile(localStorage);
   if (previousName !== guestProfile.name) scheduleDevicePushRefresh();
-  els.guestSettingsStatus.textContent = "Saved on this device for 24 hours.";
+  els.guestSettingsStatus.textContent = "Saved on this device until you change it.";
   if (JSON.stringify(guestProfile.teams) !== before) {
     scheduleDevicePushRefresh();
     const version = ++guestSettingsRefreshVersion;
@@ -1405,6 +1416,7 @@ async function openSettings(options = {}) {
     guestName.addEventListener("input", saveGuestSettings);
   }
   renderGuestSettings();
+  renderDeviceHiddenMatches();
   void loadGuestTeamOptions();
   if (!ownerToken()) {
     showLoginSettings();
@@ -1589,7 +1601,7 @@ async function registerServiceWorker() {
     void syncServiceWorkerRsvpState();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=11.0.0", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=11.0.1", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -3691,7 +3703,19 @@ function installStandingsSwipe() {
 // and never private RSVP names, tokens, notification state or runtime secrets.
 // Only public fixture fields (never account data) persist across PWA launches.
 // Cache reads are synchronous, so the previous good cards paint before any GET.
+function displayDeviceCalendar(calendar) {
+  return applyLocalMatchEdits(calendar, readLocalMatchEdits(localStorage),
+    date => dateDisplay(date, {weekday: "short", month: "numeric", day: "numeric"}));
+}
+
+function renderDeviceCalendar() {
+  if (currentCanonicalCalendar?.games) {
+    renderCalendar(displayDeviceCalendar(currentCanonicalCalendar));
+  }
+}
+
 function rememberPublicCalendar(calendar) {
+  currentCanonicalCalendar = calendar;
   writePublicCalendar(sessionStorage, PUBLIC_CALENDAR_CACHE_KEY, calendar);
   writePublicCalendar(localStorage, PUBLIC_CALENDAR_DEVICE_KEY, calendar);
 }
@@ -3702,7 +3726,8 @@ function restorePublicCalendar() {
   const cached = readPublicCalendar(sessionStorage, PUBLIC_CALENDAR_CACHE_KEY, now, today) ||
     readPublicCalendar(localStorage, PUBLIC_CALENDAR_DEVICE_KEY, now, today);
   if (!cached) return false;
-  renderCalendar(cached);
+  currentCanonicalCalendar = cached;
+  renderDeviceCalendar();
   return true;
 }
 
@@ -3748,11 +3773,12 @@ async function loadCalendar({ initial = false } = {}) {
     if (!prepared?.startDate || !Array.isArray(prepared.games)) {
       throw new Error("Calendar snapshot is incomplete.");
     }
-    const next = retainVerifiedFixtureDetails(prepared, currentCalendar);
+    const next = retainVerifiedFixtureDetails(prepared, currentCanonicalCalendar);
     rememberPublicCalendar(next);
-    // Do not rerender or remeasure the card carousel for an unchanged snapshot.
-    if (JSON.stringify(next) !== JSON.stringify(currentCalendar)) {
-      renderCalendar(next);
+    const personal = displayDeviceCalendar(next);
+    // A local edit cannot be overwritten by the minute-by-minute public GET.
+    if (JSON.stringify(personal) !== JSON.stringify(currentCalendar)) {
+      renderCalendar(personal);
     } else {
       els.calendarUpdated.textContent = matchUpdatedText(next.updatedAt) || "Updated pending";
     }
@@ -3855,7 +3881,8 @@ async function watchPromotedRelease(version, {
 async function loadNextGame() {
   try {
     const payload = await api("/web/next-game", {retryNetwork: true});
-    renderNextGame(payload.game || null);
+    const personal = displayDeviceCalendar({games: payload.game ? [payload.game] : []});
+    renderNextGame(personal?.games?.[0] || null);
     return true;
   } catch (error) {
     if (currentNextGame?.id) {
@@ -3945,43 +3972,6 @@ function inputClockValue(value) {
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
-async function matchAdminSettings(pendingAction = "match-override") {
-  if (!ownerToken()) {
-    await openSettings({ pendingAction });
-    els.ownerLoginStatus.textContent =
-      pendingAction === "match-delete"
-        ? "Administrator sign-in is required. After sign-in, BallerWatch will return to the delete action."
-        : "Administrator sign-in is required. After sign-in, BallerWatch will return to the match editor.";
-    return null;
-  }
-  if (currentUserSettings?.canManageMatches) return currentUserSettings;
-
-  try {
-    const payload = await api("/web/user/settings", {
-      headers: ownerHeaders(),
-      retryNetwork: true,
-    });
-    showOwnerSettings(payload.settings || {});
-    if (!payload.settings?.canManageMatches) {
-      els.nextGameHint.textContent = "Only the administrator can override match details.";
-      return null;
-    }
-    return payload.settings;
-  } catch (error) {
-    if (error.status === 401) {
-      clearSession();
-      await openSettings({ pendingAction });
-      els.ownerLoginStatus.textContent =
-        pendingAction === "match-delete"
-          ? "Administrator sign-in is required. After sign-in, BallerWatch will return to the delete action."
-          : "Administrator sign-in is required. After sign-in, BallerWatch will return to the match editor.";
-    } else {
-      els.nextGameHint.textContent = error.message;
-    }
-    return null;
-  }
-}
-
 function closeMatchCardMenu() {
   if (els.nextGameMenu.open) els.nextGameMenu.close();
   els.nextGameMenuTrigger.setAttribute("aria-expanded", "false");
@@ -3999,175 +3989,87 @@ function toggleMatchCardMenu() {
   els.nextGameMenu.showModal();
 }
 
-async function deleteSelectedMatch({ authorized = false } = {}) {
+function deleteSelectedMatch() {
   if (!currentNextGame?.id) return;
-  const settings = authorized ? currentUserSettings : await matchAdminSettings("match-delete");
-  if (!settings?.canManageMatches) return;
-
   const game = { ...currentNextGame };
   const label = game.title || game.dateLabel || "this match";
-  if (!window.confirm(
-    `Delete ${label} from BallerWatch?\n\nThis only hides the match in BallerWatch. The original RSVP/RATS fixture is not changed.`,
-  )) {
+  if (!window.confirm(`Hide ${label} on this device?\n\nOther visitors and the RATS/RSVP source will not change.`)) {
     return;
   }
-
   closeMatchCardMenu();
-  try {
-    const payload = await api("/web/user/match", {
-      method: "DELETE",
-      headers: ownerHeaders(),
-      retryNetwork: true,
-      body: JSON.stringify({
-        id: game.id,
-        label: [game.title || "", game.dateLabel || ""].filter(Boolean).join(" — "),
-        date: game.date || "",
-      }),
-    });
-    if (currentUserSettings) {
-      currentUserSettings = {
-        ...currentUserSettings,
-        deletedMatches: payload.deletedMatches || [],
-      };
-    }
-    await loadCalendar();
-  } catch (error) {
-    if (error.status === 401) {
-      clearSession();
-      await openSettings({ pendingAction: "match-delete" });
-      els.ownerLoginStatus.textContent =
-        "Sign in again. BallerWatch will return to the delete action.";
-    } else {
-      els.nextGameHint.textContent = error.message;
-    }
+  if (!setLocalMatchHidden(localStorage, game, true)) {
+    els.nextGameHint.textContent = "Browser storage is unavailable; this match was not hidden.";
+    return;
   }
+  renderDeviceCalendar();
+  renderDeviceHiddenMatches();
 }
 
-async function restoreDeletedMatch(id) {
-  if (!id) return;
-  try {
-    const payload = await api("/web/user/match", {
-      method: "POST",
-      headers: ownerHeaders(),
-      retryNetwork: true,
-      body: JSON.stringify({ id }),
-    });
-    if (currentUserSettings) {
-      currentUserSettings = {
-        ...currentUserSettings,
-        deletedMatches: payload.deletedMatches || [],
-      };
-      showOwnerSettings(currentUserSettings);
-    }
-    await loadCalendar();
-  } catch (error) {
-    els.ownerSettingsStatus.textContent = error.message;
-  }
+function restoreDeletedMatch(id) {
+  if (!id || !setLocalMatchHidden(localStorage, {id}, false)) return;
+  renderDeviceCalendar();
+  renderDeviceHiddenMatches();
 }
 
-async function openMatchOverrideEditor({ authorized = false } = {}) {
+async function openMatchOverrideEditor() {
   if (!currentNextGame?.id) {
     els.nextGameHint.textContent = "Select a match before editing.";
     return;
   }
-  const settings = authorized ? currentUserSettings : await matchAdminSettings("match-override");
-  if (!settings?.canManageMatches) return;
-
   matchOverrideSourceState = matchSourceState(currentNextGame);
   els.matchOverrideTitle.textContent = currentNextGame.title || "Edit selected match";
-  els.matchOverrideCopy.textContent = currentNextGame.overrideActive
-    ? "Manual values are active. Edit them, or reset immediately to the discovered source values."
-    : "Edit the match below. Reset always restores the discovered source values.";
+  els.matchOverrideCopy.textContent = currentNextGame.deviceOverride
+    ? "This device has a saved correction. Edit it or reset to published values."
+    : "Changes are saved only on this device. Published fixtures and other visitors are unaffected.";
   els.matchOverrideDate.value = currentNextGame.date || "";
   els.matchOverrideStart.value = inputClockValue(currentNextGame.startTime || "");
   els.matchOverrideEnd.value = inputClockValue(currentNextGame.endTime || "");
-  els.matchOverrideLocation.value =
-    currentNextGame.location || currentNextGame.address || "";
+  els.matchOverrideLocation.value = currentNextGame.location || currentNextGame.address || "";
   els.matchOverrideReset.disabled = !matchOverrideSourceState;
-  els.matchOverrideStatus.textContent = currentNextGame.overrideActive
-    ? "Manual values active."
-    : "";
+  els.matchOverrideStatus.textContent = currentNextGame.deviceOverride
+    ? "Device-local correction active." : "";
   els.matchOverrideDialog.showModal();
 }
 
-async function saveMatchOverride(event) {
+function saveMatchOverride(event) {
   event.preventDefault();
   if (!currentNextGame?.id) return;
-  const button = els.matchOverrideForm.querySelector('button[type="submit"]');
-  button.disabled = true;
-  els.matchOverrideReset.disabled = true;
-  els.matchOverrideStatus.textContent = "Saving…";
-  try {
-    await api("/web/user/match-override", {
-      method: "POST",
-      headers: ownerHeaders(),
-      retryNetwork: true,
-      body: JSON.stringify({
-        id: currentNextGame.id,
-        date: els.matchOverrideDate.value,
-        startTime: els.matchOverrideStart.value,
-        endTime: els.matchOverrideEnd.value,
-        location: els.matchOverrideLocation.value.trim(),
-      }),
-    });
-    els.matchOverrideStatus.textContent = "Saved.";
-    await loadCalendar();
-    window.setTimeout(() => {
-      if (els.matchOverrideDialog.open) els.matchOverrideDialog.close();
-    }, 180);
-  } catch (error) {
-    if (error.status === 401) {
-      clearSession();
-      els.matchOverrideDialog.close();
-      await openSettings();
-      els.ownerLoginStatus.textContent = "Sign in again to edit match overrides.";
-    } else {
-      els.matchOverrideStatus.textContent = error.message;
-    }
-  } finally {
-    button.disabled = false;
-    els.matchOverrideReset.disabled = !matchOverrideSourceState;
+  const success = setLocalMatchOverride(localStorage, {
+    id: currentNextGame.id,
+    date: els.matchOverrideDate.value,
+    startTime: els.matchOverrideStart.value,
+    endTime: els.matchOverrideEnd.value,
+    location: els.matchOverrideLocation.value.trim(),
+  });
+  if (!success) {
+    els.matchOverrideStatus.textContent =
+      "Check the date/time and browser storage; no change was saved.";
+    return;
   }
+  renderDeviceCalendar();
+  els.matchOverrideStatus.textContent = "Saved on this device.";
+  window.setTimeout(() => {
+    if (els.matchOverrideDialog.open) els.matchOverrideDialog.close();
+  }, 180);
 }
 
-async function resetMatchOverride() {
+function resetMatchOverride() {
   if (!currentNextGame?.id || !matchOverrideSourceState) return;
-
-  const persistedOverride = Boolean(currentNextGame.overrideActive);
-  const matchId = currentNextGame.id;
-  const restored = sourceGameView(currentNextGame, matchOverrideSourceState);
-
-  fillMatchOverrideForm(matchOverrideSourceState);
-  renderNextGame(restored, els.spotlightLabel.textContent || "SELECTED GAME");
-  updateLocalCalendarGame(restored);
-  els.matchOverrideReset.disabled = false;
-  els.matchOverrideCopy.textContent =
-    "Source values are shown. Change anything and Save, or close the editor.";
-  els.matchOverrideStatus.textContent = persistedOverride
-    ? "Source values restored locally. Removing saved values…"
-    : "Source values restored.";
-
-  if (!persistedOverride) return;
-
-  try {
-    await api("/web/user/match-override", {
-      method: "DELETE",
-      headers: ownerHeaders(),
-      retryNetwork: true,
-      body: JSON.stringify({ id: matchId }),
-    });
-    els.matchOverrideStatus.textContent = "Source values restored.";
-    await loadCalendar();
-    const refreshed = (currentCalendar?.games || []).find((item) => item.id === matchId);
-    if (refreshed) {
-      matchOverrideSourceState = matchSourceState(refreshed);
-      renderNextGame(refreshed, els.spotlightLabel.textContent || "SELECTED GAME");
-      fillMatchOverrideForm(matchOverrideSourceState);
-    }
-  } catch (error) {
-    els.matchOverrideStatus.textContent =
-      `Source is shown locally, but the saved values could not be removed: ${error.message}`;
+  const id = currentNextGame.id;
+  if (!clearLocalMatchOverride(localStorage, id)) {
+    els.matchOverrideStatus.textContent = "Browser storage is unavailable; reset was not saved.";
+    return;
   }
+  // Reset happens immediately; no network request or shared state mutation.
+  renderDeviceCalendar();
+  const source = (currentCanonicalCalendar?.games || []).find(game => game.id === id);
+  if (source) {
+    matchOverrideSourceState = matchSourceState(source);
+    fillMatchOverrideForm(matchOverrideSourceState);
+  }
+  els.matchOverrideCopy.textContent =
+    "Published source values restored on this device. You can edit again or close.";
+  els.matchOverrideStatus.textContent = "Source values restored.";
 }
 
 async function shareNextGame() {
@@ -4839,8 +4741,8 @@ void updatePushStatus();
 void syncCurrentPushRegistration();
 
 window.setInterval(() => {
-  // Storage has a strict 24h lease: clear stale open-tab preferences without
-  // needing navigation, and return to public default team cards automatically.
+  // Browser-local RSVP names/teams are persistent. Sync changes across tabs;
+  // only notification data has an expiring lease.
   const fresh = readGuestProfile(localStorage);
   if (JSON.stringify(fresh) !== JSON.stringify(guestProfile)) {
     const teamChanged=JSON.stringify(fresh.teams)!==JSON.stringify(guestProfile.teams);

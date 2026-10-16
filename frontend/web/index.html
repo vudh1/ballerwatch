@@ -11,12 +11,12 @@
   <meta name="apple-mobile-web-app-title" content="BallerWatch">
   <meta name="description" content="A moment of football. Then everything you need for your next match.">
   <title>BallerWatch — Your matchday</title>
-  <link rel="manifest" href="./manifest.webmanifest?v=11.0.0">
-  <link rel="icon" href="./icon.svg?v=11.0.0" type="image/svg+xml">
-  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=11.0.0">
-  <script src="./v2/prepaint.js?v=11.0.0"></script>
-  <link rel="stylesheet" href="./styles.css?v=11.0.0">
-  <link rel="stylesheet" href="./v2/styles.css?v=11.0.0">
+  <link rel="manifest" href="./manifest.webmanifest?v=11.0.1">
+  <link rel="icon" href="./icon.svg?v=11.0.1" type="image/svg+xml">
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=11.0.1">
+  <script src="./v2/prepaint.js?v=11.0.1"></script>
+  <link rel="stylesheet" href="./styles.css?v=11.0.1">
+  <link rel="stylesheet" href="./v2/styles.css?v=11.0.1">
 </head>
 <body>
   <div class="status-bar-glass" aria-hidden="true"></div>
@@ -74,7 +74,7 @@
     <p class="v2-static-welcome" hidden>Matchday, at your pace. Motion is reduced on this device.</p>
     <header class="hero">
       <div class="brand-lockup">
-        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=11.0.0" alt=""></div>
+        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=11.0.1" alt=""></div>
         <div>
           <p class="eyebrow">SOCCER AT A GLANCE</p>
           <h1 id="matchday-heading" tabindex="-1">BallerWatch</h1>
@@ -441,7 +441,7 @@
       <div class="settings-divider"></div>
 
       <section id="guest-settings-view" aria-label="Personal preferences on this device">
-        <p class="muted">No account or sign-in needed. Your preferences expire 24 hours after you save them and are removed the next time you open BallerWatch.</p>
+        <p class="muted">No account needed. Your RSVP name and followed teams stay saved on this device until you change them; only notifications expire after 24 hours.</p>
         <div id="guest-settings-form" class="settings-form">
           <label for="guest-name">Pickup RSVP name (optional)</label>
           <input id="guest-name" type="text" maxlength="120" autocomplete="nickname" placeholder="Enter your own RSVP name">
@@ -465,14 +465,19 @@
             <textarea id="guest-teams" rows="1" hidden></textarea>
             <p class="hint">All current-season teams are indexed in advance. Team changes update your cards instantly, without changing other visitors’ settings.</p>
           </div>
-          <p class="hint">Saved instantly on this device for 24 hours. Other players’ RSVP names are never published.</p>
+          <p class="hint">Saved instantly on this device until you change it. Other players’ RSVP names are never published.</p>
           <p class="hint" id="guest-settings-status" role="status"></p>
         </div>
+      </section>
+      <section id="deleted-match-management" hidden aria-label="Matches hidden on this device">
+        <h3 class="settings-subheading">Hidden on this device</h3>
+        <div class="deleted-match-list" id="deleted-match-list"></div>
+        <p class="hint">Restore a match here without changing any other visitor or the published RATS/RSVP schedule.</p>
       </section>
       <div class="settings-divider"></div>
       <details id="settings-login-view" class="admin-settings-details">
         <summary>Advanced · Administrator maintenance</summary>
-        <p class="muted">Only shared match edits, private rosters and app releases need this protected unlock. Visitors never need an account.</p>
+        <p class="muted">Only private roster access and software maintenance require this protected unlock. Editing or hiding matches on your own device does not.</p>
         <form id="owner-login-form" class="settings-form">
           <label for="owner-login-password">Maintenance password</label>
           <input id="owner-login-password" type="password" autocomplete="current-password"
@@ -486,12 +491,7 @@
         <p class="settings-account-summary" id="current-user-summary"></p>
         <p class="hint" id="owner-settings-status" role="status"></p>
         <p class="hint">Visitor RSVP name, teams and notifications are saved above, privately on each device.</p>
-        <section id="deleted-match-management" hidden>
-          <div class="settings-divider"></div>
-          <h3 class="settings-subheading">Hidden matches</h3>
-          <div class="deleted-match-list" id="deleted-match-list"></div>
-          <p class="hint">Hiding a match here never edits its RATS or RSVP source.</p>
-        </section>
+
         <section id="release-management" hidden>
           <div class="settings-divider"></div>
           <h3 class="settings-subheading">App release</h3>
@@ -533,7 +533,7 @@
           aria-label="Close match editor">×</button>
       </div>
       <p class="muted" id="match-override-copy">
-        Manual values take priority over the discovered match until you reset them.
+        Date, time and venue corrections appear only on this device until you reset them. Official match data and reminders remain unchanged.
       </p>
       <form id="match-override-form" class="settings-form">
         <label for="match-override-date">Date</label>
@@ -581,7 +581,7 @@
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=11.0.0"></script>
-  <script type="module" src="./v2/app.js?v=11.0.0"></script>
+  <script type="module" src="./app.js?v=11.0.1"></script>
+  <script type="module" src="./v2/app.js?v=11.0.1"></script>
 </body>
 </html>

@@ -103,3 +103,19 @@ test("explicit rootDir keeps notification board and pending marker at repo root"
   assert.equal(board.entries.length, 1);
   assert.equal(board.entries[0].tag, "rats-start-test");
 });
+
+test("notices expire after one day and historical duplicates do not suppress fresh events",t=>{
+  const cwd=process.cwd(),env=process.env;
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),"ballerwatch-one-day-"));
+  process.chdir(dir);process.env={...env,TRACKER_STATE_KEY:"synthetic-board-key"};
+  t.after(()=>{process.chdir(cwd);process.env=env;fs.rmSync(dir,{recursive:true,force:true});});
+  const date=new Date("2026-10-15T08:00:00Z");
+  const first=appendWebNotification("league",{
+    title:"Game starts soon",body:"Fixture",tag:"game-notice",
+  },{now:date});
+  const second=appendWebNotification("league",{
+    title:"Game starts soon",body:"Fixture",tag:"game-notice",
+  },{now:new Date(date.getTime()+25*60*60*1000)});
+  assert.notEqual(first.id,second.id);
+  assert.deepEqual(loadWebNotificationChannel("league").entries.map(x=>x.id),[second.id]);
+});
