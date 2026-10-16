@@ -954,8 +954,9 @@ test("production rollout is release-gated and Pages waits for Worker readiness",
   assert.match(pages, /github\.event\.workflow_run\.conclusion == 'success'/);
   assert.match(pages, /production-src\/frontend\/web main-src\/frontend\/web/);
 
-  assert.match(promote, /cron:\s*"37 \* \* \* \*"/);
-  assert.match(promote, /86400/);
+  assert.match(promote, /workflow_dispatch:/);
+  assert.doesNotMatch(promote, /cron:\s*"37 \* \* \* \*"/);
+  assert.doesNotMatch(promote, /86400/);
   assert.match(promote, /gh release create/);
   assert.match(promote, /git\/refs\/heads\/production/);
   assert.match(promote, /RELEASE_GITHUB_TOKEN/);
