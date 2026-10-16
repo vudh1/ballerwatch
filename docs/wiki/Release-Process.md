@@ -13,7 +13,7 @@ BallerWatch uses release-gated production.
 9. Pages checks out `production`.
 10. An already-open PWA verifies that both Worker and Pages reached the promoted version, then updates its service worker and refreshes automatically.
 
-Default automatic promotion waits 24 hours and checks eligibility hourly. Manual promotion skips the soak, not validation.
+Production promotion is **manual only**, initiated through the protected administrator action or the manual workflow. There is no scheduled promotion: validated main updates beta automatically, while the root app remains on production until a deliberate release. Manual promotion does not bypass validation.
 
 `RELEASE_GITHUB_TOKEN` is repository-scoped with Contents read/write, Workflows read/write, Pages read/write, and Administration read/write. `CRON_GITHUB_PAT` remains dispatch-only.
 
