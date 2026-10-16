@@ -4302,7 +4302,7 @@ async function deleteSelectedMatch({ authorized = false } = {}) {
   const game = { ...currentNextGame };
   const label = game.title || game.dateLabel || "this match";
   if (!window.confirm(
-    `Delete ${label} from BallerWatch?\n\nThis hides the match in BallerWatch only. The RSVP/RATS source and Google Calendar are not deleted.`,
+    `Delete ${label} from BallerWatch?\n\nThis only hides the match in BallerWatch. The original RSVP/RATS fixture is not changed.`,
   )) {
     return;
   }
