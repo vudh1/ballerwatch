@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, an in-app match calendar, and quick answers into one installable app.
 
-**Current source version: 11.0.0**
+**Current source version: 11.0.1**
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
 
@@ -17,14 +17,13 @@ BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS leag
 - **Share just the field:** the Share button sends the RATS-published Google Maps venue link (or a verified GPS/field-name lookup fallback) with no team names, match date, or kickoff summary; clipboard fallback copies the same link.
 - Browse a rolling match calendar and swipe between match cards; on desktop, the waterfall stays visually full-height while the Pickup/League Edit/Delete trigger keeps pointer priority over the carousel hit area.
 - **Follow RATS Standings as a card train:** swipe between individual full-width team cards or use subtle edge arrows. Each current-season division table highlights your team, and tapping another team opens its indexed scored match history. The compact table shows played, W-D-L, goal difference and points. Results-based rankings are provisional.
-- Use a real **Inbox** with Pickup / League / App filters, mark-all-read, swipe delete, and account-synced read state.
-- Choose account-level notification categories and keep the unread count synchronized to the installed app badge on supported devices.
+- Use a real **Inbox** with Pickup / League / App filters, mark-all-read and swipe delete, with notification state expiring after 24 hours on each device.
+- Choose device-only notification categories and keep the unread count synchronized to the installed app badge on supported devices.
 - Get allowed Web Push reminders and real schedule-change notifications.
 - **Dynamic pickup capacity alerts:** RSVP bookings trigger at **25%, 50%, and 75%** of each published match's capacity, then each additional occupied spot through full. Thresholds round up to whole reservations (e.g., 16 slots alerts at 4, 8, 12, 13, 14, 15, and 16). A new match starts with a silent baseline, so past thresholds are not replayed; cancellations or settings-only capacity changes do not trigger booking alerts. The 24-hour RSVP and one-hour kickoff reminders remain separate, and muting/snoozing is honored.
 - Open the **AI icon** for three connected sections: **AI / Settings / Notifications**, including the unread badge.
 - Ask **BallerWatch AI** about opponents, match fields, jersey colors, weekly briefings, next games, and indexed RATS results—with follow-ups for a specific fixture.
-- Sign in with separate user accounts and revocable sessions.
-- For administrators: manage users, monitored RATS teams, reversible match overrides/deletes, and app promotion.
+- No user account is required. Each device keeps its chosen RSVP name and monitored teams until the user changes them. Match-card edits and hides affect only that device. A protected administrator unlock remains for software maintenance and private rosters.
 - Get verified RATS schedule-change updates directly in BallerWatch, with no Google account or Calendar permissions.
 
 Saturday synthetic pickup is shown simply as **Pickup** and has no RSVP/capacity watcher.
@@ -39,7 +38,9 @@ The original 727-frame walkthrough of the deployed 9.1.1 app, retimed from 36.4 
 
 ## What's new
 
-**v11.0.0** — Public, accountless visitor experience. RSVP name, followed teams, and notification preferences live only on each device for 24 hours; the app clears expired records on its next visit. Private RSVP name matches use encrypted precomputed HMAC tags, never a public player directory. Push subscriptions need an active app visit to renew after 24 hours; all-server edits and releases stay behind protected maintenance authentication.
+**v11.0.1** — RSVP names and selected teams stay on each device indefinitely (unless the browser clears site data). Only notification data retains a 24-hour expiration. Match-card corrections, hides and resets are local to the editing device; older shared-write endpoints are retired. All-season RATS team statistics remain independently precomputed.
+
+**v11.0.0** — Public, accountless visitor experience (initial 24-hour device preference policy, revised in 11.0.1). Private RSVP name matches use encrypted precomputed HMAC tags, never a public player directory. Push subscriptions need an active app visit to renew after 24 hours; all-server edits and releases stay behind protected maintenance authentication.
 
 **v10.0.1** — Restore dependable RATS standings by sending only monitored/selected team predictions, keeping the response small enough for on-device caching, and automatically retrying after transient cold-start failures.\n\n**v10.0.0** — A single uninterrupted first-install launch; Google Calendar integration is retired. BallerWatch's own match calendar, schedule alerts, and Web Push remain available to every visitor without a Google connection.
 
@@ -79,7 +80,7 @@ GitHub Pages PWA
 Cloudflare Worker
   |        |
   |        +--> encrypted runtime-state
-  +-----------> auth / synced Inbox / Q&A / push registration / API
+  +-----------> maintenance / public Q&A / push registration / API
 
 cron-job.org
   |--> Pickup watcher every 2 min
@@ -125,32 +126,24 @@ scripts/                  repository checks/tooling
 
 The encrypted `runtime-state` branch intentionally keeps stable storage paths such as `pickup/state/`, `league/state/`, and `state/`. Those are storage contracts and do **not** mirror the source directory layout.
 
-## Accounts and recovery
+## Device-only preferences and maintenance
 
-BallerWatch supports up to 20 encrypted web accounts. Each account has its own username, password, RSVP display name, authentication revision, revocable sessions, and bounded notification profile for cross-device read/delete state and category preferences.
+Regular visitors do not register or sign in. The RSVP name and monitored RATS teams are saved in browser-local storage for that installation until the user changes them or clears the browser's site data. These fields are never kept in shared web-user profiles. Match date/time/venue corrections and hidden games are also private to that browser, and never change other visitors' cards or the RATS/RSVP source.
 
-Administrators can manage users and shared league configuration. Regular users can manage their own RSVP name/password.
+Only **notifications** have a 24-hour retention window: read/deleted state, channel preferences, app badges and encrypted Web Push registrations. Reopening BallerWatch can renew an enabled push subscription; after a full day without opening it, the server's registration expires and notifications stop until renewal.
 
-Forgotten-password recovery is repository-admin controlled:
-
-1. set temporary Actions secret `BALLERWATCH_RECOVERY_PASSWORD`;
-2. run **Actions → Reset web user password**;
-3. choose the username and type `RESET`;
-4. sign in with the replacement password;
-5. delete or rotate the temporary recovery secret.
-
-The recovery workflow never intentionally prints or persists the plaintext password.
+The protected administrator maintenance password remains available for releases and private roster access. Maintenance recovery uses the repository-admin password workflow; it is not a visitor sign-in system.
 
 ## Privacy and security
 
 The public source repository is never used as readable application-data storage.
 
-Canonical runtime documents are stored as complete hardened AES-GCM envelopes on the dedicated `runtime-state` branch, including user settings, schedules, weather/geocode cache, Web Push state, notification-board state, and retained feedback/feature-request state.
+Canonical shared runtime documents are stored as hardened AES-GCM envelopes on the dedicated `runtime-state` branch, including maintenance credentials, schedules, weather/geocode cache, short-lived Web Push registrations, notification-board state, and retained feedback/feature-request state. Visitor RSVP names, selected teams and local match edits are not stored in shared runtime-state.
 
 Other important boundaries:
 
 - Web Push registration accepts only validated public browser push-service endpoints and revalidates them before delivery.
-- User-specific RSVP names, confirmation state, waitlist information, notification read/delete state, and notification preferences are never put on the public notification board.
+- Device-local RSVP names, match corrections, notification read/delete state and category preferences are never put on the public notification board. Private RSVP membership indices remain encrypted.
 - Web Push signals remain payload-free; account/category metadata stays inside encrypted runtime state.
 - The Worker API emits CSP/anti-framing/content-type/referrer/permissions security headers.
 - Tests, smoke checks, builds, deploys, watchdog health events, commits, PRs, and score-only changes never send user notifications.
