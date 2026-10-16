@@ -1,6 +1,6 @@
 /**
- * Record the actual V2 UI with synthetic API data into the README GIF.
- * Baseline: v8.14.0. Local HTTPS only; all external requests are intercepted.
+ * Record the canonical deployed/local UI with synthetic APIs into the README GIF.
+ * Baseline: v8.14.0. Deployed/local assets; every API request is synthetic.
  * No production accounts, messages, notifications, RSVP or Calendar writes.
  */
 import fs from "node:fs";
@@ -14,7 +14,7 @@ import { fixtureResponse } from "./browser-fixtures.mjs";
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.BALLERWATCH_PLAYWRIGHT_MODULE || "playwright");
 const source = path.resolve(process.env.BALLERWATCH_WEB_ROOT || "frontend/web");
-const output = path.resolve(process.env.BALLERWATCH_DEMO_OUTPUT || "docs/demo-v2.gif");
+const output = path.resolve(process.env.BALLERWATCH_DEMO_OUTPUT || "docs/demo.gif");
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "ballerwatch-v2-demo-"));
 execFileSync("openssl", ["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-keyout", `${temporary}/key.pem`,
   "-out", `${temporary}/cert.pem`, "-subj", "/CN=localhost", "-addext", "subjectAltName=DNS:localhost,IP:127.0.0.1", "-days", "1"], { stdio: "ignore" });
@@ -34,12 +34,12 @@ await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 const remoteOrigin = process.env.BALLERWATCH_DEMO_ORIGIN || "";
 const origin = remoteOrigin || `https://127.0.0.1:${server.address().port}`;
 if (remoteOrigin && remoteOrigin !== "https://vudh1.github.io") throw new Error("Unsupported production demo origin");
-let capturing = false;
-let captureTask = null;
 const browser = await chromium.launch({ headless: true, ...(remoteOrigin && process.env.HTTPS_PROXY ? { proxy: { server: process.env.HTTPS_PROXY } } : {}), args: ["--no-sandbox", "--disable-gpu", "--ignore-certificate-errors"] });
 try {
   const context = await browser.newContext({ viewport: { width: 480, height: 890 }, deviceScaleFactor: 1,
-    isMobile: true, hasTouch: true, ignoreHTTPSErrors: true, serviceWorkers: "block" });
+    isMobile: true, hasTouch: true, ignoreHTTPSErrors: true, serviceWorkers: "block",
+    recordVideo: { dir: path.join(temporary, "video"), size: { width: 480, height: 890 } } });
+  const productionAssets = new Map();
   await context.route("**/*", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -51,35 +51,43 @@ try {
         reply: "Your next league game is Sunday, October 18 at 10 AM. Wear white. Directions and field sharing are on the match card." }
         : fixtureResponse(url.pathname, request.method());
       await route.fulfill({ headers, contentType: "application/json", body: JSON.stringify(data) });
-    } else if (url.origin === origin && request.method() === "GET") await route.continue();
-    else await route.abort();
+    } else if (url.origin === origin && request.method() === "GET") {
+      if (!remoteOrigin) { await route.continue(); return; }
+      if (!productionAssets.has(url.href)) {
+        const response = await route.fetch();
+        if (!response.ok()) throw new Error(`Production asset failed: ${url.pathname}`);
+        const headers = response.headers();
+        for (const name of ["content-encoding", "content-length", "transfer-encoding"]) delete headers[name];
+        productionAssets.set(url.href, { status: response.status(), headers, body: await response.body() });
+      }
+      await route.fulfill(productionAssets.get(url.href));
+    } else await route.abort();
   });
+  if (remoteOrigin) {
+    const warmup = await context.newPage();
+    await warmup.goto(`${origin}/ballerwatch/`);
+    await warmup.waitForFunction(() => document.documentElement.dataset.timelineReady === "true");
+    await warmup.close();
+  }
+  // A fresh page gets its own native video and session-only launch state.
+  // Reuse exact production bytes, avoiding network latency in the opening.
   const page = await context.newPage();
-  const frames = [];
+  const video = page.video();
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   console.log("Recording branded launch and feature tour…");
   await page.goto(`${origin}/ballerwatch/`);
-  // Lossless UI frames avoid the video-compression noise that inflates GIFs.
-  capturing = true;
-  captureTask = (async () => {
-    while (capturing) {
-      const at = performance.now();
-      const file = path.join(temporary, `frame-${String(frames.length).padStart(4, "0")}.png`);
-      await page.screenshot({ path: file });
-      frames.push({ file, at });
-      await new Promise((resolve) => setTimeout(resolve, Math.max(0, 50 - (performance.now() - at))));
-    }
-  })();
   await page.waitForFunction(() => document.documentElement.dataset.timelineReady === "true" &&
     document.querySelector("#next-game-title").textContent.includes("October 15"));
   await page.waitForFunction(() => !document.documentElement.classList.contains("v2-launching"));
   await page.waitForTimeout(500);
-  await page.evaluate(async () => {
+  const tour = await page.evaluate(async () => {
+    let frames = 0;
     const distance = document.querySelector("#soccer-intro").offsetHeight - document.querySelector("#soccer-stage").clientHeight;
     const start = performance.now();
     await new Promise((resolve) => {
       const move = () => {
+        frames += 1;
         const progress = Math.min(1, (performance.now() - start) / 15000);
         window.scrollTo(0, distance * progress);
         if (progress < 1) requestAnimationFrame(move);
@@ -87,7 +95,9 @@ try {
       };
       requestAnimationFrame(move);
     });
+    return { frames, seconds: (performance.now() - start) / 1000 };
   });
+  console.log(`Native tour animation: ${(tour.frames / tour.seconds).toFixed(1)} frames/sec`);
   await page.waitForTimeout(1800);
   console.log("Recording match cards, calendar and standings…");
   const card = await page.locator("#next-game-card").boundingBox();
@@ -119,21 +129,23 @@ try {
   await page.locator("#settings-button").click();
   await page.waitForTimeout(2300);
   if (errors.length) throw new Error(`Demo browser errors: ${errors.join(", ")}`);
-  capturing = false;
-  await captureTask;
   await context.close();
-  console.log(`Captured ${frames.length} lossless frames (${(frames.length * 1000 / (frames.at(-1).at - frames[0].at)).toFixed(1)} fps) from ${remoteOrigin || "local source"}`);
-  const list = path.join(temporary, "frames.txt");
-  fs.writeFileSync(list, frames.map((frame, index) =>
-    `file '${frame.file}'\nduration ${index + 1 < frames.length ? (frames[index + 1].at - frame.at) / 1000 : 0.4}\n`).join(""));
+  const videoPath = await video.path();
+  if (process.env.BALLERWATCH_DEMO_VIDEO) fs.copyFileSync(videoPath, path.resolve(process.env.BALLERWATCH_DEMO_VIDEO));
   fs.mkdirSync(path.dirname(output), { recursive: true });
-  execFileSync("ffmpeg", ["-y", "-f", "concat", "-safe", "0", "-i", list, "-vf",
-    "fps=20,scale=420:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=96:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle",
-    "-loop", "0", output], { stdio: "ignore" });
-  console.log(`V2 demo recorded: ${output} (${(fs.statSync(output).size / 1024 / 1024).toFixed(1)} MiB)`);
+  // Separate palette generation keeps the encoder from buffering the whole
+  // movie in memory; gentle denoising removes native-video compression noise.
+  const filters = "fps=20,scale=420:-1:flags=lanczos,hqdn3d=1.5:1.5:2:2";
+  const palette = path.join(temporary, "palette.png");
+  execFileSync("ffmpeg", ["-v", "error", "-threads", "1", "-y", "-i", videoPath, "-vf",
+    `${filters},palettegen=max_colors=64:stats_mode=diff`, "-frames:v", "1", palette], { stdio: "ignore" });
+  execFileSync("ffmpeg", ["-v", "error", "-threads", "1", "-y", "-i", videoPath, "-i", palette, "-lavfi",
+    `[0:v]${filters}[v];[v][1:v]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle`, "-loop", "0", output], { stdio: "ignore" });
+  if (process.env.BALLERWATCH_GIFSICLE) {
+    execFileSync(process.env.BALLERWATCH_GIFSICLE, ["-O3", "--lossy=40", "--careful", "-b", output], { stdio: "ignore" });
+  }
+  console.log(`BallerWatch demo recorded: ${output} (${(fs.statSync(output).size / 1024 / 1024).toFixed(1)} MiB)`);
 } finally {
-  capturing = false;
-  if (captureTask) await captureTask.catch(() => {});
   await browser.close();
   await new Promise((resolve) => server.close(resolve));
   fs.rmSync(temporary, { recursive: true, force: true });
