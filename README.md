@@ -62,7 +62,7 @@ See the [Card design system](docs/CARD-DESIGN-SYSTEM.md) for the shared typograp
 
 ## App updates
 
-Administrators can open **Settings → App** and promote a validated source version.
+Administrators can open **Settings → App** and explicitly promote a validated source version. No hourly or automatic production promotion runs: validated main commits are sent to beta first, while the production URL stays unchanged until an administrator starts promotion.
 
 Promotion is intentionally staged:
 
