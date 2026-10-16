@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, an in-app match calendar, and quick answers into one installable app.
 
-**Current source version: 11.0.1**
+**Current source version: 11.0.2**
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
 
@@ -13,7 +13,7 @@ BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS leag
 - **One BallerWatch at the main address:** a two-second brand launch, full-screen scroll hero with a stadium audience and camera flashes behind feature text, then the original matchday cards. A single badged AI icon fades in with the cards and opens AI, Settings and Notifications. The brand splash no longer has a skip button; the later intro skip retains upward rewind. Old `/v2/` links redirect to the root; account, RSVP, Calendar, AI, notification and administration features use the same controller and encrypted backend. See the [cinematic app and migration guide](docs/wiki/V2.md).
 
 - See the next **Pickup** or **League** match with a cleaner visual hierarchy for location, weather, RSVP, and secondary actions. Newly published RSVP dates remain in the match-card carousel and expanded calendar even beyond the initial 14-day grid; missing field details show *Venue to be announced* until the RSVP source publishes a location.
-- See RSVP capacity for pickup games; tap the capacity area to open the full-width roster sheet and RSVP from inside it.
+- See RSVP capacity for pickup games; tap the capacity area to view that published game's confirmed names and waitlist in signup order, without an account, and RSVP from inside the full-width sheet.
 - **Share just the field:** the Share button sends the RATS-published Google Maps venue link (or a verified GPS/field-name lookup fallback) with no team names, match date, or kickoff summary; clipboard fallback copies the same link.
 - Browse a rolling match calendar and swipe between match cards; on desktop, the waterfall stays visually full-height while the Pickup/League Edit/Delete trigger keeps pointer priority over the carousel hit area.
 - **Follow RATS Standings as a card train:** swipe between individual full-width team cards or use subtle edge arrows. Each current-season division table highlights your team, and tapping another team opens its indexed scored match history. The compact table shows played, W-D-L, goal difference and points. Results-based rankings are provisional.
@@ -23,7 +23,7 @@ BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS leag
 - **Dynamic pickup capacity alerts:** RSVP bookings trigger at **25%, 50%, and 75%** of each published match's capacity, then each additional occupied spot through full. Thresholds round up to whole reservations (e.g., 16 slots alerts at 4, 8, 12, 13, 14, 15, and 16). A new match starts with a silent baseline, so past thresholds are not replayed; cancellations or settings-only capacity changes do not trigger booking alerts. The 24-hour RSVP and one-hour kickoff reminders remain separate, and muting/snoozing is honored.
 - Open the **AI icon** for three connected sections: **AI / Settings / Notifications**, including the unread badge.
 - Ask **BallerWatch AI** about opponents, match fields, jersey colors, weekly briefings, next games, and indexed RATS results—with follow-ups for a specific fixture.
-- No user account is required. Each device keeps its chosen RSVP name and monitored teams until the user changes them. Match-card edits and hides affect only that device. A protected administrator unlock remains for software maintenance and private rosters.
+- No user account is required. Each device keeps its chosen RSVP name and monitored teams until the user changes them. Match-card edits and hides affect only that device. Published event-specific RSVP lists are public; administrator maintenance remains protected.
 - Get verified RATS schedule-change updates directly in BallerWatch, with no Google account or Calendar permissions.
 
 Saturday synthetic pickup is shown simply as **Pickup** and has no RSVP/capacity watcher.
@@ -37,6 +37,8 @@ The original 727-frame walkthrough of the deployed 9.1.1 app, retimed from 36.4 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/)
 
 ## What's new
+
+**v11.0.2** — Tap the capacity of a published pickup game to view its confirmed RSVP roster and waitlist without signing in. Only that game's display names and guest counts are returned on demand, not a directory of all participants.
 
 **v11.0.1** — RSVP names and selected teams stay on each device indefinitely (unless the browser clears site data). Only notification messages/read markers and badges expire after 24 hours; choices and valid push subscriptions remain active. Match-card corrections, hides and resets are local to the editing device; older shared-write endpoints are retired. All-season RATS team statistics remain independently precomputed.
 
