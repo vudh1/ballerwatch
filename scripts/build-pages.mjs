@@ -90,7 +90,7 @@ export function composePages(productionRoot, candidateRoot, destination, revisio
     fs.writeFileSync(path.join(legacy, "index.html"),
       fs.readFileSync(path.join(legacy, "index.html"), "utf8")
         .replace('content="5;url=../"', 'content="5;url=../beta/"')
-        .replace('href="../"', 'href="../beta/"')
+        .replaceAll('href="../"', 'href="../beta/"')
         .replace('at its main address', 'at its beta address'));
     fs.writeFileSync(path.join(legacy, "redirect.js"),
 `/** Legacy V2 is now the beta alias; preserve query and fragment. */
