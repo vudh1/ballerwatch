@@ -47,6 +47,8 @@ test("Pages artifact keeps production intact and adds validated main at a distin
     assert.match(fs.readFileSync(path.join(output, "beta/app.js"), "utf8"), /sw\.js\?v=11\.1\.0&beta=aaaaaaaaaaaa/);
     assert.match(fs.readFileSync(path.join(output, "v2/redirect.js"), "utf8"), /new URL\("\.\.\/beta\/", window\.location\.href\)/);
     assert.match(fs.readFileSync(path.join(output, "v2/index.html"), "utf8"), /url=\.\.\/beta\//);
+    assert.match(fs.readFileSync(path.join(output, "v2/sw.js"), "utf8"),
+      /importScripts\("\.\.\/beta\/sw\.js\?beta=aaaaaaaaaaaa"\)/);
     // Output never persists runtime files or moves a source branch.
     assert.equal(fs.existsSync(path.join(output, "runtime-state")), false);
     assert.throws(() => composePages(prod, main, output, "main"), /validated/);
