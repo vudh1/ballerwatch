@@ -53,7 +53,7 @@ Notification mutations merge server-side instead of replacing the full profile, 
 
 Proactive output is limited to the documented Web Push / notification-board policy. User-specific RSVP names, confirmation state, waitlist data, read/delete state, and preferences remain authenticated/encrypted-only.
 
-Web Push remains payload-free. Subscription state can associate an endpoint with an account and category snapshot inside encrypted runtime state; delivery can skip categories before contacting the browser push service. The service worker also keeps the installed-app badge and local background category preferences synchronized.
+Web Push remains payload-free. Subscription state associates a push endpoint with short-lived per-device teams, private RSVP membership tags and categories inside encrypted runtime state; delivery can skip categories before contacting the browser push service. The service worker also keeps the installed-app badge and local background category preferences synchronized.
 
 ## Production pinning
 
