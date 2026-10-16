@@ -3525,6 +3525,7 @@ async function webBoard(env, limit = 30) {
           body: cleanText(item?.body, 900),
           url: cleanText(item?.url, 500) || "https://vudh1.github.io/ballerwatch/",
           tag: cleanText(item?.tag, 120),
+          teams: deviceTeams(item?.teams),
         });
       }
     } catch {}
