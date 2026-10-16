@@ -1180,7 +1180,7 @@ test("admin Settings presents production rollout only as an app update", () => {
 
   assert.match(html, /id="release-management"/);
   assert.match(html, /id="promote-release"/);
-  assert.match(html, /<h3 class="settings-subheading">App<\/h3>/);
+  assert.match(html, /<h3 class="settings-subheading">App release<\/h3>/);
   assert.match(html, /validated app-update workflow/);
   assert.match(app, /function renderReleaseStatus/);
   assert.match(app, /async function loadReleaseStatus/);
