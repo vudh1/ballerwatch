@@ -13,19 +13,19 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
 
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   assert.match(html, /manifest\.webmanifest/);
-  assert.match(html, /apple-touch-icon\.png\?v=10\.0\.1/);
+  assert.match(html, /apple-touch-icon\.png\?v=11\.0\.0/);
   assert.match(html, /class="brand-icon"/);
-  assert.match(html, /icon\.svg\?v=10\.0\.1/);
+  assert.match(html, /icon\.svg\?v=11\.0\.0/);
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=10\.0\.1/);
-  assert.match(html, /app\.js\?v=10\.0\.1/);
+  assert.match(html, /styles\.css\?v=11\.0\.0/);
+  assert.match(html, /app\.js\?v=11\.0\.0/);
 
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v10-0-1-shell/);
+  assert.match(sw, /ballerwatch-v11-0-0-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -94,7 +94,7 @@ test("promotion watches Worker and Pages then refreshes the open PWA", () => {
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=10\.0\.1/);
+  assert.match(app, /sw\.js\?v=11\.0\.0/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -281,44 +281,21 @@ test("app-facing copy is web-only", () => {
 });
 
 
-test("user settings support password-only sign-in with repository recovery", () => {
-  const html = fs.readFileSync("frontend/web/index.html", "utf8");
-  const app = fs.readFileSync("frontend/web/app.js", "utf8");
-  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
-  const recovery = fs.readFileSync(".github/workflows/reset-user-password.yml", "utf8");
-
-  assert.match(html, /id="settings-button"/);
-  assert.match(html, /id="settings-dialog"/);
-  assert.match(html, /id="owner-login-form"/);
-  assert.match(html, /id="owner-login-password"/);
-  assert.match(html, /id="owner-password-form"/);
-  assert.match(html, /Reset web user password/);
-  assert.match(html, /id="owner-name"/);
-  assert.match(html, /id="owner-teams"/);
-  assert.doesNotMatch(html, /owner-pair-form|one-time-code|pairing code/i);
-
-  const client = fs.readFileSync("frontend/web/lib/client.js", "utf8");
-  assert.match(client, /ballerwatch-owner-token/);
-  assert.match(app, /\/web\/user\/login/);
-  assert.match(app, /\/web\/user\/password/);
-  assert.match(app, /\/web\/user\/settings/);
-  assert.match(app, /retryNetwork:\s*true/);
-  assert.doesNotMatch(app, /\/web\/user\/pair/);
-  assert.match(app, /ownerLoginForm\.addEventListener\("submit", loginOwnerDevice\)/);
-  assert.match(app, /ownerPasswordForm\.addEventListener\("submit", saveOwnerPassword\)/);
-
-  assert.match(worker, /export async function createOwnerPasswordRecord/);
-  assert.match(worker, /export async function verifyOwnerPassword/);
-  assert.match(worker, /userRoute\(url\.pathname, "login"\)/);
-  assert.match(worker, /userRoute\(url\.pathname, "password"\)/);
-  assert.match(worker, /freshTeamsRecord = await githubStateRecord/);
-  assert.match(worker, /User settings load failed/);
-  assert.doesNotMatch(worker, /userRoute\(url\.pathname, "pair"\)/);
-
-  assert.match(recovery, /BALLERWATCH_RECOVERY_PASSWORD/);
-  assert.match(recovery, /node backend\/shared\/user-recovery\.mjs reset/);
-  assert.match(recovery, /node backend\/shared\/runtime-state\.mjs pull user/);
-  assert.match(recovery, /node backend\/shared\/runtime-state\.mjs push user/);
+test("anonymous preferences require no login while protected maintenance remains available", () => {
+  const html=fs.readFileSync("frontend/web/index.html","utf8");
+  const app=fs.readFileSync("frontend/web/app.js","utf8");
+  const worker=fs.readFileSync("backend/infra/web-worker/worker.mjs","utf8");
+  const recovery=fs.readFileSync(".github/workflows/reset-user-password.yml","utf8");
+  assert.match(html,/id="guest-name"/);
+  assert.match(html,/id="guest-teams-trigger"/);
+  assert.doesNotMatch(html,/id="owner-login-username"|id="user-management"|id="user-create-form"/);
+  assert.match(html,/id="owner-login-password"/);
+  assert.match(html,/Advanced · Administrator maintenance/);
+  assert.match(app,/api\("\/web\/admin\/unlock"/);
+  assert.match(worker,/url.pathname === "\/web\/admin\/unlock"/);
+  assert.match(worker,/User accounts are retired/);
+  assert.match(recovery,/BALLERWATCH_RECOVERY_PASSWORD/);
+  assert.match(recovery,/node backend\/shared\/user-recovery\.mjs reset/);
 });
 
 test("notification test control is deliberately subtle", () => {
@@ -736,7 +713,7 @@ test("installed app icon badge mirrors unread notifications and background push"
   assert.match(app, /type: "ballerwatch:badge-count"/);
   assert.match(app, /void syncAppIconBadge\(normalized\)/);
 
-  assert.match(sw, /DEVICE_STATE_CACHE = IS_V2 \? "ballerwatch-v2-device-state-v1" : "ballerwatch-device-state-v1"/);
+  assert.match(sw, /DEVICE_STATE_CACHE = IS_V2 \? "ballerwatch-v2-device-state-v2" : "ballerwatch-device-state-v2"/);
   assert.match(sw, /async function readBadgeCount/);
   assert.match(sw, /async function incrementAppBadge/);
   assert.match(sw, /self\.navigator\.setAppBadge\(normalized\)/);
@@ -814,46 +791,27 @@ test("page uses a soccer-pitch backdrop with readable translucent cards", () => 
   assert.match(icon, /glass soccer ball.*watch ring/);
   assert.match(icon, /<circle cx="256" cy="256" r="100" fill="url\(#ball\)"\/>/);
   assert.match(icon, /stroke="url\(#ring\)"/);
-  assert.match(manifest, /icon\.svg\?v=10\.0\.1/);
+  assert.match(manifest, /icon\.svg\?v=11\.0\.0/);
   assert.match(css, /\.card,[\s\S]*\.footer-install \{[\s\S]*rgba\(6, 18, 22, 0\.57\)/);
   assert.match(css, /\.spotlight-card \{[\s\S]*rgba\(4, 16, 22, 0\.72\)/);
   assert.match(css, /backdrop-filter:\s*blur\(24px\) saturate\(135%\)/);
 });
 
-test("notification center supports filters, synced read state, and account preferences", () => {
-  const html = fs.readFileSync("frontend/web/index.html", "utf8");
-  const app = fs.readFileSync("frontend/web/app.js", "utf8");
-  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
-  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
-
-  assert.match(html, /data-notification-filter="all"/);
-  assert.match(html, /data-notification-filter="pickup"/);
-  assert.match(html, /data-notification-filter="league"/);
-  assert.match(html, /data-notification-filter="version"/);
-  assert.match(html, /id="mark-all-notifications-read"/);
-  assert.match(html, /id="notification-pref-pickup"/);
-  assert.match(html, /id="notification-pref-league"/);
-  assert.match(html, /id="notification-pref-version"/);
-
-  assert.match(app, /\/web\/user\/notifications/);
-  assert.match(app, /function loadNotificationProfile/);
-  assert.match(app, /function persistNotificationProfile/);
-  assert.match(app, /function markAllNotificationsRead/);
-  assert.match(app, /persistDeletedNotifications\(allVisible\)/);
-  assert.match(app, /localNotificationProfile\(\)/);
-  assert.match(app, /clearLocalNotificationProfile\(\)/);
-  assert.match(worker, /userRoute\(url\.pathname, "notifications"\)/);
-  assert.match(worker, /notificationProfiles/);
-  assert.match(worker, /runtime\(user\): sync notification profile/);
-  assert.match(css, /\.notification-filters \{/);
-  assert.match(css, /\.notification-preferences \{/);
-  assert.match(html, /<span>App<\/span>/);
-  assert.match(css, /\.notification-preference-options \{[\s\S]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/);
-  assert.match(app, /ownerToken\(\) \? loadNotificationProfile\(\{ migrateLocal: false \}\)/);
-  assert.match(app, /loadNotificationProfile\(\{ migrateLocal: false \}\)/);
-  assert.match(app, /const calendarOk = await loadCalendar\(\)/);
-  assert.match(app, /Promise\.allSettled\(\[/);
-  assert.match(app, /Synced when active for @/);
+test("notification filters and preferences are accountless and local to the device", () => {
+  const html=fs.readFileSync("frontend/web/index.html","utf8");
+  const app=fs.readFileSync("frontend/web/app.js","utf8");
+  const sw=fs.readFileSync("frontend/web/sw.js","utf8");
+  const css=fs.readFileSync("frontend/web/styles.css","utf8");
+  for (const choice of ["all","pickup","league","version"])
+    assert.match(html,new RegExp('data-notification-filter="'+choice+'"'));
+  assert.match(html,/id="mark-all-notifications-read"/);
+  for (const choice of ["pickup","league","version"])
+    assert.match(html,new RegExp('id="notification-pref-'+choice+'"'));
+  assert.match(app,/Device-only · expires after 24 hours/);
+  assert.match(app,/saveLocalNotificationChannels/);
+  assert.match(sw,/DEVICE_LEASE_MS/);
+  assert.match(sw,/cachedDeviceValue\(NOTIFICATION_PREFS_URL\)/);
+  assert.match(css,/\.notification-preferences \{/);
 });
 
 test("match spotlight swipe uses connected neighboring cards like a carousel train", () => {
@@ -1139,20 +1097,17 @@ test("Worker web API sets defense-in-depth security headers and protects push re
 });
 
 
-test("README includes the web app demo and multi-user settings are exposed", () => {
-  const readme = fs.readFileSync("README.md", "utf8");
-  const html = fs.readFileSync("frontend/web/index.html", "utf8");
-  const app = fs.readFileSync("frontend/web/app.js", "utf8");
-  assert.match(readme, /!\[BallerWatch animated demo[^\]]*\]\(docs\/demo\.gif\)/);
-  assert.equal(fs.readFileSync("docs/demo.gif").subarray(0, 6).toString(), "GIF89a");
-  assert.match(html, /id="owner-login-username"/);
-  assert.match(html, /id="user-management"/);
-  assert.match(html, /id="user-create-form"/);
-  assert.match(app, /\/web\/user\/users/);
-  assert.match(app, /OWNER_USERNAME_KEY/);
-  assert.match(app, /canManageUsers/);
+test("README demo and public, account-free preferences remain accessible", () => {
+  const readme=fs.readFileSync("README.md","utf8");
+  const html=fs.readFileSync("frontend/web/index.html","utf8");
+  const app=fs.readFileSync("frontend/web/app.js","utf8");
+  assert.match(readme,/!\[BallerWatch animated demo[^\]]*\]\(docs\/demo\.gif\)/);
+  assert.equal(fs.readFileSync("docs/demo.gif").subarray(0,6).toString(),"GIF89a");
+  assert.match(html,/id="guest-settings-view"/);
+  assert.match(html,/Your preferences expire 24 hours/);
+  assert.doesNotMatch(html,/id="user-management"|id="owner-login-username"/);
+  assert.doesNotMatch(app,/api\("\/web\/user\/users"/);
 });
-
 
 test("match override editor uses the type pill action sheet and local Reset", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
@@ -1333,7 +1288,7 @@ test("canonical cinematic launch owns first paint and remains reduced-motion saf
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const gate = fs.readFileSync("frontend/web/v2/prepaint.js", "utf8");
   assert.match(html, /<html lang="en" class="v2"/);
-  assert.match(html, /<script src="\.\/v2\/prepaint\.js\?v=10\.0\.1"><\/script>[\s\S]*<link rel="stylesheet"/);
+  assert.match(html, /<script src="\.\/v2\/prepaint\.js\?v=11\.0\.0"><\/script>[\s\S]*<link rel="stylesheet"/);
   assert.match(html, /id="v2-launch"/);
   assert.match(html, /launch-intro-beam-a/);
   assert.match(gate, /prefers-reduced-motion: reduce/);
@@ -1901,26 +1856,21 @@ test("standings waterfall uses the real nested group DOM and cannot fall back to
   assert.match(app, /bindCardEdgeWaterfall\(control, direction\)/);
 });
 
-test("searchable comboboxes preserve private RSVP names and multi team selections", () => {
-  const html = fs.readFileSync("frontend/web/index.html","utf8");
-  const app = fs.readFileSync("frontend/web/app.js","utf8");
-  const css = fs.readFileSync("frontend/web/styles.css","utf8");
-  const choice = fs.readFileSync("frontend/web/lib/settings-choice.js","utf8");
-  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs","utf8");
-  assert.match(html, /id="owner-name-options" role="listbox"/);
-  assert.match(html, /id="owner-teams-options" role="listbox"[\s\S]*aria-multiselectable="true"/);
-  assert.match(html, /id="owner-teams-chips"/);
-  assert.match(app, /api\("\/web\/user\/selection-options"/);
-  assert.match(app, /loadSettingsChoiceOptions\(\)/);
-  assert.match(choice, /aria-selected/);
-  assert.match(choice, /Escape/);
-  assert.match(choice, /maxSelected = 20/);
-  assert.match(css, /\.settings-choice-popover/);
-  assert.match(worker, /userRoute\(url\.pathname, "selection-options"\)/);
-  assert.match(worker, /resolveOwnerCapability\(env, bearerToken\(request\)\)/);
-  assert.match(worker, /privateRsvpNameOptions/);
-  assert.doesNotMatch(app, /localStorage\.setItem\([^)]*(?:rsvp|choice|roster)/);
+test("public team selector is searchable but never exposes private RSVP roster names", () => {
+  const html=fs.readFileSync("frontend/web/index.html","utf8");
+  const app=fs.readFileSync("frontend/web/app.js","utf8");
+  const choice=fs.readFileSync("frontend/web/lib/settings-choice.js","utf8");
+  const worker=fs.readFileSync("backend/infra/web-worker/worker.mjs","utf8");
+  assert.match(html,/id="guest-teams-options" role="listbox"/);
+  assert.match(html,/id="guest-teams-chips"/);
+  assert.match(html,/id="guest-name"/);
+  assert.doesNotMatch(html,/id="owner-name-options"|id="user-name-options"/);
+  assert.match(app,/api\("\/web\/teams"/);
+  assert.match(choice,/aria-selected/);
+  assert.match(worker,/Personal signup names are entered locally/);
+  assert.doesNotMatch(app,/api\("\/web\/user\/selection-options"/);
 });
+
 test("AI scouting is grounded in a prepared model, never raw history on question load", () => {
   const app = fs.readFileSync("frontend/web/app.js","utf8");
   const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs","utf8");
