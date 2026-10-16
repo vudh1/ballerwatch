@@ -390,7 +390,7 @@ try {
         await page.locator("#guest-teams-search").fill("Test United");
         await page.locator('#guest-teams-options [role="option"]').first().click();
         await page.waitForFunction(() => {
-          const raw = localStorage.getItem("ballerwatch-visitor-profile-v1-24h");
+          const raw = localStorage.getItem("ballerwatch-visitor-profile-v2");
           if (!raw) return false;
           const profile = JSON.parse(raw).data;
           return profile.name === "Visitor" &&
@@ -417,6 +417,46 @@ try {
         assert.equal(await page.locator("#guest-name").inputValue(), "Visitor");
         assert.deepEqual(errors, []);
         await context.close();
+      });
+
+      await scenario(`${engine}: local match edits and hides survive reload without altering other devices`, async () => {
+        const first = await prepare(browser, {reducedMotion:"reduce"});
+        const {page,calls,errors}=first;
+        await ready(page);
+        await page.locator("#next-game-menu-trigger").click();
+        await page.locator("#next-game-menu-edit").click();
+        await page.locator("#match-override-date").fill("2099-10-16");
+        await page.locator("#match-override-start").fill("20:30");
+        await page.locator("#match-override-end").fill("22:30");
+        await page.locator("#match-override-location").fill("My Private Fixture Field");
+        await page.locator('#match-override-form button[type="submit"]').click();
+        await page.waitForFunction(() =>
+          document.querySelector("#next-game-location")?.textContent.includes("My Private Fixture Field"));
+        assert.ok(await page.evaluate(()=>Boolean(localStorage.getItem("ballerwatch:local-match-edits:v1"))));
+        await page.reload();
+        await page.waitForFunction(() =>
+          document.querySelector("#next-game-location")?.textContent.includes("My Private Fixture Field"));
+        page.once("dialog", dialog=>dialog.accept());
+        await page.locator("#next-game-menu-trigger").click();
+        await page.locator("#next-game-menu-delete").click();
+        await page.waitForFunction(() =>
+          !document.querySelector("#next-game-location")?.textContent.includes("My Private Fixture Field"));
+        await openHubTab(page,"settings");
+        assert.equal(await page.locator("#deleted-match-management").isVisible(),true);
+        await page.locator("#deleted-match-list [data-restore-match-id]").click();
+        await page.waitForFunction(() =>
+          document.querySelector("#next-game-location")?.textContent.includes("My Private Fixture Field"));
+        await page.locator("#close-settings").click();
+        assert.equal(calls.some(call => call.path.startsWith("/web/user/match") &&
+          call.method!=="GET"),false,"device edits never post shared mutations");
+        assert.deepEqual(errors,[]);
+        await first.context.close();
+        const second=await prepare(browser,{reducedMotion:"reduce"});
+        await ready(second.page);
+        assert.match(await second.page.locator("#next-game-location").textContent(),
+          /Fixture Park Soccer/);
+        assert.deepEqual(second.errors,[]);
+        await second.context.close();
       });
 
       await scenario(`${engine}: two same-day matches display two dots and both match cards`, async () => {
