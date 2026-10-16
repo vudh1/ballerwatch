@@ -4831,6 +4831,19 @@ void updatePushStatus();
 void syncCurrentPushRegistration();
 
 window.setInterval(() => {
+  // Storage has a strict 24h lease: clear stale open-tab preferences without
+  // needing navigation, and return to public default team cards automatically.
+  const fresh = readGuestProfile(localStorage);
+  if (JSON.stringify(fresh) !== JSON.stringify(guestProfile)) {
+    const teamChanged=JSON.stringify(fresh.teams)!==JSON.stringify(guestProfile.teams);
+    guestProfile=fresh;
+    if (els.settingsDialog.open) renderGuestSettings();
+    void syncServiceWorkerNotificationPreferences();
+    if (teamChanged) {
+      void Promise.all([loadStandings({initial:false}),loadCalendar({initial:false})]);
+    }
+  }
+  renderNotificationPreferences(); // expires local notification channels on access
   refreshLiveData().catch(() => null);
 }, LIVE_DATA_REFRESH_MS);
 
