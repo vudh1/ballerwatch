@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "10.0.1",
+  "currentVersion": "11.0.0",
   "releases": [
+    {
+      "version": "11.0.0",
+      "date": "2026-10-16",
+      "type": "major",
+      "source": "user-requested",
+      "title": "Accountless BallerWatch with private 24-hour device preferences",
+      "webAnnouncement": "No player accounts needed. Your RSVP name, followed teams and notifications stay on your device for 24 hours. RATS team data remains prepared ahead of time, with private RSVP membership filtering and a separate protected maintenance unlock.",
+      "changes": [
+        "Retire public user sign-in, user provisioning, account-backed notification profiles, and public RSVP-name catalogs; keep only the administrator maintenance unlock for shared edits and software releases.",
+        "Expire guest RSVP name, team selection and notification preferences after 24 hours and clear expired data on the device at next access.",
+        "Precompute encrypted, secret-keyed pickup RSVP membership tags alongside existing encrypted all-season RATS team standings, fixtures and scouting; do not publish a private participant directory.",
+        "Store Web Push subscriptions encrypted for no more than 24 hours, renew on active devices, and filter pickup and league alerts by the device's selected name, teams and channels without user accounts.",
+        "Scrub legacy secondary users, notification profiles and registered usernames from encrypted runtime-state on deployment; preserve protected operator access and global match overrides."
+      ]
+    },
     {
       "version": "10.0.1",
       "date": "2026-10-16",
