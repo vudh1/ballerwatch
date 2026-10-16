@@ -3512,7 +3512,11 @@ async function webBoard(env, limit = 30) {
     try {
       const encrypted = await githubFile(env, path, "runtime-state");
       const state = await decryptState(encrypted, env);
+      // Notification messages have a 24h lifespan; independent device
+      // category settings and Web Push subscriptions do not expire.
+      const cutoff = Date.now() - 24 * 60 * 60 * 1000;
       for (const item of state?.entries || []) {
+        if (!(Date.parse(String(item?.createdAt || "")) >= cutoff)) continue;
         entries.push({
           id: cleanText(item?.id, 120),
           channel: cleanText(item?.channel, 30),
@@ -4502,7 +4506,6 @@ export default {
         {
           ok: true,
           action,
-          expiresInSeconds: 86400,
           persistence: "queued",
         },
         { status: 202 },

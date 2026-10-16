@@ -46,27 +46,28 @@ function normalizedBadgeCount(value) {
   return Math.min(999, Math.max(0, Math.floor(Number(value) || 0)));
 }
 
-async function cachedDeviceValue(key) {
+async function cachedDeviceValue(key, { persistent = false } = {}) {
   try {
     const cache=await caches.open(DEVICE_STATE_CACHE);
     const response=await cache.match(key);
     if (!response) return null;
     const stored=await response.json();
-    if (!Number.isSafeInteger(stored?.expiresAt) ||
+    if (!persistent && (!Number.isSafeInteger(stored?.expiresAt) ||
         stored.expiresAt <= Date.now() ||
-        stored.expiresAt > Date.now()+DEVICE_LEASE_MS) {
+        stored.expiresAt > Date.now()+DEVICE_LEASE_MS)) {
       await cache.delete(key);
       return null;
     }
     return stored.value;
   } catch { return null; }
 }
-async function storeDeviceValue(key,value) {
+async function storeDeviceValue(key,value,{persistent=false}={}) {
   try {
     const cache=await caches.open(DEVICE_STATE_CACHE);
-    await cache.put(key,new Response(JSON.stringify({
-      expiresAt:Date.now()+DEVICE_LEASE_MS,value,
-    }),{headers:{"content-type":"application/json"}}));
+    await cache.put(key,new Response(JSON.stringify(persistent
+      ? {value,persistent:true}
+      : {expiresAt:Date.now()+DEVICE_LEASE_MS,value}),
+      {headers:{"content-type":"application/json"}}));
   } catch {}
 }
 async function readBadgeCount() {
@@ -119,7 +120,7 @@ function alertMatchesDeviceTeams(entry, teams = []) {
   return entry.teams.some(name => chosen.has(teamKey(name)));
 }
 async function readNotificationChannels() {
-  const stored=await cachedDeviceValue(NOTIFICATION_PREFS_URL) || {};
+  const stored=await cachedDeviceValue(NOTIFICATION_PREFS_URL,{persistent:true}) || {};
   return { channels:normalizedChannels(stored.channels),
     teams:Array.isArray(stored.teams) ? stored.teams.slice(0,8) : [] };
 }
@@ -127,7 +128,7 @@ async function writeNotificationChannels(data) {
   const channels=normalizedChannels(data?.channels || data);
   const teams=[...new Set((Array.isArray(data?.teams) ? data.teams : [])
     .map(name=>String(name||"").trim().slice(0,120)).filter(Boolean))].slice(0,8);
-  await storeDeviceValue(NOTIFICATION_PREFS_URL,{channels,teams});
+  await storeDeviceValue(NOTIFICATION_PREFS_URL,{channels,teams},{persistent:true});
 }
 
 function cleanRsvpDates(value) {
@@ -235,7 +236,7 @@ self.addEventListener("message", (event) => {
     return;
   }
   if (event.data?.type === "ballerwatch:notification-preferences") {
-    event.waitUntil(writeNotificationChannels(event.data?.channels));
+    event.waitUntil(writeNotificationChannels({channels:event.data?.channels,teams:event.data?.teams}));
     return;
   }
   if (event.data?.type === "ballerwatch:rsvp-state") {

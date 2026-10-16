@@ -18,10 +18,15 @@ import { loadWebNotificationChannel } from "./web-notifications.mjs";
 
 const STATE_PATH = "state/web-push.json";
 const MAX_SUBSCRIPTIONS = 256;
-export const PUSH_LEASE_MS = 24 * 60 * 60 * 1000;
+// Web Push delivery persists until the browser unsubscribes, the push
+// provider explicitly expires a subscription, or the provider rejects it.
+// A 24h notification-message retention policy must NEVER silence reminders.
 export function activeDeviceSubscriptions(items, now = new Date()) {
-  return (Array.isArray(items) ? items : []).filter(item =>
-    Date.parse(item?.expiresAt || "") > now.getTime());
+  return (Array.isArray(items) ? items : []).filter(item => {
+    const expires = item?.expirationTime;
+    return expires == null || expires === "" ||
+      (Number.isFinite(Number(expires)) && Number(expires) > now.getTime());
+  });
 }
 function deviceTeams(value) {
   return [...new Set((Array.isArray(value) ? value : [])
@@ -83,7 +88,6 @@ export function loadWebPushState() {
             rsvpTag: /^[a-f0-9]{64}$/.test(String(item.rsvpTag || "")) ? item.rsvpTag : "",
             createdAt: item.createdAt,
             updatedAt: item.updatedAt,
-            expiresAt: item.expiresAt,
           })) };
     }
   } catch {}
@@ -278,7 +282,6 @@ export function applyRegistrationEvent(event, { now = new Date() } = {}) {
         channels,
         createdAt: previous?.createdAt || timestamp,
         updatedAt: timestamp,
-        expiresAt: new Date(now.getTime() + PUSH_LEASE_MS).toISOString(),
       },
     ].slice(-MAX_SUBSCRIPTIONS);
   } else if (action === "unsubscribe") {
@@ -288,7 +291,7 @@ export function applyRegistrationEvent(event, { now = new Date() } = {}) {
   }
   saveWebPushState(state);
   console.log("Applied Web Push", action, ";", state.subscriptions.length,
-    "short-lived device(s).");
+    "active device(s).");
   return state;
 }
 
@@ -459,7 +462,7 @@ if (isCli) {
   } else if (command === "send-pending") {
     await sendPendingWebPushSignals();
   } else if (command === "prune") {
-    console.log("Expired device registrations removed:", pruneDeviceSubscriptions());
+    console.log("Provider-expired push registrations removed:", pruneDeviceSubscriptions());
   } else {
     throw new Error("Usage: node backend/shared/web-push.mjs ensure|apply-event|send|send-pending|prune");
   }

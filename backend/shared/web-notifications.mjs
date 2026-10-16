@@ -58,9 +58,13 @@ export function appendWebNotification(
       .map(name => clean(name, 120)).filter(Boolean))].slice(0, 20),
   };
 
+  // A notice is retained for only one day, never 30 days; an older entry
+  // must not suppress a fresh notification with the same semantic tag.
+  const cutoff = now.getTime() - 24 * 60 * 60 * 1000;
   const duplicate = [...current.entries]
     .reverse()
     .find((item) =>
+      Date.parse(String(item?.createdAt || "")) >= cutoff &&
       clean(item?.tag, 120) === nextEntry.tag &&
       clean(item?.title, 120) === nextEntry.title &&
       clean(item?.body, 900) === nextEntry.body &&
@@ -68,7 +72,6 @@ export function appendWebNotification(
     );
   if (duplicate) return duplicate;
 
-  const cutoff = now.getTime() - 30 * 24 * 60 * 60 * 1000;
   const entries = [...current.entries, nextEntry]
     .filter((item) => Date.parse(String(item?.createdAt || "")) >= cutoff)
     .slice(-40);

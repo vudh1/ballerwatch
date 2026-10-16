@@ -1,13 +1,12 @@
 /** One-time, idempotent retirement of ordinary account records.
  * Protect the operator's maintenance password and app-wide match overrides.
- * Push subscriptions receive a short transition lease without preserving
- * their former username. Raw identity never enters logs or public snapshots.
+ * Push subscriptions preserve the browser/provider subscription lifetime,
+ * without retaining their former username. No account data enters public logs.
  */
 import fs from "node:fs";
 import { pathToFileURL } from "node:url";
 import { decryptState, encryptState } from "./state-crypto.mjs";
 import { cleanAccountlessSettings } from "./user-state.mjs";
-import { PUSH_LEASE_MS } from "./web-push.mjs";
 
 export function scrubAccountRecords(record, now = new Date()) {
   const settings = cleanAccountlessSettings(record?.settings || {});
@@ -33,9 +32,6 @@ export function scrubPushIdentity(state, now = new Date()) {
         rsvpTag: /^[a-f0-9]{64}$/.test(String(item.rsvpTag||"")) ? item.rsvpTag : "",
         createdAt: item.createdAt || now.toISOString(),
         updatedAt: item.updatedAt || now.toISOString(),
-        expiresAt: Number.isFinite(Date.parse(item.expiresAt || ""))
-          ? item.expiresAt
-          : new Date(now.getTime()+PUSH_LEASE_MS).toISOString(),
       })),
   };
 }

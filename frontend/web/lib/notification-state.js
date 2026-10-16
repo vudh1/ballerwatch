@@ -59,12 +59,40 @@ export function normalizedNotificationProfile(value = {}) {
 }
 
 export const LOCAL_NOTIFICATION_CHANNELS_KEY = "ballerwatch-notification-channels-v1";
+export const DEVICE_NOTIFICATION_CHANNELS_KEY = "ballerwatch-notification-channels-v2";
 export function readLocalNotificationChannels(storage) {
-  try { storage.removeItem(LOCAL_NOTIFICATION_CHANNELS_KEY); } catch {}
-  return normalizedNotificationChannels(
-    readDeviceLease(storage, LOCAL_NOTIFICATION_CHANNELS_KEY + "-24h")?.channels || {});
+  try {
+    const existing=storage.getItem(DEVICE_NOTIFICATION_CHANNELS_KEY);
+    if (existing && existing.length <= 2_048) {
+      const parsed=JSON.parse(existing);
+      if (parsed?.schema===2 && parsed.channels) {
+        return normalizedNotificationChannels(parsed.channels);
+      }
+    }
+    // The previous build incorrectly gave category choices a 24h expiry.
+    // Preserve those choices during upgrade if the original record survived.
+    for (const key of [LOCAL_NOTIFICATION_CHANNELS_KEY+"-24h",
+      LOCAL_NOTIFICATION_CHANNELS_KEY]) {
+      const value=storage.getItem(key);
+      if (!value || value.length > 2_048) continue;
+      let decoded;
+      try { decoded=JSON.parse(value); } catch {continue;}
+      const channels=decoded?.data?.channels || decoded?.channels || decoded;
+      if (!channels || typeof channels!=="object" || Array.isArray(channels)) continue;
+      const normalized=normalizedNotificationChannels(channels);
+      if (saveLocalNotificationChannels(storage,normalized)) {
+        storage.removeItem(key);
+      }
+      return normalized;
+    }
+  } catch {}
+  return normalizedNotificationChannels();
 }
 export function saveLocalNotificationChannels(storage, channels) {
-  return writeDeviceLease(storage, LOCAL_NOTIFICATION_CHANNELS_KEY + "-24h",
-    { channels: normalizedNotificationChannels(channels) });
+  try {
+    storage.setItem(DEVICE_NOTIFICATION_CHANNELS_KEY,JSON.stringify({
+      schema:2,channels:normalizedNotificationChannels(channels),
+    }));
+    return true;
+  } catch {return false;}
 }
