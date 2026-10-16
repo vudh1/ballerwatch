@@ -192,6 +192,8 @@ let selectedCalendarGameId = "";
 let calendarExpanded = false;
 let currentStandings = null;
 let standingsIndex = 0;
+let standingsRetryTimer = null;
+let standingsRetryAttempt = 0;
 let teamHistoryRequestId = 0;
 // Read-only reports are memoized on this page only. Never persist to a device
 // or refetch a large archive-derived report for every repeated team tap.
@@ -1789,7 +1791,7 @@ async function registerServiceWorker() {
     void syncServiceWorkerRsvpState();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=10.0.0", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=10.0.1", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -3486,18 +3488,37 @@ function restorePublicStandings() {
   return true;
 }
 
+function scheduleStandingsRetry() {
+  if (standingsRetryTimer || navigator.onLine === false ||
+      document.visibilityState !== "visible") return;
+  // A slow cold Worker/season-index fetch must not leave a fresh install
+  // stuck on the unavailable message until the next minute.
+  const delay = Math.min(30_000, 3_000 * 2 ** Math.min(standingsRetryAttempt, 4));
+  standingsRetryAttempt += 1;
+  standingsRetryTimer = window.setTimeout(() => {
+    standingsRetryTimer = null;
+    if (navigator.onLine !== false && document.visibilityState === "visible") {
+      void loadStandings({ initial: false });
+    }
+  }, delay);
+}
+
 async function loadStandings({ initial = false } = {}) {
   try {
     const teamKey = JSON.stringify(guestProfile.teams);
     const query = guestProfile.teams.length
       ? `?teams=${encodeURIComponent(guestProfile.teams.join(","))}` : "";
+    // This independent, compact GET never blocks fixture-calendar painting.
+    // Leave more time for the first decrypt after a cold Worker deployment.
     const payload = await api(`/web/standings${query}`, {
-      retryNetwork: !initial, timeoutMs: initial ? 3_800 : 4_000,
+      retryNetwork: !initial, timeoutMs: initial ? 6_000 : 7_000,
     });
     if (teamKey !== JSON.stringify(guestProfile.teams)) return false;
     if (!payload?.ok || !payload.standings) throw new Error("Standings unavailable");
     rememberPublicStandings(payload.standings);
-    // Avoid unnecessary DOM replacement and layout on unchanged snapshots.
+    window.clearTimeout(standingsRetryTimer);
+    standingsRetryTimer = null;
+    standingsRetryAttempt = 0;
     if (JSON.stringify(currentStandings) !== JSON.stringify(payload.standings)) {
       applyPublicStandings(payload.standings);
     }
@@ -3506,9 +3527,10 @@ async function loadStandings({ initial = false } = {}) {
   } catch {
     if (!currentStandings) {
       els.standingsViewport.replaceChildren(standingsCell("p",
-        "Standings are unavailable. The RATS results index may still be updating.",
+        "Standings are reconnecting. Retrying automatically…",
         "muted standings-message"));
     }
+    scheduleStandingsRetry();
     return false;
   }
 }

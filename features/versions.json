@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "10.0.0",
+  "currentVersion": "10.0.1",
   "releases": [
+    {
+      "version": "10.0.1",
+      "date": "2026-10-16",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Restore fast and reliably cached league standings",
+      "webAnnouncement": "League standings now load as a small team-specific snapshot and automatically recover from temporary loading problems. Predictions and scouting stay precomputed.",
+      "changes": [
+        "Restrict standings API to the requested teams and at most 96 directly relevant, already-precomputed match estimates, instead of returning 1,662 season-wide predictions and 826 KB on every request.",
+        "Allow the bounded public device cache to persist those per-team predictions so standings appear immediately on repeat visits.",
+        "Serve newly monitored current-season teams from the already prepared full-season cards without requiring the hourly writer to match the old monitored-team list.",
+        "Retry slow initial standings reads automatically without blocking the independent match calendar, and validate the live standings contract during Worker deployments."
+      ]
+    },
     {
       "version": "10.0.0",
       "date": "2026-10-16",

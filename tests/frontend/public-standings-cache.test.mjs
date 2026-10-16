@@ -48,3 +48,15 @@ test("stale, previous-day, malformed, oversized and unavailable state is rejecte
   assert.equal(writePublicStandings(broken, PUBLIC_STANDINGS_LOCAL_KEY, example()), false);
   assert.equal(readPublicStandings(broken, PUBLIC_STANDINGS_LOCAL_KEY), null);
 });
+
+test("bounded team-specific projections persist but global season projections are rejected", () => {
+  const s = storage(), now = Date.parse("2026-10-14T20:00:00Z");
+  const base = example();
+  const mk = (n) => Object.fromEntries(Array.from({length:n},(_,i)=>
+    ["match-"+i,{team:"Fixture FC",opponent:"Team "+i,winPct:40,drawPct:20,lossPct:40}]));
+  const slim = {...base,matchups:mk(96)};
+  assert.equal(writePublicStandings(s,PUBLIC_STANDINGS_LOCAL_KEY,slim,now,"2026-10-14"),true);
+  assert.equal(Object.keys(readPublicStandings(s,PUBLIC_STANDINGS_LOCAL_KEY,now+1,"2026-10-14").matchups).length,96);
+  assert.equal(writePublicStandings(s,PUBLIC_STANDINGS_LOCAL_KEY,{...base,matchups:mk(97)},now,"2026-10-14"),false);
+});
+

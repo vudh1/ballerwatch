@@ -6,7 +6,7 @@
 import assert from "node:assert/strict";
 
 const origin = "https://ballerwatch-web.vudhone.workers.dev";
-for (const endpoint of ["/health", "/web/config", "/web/next-game", "/web/calendar"]) {
+for (const endpoint of ["/health", "/web/config", "/web/next-game", "/web/calendar", "/web/standings"]) {
   const response = await fetch(origin + endpoint, {
     cache: "no-store", signal: AbortSignal.timeout(25_000),
   });
@@ -17,6 +17,11 @@ for (const endpoint of ["/health", "/web/config", "/web/next-game", "/web/calend
   if (endpoint === "/web/calendar") {
     assert.ok(payload.calendar?.startDate);
     assert.ok(Array.isArray(payload.calendar.games));
+  }
+  if (endpoint === "/web/standings") {
+    assert.ok(Array.isArray(payload.standings?.cards));
+    assert.ok(payload.standings.cards.length > 0);
+    assert.ok(Object.keys(payload.standings.matchups || {}).length <= 96);
   }
   if (endpoint === "/web/next-game") assert.ok("game" in payload);
   console.log(`PASS read-only ${endpoint}`);

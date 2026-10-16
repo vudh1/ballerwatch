@@ -18,6 +18,7 @@ import {
   webNextGameDetails,
   webSafeSnapshot,
   scoutingSeasonCurrent,
+  publicStandingsProjection, MAX_PUBLIC_STANDINGS_MATCHUPS,
   withCachedVenue,
 } from "../../../../backend/infra/web-worker/worker.mjs";
 
@@ -89,6 +90,44 @@ test("visitor-selected fixtures survive a changed default monitored-team list", 
     "Never serve another season's fixtures");
   assert.equal(scoutingSeasonCurrent(null, snapshot), false);
   assert.equal(scoutingSeasonCurrent(index, { league: {} }), false);
+});
+
+test("selected standings send only relevant matchup estimates and stay within device-cache limits", () => {
+  const irrelevant = Object.fromEntries(Array.from({length: 1650}, (_, n) => [
+    "other-" + n, { team: "Other FC", opponent: "Other " + n, winPct: 30 },
+  ]));
+  const pair = { team: "Third Touch FC", opponent: "Gooners FC",
+    winPct: 50, drawPct: 20, lossPct: 30 };
+  const index = {
+    standings: { seasonId: "fall-2026", cards: [{ team: "Old Monitored FC", rows: [] }],
+      matchups: { ...irrelevant, "third touch|gooners": pair,
+        "gooners|third touch": {...pair, team: "Gooners FC", opponent: "Third Touch FC" } } },
+    availableCards: [{team:"Third Touch FC",ready:true,rows:[{name:"Third Touch FC",points:9}]},
+      {team:"Gooners FC",ready:true,rows:[{name:"Gooners FC",points:8}]}],
+  };
+  const selected = publicStandingsProjection(index, ["Third Touch FC"]);
+  assert.deepEqual(selected.cards.map(c=>c.team), ["Third Touch FC"]);
+  assert.deepEqual(Object.keys(selected.matchups), ["third touch|gooners"]);
+  assert.equal(selected.matchups["third touch|gooners"].winPct, 50);
+  assert.equal(Object.keys(index.standings.matchups).length, 1652, "canonical index stays complete");
+  const changedDefault = publicStandingsProjection(index, ["Gooners FC"]);
+  assert.deepEqual(changedDefault.cards.map(c=>c.team), ["Gooners FC"]);
+  assert.deepEqual(Object.keys(changedDefault.matchups), ["gooners|third touch"]);
+  const missing = publicStandingsProjection(index, ["Not Yet Indexed FC"]);
+  assert.equal(missing.cards[0].ready, false);
+  assert.equal(missing.cards[0].rows.length, 0);
+  assert.ok(MAX_PUBLIC_STANDINGS_MATCHUPS <= 96);
+});
+
+test("a full selected season never exceeds the bounded public prediction budget", () => {
+  const matchups = Object.fromEntries(Array.from({length: 180}, (_, i) =>
+    ["fixture-" + i, { team: "Third Touch FC", opponent: "Opponent " + i,
+      winPct: 40, drawPct: 20, lossPct: 40 }]));
+  const index = { standings: { cards: [], matchups },
+    availableCards: [{team:"Third Touch FC",ready:true,rows:[]}] };
+  const response = publicStandingsProjection(index, ["Third Touch FC"]);
+  assert.equal(Object.keys(response.matchups).length, MAX_PUBLIC_STANDINGS_MATCHUPS);
+  assert.equal(Object.keys(index.standings.matchups).length, 180);
 });
 
 test("personalized calendar includes indexed future fixtures without any live scouting", () => {

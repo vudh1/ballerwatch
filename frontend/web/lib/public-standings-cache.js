@@ -40,7 +40,7 @@ export function publicStandingsOnly(data) {
   }));
   const matchups = {};
   const entries = Object.entries(data.matchups || {});
-  if (entries.length > 35) return null;
+  if (entries.length > 96) return null;
   for (const [key, value] of entries) {
     if (key.length > 245 || !value || typeof value !== "object") return null;
     matchups[key] = selectFields(value, MATCHUP_FIELDS);
