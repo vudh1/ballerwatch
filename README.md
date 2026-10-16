@@ -31,7 +31,7 @@ Saturday synthetic pickup is shown simply as **Pickup** and has no RSVP/capacity
 
 ## Demo
 
-![BallerWatch production demo: cinematic launch, stadium audience and camera flashes, feature tour, original match cards, calendar, standings, AI, aligned Inbox preferences and Settings](docs/demo.gif)
+![BallerWatch animated demo: cinematic launch, stadium audience and camera flashes, feature tour, original match cards, calendar, standings, AI, aligned Inbox preferences and Settings](docs/demo.gif)
 
 A 40.3-second walkthrough recorded from the deployed 9.0.0 app, with smooth 20 fps animation. Match details, answers and Inbox entries use synthetic sample data; the recording does not read production accounts or change RSVP, notifications or Calendar entries.
 
