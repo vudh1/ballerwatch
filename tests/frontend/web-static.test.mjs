@@ -1988,12 +1988,13 @@ test("exactly one canonical waterfall effect owns both opacity and transparency"
   assert.doesNotMatch(css, /\/\* Use the match-card opacity and arrow tokens/);
 });
 
-test("production scouting weights are pinned only in the encrypted background index worker", () => {
+test("production scouting uses reviewed fallback weights or an eligible encrypted weekly model", () => {
   const indexer = fs.readFileSync("backend/league/scouting-index.mjs", "utf8");
   const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
   const tuner = fs.readFileSync("backend/shared/scout-calibration.mjs", "utf8");
   const standings = fs.readFileSync("backend/shared/league-standings.mjs", "utf8");
   assert.match(indexer, /status: "production-locked"/);
+  assert.match(indexer, /usableModel\(modelState, seasonId/);
   assert.match(indexer, /weights: \{ \.\.\.PRODUCTION_SCOUT_WEIGHTS \}/);
   assert.doesNotMatch(indexer, /tuneScoutingWeights\(history, seasonId\)/);
   assert.match(tuner, /export const PRODUCTION_SCOUT_WEIGHTS/);
@@ -2015,17 +2016,21 @@ test("README links old version history rather than duplicating dozens of release
 });
 
 
-test("safe stale-branch cleanup requires the release, exact PR head and matching deployment", () => {
-  const workflow = fs.readFileSync(".github/workflows/prune-merged-branches-8-9.yml", "utf8");
-  assert.match(workflow, /workflow_run:[\s\S]*Deploy GitHub Pages app/);
-  assert.match(workflow, /workflow_run\.conclusion == 'success'/);
+test("safe branch cleanup requires healthy production, exact heads and archival of reviewed superseded work", () => {
+  const workflow = fs.readFileSync(".github/workflows/cleanup-merged-branches.yml", "utf8");
+  assert.match(workflow, /workflow_dispatch:/);
   assert.match(workflow, /production_sha.*released_sha/);
   assert.match(workflow, /DEPLOYED_SHA.*released_sha/);
-  assert.match(workflow, /main\|production\|runtime-state\|release\/8\.9\.0/);
+  assert.match(workflow, /actions\/workflows\/pages\.yml\/runs/);
+  assert.match(workflow, /main\|production\|runtime-state/);
   assert.match(workflow, /head\.sha/);
   assert.match(workflow, /merged_at != null/);
+  assert.match(workflow, /open-prs\.json/);
   assert.match(workflow, /"\$live" != "\$sha"/);
-  assert.match(workflow, /gh api -X DELETE/);
+  assert.match(workflow, /ref=refs\/tags\/\$tag/);
+  assert.ok(workflow.indexOf("ref=refs/tags/$tag") < workflow.indexOf("gh api -X DELETE"));
+  assert.equal(fs.readdirSync(".github/workflows").filter((name) => name.startsWith("complete-")).length, 0);
+  assert.match(fs.readFileSync(".github/workflows/validate.yml", "utf8"), /push:\n    branches: \[main, production\]/);
 });
 
 test("standings waterfall never paints an opaque rectangular button on hover", () => {
