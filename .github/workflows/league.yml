@@ -84,7 +84,7 @@ jobs:
         if: steps.gate.outputs.should_run == 'true'
         id: schedule_changes
         run: |
-          node -e 'const fs = require("node:fs"); const {updates=[]} = JSON.parse(fs.readFileSync("notification-update.json", "utf8")); console.log("hasChanges=" + (updates.length > 0));' >> "$GITHUB_OUTPUT"
+          node -e 'const fs = require("node:fs"); const updates = fs.existsSync("notification-update.json") ? (JSON.parse(fs.readFileSync("notification-update.json", "utf8")).updates || []) : []; console.log("hasChanges=" + (updates.length > 0));' >> "$GITHUB_OUTPUT"
 
       - name: Record league web notifications
         # Notifications and reminders are independent of external calendars.
