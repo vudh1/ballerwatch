@@ -630,7 +630,7 @@ try {
           await page.waitForFunction(() => document.querySelector("#v2-cache-status").textContent.includes("cleared"));
           const after = await page.evaluate(() => caches.keys());
           assert.ok(after.some((key) => key.startsWith("ballerwatch-v2-") && key.endsWith("-shell")));
-          assert.ok(after.includes("ballerwatch-device-state-v1"));
+          assert.ok(after.includes("ballerwatch-device-state-v2"));
           assert.deepEqual(errors, []);
           await context.close();
         });
