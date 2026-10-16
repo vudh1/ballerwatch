@@ -10,7 +10,7 @@ BallerWatch uses release-gated production.
 6. Promotion advances `production` and publishes the GitHub Release.
 7. Release-driven Worker deployment migrates/audits encrypted runtime state and performs live API/security readiness checks.
 8. Only after Worker readiness succeeds does it dispatch Pages deployment.
-9. Pages checks out `production`.
+9. Pages composes its root from `production` and its `/beta/` subtree from the last validated `main` commit. Separately, successful main CI automatically publishes beta.
 10. An already-open PWA verifies that both Worker and Pages reached the promoted version, then updates its service worker and refreshes automatically.
 
 Production promotion is **manual only**, initiated through the protected administrator action or the manual workflow. There is no scheduled promotion: validated main updates beta automatically, while the root app remains on production until a deliberate release. Manual promotion does not bypass validation.
