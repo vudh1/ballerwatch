@@ -31,13 +31,11 @@ Saturday synthetic pickup is shown simply as **Pickup** and has no RSVP/capacity
 
 ## Demo
 
-![BallerWatch animated demo: upcoming games, pickup RSVP capacity, quick answers, and Inbox notifications](docs/demo.gif)
+![BallerWatch production demo: cinematic launch, stadium audience and camera flashes, feature tour, original match cards, calendar, standings, AI, aligned Inbox preferences and Settings](docs/demo.gif)
 
-A 22-second walkthrough with a short animated intro. Recorded from the app using synthetic sample data; game details, answers, and notifications are illustrative.
+A 40.3-second walkthrough recorded from the deployed 9.0.0 app, with smooth 20 fps animation. Match details, answers and Inbox entries use synthetic sample data; the recording does not read production accounts or change RSVP, notifications or Calendar entries.
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/)
-
-The smoother canonical-app demo will replace the walkthrough above after 9.0.0 is verified in production.
 
 ## What's new
 
