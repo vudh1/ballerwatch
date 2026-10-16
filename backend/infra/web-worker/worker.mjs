@@ -263,32 +263,14 @@ async function updateNotificationProfileDirect(env, userId, input = {}) {
   throw new Error("Unable to sync notification profile.");
 }
 
+// Only the protected operator credential remains. Ordinary users and
+// per-person notification profiles are retired; visitor choices are ephemeral.
 function userAccountFromSettings(settings, userId, env = {}) {
-  const username = normalizeUserName(userId);
-  if (username === "admin") {
-    return {
-      userId: "admin",
-      username: "admin",
-      role: "admin",
-      rsvpName: cleanText(settings?.ownerRsvpName || env.OWNER_RSVP_NAME || "", 120),
-      passwordRecord: settings?.webOwnerPassword || null,
-      authVersion: ownerAuthVersion(settings),
-      createdAt: "",
-    };
-  }
-  const users = secondaryUsers(settings);
-  if (!Object.prototype.hasOwnProperty.call(users, username)) return null;
-  const record = users[username];
-  if (!record || typeof record !== "object") return null;
-  const authVersion = Number(record.authVersion || 1);
+  if (normalizeUserName(userId) !== "admin") return null;
   return {
-    userId: username,
-    username,
-    role: "user",
-    rsvpName: cleanText(record.rsvpName || "", 120),
-    passwordRecord: record.webPassword || null,
-    authVersion: Number.isSafeInteger(authVersion) && authVersion >= 1 ? authVersion : 1,
-    createdAt: cleanText(record.createdAt, 80),
+    userId: "admin", username: "admin", role: "admin", rsvpName: "",
+    passwordRecord: settings?.webOwnerPassword || null,
+    authVersion: ownerAuthVersion(settings), createdAt: "",
   };
 }
 
@@ -946,10 +928,10 @@ async function ownerSettingsView(env, accountInput) {
     ownerName: account.rsvpName,
     teams,
     canManageTeams: canManage,
-    canManageUsers: canManage,
+    canManageUsers: false,
     canManageMatches: canManage,
     passwordConfigured: Boolean(account.passwordRecord?.digest),
-    users: canManage ? publicUserList(settings, env) : [],
+    users: [],
     deletedMatches: canManage
       ? Object.values(cleanHiddenMatches(settings?.hiddenMatches))
           .sort((a, b) => String(b.hiddenAt || "").localeCompare(String(a.hiddenAt || "")))
@@ -3565,16 +3547,35 @@ export function validWebSubscription(value) {
   };
 }
 
+// RSVP name is converted into a secret-keyed tag here. Neither plaintext
+// signup names nor roster entries are stored in Web Push subscriptions.
+async function rsvpTagForName(name, env) {
+  const normalized = cleanText(name, 120).replace(/\s+/g," ").toLocaleLowerCase("en");
+  if (!normalized) return "";
+  const key = await crypto.subtle.importKey("raw",
+    new TextEncoder().encode(String(env.TRACKER_STATE_KEY || "")),
+    { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const bytes = await crypto.subtle.sign("HMAC", key,
+    new TextEncoder().encode("ballerwatch:rsvp-name:v1\0" + normalized));
+  return [...new Uint8Array(bytes)].map(v=>v.toString(16).padStart(2,"0")).join("");
+}
+
+function deviceTeams(value) {
+  return [...new Set((Array.isArray(value) ? value : [])
+    .map(name => cleanText(name, 120).replace(/\s+/g," "))
+    .filter(name => name.length >= 2))].slice(0, 8);
+}
+
 async function dispatchWebRegistration(
   env,
   action,
   subscription,
-  { userId = "", channels = null } = {},
+  { name = "", teams = [], channels = null } = {},
 ) {
   const encrypted = await encryptState({
-    action,
-    subscription,
-    userId: userId ? normalizeUserName(userId) : "",
+    action, subscription,
+    rsvpTag: await rsvpTagForName(name, env),
+    teams: deviceTeams(teams),
     channels: notificationChannelPreferences(channels),
     createdAt: new Date().toISOString(),
   }, env);
@@ -3982,6 +3983,12 @@ export default {
     }
 
     if (request.method === "POST" && userRoute(url.pathname, "login")) {
+      return webJson(request, { ok: false,
+        error: "Account login is retired. Use the protected administrator unlock." },
+      { status: 410 });
+    }
+
+    if (request.method === "POST" && url.pathname === "/web/admin/unlock") {
       if (!(await ownerLoginAllowed(request))) {
         return webJson(
           request,
@@ -3995,7 +4002,7 @@ export default {
       catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
 
       try {
-        const signedIn = await loginOwnerDevice(env, body?.username, body?.password);
+        const signedIn = await loginOwnerDevice(env, "admin", body?.password);
         if (!signedIn) {
           await recordOwnerLoginFailure(request);
           return webJson(
@@ -4081,43 +4088,11 @@ export default {
       }
     }
 
-    if (
-      (request.method === "POST" || request.method === "DELETE") &&
-      userRoute(url.pathname, "users")
-    ) {
-      const account = await resolveOwnerCapability(env, bearerToken(request)).catch(() => null);
-      if (!account) {
-        return webJson(request, { ok: false, error: "User sign-in is required." }, { status: 401 });
-      }
-      if (account.role !== "admin") {
-        return webJson(request, { ok: false, error: "Administrator access is required." }, { status: 403 });
-      }
-
-      let body;
-      try { body = await request.json(); }
-      catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
-
-      try {
-        if (request.method === "POST") {
-          await createManagedUser(env, body);
-        } else {
-          await deleteManagedUser(env, body?.username);
-        }
-        return webJson(request, {
-          ok: true,
-          settings: await ownerSettingsView(env, account),
-        });
-      } catch (error) {
-        const message = cleanText(error?.message, 200);
-        const status = /already exists|not found|cannot be removed|supports up to|different username|Username must|between 12 and 200/.test(message)
-          ? 400
-          : 503;
-        return webJson(
-          request,
-          { ok: false, error: status === 400 ? message : "Unable to update users right now." },
-          { status },
-        );
-      }
+    // Legacy multi-user provisioning has been permanently retired.
+    if (userRoute(url.pathname, "users")) {
+      return webJson(request,
+        { ok: false, error: "User accounts are retired; use device preferences." },
+        { status: 410 });
     }
 
     if (
@@ -4337,30 +4312,15 @@ export default {
 
     // Selection catalog is lazy, authenticated and name-only. The public
     // team directory is indexed hourly; RSVP options come from private state.
-    if (request.method === "GET" && userRoute(url.pathname, "selection-options")) {
-      const account = await resolveOwnerCapability(env, bearerToken(request)).catch(() => null);
-      if (!account) return webJson(request,
-        { ok: false, error: "User sign-in is required." }, { status: 401 });
-      const [snapshotResult, indexResult] = await Promise.allSettled([
-        loadSnapshot(env), loadScoutingIndex(env),
-      ]);
-      const names = snapshotResult.status === "fulfilled"
-        ? privateRsvpNameOptions(snapshotResult.value, localDate()) : [];
-      const selected = indexResult.status === "fulfilled"
-        ? indexResult.value.monitoredTeams || [] : [];
-      const indexed = indexResult.status === "fulfilled"
-        ? indexResult.value.teamOptions || [] : [];
-      const teams = [...new Map([...selected, ...indexed]
-        .filter((name) => typeof name === "string" && name.trim())
-        .map((name) => [name.trim().toLowerCase(), name.trim()])).values()];
-      teams.sort((a, b) => a.localeCompare(b));
-      return webJson(request, { ok: true, names, teams,
-        partial: snapshotResult.status !== "fulfilled" || indexResult.status !== "fulfilled" });
+    if (userRoute(url.pathname, "selection-options")) {
+      // Do not expose a searchable private participant directory to visitors.
+      return webJson(request,
+        { ok: false, error: "Personal signup names are entered locally." },
+        { status: 410 });
     }
 
     if (
-      (request.method === "GET" || request.method === "POST") &&
-      userRoute(url.pathname, "settings")
+      request.method === "GET" && userRoute(url.pathname, "settings")
     ) {
       const account = await resolveOwnerCapability(env, bearerToken(request)).catch(() => null);
       if (!account) {
@@ -4380,72 +4340,12 @@ export default {
         }
       }
 
-      let body;
-      try { body = await request.json(); }
-      catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
-
-      try {
-        if (account.role === "admin") {
-          const settings = normalizeOwnerSettingsInput(body);
-          await saveOwnerSettingsDirect(env, settings);
-        } else {
-          await saveUserProfileDirect(env, account.userId, body?.ownerName);
-        }
-        return webJson(request, {
-          ok: true,
-          settings: await ownerSettingsView(env, account),
-          persistence: "saved",
-        });
-      } catch (error) {
-        const message = cleanText(error?.message, 200);
-        const status = /between 1 and 20/.test(message) ? 400 : 503;
-        console.error("User settings persistence failed", error);
-        return webJson(
-          request,
-          {
-            ok: false,
-            error: status === 400 ? message : "Unable to save user settings right now.",
-          },
-          { status },
-        );
-      }
     }
 
-    if (
-      (request.method === "GET" || request.method === "POST") &&
-      userRoute(url.pathname, "notifications")
-    ) {
-      const account = await resolveOwnerCapability(env, bearerToken(request)).catch(() => null);
-      if (!account) {
-        return webJson(request, { ok: false, error: "User sign-in is required." }, { status: 401 });
-      }
-
-      try {
-        if (request.method === "GET") {
-          const { settings } = await ownerSettingsRecord(env);
-          return webJson(request, {
-            ok: true,
-            profile: publicNotificationProfile(settings, account.userId),
-          });
-        }
-
-        let body;
-        try { body = await request.json(); }
-        catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
-
-        return webJson(request, {
-          ok: true,
-          profile: await updateNotificationProfileDirect(env, account.userId, body),
-          persistence: "saved",
-        });
-      } catch (error) {
-        console.error("User notification profile persistence failed", error);
-        return webJson(
-          request,
-          { ok: false, error: "Unable to sync notifications right now." },
-          { status: 503 },
-        );
-      }
+    if (userRoute(url.pathname, "notifications")) {
+      return webJson(request, { ok: false,
+        error: "Notification preferences are now private to each device." },
+      { status: 410 });
     }
 
     if (request.method === "POST" && url.pathname === "/web/feedback") {
@@ -4682,17 +4582,17 @@ export default {
         );
       }
       const action = url.pathname.endsWith("/unsubscribe") ? "unsubscribe" : "subscribe";
-      const account = await resolveOwnerCapability(env, bearerToken(request)).catch(() => null);
+      // Endpoint-bound challenge remains mandatory, even without accounts.
+      // One registration carries only ephemeral per-device categories and tags.
       await dispatchWebRegistration(env, action, subscription, {
-        userId: account?.userId || "",
-        channels: body?.channels,
+        name: body?.name, teams: body?.teams, channels: body?.channels,
       });
       return webJson(
         request,
         {
           ok: true,
           action,
-          account: account?.userId || "",
+          expiresInSeconds: 86400,
           persistence: "queued",
         },
         { status: 202 },
