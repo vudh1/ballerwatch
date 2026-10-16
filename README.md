@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, Calendar sync, and quick answers into one installable app.
 
-**Current source version: 9.0.0**
+**Current source version: 9.1.0**
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
 
@@ -10,7 +10,7 @@ BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS leag
 
 ## What you can do
 
-- **One BallerWatch at the main address:** a two-second brand launch, full-screen scroll hero with a stadium audience and camera flashes behind feature text, then the original matchday cards. Settings and Inbox fade in with the cards and stay easy to tap. Old `/v2/` links redirect to the root; account, RSVP, Calendar, AI, notification and administration features use the same controller and encrypted backend. See the [cinematic app and migration guide](docs/wiki/V2.md).
+- **One BallerWatch at the main address:** a two-second brand launch, full-screen scroll hero with a stadium audience and camera flashes behind feature text, then the original matchday cards. A single badged AI icon fades in with the cards and opens AI, Settings and Notifications. Skip keeps upward rewind available. Old `/v2/` links redirect to the root; account, RSVP, Calendar, AI, notification and administration features use the same controller and encrypted backend. See the [cinematic app and migration guide](docs/wiki/V2.md).
 
 - See the next **Pickup** or **League** match with a cleaner visual hierarchy for location, weather, RSVP, and secondary actions. Newly published RSVP dates remain in the match-card carousel and expanded calendar even beyond the initial 14-day grid; missing field details show *Venue to be announced* until the RSVP source publishes a location.
 - See RSVP capacity for pickup games; tap the capacity area to open the full-width roster sheet and RSVP from inside it.
@@ -21,7 +21,7 @@ BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS leag
 - Choose account-level notification categories and keep the unread count synchronized to the installed app badge on supported devices.
 - Get allowed Web Push reminders and real schedule-change notifications.
 - **Dynamic pickup capacity alerts:** RSVP bookings trigger at **25%, 50%, and 75%** of each published match's capacity, then each additional occupied spot through full. Thresholds round up to whole reservations (e.g., 16 slots alerts at 4, 8, 12, 13, 14, 15, and 16). A new match starts with a silent baseline, so past thresholds are not replayed; cancellations or settings-only capacity changes do not trigger booking alerts. The 24-hour RSVP and one-hour kickoff reminders remain separate, and muting/snoozing is honored.
-- Open **Inbox** and **Settings** from the top-right notification bell and gear.
+- Open the **AI icon** for three connected sections: **AI / Settings / Notifications**, including the unread badge.
 - Ask **BallerWatch AI** about opponents, match fields, jersey colors, weekly briefings, next games, and indexed RATS results—with follow-ups for a specific fixture.
 - Sign in with separate user accounts and revocable sessions.
 - For administrators: manage users, monitored RATS teams, reversible match overrides/deletes, and app promotion.
@@ -38,6 +38,8 @@ A 40.3-second walkthrough recorded from the deployed 9.0.0 app, with smooth 20 f
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/)
 
 ## What's new
+
+**v9.1.0** — Faster shot, later keeper reaction, equal-length arms and captain #10 with short sleeves. One AI hub replaces detached header controls. Skip preserves rewind. Evidence-led scouting preparation and weekly Groq/Gemini model proposals are tested against independent historical results before probability changes are eligible. See [Scouting model](docs/wiki/Scouting.md).
 
 **v9.0.0** — The cinematic app takes over the main address. Add audience/camera flashes, fade Settings/Inbox with the card reveal, remove replay/version controls, and align notification checks. Old V2 links redirect to the canonical app.
 
@@ -161,6 +163,8 @@ More detail: [Data and Privacy](https://github.com/vudh1/ballerwatch/wiki/Data-a
 | RATS watcher | every 5 minutes | cron-job.org → GitHub Actions |
 | Watchdog + weather | every 6 hours | GitHub Actions |
 | Release eligibility | hourly | GitHub Actions |
+| Scouting snapshots | hourly | GitHub Actions; bounded dual-provider fact ranking at most daily |
+| Scouting model | weekly | GitHub Actions; development selection and independent holdout gates |
 | Web API | on demand | Cloudflare Worker |
 | Calendar sync | on reconciled RATS changes | GitHub Actions → Apps Script |
 

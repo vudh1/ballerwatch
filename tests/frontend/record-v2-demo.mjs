@@ -123,9 +123,11 @@ try {
   await page.waitForFunction(() => document.querySelector("#answer").textContent.includes("Wear white"));
   await page.waitForTimeout(2200);
   await page.locator("#close-chat").click();
+  await page.locator("#chat-launcher").click();
   await page.locator("#notification-bell").click();
   await page.waitForTimeout(1900);
   await page.locator("#close-notifications").click();
+  await page.locator("#chat-launcher").click();
   await page.locator("#settings-button").click();
   await page.waitForTimeout(2300);
   if (errors.length) throw new Error(`Demo browser errors: ${errors.join(", ")}`);

@@ -444,7 +444,7 @@ export function buildMatchupEstimate(
     teamGames: ours.length, opponentGames: theirs.length,
     headToHeadGames: meetings.length,
     sampleLimited: ours.length < 5 || theirs.length < 5,
-    method: "Offline walk-forward-reviewed three-outcome estimate using 10 scored games, historical D1–D3 tiers, 11v11 format, recency, and up to five prior head-to-head meetings. Uncalibrated absolute odds; weights may be walk-forward selected when verified. Rounded, provisional, not bookmaker odds.",
+    method: (weights.goals ? "Includes an independently holdout-gated, regularized goal-rate ensemble. " : "") + "Offline walk-forward-reviewed three-outcome estimate using 10 scored games, historical D1–D3 tiers, 11v11 format, recency, and up to five prior head-to-head meetings. Uncalibrated absolute odds; weights may be walk-forward selected when verified. Rounded, provisional, not bookmaker odds.",
   };
 }
 

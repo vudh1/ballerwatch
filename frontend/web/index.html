@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="v2" data-entry-revision="canonical-stadium">
+<html lang="en" class="v2" data-entry-revision="canonical-match-hub">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -11,12 +11,12 @@
   <meta name="apple-mobile-web-app-title" content="BallerWatch">
   <meta name="description" content="A moment of football. Then everything you need for your next match.">
   <title>BallerWatch — Your matchday</title>
-  <link rel="manifest" href="./manifest.webmanifest?v=9.0.0">
-  <link rel="icon" href="./icon.svg?v=9.0.0" type="image/svg+xml">
-  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=9.0.0">
-  <script src="./v2/prepaint.js?v=9.0.0"></script>
-  <link rel="stylesheet" href="./styles.css?v=9.0.0">
-  <link rel="stylesheet" href="./v2/styles.css?v=9.0.0">
+  <link rel="manifest" href="./manifest.webmanifest?v=9.1.0">
+  <link rel="icon" href="./icon.svg?v=9.1.0" type="image/svg+xml">
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=9.1.0">
+  <script src="./v2/prepaint.js?v=9.1.0"></script>
+  <link rel="stylesheet" href="./styles.css?v=9.1.0">
+  <link rel="stylesheet" href="./v2/styles.css?v=9.1.0">
 </head>
 <body>
   <div class="status-bar-glass" aria-hidden="true"></div>
@@ -34,22 +34,6 @@
     </div>
     <button id="skip-launch" class="secondary" type="button">Skip to matches</button>
   </section>
-  <div class="hero-actions v2-quick-actions">
-        <button class="utility-button" id="settings-button" type="button"
-          aria-label="Open settings" aria-haspopup="dialog">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/>
-            <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.09a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3v-4h.04A1.7 1.7 0 0 0 4.6 8.94a1.7 1.7 0 0 0-.34-1.88L4.2 7l2.83-2.83.06.06a1.7 1.7 0 0 0 1.88.34A1.7 1.7 0 0 0 10 3.01V3h4v.01a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06L19.8 7l-.06.06a1.7 1.7 0 0 0-.34 1.88 1.7 1.7 0 0 0 1.56 1.03H21v4h-.04A1.7 1.7 0 0 0 19.4 15Z"/>
-          </svg>
-        </button>
-        <button class="bell-button utility-button" id="notification-bell" type="button"
-          aria-label="Open notifications" aria-haspopup="dialog">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>
-          </svg>
-          <span class="notification-badge" id="notification-badge" hidden>0</span>
-        </button>
-      </div>
   <section id="soccer-intro" class="soccer-intro" aria-label="Interactive soccer introduction">
     <div id="soccer-stage" class="soccer-stage">
       <div class="intro-topline"><a href="./" class="v2-wordmark" aria-label="BallerWatch home">BallerWatch</a><button id="skip-intro" type="button">Skip intro <span aria-hidden="true">↗</span></button></div>
@@ -70,11 +54,11 @@
             <g id="scene-goal"><path d="m1000 380 310-15 35 230-330 9Z" fill="#061214" fill-opacity=".62"/><g id="scene-net"><path d="m1000 380 310-15 35 230-330 9Z" fill="url(#net-grid)"/><path d="m1000 380 30 28 280-15M1030 408l15 185M1310 365l-6 228" fill="none" stroke="#d9e6e1" stroke-opacity=".25"/></g><path d="m1015 604-15-224 310-15 35 230" fill="none" stroke="#dce8e2" stroke-width="7" stroke-linecap="round"/><path d="m1015 604 330-9" stroke="#94aaa4" stroke-width="2"/></g>
             <g id="scene-keeper" transform="translate(1120 570)">
               <ellipse cx="0" cy="35" rx="46" ry="9" fill="#000" opacity=".2"/>
-              <g stroke-linecap="round" stroke-linejoin="round"><path d="m-10-5-20 47-17 13M13-5l25 42 24 11" fill="none" stroke="#17222d" stroke-width="19"/><path d="M-13-62Q-57-86-112-115M12-62Q38-75 59-111" fill="none" stroke="url(#keeper-kit)" stroke-width="17"/><path d="m-112-115-8-5M59-111l3-8" stroke="#e7eadb" stroke-width="14"/><path d="m-17-75 35 1 7 65-45 3Z" fill="url(#keeper-kit)"/><circle cy="-97" r="16" fill="#99735a"/><path d="M-14-104q14-21 29 0" fill="#16212a"/></g>
+              <g stroke-linecap="round" stroke-linejoin="round"><path d="m-10-5-20 47-17 13M13-5l25 42 24 11" fill="none" stroke="#17222d" stroke-width="19"/><path d="M-13-62-42-90-67-123M13-62 42-90 67-123" fill="none" stroke="url(#keeper-kit)" stroke-width="17"/><path d="m-67-123-5-7M67-123l5-7" stroke="#e7eadb" stroke-width="14"/><path d="m-17-75 35 1 7 65-45 3Z" fill="url(#keeper-kit)"/><path d="M0-72v-13" stroke="#99735a" stroke-width="12"/><circle cy="-97" r="16" fill="#99735a"/><path d="M-14-104q14-21 29 0" fill="#16212a"/></g>
             </g>
             <ellipse cx="380" cy="750" rx="68" ry="12" fill="#000" opacity=".3"/>
             <g id="scene-player" transform="translate(350 605)">
-              <g id="scene-player-body"><path d="m-5 15-25 61 10 58" fill="none" stroke="#171f27" stroke-width="24" stroke-linecap="round"/><path d="m-22 130 27 8" stroke="#e4ecd8" stroke-width="13" stroke-linecap="round"/><path d="m-7-82-27 33-29 6M24-81l27 26 23-18" fill="none" stroke="#95765c" stroke-width="15" stroke-linecap="round"/><path d="m-15-98 43 5 11 87-52 6Z" fill="url(#kit)"/><path d="M1-90 8-8" stroke="#f0ffd4" stroke-opacity=".35" stroke-width="3"/><path d="m-13-4 51-2-1 32-45-1Z" fill="#111c24"/><path d="m1-103 3-17" stroke="#95765c" stroke-width="16"/><circle cx="8" cy="-139" r="21" fill="#a37e61"/><path d="M-12-144q3-32 36-17l7 17-15-10-26 15Z" fill="#131d24"/><text id="scene-player-number" x="11" y="-44" text-anchor="middle" fill="#102534" font-size="30" font-weight="800">10</text></g>
+              <g id="scene-player-body"><path d="m-5 15-25 61 10 58" fill="none" stroke="#171f27" stroke-width="24" stroke-linecap="round"/><path d="m-22 130 27 8" stroke="#e4ecd8" stroke-width="13" stroke-linecap="round"/><path d="m-7-82-27 33-29 6M24-81l27 26 23-18" fill="none" stroke="#95765c" stroke-width="15" stroke-linecap="round"/><path d="M4-123 5-91" stroke="#a37e61" stroke-width="17" stroke-linecap="round"/><path d="m-15-98-23 29 19 13 14-27 23 2 18 24 17-15-25-21Z" fill="url(#kit)"/><path d="m-15-98 43 5 11 87-52 6Z" fill="url(#kit)"/><path d="m-10-96q15 13 29 2" fill="none" stroke="#e0f2fe" stroke-width="4"/><path id="scene-captain-band" d="m-33-75 17 11" stroke="#fcd34d" stroke-width="8"/><path d="M1-90 8-8" stroke="#f0ffd4" stroke-opacity=".35" stroke-width="3"/><path d="m-13-4 51-2-1 32-45-1Z" fill="#111c24"/><circle cx="8" cy="-139" r="21" fill="#a37e61"/><path d="M-12-144q3-32 36-17l7 17-15-10-26 15Z" fill="#131d24"/><text id="scene-player-number" x="11" y="-44" text-anchor="middle" fill="#102534" font-size="30" font-weight="800">10</text></g>
               <g id="scene-shooting-leg"><path d="m13 18 32 57 35 56" fill="none" stroke="#171f27" stroke-width="23" stroke-linecap="round"/><path d="m78 129 28 2" stroke="#7dd3fc" stroke-width="14" stroke-linecap="round"/></g>
             </g>
             <g id="scene-grass" opacity="0" fill="#86efac"><path d="m430 739-28-24 9 21Zm0 0 36-13-20 24Zm0 0-6-38-9 23Zm0 0 42 20-32-5Z"/></g>
@@ -90,7 +74,7 @@
     <p class="v2-static-welcome" hidden>Matchday, at your pace. Motion is reduced on this device.</p>
     <header class="hero">
       <div class="brand-lockup">
-        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=9.0.0" alt=""></div>
+        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=9.1.0" alt=""></div>
         <div>
           <p class="eyebrow">SOCCER AT A GLANCE</p>
           <h1 id="matchday-heading" tabindex="-1">BallerWatch</h1>
@@ -236,7 +220,7 @@
   </dialog>
 
   <button class="chat-launcher" id="chat-launcher" type="button"
-    aria-label="Open BallerWatch AI" aria-haspopup="dialog">
+    aria-label="Open BallerWatch AI, Settings and Notifications" aria-haspopup="dialog">
     <svg viewBox="0 0 32 32" aria-hidden="true">
       <rect x="5" y="8" width="22" height="17" rx="7"/>
       <path d="M11 25 8 29v-6"/>
@@ -246,10 +230,16 @@
       <path d="M16 4v4"/>
       <circle cx="16" cy="3.5" r="1.5"/>
     </svg>
+    <span class="notification-badge" id="notification-badge" hidden>0</span>
   </button>
 
   <dialog id="chat-dialog" class="chat-dialog">
     <div class="dialog-shell chat-dialog-shell">
+      <nav class="app-hub-tabs" aria-label="BallerWatch sections">
+        <button type="button" data-hub-target="ai" aria-current="true">AI</button>
+        <button id="settings-button" type="button" data-hub-target="settings" aria-current="false">Settings</button>
+        <button id="notification-bell" type="button" data-hub-target="notifications" aria-current="false">Notifications</button>
+      </nav>
       <div class="section-heading chat-dialog-heading">
         <div class="chat-dialog-title">
           <span class="chat-dialog-bot" aria-hidden="true">
@@ -325,6 +315,11 @@
 
   <dialog id="notification-dialog" class="notification-dialog">
     <div class="dialog-shell">
+      <nav class="app-hub-tabs" aria-label="BallerWatch sections">
+        <button type="button" data-hub-target="ai" aria-current="false">AI</button>
+        <button type="button" data-hub-target="settings" aria-current="false">Settings</button>
+        <button type="button" data-hub-target="notifications" aria-current="true">Notifications</button>
+      </nav>
       <div class="section-heading">
         <div>
           <p class="eyebrow">NOTIFICATIONS</p>
@@ -408,6 +403,11 @@
 
   <dialog id="settings-dialog" class="settings-dialog">
     <div class="dialog-shell">
+      <nav class="app-hub-tabs" aria-label="BallerWatch sections">
+        <button type="button" data-hub-target="ai" aria-current="false">AI</button>
+        <button type="button" data-hub-target="settings" aria-current="true">Settings</button>
+        <button type="button" data-hub-target="notifications" aria-current="false">Notifications</button>
+      </nav>
       <div class="section-heading settings-heading">
         <div>
           <p class="eyebrow">SETTINGS</p>
@@ -660,7 +660,7 @@
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=9.0.0"></script>
-  <script type="module" src="./v2/app.js?v=9.0.0"></script>
+  <script type="module" src="./app.js?v=9.1.0"></script>
+  <script type="module" src="./v2/app.js?v=9.1.0"></script>
 </body>
 </html>

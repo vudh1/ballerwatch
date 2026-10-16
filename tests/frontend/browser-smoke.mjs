@@ -51,6 +51,17 @@ await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 const origin = `https://127.0.0.1:${server.address().port}`;
 let scenarios = 0;
 
+async function openHubTab(page, target) {
+  if (!await page.locator("#chat-dialog").evaluate((element) => element.open)) {
+    // Close a currently open hub pane through its own close button first.
+    for (const [dialog, close] of [["settings", "close-settings"], ["notification", "close-notifications"]]) {
+      if (await page.locator(`#${dialog}-dialog`).evaluate((element) => element.open)) await page.locator(`#${close}`).click();
+    }
+    await page.locator("#chat-launcher").click();
+  }
+  await page.locator(`#chat-dialog [data-hub-target="${target}"]`).click();
+}
+
 async function prepare(browser, options = {}) {
   // Keep API fixtures under Playwright's routing control. WebKit service-worker
   // networking can bypass those routes; exercise real workers separately below.
@@ -218,26 +229,28 @@ try {
           assert.ok((await page.locator("#scene-description").textContent()).includes(text));
         }
         await atProgress(page, .7);
-        assert.equal(await page.locator(".v2-quick-actions").isVisible(), false);
+        assert.equal(await page.locator("#chat-launcher").isVisible(), false);
         for (const progress of [.94, .96, .98, 1]) {
           await atProgress(page, progress);
-          const opacity = await page.evaluate(() => [".v2-quick-actions", "#matchday-app"].map((selector) => getComputedStyle(document.querySelector(selector)).opacity));
+          const opacity = await page.evaluate(() => ["#chat-launcher", "#matchday-app"].map((selector) => getComputedStyle(document.querySelector(selector)).opacity));
           assert.equal(opacity[0], opacity[1]);
         }
         await atProgress(page, .94);
-        const before = await page.locator("#settings-button").boundingBox();
+        const before = await page.locator("#chat-launcher").boundingBox();
         await atProgress(page, .98);
-        assert.deepEqual(await page.locator("#settings-button").boundingBox(), before);
-        for (const [button, dialog, close] of [["#settings-button", "#settings-dialog", "#close-settings"],
-          ["#notification-bell", "#notification-dialog", "#close-notifications"]]) {
-          assert.equal(await page.locator(button).evaluate((el) => {
-            const rect = el.getBoundingClientRect();
-            return document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)?.closest("button") === el;
-          }), true, "The fading hero must not intercept utility controls");
-          await page.locator(button).click();
-          assert.equal(await page.locator(dialog).evaluate((el) => el.open), true);
-          await page.locator(close).click();
-        }
+        assert.deepEqual(await page.locator("#chat-launcher").boundingBox(), before);
+        assert.equal(await page.locator("#chat-launcher").evaluate((el) => {
+          const rect = el.getBoundingClientRect();
+          return document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)?.closest("button") === el;
+        }), true, "The fading hero must not intercept the hub");
+        await page.locator("#chat-launcher").click();
+        await page.locator('#chat-dialog [data-hub-target="settings"]').click();
+        assert.equal(await page.locator("#settings-dialog").evaluate((el) => el.open), true);
+        await page.locator('#settings-dialog [data-hub-target="notifications"]').click();
+        assert.equal(await page.locator("#notification-dialog").evaluate((el) => el.open), true);
+        await page.locator('#notification-dialog [data-hub-target="ai"]').click();
+        assert.equal(await page.locator("#chat-dialog").evaluate((el) => el.open), true);
+        await page.locator("#close-chat").click();
         await shot(page, `${engine}-glass-reveal`);
         assert.deepEqual(errors, []);
         await context.close();
@@ -245,7 +258,7 @@ try {
 
       await scenario(`${engine}: full-screen stadium and foreground action surround borderless feature text`, async () => {
         const { context, page, errors } = await prepare(browser, {
-          viewport: { width: 390, height: 760 }, isMobile: true, hasTouch: true,
+          viewport: { width: 390, height: 560 }, isMobile: true, hasTouch: true,
         });
         await context.addInitScript(() => { Object.defineProperty(navigator, "standalone", { value: true }); });
         await ready(page);
@@ -264,7 +277,7 @@ try {
           copy.style.pointerEvents = "auto";
           action.style.pointerEvents = "auto";
           const points = [
-            ["#scene-ball", 0, 0], ["#scene-keeper", -120, -120],
+            ["#scene-ball", 0, 0], ["#scene-keeper", -72, -130],
           ];
           const result = points.map(([selector, x, y]) => {
             const element = document.querySelector(selector);
@@ -279,6 +292,7 @@ try {
           action.style.pointerEvents = "";
           return result;
         });
+        await shot(page, `${engine}-foreground-text`);
         assert.deepEqual(occlusion, [{ front: true, overCopy: true }, { front: true, overCopy: true }]);
         await shot(page, `${engine}-foreground-text`);
         for (const viewport of [{ width: 390, height: 950 }, { width: 844, height: 390 }, { width: 390, height: 844 }]) {
@@ -316,11 +330,11 @@ try {
         assert.equal(new URL(page.url()).pathname, "/ballerwatch/");
         assert.equal(new URL(page.url()).search, "?from=legacy");
         assert.equal(new URL(page.url()).hash, "#matches");
-        await page.locator("#settings-button").click();
+        await openHubTab(page, "settings");
         assert.equal(await page.locator("#guest-name").inputValue(), "Sample visitor");
         assert.equal(await page.locator("#replay-intro,#app-version-v1,#app-version-v2").count(), 0);
         await page.locator("#close-settings").click();
-        await page.locator("#notification-bell").click();
+        await openHubTab(page, "notifications");
         for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }]) {
           await page.setViewportSize(viewport);
           const checks = await page.locator(".notification-preference-options label").evaluateAll((labels) => labels.map((label) => {
@@ -367,7 +381,7 @@ try {
         const { context, page, errors, calls } = await prepare(browser, { reducedMotion: "reduce" });
         await ready(page);
         await page.waitForSelector(".standings-team-link");
-        await page.locator("#settings-button").click();
+        await openHubTab(page, "settings");
         assert.equal(await page.locator("#guest-settings-view").isVisible(), true);
         assert.equal(await page.locator("#settings-login-view").evaluate((el) => el.open), false);
         await page.locator("#guest-name").fill("Visitor");
@@ -393,13 +407,13 @@ try {
           "Adding a monitored team refreshes standings immediately");
         assert.equal(calls.filter((call) => call.path === "/web/user/settings" && call.method === "POST").length, 0);
         await page.locator("#close-settings").click();
-        await page.locator("#notification-bell").click();
+        await openHubTab(page, "notifications");
         await page.locator("#notification-pref-pickup").uncheck();
         assert.equal(await page.evaluate(() =>
           JSON.parse(localStorage.getItem("ballerwatch-notification-channels-v1")).pickup), false);
         await page.reload();
         await ready(page);
-        await page.locator("#settings-button").click();
+        await openHubTab(page, "settings");
         assert.equal(await page.locator("#guest-name").inputValue(), "Visitor");
         assert.deepEqual(errors, []);
         await context.close();
@@ -464,9 +478,11 @@ try {
         assert.equal(navigations, 0);
         await page.waitForFunction(() => !document.querySelector("#matchday-app").inert);
         await shot(page, `${engine}-matchday-iphone`);
-        assert.ok(await page.locator("#matchday-heading").evaluate((el) =>
-          el.getBoundingClientRect().right < document.querySelector("#settings-button").getBoundingClientRect().left),
-        "The mobile brand must not overlap the settings control");
+        assert.equal(await page.locator(".v2-quick-actions").count(), 0, "No detached header controls");
+        await atProgress(page, .44);
+        assert.equal(await page.locator("#matchday-app").evaluate((el) => el.inert), true);
+        assert.equal(await page.locator("#soccer-intro").isVisible(), true, "Skip preserves upward rewind");
+        await atProgress(page, 1);
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
         await page.locator("#two-week-calendar").scrollIntoViewIfNeeded();
         assert.equal(await page.locator("#two-week-calendar").isVisible(), true);
@@ -476,7 +492,7 @@ try {
         await page.waitForSelector(".standings-team-link");
         assert.equal(await page.locator("#league-standings").isVisible(), true);
         await shot(page, `${engine}-club-iphone`);
-        await page.locator("#notification-bell").click();
+        await openHubTab(page, "notifications");
         assert.equal(await page.locator("#notification-dialog").evaluate((el) => el.open), true);
         await page.locator("#close-notifications").click();
         await page.locator("#chat-launcher").click();
@@ -495,7 +511,7 @@ try {
           document.documentElement.style.setProperty("--v2-safe-right", "34px");
         });
         assert.ok(await page.locator("#next-game-card").evaluate((el) => el.getBoundingClientRect().left >= 59));
-        assert.ok(await page.locator("#settings-button").evaluate((el) => el.getBoundingClientRect().right <= window.innerWidth - 34));
+        assert.ok(await page.locator("#chat-launcher").evaluate((el) => el.getBoundingClientRect().right <= window.innerWidth - 34));
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
         await shot(page, `${engine}-matchday-landscape`);
         await page.evaluate(() => {
@@ -522,7 +538,7 @@ try {
         assert.equal(await reduced.page.locator("#install-card").count(), 0);
         assert.equal(await reduced.page.locator("#matchday-app").evaluate((el) => el.inert), false);
         await shot(reduced.page, `${engine}-reduced-standalone`);
-        await reduced.page.locator("#settings-button").click();
+        await openHubTab(reduced.page, "settings");
         assert.equal(await reduced.page.locator("#replay-intro").count(), 0);
         await reduced.context.close();
         for (const failure of ["animationFailure", "scriptFailure"]) {
@@ -539,7 +555,7 @@ try {
       await scenario(`${engine}: shared session restores in V1/V2; private rosters use authorized APIs only`, async () => {
         const { context, page, calls, errors } = await prepare(browser, { reducedMotion: "reduce" });
         await ready(page, "");
-        await page.locator("#settings-button").click();
+        await openHubTab(page, "settings");
         await page.locator("#settings-login-view summary").click();
         await page.locator("#owner-login-username").fill("fixture");
         await page.locator("#owner-login-password").fill("synthetic-only-password");
@@ -547,7 +563,7 @@ try {
         await page.waitForFunction(() => localStorage.getItem("ballerwatch-owner-token") === "synthetic-browser-session");
         await page.locator("#close-settings").click();
         await ready(page);
-        await page.locator("#settings-button").click();
+        await openHubTab(page, "settings");
         await page.waitForSelector("#settings-owner-view:not([hidden])");
         await page.locator("#close-settings").click();
         await page.locator("#next-game-capacity").click();
@@ -606,7 +622,7 @@ try {
           await page.waitForFunction(() => document.querySelector("#next-game-title")?.textContent === "Thursday, October 15", null, { timeout: 8000 });
           const before = await page.evaluate(() => caches.keys());
           assert.ok(before.some((key) => key.startsWith("ballerwatch-v2-") && key.endsWith("-shell")));
-          await page.locator("#settings-button").click();
+          await openHubTab(page, "settings");
           await page.locator("#v2-offline-tools").evaluate((el) => { el.open = true; });
           await page.locator("#clear-v2-caches").click();
           await page.waitForFunction(() => document.querySelector("#v2-cache-status").textContent.includes("cleared"));

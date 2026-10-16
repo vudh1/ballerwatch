@@ -50,3 +50,20 @@ test("discard missing, ambiguous and unscored results without fabricating",()=>{
   assert.ok(output.seasons[0].incomplete>=1);
   assert.ok(output.seasons[0].rejected>=1);
 });
+
+test("in-progress season outcomes never select a goal-rate challenger", () => {
+  const first = sample();
+  const second = structuredClone(first);
+  for (const game of second.seasons.at(-1).matches) {
+    game.homeScore = 35;
+    game.awayScore = 0;
+  }
+  const a = evaluateArchive(first, "fall-2026");
+  const b = evaluateArchive(second, "fall-2026");
+  assert.deepEqual(a.selectedWeights, b.selectedWeights);
+  assert.equal(a.productionPromotionRecommended, b.productionPromotionRecommended);
+  for (const name of Object.keys(a.comparisons)) {
+    assert.deepEqual(a.comparisons[name].development, b.comparisons[name].development);
+    assert.deepEqual(a.comparisons[name].holdout, b.comparisons[name].holdout);
+  }
+});

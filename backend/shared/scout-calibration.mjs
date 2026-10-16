@@ -6,6 +6,7 @@
  * tuning until complete. No API calls, free-model prompts, or user/RSVP data.
  * Rebuilt from encrypted historical scores by the hourly scouting job.
  */
+import { blendGoalForecast } from "./scout-goals.mjs";
 import { completedHistoryMatches, historyTeamKey } from "./rats-history.mjs";
 
 export const DEFAULT_SCOUT_WEIGHTS = Object.freeze({
@@ -30,7 +31,7 @@ function chronologicalKey(value) {
   const match = /^(winter|spring|summer|fall)-(\d{4})$/i.exec(String(value || ""));
   return match ? Number(match[2]) * 4 + SEASONS.indexOf(match[1].toLowerCase()) : null;
 }
-function tier(team) {
+export function scoutingTier(team) {
   if (!team) return 1;
   const labels = [team.divisionLabel, team.leagueName, team.division]
     .map((item) => String(item || "").trim());
@@ -49,7 +50,7 @@ function tier(team) {
   }
   return 1;
 }
-function matchFormat(team) {
+export function scoutingFormat(team) {
   if (!team) return "unknown";
   // Mirror published league-format interpretation in league-standings.mjs.
   const leagueName = String(team.leagueName || "").trim();
@@ -92,8 +93,8 @@ function featuresForSeason(season) {
         away: historyTeamKey(match.awayTeam),
         homeScore: Number(match.homeScore),
         awayScore: Number(match.awayScore),
-        homeTier: tier(home), awayTier: tier(away),
-        homeFormat: matchFormat(home), awayFormat: matchFormat(away),
+        homeTier: scoutingTier(home), awayTier: scoutingTier(away),
+        homeFormat: scoutingFormat(home), awayFormat: scoutingFormat(away),
       };
     })
     .sort((left, right) => left.date.localeCompare(right.date));
@@ -140,11 +141,11 @@ export function forecastFromFeatures(ours, theirs, meetings, settings = DEFAULT_
     ((first.drawRate + second.drawRate) / 2 - weights.draw) * 0.5 * observed +
     (meetingWeight ? (meetingDraws / meetingWeight - weights.draw) * influence * 0.2 : 0),
     0.12, 0.34);
-  return {
+  return blendGoalForecast({
     win: (1 - drawShare) * share,
     draw: drawShare,
     loss: (1 - drawShare) * (1 - share),
-  };
+  }, ours, theirs, weights.goals);
 }
 export function roundThreeWay(probs) {
   const winPct = bounded(Math.round(probs.win * 20) * 5, 0, 100);

@@ -50,6 +50,9 @@ Signed-in Inbox read/delete state is merged into the encrypted user profile so m
 
 ## Current development line
 
+- **9.1.0** — Realistic late-save choreography and captain #10, single AI/Settings/Notifications hub, rewind after Skip, evidence-led prepared scouting reports and independently gated weekly goal-rate challengers with bounded Groq/Gemini proposals.
+- **9.0.0** — Canonical cinematic root app, stadium crowd/flashes, original functional cards and old `/v2/` redirect.
+
 - **8.9.0** — canonical card template and synchronized title/meta/footer scale, identical waterfall opacity and masks on match and standings, bottom-pinned standings Updated. Hourly scouting performs no-leak Spring→Summer→Fall season-forward tests, measures Brier and previous-to-next-season form quality, and adopts revised weights only on proven out-of-time improvements; full history remains only in the version ledger and releases.
 - **8.8.0** — exact shared masked waterfall on match/standings cards; touch-first iPhone standings flicks that do not open scouting; authenticated searchable RSVP-name and multi-team chip selectors; hourly indexed team directory; scouting-aware BallerWatch AI with published W/D/L and attack/defense facts; review-guided pickup-versus-league intent fix; independent privacy-safe regression checks.
 - **8.7.0** — matched match/standings waterfall navigation and refined typography; App labels and RSVP-style top-right scouting X; division-weighted historical form (D1 > D2a > D2b > D2c > D3, unknown neutral), recent form and head-to-head; rounded provisional win/draw/loss; only versioned encrypted precomputed scouting GETs, no archive scans on page load.

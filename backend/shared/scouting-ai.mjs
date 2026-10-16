@@ -60,6 +60,7 @@ function scoutingSummary(row) {
       scout.overall.draws + "D–" + scout.overall.losses + "L (" +
       scout.overall.games + " scored games)." : "All-time indexed: no scored matches.",
   ];
+  if (Array.isArray(scout.briefing)) lines.push("", "Match preparation", ...scout.briefing);
   if (!scout.archiveComplete) lines.push("Archive coverage is partial.");
   lines.push("Division, opponent, format and recency-adjusted; provisional, not betting odds.");
   return lines.join("\n");
@@ -83,6 +84,18 @@ export function answerScoutingQuestion(question, index, { contextTeams = [] } = 
   const raw = String(question || "").slice(0, 600);
   if (/\b(?:backtest(?:ing)?|accuracy|accurate|precision|precise|calibrat\w*|train(?:ing|ed)?|model (?:performance|weights))\b/i.test(raw)) {
     const calibration = index?.model;
+    if (calibration?.holdoutGames && calibration.holdoutLogLoss != null) {
+      return { ok: true, intent: "league_scout", sources: SOURCE,
+        reply: [
+          "Scouting model: " + calibration.status + ".",
+          "Independent holdout: " + calibration.holdoutSeason + "; " + calibration.holdoutGames + " scored fixtures.",
+          "Log loss (lower is better): " + calibration.holdoutLogLoss +
+            "; reference comparison: " + calibration.baselineHoldoutLogLoss + ".",
+          "Multiclass Brier: " + calibration.holdoutBrier + ". These scores are not a percentage accuracy.",
+          "Scores are prepared hourly. Weekly goal-rate challengers and Groq/Gemini proposals must pass chronological holdout gates before use. AI never invents or edits the displayed probabilities.",
+          "Estimates remain provisional; lineups and injuries are not observed.",
+        ].join("\n") };
+    }
     if (!calibration || !calibration.evaluatedGames) {
       return { ok: true, intent: "league_scout",
         reply: "BallerWatch uses provisional, precomputed scouting estimates. A next-season validation sample is not yet available for this index.",

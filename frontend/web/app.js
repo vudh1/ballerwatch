@@ -1801,7 +1801,7 @@ async function registerServiceWorker() {
     window.location.reload();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=9.0.0", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=9.1.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -3547,6 +3547,15 @@ function buildScoutOverview(scout) {
     overview.append(standingsCell("p", "Scouting statistics are not indexed for this team yet.", "muted"));
     return overview;
   }
+  if (Array.isArray(scout.briefing) && scout.briefing.length) {
+    const briefing = document.createElement("section");
+    briefing.className = "scout-method";
+    briefing.append(standingsCell("h3", "Match preparation", "scout-subheading"));
+    for (const text of scout.briefing) {
+      if (typeof text === "string") briefing.append(standingsCell("p", text, "scout-method-text"));
+    }
+    overview.append(briefing);
+  }
   const quality = document.createElement("section");
   quality.className = "scout-quality";
   const above = document.createElement("div");
@@ -4983,8 +4992,15 @@ els.closeChat?.addEventListener("click", closeChat);
 els.chatDialog?.addEventListener("click", (event) => {
   if (event.target === els.chatDialog) closeChat();
 });
-els.notificationBell.addEventListener("click", openNotifications);
-els.settingsButton.addEventListener("click", openSettings);
+document.querySelectorAll("[data-hub-target]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const target = button.dataset.hubTarget;
+    if (target === "ai") openChat();
+    else if (target === "settings") void openSettings();
+    else openNotifications();
+  });
+});
+
 els.musicToggle?.addEventListener("click", () => void toggleMusic());
 els.closeSettings.addEventListener("click", () => els.settingsDialog.close());
 els.ownerLoginForm.addEventListener("submit", loginOwnerDevice);
