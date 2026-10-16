@@ -2,15 +2,15 @@
 
 BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, an in-app match calendar, and quick answers into one installable app.
 
-**Current source version: 11.0.2**
+**Current source version: 11.1.0**
 
-[Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
+[Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Beta](https://vudh1.github.io/ballerwatch/beta/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
 
-> `main` is reviewed source. `production` is the exact released commit. The live app changes only after a validated promotion.
+> `main` publishes automatically to the isolated **/beta/** preview after its validation succeeds. `production` is the exact promoted release commit powering the **root** site; beta changes cannot move the production ref.
 
 ## What you can do
 
-- **One BallerWatch at the main address:** a two-second brand launch, full-screen scroll hero with a stadium audience and camera flashes behind feature text, then the original matchday cards. A single badged AI icon fades in with the cards and opens AI, Settings and Notifications. The brand splash no longer has a skip button; the later intro skip retains upward rewind. Old `/v2/` links redirect to the root; account, RSVP, Calendar, AI, notification and administration features use the same controller and encrypted backend. See the [cinematic app and migration guide](docs/wiki/V2.md).
+- **One BallerWatch at the main address:** a two-second brand launch, full-screen scroll hero with a stadium audience and camera flashes behind feature text, then the original matchday cards. A single badged AI icon fades in with the cards and opens AI, Settings and Notifications. The brand splash no longer has a skip button; the later intro skip retains upward rewind. Old `/v2/` links now redirect to the beta preview; accountless RSVP, Calendar, AI, notification and maintenance controls retain the same controller and API. See the [cinematic app and migration guide](docs/wiki/V2.md).
 
 - See the next **Pickup** or **League** match with a cleaner visual hierarchy for location, weather, RSVP, and secondary actions. Newly published RSVP dates remain in the match-card carousel and expanded calendar even beyond the initial 14-day grid; missing field details show *Venue to be announced* until the RSVP source publishes a location.
 - See RSVP capacity for pickup games; tap the capacity area to view that published game's confirmed names and waitlist in signup order, without an account, and RSVP from inside the full-width sheet.
@@ -37,6 +37,8 @@ The original 727-frame walkthrough of the deployed 9.1.1 app, retimed from 36.4 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/)
 
 ## What's new
+
+**v11.1.0** — Validated `main` builds now automatically publish to [BallerWatch Beta](https://vudh1.github.io/ballerwatch/beta/) with an independently scoped install, browser preferences and match edits. The familiar [production URL](https://vudh1.github.io/ballerwatch/) only changes after promotion. Older `/v2/` links point to beta. Edit, Hide, Reset and Restore require no visitor account.
 
 **v11.0.2** — Tap the capacity of a published pickup game to view its confirmed RSVP roster and waitlist without signing in. Only that game's display names and guest counts are returned on demand, not a directory of all participants.
 
@@ -130,7 +132,7 @@ The encrypted `runtime-state` branch intentionally keeps stable storage paths su
 
 ## Device-only preferences and maintenance
 
-Regular visitors do not register or sign in. The RSVP name and monitored RATS teams are saved in browser-local storage for that installation until the user changes them or clears the browser's site data. These fields are never kept in shared web-user profiles. Match date/time/venue corrections and hidden games are also private to that browser, and never change other visitors' cards or the RATS/RSVP source.
+Regular visitors do not register or sign in. The RSVP name and monitored RATS teams are saved in browser-local storage for that installation until the user changes them or clears the browser's site data. Beta uses separate device keys and PWA caches from production, even on the same browser. These fields are never kept in shared web-user profiles. Match date/time/venue corrections and hidden games are also private to that browser, and never change other visitors' cards or the RATS/RSVP source.
 
 Only **notification messages**, their read/deleted status and unread app badges expire after 24 hours. Notification category selections and Web Push registrations stay enabled until the user changes/disables them or the push provider invalidates a subscription, so reminders continue even when the app has not opened recently.
 
