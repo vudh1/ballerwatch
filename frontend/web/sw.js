@@ -4,21 +4,21 @@
  * intercept remote APIs or persist authenticated responses in frontend caches.
  */
 const IS_V2 = /\/v2\/sw\.js$/.test(self.location.pathname);
-const CACHE = IS_V2 ? "ballerwatch-v2-v9-1-2-shell" : "ballerwatch-v10-0-1-shell";
+const CACHE = IS_V2 ? "ballerwatch-v2-v9-1-2-shell" : "ballerwatch-v11-0-0-shell";
 const ROOT_SHELL = [
   "./",
   "./index.html",
-  "./v2/prepaint.js?v=10.0.1",
-  "./styles.css?v=10.0.1",
-  "./v2/styles.css?v=10.0.1",
-  "./app.js?v=10.0.1",
-  "./v2/app.js?v=10.0.1",
+  "./v2/prepaint.js?v=11.0.0",
+  "./styles.css?v=11.0.0",
+  "./v2/styles.css?v=11.0.0",
+  "./app.js?v=11.0.0",
+  "./v2/app.js?v=11.0.0",
   "./v2/timeline.js",
   "./v2/scene-config.mjs",
   "./v2/assets/stadium.svg",
-  "./manifest.webmanifest?v=10.0.1",
-  "./icon.svg?v=10.0.1",
-  "./apple-touch-icon.png?v=10.0.1",
+  "./manifest.webmanifest?v=11.0.0",
+  "./icon.svg?v=11.0.0",
+  "./apple-touch-icon.png?v=11.0.0",
   "./icon-192.png",
   "./icon-512.png",
   "./v2/index.html",
@@ -35,7 +35,8 @@ const SHELL = IS_V2 ? ["./", "./index.html", "./redirect.js", "./manifest.webman
 const API = "https://ballerwatch-web.vudhone.workers.dev";
 const APP_URL = new URL(IS_V2 ? "../" : "./", self.location.href).href;
 const ICON_URL = new URL(IS_V2 ? "../icon.svg" : "./icon.svg", self.location.href).href;
-const DEVICE_STATE_CACHE = IS_V2 ? "ballerwatch-v2-device-state-v1" : "ballerwatch-device-state-v1";
+const DEVICE_STATE_CACHE = IS_V2 ? "ballerwatch-v2-device-state-v2" : "ballerwatch-device-state-v2";
+const DEVICE_LEASE_MS=24*60*60*1000;
 const BADGE_STATE_URL = new URL("./.badge-state", self.location.href).href;
 const NOTIFICATION_PREFS_URL = new URL("./.notification-prefs", self.location.href).href;
 const RSVP_STATE_URL = new URL("./.rsvp-state", self.location.href).href;
@@ -44,29 +45,35 @@ function normalizedBadgeCount(value) {
   return Math.min(999, Math.max(0, Math.floor(Number(value) || 0)));
 }
 
-async function readBadgeCount() {
+async function cachedDeviceValue(key) {
   try {
-    const cache = await caches.open(DEVICE_STATE_CACHE);
-    const response = await cache.match(BADGE_STATE_URL);
-    if (!response) return 0;
-    const payload = await response.json();
-    return normalizedBadgeCount(payload?.count);
-  } catch {
-    return 0;
-  }
+    const cache=await caches.open(DEVICE_STATE_CACHE);
+    const response=await cache.match(key);
+    if (!response) return null;
+    const stored=await response.json();
+    if (!Number.isSafeInteger(stored?.expiresAt) ||
+        stored.expiresAt <= Date.now() ||
+        stored.expiresAt > Date.now()+DEVICE_LEASE_MS) {
+      await cache.delete(key);
+      return null;
+    }
+    return stored.value;
+  } catch { return null; }
 }
-
-async function writeBadgeCount(count) {
-  const normalized = normalizedBadgeCount(count);
+async function storeDeviceValue(key,value) {
   try {
-    const cache = await caches.open(DEVICE_STATE_CACHE);
-    await cache.put(
-      BADGE_STATE_URL,
-      new Response(JSON.stringify({ count: normalized }), {
-        headers: { "content-type": "application/json" },
-      }),
-    );
+    const cache=await caches.open(DEVICE_STATE_CACHE);
+    await cache.put(key,new Response(JSON.stringify({
+      expiresAt:Date.now()+DEVICE_LEASE_MS,value,
+    }),{headers:{"content-type":"application/json"}}));
   } catch {}
+}
+async function readBadgeCount() {
+  return normalizedBadgeCount((await cachedDeviceValue(BADGE_STATE_URL))?.count);
+}
+async function writeBadgeCount(count) {
+  const normalized=normalizedBadgeCount(count);
+  await storeDeviceValue(BADGE_STATE_URL,{count:normalized});
   return normalized;
 }
 
@@ -101,29 +108,25 @@ function normalizedChannels(value) {
   };
 }
 
-async function readNotificationChannels() {
-  try {
-    const cache = await caches.open(DEVICE_STATE_CACHE);
-    const response = await cache.match(NOTIFICATION_PREFS_URL);
-    if (!response) return normalizedChannels();
-    return normalizedChannels(await response.json());
-  } catch {
-    return normalizedChannels();
-  }
+function teamKey(name) {
+  return String(name||"").trim().replace(/\s+/g," ").toLocaleLowerCase("en");
 }
-
-async function writeNotificationChannels(channels) {
-  const normalized = normalizedChannels(channels);
-  try {
-    const cache = await caches.open(DEVICE_STATE_CACHE);
-    await cache.put(
-      NOTIFICATION_PREFS_URL,
-      new Response(JSON.stringify(normalized), {
-        headers: { "content-type": "application/json" },
-      }),
-    );
-  } catch {}
-  return normalized;
+function alertMatchesDeviceTeams(entry, teams = []) {
+  if (entry?.channel !== "league" || !teams.length ||
+      !Array.isArray(entry?.teams) || !entry.teams.length) return true;
+  const chosen = new Set(teams.map(teamKey));
+  return entry.teams.some(name => chosen.has(teamKey(name)));
+}
+async function readNotificationChannels() {
+  const stored=await cachedDeviceValue(NOTIFICATION_PREFS_URL) || {};
+  return { channels:normalizedChannels(stored.channels),
+    teams:Array.isArray(stored.teams) ? stored.teams.slice(0,8) : [] };
+}
+async function writeNotificationChannels(data) {
+  const channels=normalizedChannels(data?.channels || data);
+  const teams=[...new Set((Array.isArray(data?.teams) ? data.teams : [])
+    .map(name=>String(name||"").trim().slice(0,120)).filter(Boolean))].slice(0,8);
+  await storeDeviceValue(NOTIFICATION_PREFS_URL,{channels,teams});
 }
 
 function cleanRsvpDates(value) {
@@ -132,29 +135,13 @@ function cleanRsvpDates(value) {
 }
 
 async function writeRsvpState(state) {
-  const value = {
-    confirmedDates: cleanRsvpDates(state?.confirmedDates),
-    waitlistedDates: cleanRsvpDates(state?.waitlistedDates),
-  };
-  try {
-    const cache = await caches.open(DEVICE_STATE_CACHE);
-    await cache.put(
-      RSVP_STATE_URL,
-      new Response(JSON.stringify(value), {
-        headers: { "content-type": "application/json" },
-      }),
-    );
-  } catch {}
+  await storeDeviceValue(RSVP_STATE_URL,{
+    confirmedDates:cleanRsvpDates(state?.confirmedDates),
+    waitlistedDates:cleanRsvpDates(state?.waitlistedDates),
+  });
 }
-
 async function readRsvpState() {
-  try {
-    const cache = await caches.open(DEVICE_STATE_CACHE);
-    const response = await cache.match(RSVP_STATE_URL);
-    return response ? await response.json() : {};
-  } catch {
-    return {};
-  }
+  return await cachedDeviceValue(RSVP_STATE_URL) || {};
 }
 
 function skipBookedRsvpAlert(entry, state) {
@@ -195,6 +182,10 @@ self.addEventListener("activate", (event) => {
             (IS_V2 ? key.startsWith("ballerwatch-v2-") :
               /^ballerwatch-v\d/.test(key) && !key.startsWith("ballerwatch-v2-")))
           .map((key) => caches.delete(key)),
+      caches.keys().then(keys=>Promise.all(keys
+        .filter(key => key !== DEVICE_STATE_CACHE &&
+          /^ballerwatch-(?:v2-)?device-state-v\d+$/.test(key))
+        .map(key=>caches.delete(key)))),
       ))
       .then(() => self.clients.claim()),
   );
@@ -277,7 +268,7 @@ self.addEventListener("push", (event) => {
   event.waitUntil((async () => {
     let entry = null;
     try {
-      const [response, channels, rsvpState] = await Promise.all([
+      const [response, devicePrefs, rsvpState] = await Promise.all([
         fetch(API + "/web/board?limit=30", { cache: "no-store" }),
         readNotificationChannels(),
         readRsvpState(),
@@ -286,7 +277,8 @@ self.addEventListener("push", (event) => {
       // A suppressed new alert must not replay an older notification.
       const candidate = Array.isArray(payload?.entries) ? payload.entries[0] : null;
       const channel = String(candidate?.channel || "");
-      entry = candidate && (!channel || channels[channel] !== false) &&
+      entry = candidate && (!channel || devicePrefs.channels[channel] !== false) &&
+        alertMatchesDeviceTeams(candidate, devicePrefs.teams) &&
         !skipBookedRsvpAlert(candidate, rsvpState) ? candidate : null;
     } catch {}
 

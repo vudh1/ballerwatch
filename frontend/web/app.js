@@ -1132,53 +1132,10 @@ async function openRsvpRoster() {
 
 function showLoginSettings(message = "") {
   currentUserSettings = null;
-  // Never retain authenticated RSVP name catalogs after a session expires.
-  settingsChoiceAccount = "";
-  settingsChoiceLoadedAt = 0;
-  if (settingsChoiceControls) {
-    settingsChoiceControls.rsvp.setOptions([]);
-    settingsChoiceControls.newUser.setOptions([]);
-    settingsChoiceControls.teams.setOptions([]);
-    settingsChoiceControls.rsvp.close();
-    settingsChoiceControls.teams.close();
-    settingsChoiceControls.newUser.close();
-  }
   els.settingsLoginView.hidden = false;
   els.settingsOwnerView.hidden = true;
   if (message && pendingMatchAdminAction) els.settingsLoginView.open = true;
-  if (els.ownerLoginUsername) {
-    els.ownerLoginUsername.value = sessionUsername();
-  }
   els.ownerLoginStatus.textContent = message;
-}
-
-function renderManagedUsers(users) {
-  els.userList.replaceChildren();
-  for (const user of Array.isArray(users) ? users : []) {
-    const row = document.createElement("div");
-    row.className = "settings-user-row";
-
-    const copy = document.createElement("div");
-    copy.className = "settings-user-meta";
-    const title = document.createElement("strong");
-    title.textContent = `@${user.username}`;
-    const detail = document.createElement("span");
-    const parts = [user.role === "admin" ? "Administrator" : "User"];
-    if (user.rsvpName) parts.push(`RSVP: ${user.rsvpName}`);
-    detail.textContent = parts.join(" · ");
-    copy.append(title, detail);
-    row.append(copy);
-
-    if (user.username !== "admin") {
-      const remove = document.createElement("button");
-      remove.type = "button";
-      remove.className = "subtle-action subtle-danger user-remove";
-      remove.dataset.username = user.username;
-      remove.textContent = "Remove";
-      row.append(remove);
-    }
-    els.userList.append(row);
-  }
 }
 
 function renderDeletedMatches(matches) {
@@ -1206,97 +1163,24 @@ function renderDeletedMatches(matches) {
   }
 }
 
-// All options stay in this page's memory only. No private roster names go to
-// service-worker caches, localStorage, public APIs or BallerWatch AI prompts.
-let settingsChoiceControls = null;
-let settingsChoicePending = null;
-let settingsChoiceLoadedAt = 0;
-let settingsChoiceAccount = "";
-
-function ensureSettingsChoices() {
-  if (settingsChoiceControls) return settingsChoiceControls;
-  const init = (prefix, root, input, multiple = false, chips = "") =>
-    createSettingsChoice({
-      root: document.querySelector("#" + root),
-      trigger: document.querySelector("#" + prefix + "-trigger"),
-      panel: document.querySelector("#" + prefix + "-popover"),
-      search: document.querySelector("#" + prefix + "-search"),
-      optionsList: document.querySelector("#" + prefix + "-options"),
-      display: document.querySelector("#" + prefix + "-display"),
-      input: document.querySelector("#" + input),
-      chips: chips ? document.querySelector("#" + chips) : null,
-      multiple,
-    });
-  settingsChoiceControls = {
-    rsvp: init("owner-name", "rsvp-choice", "owner-name"),
-    teams: init("owner-teams", "teams-choice", "owner-teams", true, "owner-teams-chips"),
-    newUser: init("user-create-name", "user-name-choice", "user-create-name"),
-  };
-  return settingsChoiceControls;
-}
-
-async function loadSettingsChoiceOptions() {
-  if (!ownerToken()) return;
-  const controls = ensureSettingsChoices();
-  const username = sessionUsername();
-  if (username !== settingsChoiceAccount) {
-    settingsChoiceAccount = username;
-    settingsChoiceLoadedAt = 0;
-    controls.rsvp.setOptions([]);
-    controls.newUser.setOptions([]);
-    controls.teams.setOptions([]);
-  }
-  if (settingsChoicePending) return settingsChoicePending;
-  if (Date.now() - settingsChoiceLoadedAt < 120_000) return;
-  const task = (async () => {
-    try {
-      const result = await api("/web/user/selection-options", {
-        headers: ownerHeaders(), retryNetwork: false, timeoutMs: 5_000,
-      });
-      if (username !== sessionUsername()) return;
-      const names = Array.isArray(result.names) ? result.names : [];
-      const teams = Array.isArray(result.teams) ? result.teams : [];
-      controls.rsvp.setOptions(names);
-      controls.newUser.setOptions(names);
-      controls.teams.setOptions(teams);
-      settingsChoiceLoadedAt = Date.now();
-    } catch {
-      // Current chosen values remain editable when optional sources lag.
-      settingsChoiceLoadedAt = Date.now() - 100_000;
-    }
-  })();
-  settingsChoicePending = task;
-  try { await task; } finally { if (settingsChoicePending === task) settingsChoicePending = null; }
-}
-
 function showOwnerSettings(settings) {
   currentUserSettings = settings || null;
   els.settingsLoginView.hidden = false;
   els.settingsLoginView.open = false;
   els.settingsOwnerView.hidden = false;
-  const username = settings?.username || sessionUsername();
-  saveSessionUsername(username);
-  els.currentUserSummary.textContent =
-    `Signed in as @${username} · ${settings?.role === "admin" ? "Administrator" : "User"}`;
-  const selectors = ensureSettingsChoices();
-  selectors.rsvp.setValue(settings?.ownerName || "");
-  selectors.teams.setValue(Array.isArray(settings?.teams) ? settings.teams : []);
-  selectors.newUser.setValue("");
-  void loadSettingsChoiceOptions();
-  els.ownerTeamSettings.hidden = !settings?.canManageTeams;
-  els.userManagement.hidden = !settings?.canManageUsers;
+  els.currentUserSummary.textContent = "Administrator maintenance unlocked for this session.";
   const deletedMatches = Array.isArray(settings?.deletedMatches) ? settings.deletedMatches : [];
-  els.deletedMatchManagement.hidden = !settings?.canManageMatches || deletedMatches.length === 0;
+  els.deletedMatchManagement.hidden =
+    !settings?.canManageMatches || deletedMatches.length === 0;
   els.releaseManagement.hidden = !settings?.canManageMatches;
-  if (settings?.canManageUsers) renderManagedUsers(settings?.users);
   if (settings?.canManageMatches) renderDeletedMatches(deletedMatches);
   if (!settings?.canManageMatches) {
     currentReleaseStatus = null;
     els.promoteRelease.disabled = true;
   }
   els.ownerPasswordStatus.textContent = settings?.passwordConfigured
-    ? "Your password is set. Changing it revokes your other sessions."
-    : "No password is configured for this account.";
+    ? "Changing the password revokes other maintenance sessions."
+    : "A maintenance password must be configured in the protected repository.";
 }
 
 async function loadOwnerSettings() {
@@ -1474,14 +1358,17 @@ async function loadGuestTeamOptions() {
 let guestSettingsRefreshVersion = 0;
 function saveGuestSettings() {
   const before = JSON.stringify(guestProfile.teams);
+  const previousName = guestProfile.name;
   const next = {name: els.guestName.value, teams: guestSelector().getValues()};
   if (!saveGuestProfile(localStorage, next)) {
     els.guestSettingsStatus.textContent = "Browser storage is disabled; preferences could not be saved.";
     return;
   }
   guestProfile = readGuestProfile(localStorage);
-  els.guestSettingsStatus.textContent = "Saved on this device.";
+  if (previousName !== guestProfile.name) scheduleDevicePushRefresh();
+  els.guestSettingsStatus.textContent = "Saved on this device for 24 hours.";
   if (JSON.stringify(guestProfile.teams) !== before) {
+    scheduleDevicePushRefresh();
     const version = ++guestSettingsRefreshVersion;
     try {
       localStorage.removeItem(PUBLIC_STANDINGS_DEVICE_KEY);
@@ -1529,13 +1416,13 @@ async function openSettings(options = {}) {
 
 async function loginOwnerDevice(event) {
   event.preventDefault();
-  const username = els.ownerLoginUsername.value.trim().toLowerCase();
+  const username = "admin";
   const password = els.ownerLoginPassword.value;
   const button = els.ownerLoginForm.querySelector("button");
   button.disabled = true;
   els.ownerLoginStatus.textContent = "Signing in…";
   try {
-    const payload = await api("/web/user/login", {
+    const payload = await api("/web/admin/unlock", {
       method: "POST",
       body: JSON.stringify({ username, password }),
     });
@@ -1546,11 +1433,7 @@ async function loginOwnerDevice(event) {
     els.ownerLoginPassword.value = "";
     const resumeMatchAction = pendingMatchAdminAction;
     await loadOwnerSettings();
-    await Promise.all([
-      loadRsvpStatus(),
-      loadNotificationProfile(),
-    ]);
-    void syncCurrentPushRegistration();
+    // Visitor preferences and notifications are independent of maintenance unlock.
     if (currentNextGame) {
       renderNextGame(currentNextGame, els.spotlightLabel.textContent || "NEXT GAME");
     }
@@ -1573,91 +1456,6 @@ async function loginOwnerDevice(event) {
     els.ownerLoginStatus.textContent = error.message;
   } finally {
     button.disabled = false;
-  }
-}
-
-async function saveOwnerSettings(event) {
-  event.preventDefault();
-  const button = els.ownerSettingsForm.querySelector("button");
-  const body = { ownerName: els.ownerName.value.trim() };
-  if (!els.ownerTeamSettings.hidden) {
-    body.teams = els.ownerTeams.value
-      .split(/\r?\n/)
-      .map((value) => value.trim())
-      .filter(Boolean);
-  }
-  button.disabled = true;
-  els.ownerSettingsStatus.textContent = "Saving…";
-  try {
-    const payload = await api("/web/user/settings", {
-      method: "POST",
-      headers: ownerHeaders(),
-      retryNetwork: true,
-      body: JSON.stringify(body),
-    });
-    showOwnerSettings(payload.settings || {});
-    await loadRsvpStatus();
-    if (currentNextGame) {
-      renderNextGame(currentNextGame, els.spotlightLabel.textContent || "NEXT GAME");
-    }
-    els.ownerSettingsStatus.textContent = els.ownerTeamSettings.hidden
-      ? "Profile saved."
-      : "Saved. Monitoring updates on the next league refresh.";
-  } catch (error) {
-    if (error.status === 401) {
-      clearSession();
-      showLoginSettings("Sign in again to edit user settings.");
-    } else {
-      els.ownerSettingsStatus.textContent = error.message;
-    }
-  } finally {
-    button.disabled = false;
-  }
-}
-
-async function createManagedUser(event) {
-  event.preventDefault();
-  const button = els.userCreateForm.querySelector("button");
-  button.disabled = true;
-  els.userCreateStatus.textContent = "Adding user…";
-  try {
-    const payload = await api("/web/user/users", {
-      method: "POST",
-      headers: ownerHeaders(),
-      body: JSON.stringify({
-        username: els.userCreateUsername.value.trim().toLowerCase(),
-        ownerName: els.userCreateName.value.trim(),
-        password: els.userCreatePassword.value,
-      }),
-    });
-    els.userCreateForm.reset();
-    showOwnerSettings(payload.settings || {});
-    els.userCreateStatus.textContent = "User added.";
-  } catch (error) {
-    if (error.status === 401) {
-      clearSession();
-      showLoginSettings("Sign in again to manage users.");
-    } else {
-      els.userCreateStatus.textContent = error.message;
-    }
-  } finally {
-    button.disabled = false;
-  }
-}
-
-async function removeManagedUser(username) {
-  if (!username || !window.confirm(`Remove @${username}? Their active sessions will stop working.`)) return;
-  els.userCreateStatus.textContent = `Removing @${username}…`;
-  try {
-    const payload = await api("/web/user/users", {
-      method: "DELETE",
-      headers: ownerHeaders(),
-      body: JSON.stringify({ username }),
-    });
-    showOwnerSettings(payload.settings || {});
-    els.userCreateStatus.textContent = `Removed @${username}.`;
-  } catch (error) {
-    els.userCreateStatus.textContent = error.message;
   }
 }
 
@@ -1791,7 +1589,7 @@ async function registerServiceWorker() {
     void syncServiceWorkerRsvpState();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=10.0.1", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=11.0.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -1869,14 +1667,8 @@ function notificationTimeText(item) {
       }).format(date);
 }
 
-function accountNotificationStateActive() {
-  return Boolean(ownerToken() && currentNotificationProfile);
-}
-
 function notificationChannels() {
-  return accountNotificationStateActive()
-    ? normalizedNotificationChannels(currentNotificationProfile.channels)
-    : readLocalNotificationChannels(localStorage);
+  return readLocalNotificationChannels(localStorage);
 }
 
 async function syncServiceWorkerNotificationPreferences(channels = notificationChannels()) {
@@ -1887,6 +1679,7 @@ async function syncServiceWorkerNotificationPreferences(channels = notificationC
     worker?.postMessage({
       type: "ballerwatch:notification-preferences",
       channels: normalizedNotificationChannels(channels),
+      teams: guestProfile.teams,
     });
   } catch {}
 }
@@ -1898,7 +1691,7 @@ function renderNotificationPreferences() {
   if (els.notificationPrefLeague) els.notificationPrefLeague.checked = channels.league;
   if (els.notificationPrefVersion) els.notificationPrefVersion.checked = channels.version;
 
-  const signedIn = accountNotificationStateActive();
+  const signedIn = false;
   if (els.notificationPreferences) {
     els.notificationPreferences.classList.toggle("is-local-only", !signedIn);
   }
@@ -1910,165 +1703,55 @@ function renderNotificationPreferences() {
     if (input) input.disabled = false;
   }
   if (els.notificationSyncStatus) {
-    els.notificationSyncStatus.textContent = signedIn
-      ? `Synced when active for @${sessionUsername()}`
-      : "Saved on this device. No account needed.";
+    els.notificationSyncStatus.textContent = "Device-only · expires after 24 hours.";
   }
 }
 
-function applyNotificationProfile(profile) {
-  currentNotificationProfile = profile
-    ? normalizedNotificationProfile(profile)
-    : null;
+async function loadNotificationProfile() {
+  currentNotificationProfile = null;
   renderNotificationPreferences();
   renderBoard(currentBoardEntries);
+  return true;
 }
 
-function optimisticNotificationProfile({ readIds = [], deletedIds = [], channels = null } = {}) {
-  if (!accountNotificationStateActive()) return;
-  const current = normalizedNotificationProfile(currentNotificationProfile);
-  currentNotificationProfile = normalizedNotificationProfile({
-    ...current,
-    readIds: [...current.readIds, ...readIds],
-    deletedIds: [...current.deletedIds, ...deletedIds],
-    channels: channels ? { ...current.channels, ...channels } : current.channels,
-  });
+function deviceFollowsNotification(item) {
+  if (item?.channel !== "league" || !guestProfile.teams.length ||
+      !Array.isArray(item?.teams) || !item.teams.length) return true;
+  const normalize = name => String(name || "").trim().replace(/\s+/g," ").toLocaleLowerCase("en");
+  const selected=new Set(guestProfile.teams.map(normalize));
+  return item.teams.some(name=>selected.has(normalize(name)));
 }
-
-function persistNotificationProfile(mutation, { refreshPush = false } = {}) {
-  if (!ownerToken()) return Promise.resolve(null);
-  notificationSyncPromise = notificationSyncPromise
-    .catch(() => null)
-    .then(async () => {
-      try {
-        const payload = await api("/web/user/notifications", {
-          method: "POST",
-          headers: ownerHeaders(),
-          retryNetwork: true,
-          body: JSON.stringify(mutation || {}),
-        });
-        currentNotificationProfile = normalizedNotificationProfile(payload.profile || {});
-        renderNotificationPreferences();
-        renderBoard(currentBoardEntries);
-        if (refreshPush) await syncCurrentPushRegistration();
-        return currentNotificationProfile;
-      } catch (error) {
-        if (error.status === 401) {
-          clearSession();
-          currentNotificationProfile = null;
-          renderNotificationPreferences();
-        } else if (els.notificationSyncStatus) {
-          els.notificationSyncStatus.textContent =
-            "Sync delayed. This device will retry on the next notification action.";
-        }
-        return null;
-      }
-    });
-  return notificationSyncPromise;
-}
-
-async function loadNotificationProfile({ migrateLocal = true } = {}) {
-  if (!ownerToken()) {
-    currentNotificationProfile = null;
-    renderNotificationPreferences();
-    renderBoard(currentBoardEntries);
-    return false;
-  }
-
-  try {
-    let payload = await api("/web/user/notifications", {
-      headers: ownerHeaders(),
-      retryNetwork: true,
-    });
-    currentNotificationProfile = normalizedNotificationProfile(payload.profile || {});
-
-    if (migrateLocal) {
-      const local = localNotificationProfile();
-      if (local.readIds.length || local.deletedIds.length) {
-        payload = await api("/web/user/notifications", {
-          method: "POST",
-          headers: ownerHeaders(),
-          retryNetwork: true,
-          body: JSON.stringify({
-            readIds: local.readIds,
-            deletedIds: local.deletedIds,
-          }),
-        });
-        currentNotificationProfile = normalizedNotificationProfile(payload.profile || {});
-        clearLocalNotificationProfile();
-      }
-    }
-
-    renderNotificationPreferences();
-    renderBoard(currentBoardEntries);
-    return true;
-  } catch (error) {
-    if (error.status === 401) {
-      clearSession();
-      currentNotificationProfile = null;
-    }
-    renderNotificationPreferences();
-    renderBoard(currentBoardEntries);
-    return false;
-  }
-}
-
 function notificationViewState(entries = currentBoardEntries) {
-  const read = accountNotificationStateActive()
-    ? new Set(currentNotificationProfile.readIds)
-    : storedNotificationIds(NOTIFICATION_READ_KEY);
-  const deleted = accountNotificationStateActive()
-    ? new Set(currentNotificationProfile.deletedIds)
-    : storedNotificationIds(NOTIFICATION_DELETED_KEY);
+  const read = storedNotificationIds(NOTIFICATION_READ_KEY);
+  const deleted = storedNotificationIds(NOTIFICATION_DELETED_KEY);
   const channels = notificationChannels();
   const allVisible = entries.filter((item) =>
     !deleted.has(notificationId(item)) && !skipPersonalPickupAlert(item) &&
+    deviceFollowsNotification(item) &&
     channels[String(item?.channel || "")] !== false);
-  const visible = notificationFilter === "all"
-    ? allVisible
-    : allVisible.filter((item) => String(item?.channel || "") === notificationFilter);
-  const unreadCount = allVisible.filter((item) => !read.has(notificationId(item))).length;
+  const visible = notificationFilter === "all" ? allVisible
+    : allVisible.filter(item => String(item?.channel || "") === notificationFilter);
+  const unreadCount = allVisible.filter(item => !read.has(notificationId(item))).length;
   return { read, deleted, visible, allVisible, unreadCount };
 }
-
 function markNotificationRead(item) {
-  const id = notificationId(item);
-  if (accountNotificationStateActive()) {
-    optimisticNotificationProfile({ readIds: [id] });
-    void persistNotificationProfile({ readIds: [id] });
-  } else {
-    const read = storedNotificationIds(NOTIFICATION_READ_KEY);
-    read.add(id);
-    saveNotificationIds(NOTIFICATION_READ_KEY, read);
-  }
+  const read=storedNotificationIds(NOTIFICATION_READ_KEY);
+  read.add(notificationId(item));
+  saveNotificationIds(NOTIFICATION_READ_KEY,read);
   updateNotificationBadge(notificationViewState().unreadCount);
 }
-
 function markAllNotificationsRead() {
-  const { allVisible } = notificationViewState();
-  const ids = allVisible.map(notificationId);
-  if (!ids.length) return;
-  if (accountNotificationStateActive()) {
-    optimisticNotificationProfile({ readIds: ids });
-    void persistNotificationProfile({ readIds: ids });
-  } else {
-    const read = storedNotificationIds(NOTIFICATION_READ_KEY);
-    ids.forEach((id) => read.add(id));
-    saveNotificationIds(NOTIFICATION_READ_KEY, read);
-  }
+  const {allVisible}=notificationViewState();
+  if (!allVisible.length) return;
+  const read=storedNotificationIds(NOTIFICATION_READ_KEY);
+  allVisible.forEach(item=>read.add(notificationId(item)));
+  saveNotificationIds(NOTIFICATION_READ_KEY,read);
   renderBoard(currentBoardEntries);
 }
-
 function persistDeletedNotifications(items) {
-  const ids = items.map(notificationId);
-  if (accountNotificationStateActive()) {
-    optimisticNotificationProfile({ deletedIds: ids });
-    void persistNotificationProfile({ deletedIds: ids });
-  } else {
-    const deleted = storedNotificationIds(NOTIFICATION_DELETED_KEY);
-    ids.forEach((id) => deleted.add(id));
-    saveNotificationIds(NOTIFICATION_DELETED_KEY, deleted);
-  }
+  const deleted=storedNotificationIds(NOTIFICATION_DELETED_KEY);
+  items.forEach(item=>deleted.add(notificationId(item)));
+  saveNotificationIds(NOTIFICATION_DELETED_KEY,deleted);
 }
 
 function deleteNotification(item) {
@@ -4623,6 +4306,15 @@ async function updatePushStatus() {
   }
 }
 
+let pendingDevicePushSync = null;
+function scheduleDevicePushRefresh() {
+  window.clearTimeout(pendingDevicePushSync);
+  pendingDevicePushSync = window.setTimeout(() => {
+    pendingDevicePushSync = null;
+    void syncCurrentPushRegistration({ force: true });
+  }, 550);
+}
+
 async function registerPushSubscription(subscription, action = "subscribe") {
   if (!subscription) return null;
   const serialized = subscription.toJSON();
@@ -4632,20 +4324,30 @@ async function registerPushSubscription(subscription, action = "subscribe") {
   });
   return api(`/web/push/${action}`, {
     method: "POST",
-    headers: ownerHeaders(),
     body: JSON.stringify({
       subscription: serialized,
       challenge: challenge.challenge,
+      name: guestProfile.name,
+      teams: guestProfile.teams,
       channels: notificationChannels(),
     }),
   });
 }
 
-async function syncCurrentPushRegistration() {
+async function syncCurrentPushRegistration({ force = false } = {}) {
+  const valid = readGuestProfile(localStorage);
+  if (JSON.stringify(valid) !== JSON.stringify(guestProfile)) {
+    guestProfile = valid;
+    renderGuestSettings();
+  }
   const subscription = await currentSubscription().catch(() => null);
   if (!subscription) return false;
   try {
+    const key = "ballerwatch:push-renewed-v1";
+    const recent = Number(sessionStorage.getItem(key) || 0);
+    if (!force && Date.now() - recent < 4 * 60 * 60 * 1000) return true;
     await registerPushSubscription(subscription, "subscribe");
+    sessionStorage.setItem(key, String(Date.now()));
     return true;
   } catch {
     return false;
@@ -4985,16 +4687,10 @@ async function saveNotificationPreferencesFromUi() {
     league: Boolean(els.notificationPrefLeague?.checked),
     version: Boolean(els.notificationPrefVersion?.checked),
   };
-  if (accountNotificationStateActive()) {
-    optimisticNotificationProfile({ channels });
-    renderNotificationPreferences();
-    await persistNotificationProfile({ channels }, { refreshPush: true });
-  } else {
-    saveLocalNotificationChannels(localStorage, channels);
-    renderNotificationPreferences();
-    renderBoard(currentBoardEntries);
-    void syncCurrentPushRegistration();
-  }
+  saveLocalNotificationChannels(localStorage, channels);
+  renderNotificationPreferences();
+  renderBoard(currentBoardEntries);
+  void syncCurrentPushRegistration({force:true});
 }
 
 els.chatLauncher?.addEventListener("click", openChat);
@@ -5014,14 +4710,10 @@ document.querySelectorAll("[data-hub-target]").forEach((button) => {
 els.musicToggle?.addEventListener("click", () => void toggleMusic());
 els.closeSettings.addEventListener("click", () => els.settingsDialog.close());
 els.ownerLoginForm.addEventListener("submit", loginOwnerDevice);
-els.ownerSettingsForm.addEventListener("submit", saveOwnerSettings);
+
 els.ownerPasswordForm.addEventListener("submit", saveOwnerPassword);
-els.userCreateForm.addEventListener("submit", createManagedUser);
+
 els.promoteRelease.addEventListener("click", promoteProductionRelease);
-els.userList.addEventListener("click", (event) => {
-  const button = event.target.closest(".user-remove");
-  if (button?.dataset?.username) void removeManagedUser(button.dataset.username);
-});
 els.ownerDisconnect.addEventListener("click", disconnectOwnerDevice);
 els.ownerRevoke.addEventListener("click", revokeOwnerDevices);
 els.nextGameCapacity.addEventListener("click", () => {
@@ -5144,9 +4836,22 @@ void Promise.allSettled([
   loadConfig(), loadBoard(), loadNotificationProfile(),
 ]);
 void updatePushStatus();
-if (ownerToken()) void syncCurrentPushRegistration();
+void syncCurrentPushRegistration();
 
 window.setInterval(() => {
+  // Storage has a strict 24h lease: clear stale open-tab preferences without
+  // needing navigation, and return to public default team cards automatically.
+  const fresh = readGuestProfile(localStorage);
+  if (JSON.stringify(fresh) !== JSON.stringify(guestProfile)) {
+    const teamChanged=JSON.stringify(fresh.teams)!==JSON.stringify(guestProfile.teams);
+    guestProfile=fresh;
+    if (els.settingsDialog.open) renderGuestSettings();
+    void syncServiceWorkerNotificationPreferences();
+    if (teamChanged) {
+      void Promise.all([loadStandings({initial:false}),loadCalendar({initial:false})]);
+    }
+  }
+  renderNotificationPreferences(); // expires local notification channels on access
   refreshLiveData().catch(() => null);
 }, LIVE_DATA_REFRESH_MS);
 

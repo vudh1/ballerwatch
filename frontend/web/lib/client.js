@@ -2,31 +2,22 @@ export const API_ORIGIN = "https://ballerwatch-web.vudhone.workers.dev";
 export const SESSION_TOKEN_KEY = "ballerwatch-owner-token";
 export const SESSION_USERNAME_KEY = "ballerwatch-user-name";
 
+// Protected maintenance unlock is only session-scoped, never an account cookie.
 export function sessionToken() {
-  return localStorage.getItem(SESSION_TOKEN_KEY) || "";
+  try { return sessionStorage.getItem(SESSION_TOKEN_KEY) || ""; }
+  catch { return ""; }
 }
-
-export function sessionUsername() {
-  return localStorage.getItem(SESSION_USERNAME_KEY) || "admin";
-}
-
+export function sessionUsername() { return "admin"; }
 export function authHeaders() {
   const token = sessionToken();
   return token ? { authorization: `Bearer ${token}` } : {};
 }
-
-export function saveSession({ token = "", username = "" } = {}) {
-  if (token) localStorage.setItem(SESSION_TOKEN_KEY, token);
-  if (username) localStorage.setItem(SESSION_USERNAME_KEY, username);
+export function saveSession({ token = "" } = {}) {
+  try { if (token) sessionStorage.setItem(SESSION_TOKEN_KEY, token); } catch {}
 }
-
-export function saveSessionUsername(username) {
-  const value = String(username || "").trim().toLowerCase();
-  if (value) localStorage.setItem(SESSION_USERNAME_KEY, value);
-}
-
+export function saveSessionUsername() {}
 export function clearSession() {
-  localStorage.removeItem(SESSION_TOKEN_KEY);
+  try { sessionStorage.removeItem(SESSION_TOKEN_KEY); } catch {}
 }
 
 export async function requestJson(path, options = {}) {

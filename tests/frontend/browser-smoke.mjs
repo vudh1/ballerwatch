@@ -325,7 +325,7 @@ try {
 
       await scenario(`${engine}: legacy V2 links converge on the root and notification checks sit beside text`, async () => {
         const { context, page, errors } = await prepare(browser, { reducedMotion: "reduce" });
-        await context.addInitScript(() => localStorage.setItem("ballerwatch-visitor-profile-v1", JSON.stringify({ name: "Sample visitor", teams: [] })));
+        await context.addInitScript(() => localStorage.setItem("ballerwatch-visitor-profile-v1-24h", JSON.stringify({ schema:1, expiresAt:Date.now()+86_400_000, data:{ name:"Sample visitor", teams:[] } })));
         await ready(page, "v2/?from=legacy#matches");
         assert.equal(new URL(page.url()).pathname, "/ballerwatch/");
         assert.equal(new URL(page.url()).search, "?from=legacy");
@@ -390,15 +390,15 @@ try {
         await page.locator("#guest-teams-search").fill("Test United");
         await page.locator('#guest-teams-options [role="option"]').first().click();
         await page.waitForFunction(() => {
-          const raw = localStorage.getItem("ballerwatch-visitor-profile-v1");
+          const raw = localStorage.getItem("ballerwatch-visitor-profile-v1-24h");
           if (!raw) return false;
-          const profile = JSON.parse(raw);
+          const profile = JSON.parse(raw).data;
           return profile.name === "Visitor" &&
             profile.teams.includes("Fixture FC") && profile.teams.includes("Test United");
         });
         await page.waitForFunction(() =>
           document.querySelector("#guest-settings-status")?.textContent.startsWith("Saved."));
-        const profile = await page.evaluate(() => JSON.parse(localStorage.getItem("ballerwatch-visitor-profile-v1")));
+        const profile = await page.evaluate(() => JSON.parse(localStorage.getItem("ballerwatch-visitor-profile-v1-24h")).data);
         assert.equal(profile.name, "Visitor");
         assert.deepEqual(profile.teams, ["Fixture FC", "Test United"]);
         assert.ok(calls.filter((call) => call.path === "/web/calendar").length >= 2,
@@ -410,7 +410,7 @@ try {
         await openHubTab(page, "notifications");
         await page.locator("#notification-pref-pickup").uncheck();
         assert.equal(await page.evaluate(() =>
-          JSON.parse(localStorage.getItem("ballerwatch-notification-channels-v1")).pickup), false);
+          JSON.parse(localStorage.getItem("ballerwatch-notification-channels-v1-24h")).data.channels.pickup), false);
         await page.reload();
         await ready(page);
         await openHubTab(page, "settings");
@@ -555,15 +555,14 @@ try {
         }
       });
 
-      await scenario(`${engine}: shared session restores in V1/V2; private rosters use authorized APIs only`, async () => {
+      await scenario(`${engine}: maintenance unlock is session-only; private rosters still require authorization`, async () => {
         const { context, page, calls, errors } = await prepare(browser, { reducedMotion: "reduce" });
         await ready(page, "");
         await openHubTab(page, "settings");
         await page.locator("#settings-login-view summary").click();
-        await page.locator("#owner-login-username").fill("fixture");
         await page.locator("#owner-login-password").fill("synthetic-only-password");
         await page.locator('#owner-login-form button[type="submit"]').click();
-        await page.waitForFunction(() => localStorage.getItem("ballerwatch-owner-token") === "synthetic-browser-session");
+        await page.waitForFunction(() => sessionStorage.getItem("ballerwatch-owner-token") === "synthetic-browser-session");
         await page.locator("#close-settings").click();
         await ready(page);
         await openHubTab(page, "settings");
@@ -631,7 +630,7 @@ try {
           await page.waitForFunction(() => document.querySelector("#v2-cache-status").textContent.includes("cleared"));
           const after = await page.evaluate(() => caches.keys());
           assert.ok(after.some((key) => key.startsWith("ballerwatch-v2-") && key.endsWith("-shell")));
-          assert.ok(after.includes("ballerwatch-device-state-v1"));
+          assert.ok(after.includes("ballerwatch-device-state-v2"));
           assert.deepEqual(errors, []);
           await context.close();
         });

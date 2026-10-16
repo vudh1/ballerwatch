@@ -2,13 +2,20 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readGuestProfile, saveGuestProfile, normalizeGuestProfile } from "../../frontend/web/lib/guest-profile.js";
 import { readLocalNotificationChannels, saveLocalNotificationChannels } from "../../frontend/web/lib/notification-state.js";
-const storage = () => { const m=new Map(); return {getItem:k=>m.get(k)||null,setItem:(k,v)=>m.set(k,v)}; };
+const storage = () => { const m=new Map(); return {getItem:k=>m.get(k)||null,setItem:(k,v)=>m.set(k,v),removeItem:k=>m.delete(k)}; };
 test("anonymous visitor preferences are device-local and capped", () => {
   const s=storage();
   assert.deepEqual(readGuestProfile(s),{name:"",teams:[]});
   assert.equal(saveGuestProfile(s,{name:" Hello ",teams:["Fixture FC","fixture fc","Test United"]}),true);
   assert.deepEqual(readGuestProfile(s),{name:"Hello",teams:["Fixture FC","Test United"]});
   assert.equal(normalizeGuestProfile({teams:Array.from({length:12},(_,i)=>"Team "+i)}).teams.length,8);
+});
+test("anonymous device profile expires in 24 hours and removes stale records", () => {
+  const s = storage(), start = Date.parse("2026-10-16T08:00:00Z");
+  assert.equal(saveGuestProfile(s, {name:"Private Name",teams:["Test FC"]}, start), true);
+  assert.equal(readGuestProfile(s,start + 23 * 60 * 60 * 1000).name, "Private Name");
+  assert.deepEqual(readGuestProfile(s,start + 24 * 60 * 60 * 1000),
+    {name:"",teams:[]});
 });
 test("guest notification channels persist on device", () => {
   const s=storage();

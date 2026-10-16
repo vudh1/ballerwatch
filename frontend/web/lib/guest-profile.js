@@ -1,3 +1,4 @@
+import { readDeviceLease, writeDeviceLease } from "./device-lease.js";
 /** Anonymous per-device preferences. Never stores credentials or roster data. */
 export const GUEST_PROFILE_KEY = "ballerwatch-visitor-profile-v1";
 export const MAX_GUEST_TEAMS = 8;
@@ -12,13 +13,12 @@ export function normalizeGuestProfile(raw = {}) {
   }
   return { name: clean(raw?.name), teams };
 }
-export function readGuestProfile(storage) {
-  try {
-    const raw = storage.getItem(GUEST_PROFILE_KEY);
-    return raw && raw.length < 2500 ? normalizeGuestProfile(JSON.parse(raw)) : normalizeGuestProfile();
-  } catch { return normalizeGuestProfile(); }
+export function readGuestProfile(storage, now = Date.now()) {
+  // Forget old unexpiring v1 preferences instead of silently retaining them.
+  try { storage.removeItem(GUEST_PROFILE_KEY); } catch {}
+  return normalizeGuestProfile(readDeviceLease(storage, GUEST_PROFILE_KEY + "-24h", now) || {});
 }
-export function saveGuestProfile(storage, profile) {
-  try { storage.setItem(GUEST_PROFILE_KEY, JSON.stringify(normalizeGuestProfile(profile))); return true; }
-  catch { return false; }
+export function saveGuestProfile(storage, profile, now = Date.now()) {
+  return writeDeviceLease(storage, GUEST_PROFILE_KEY + "-24h",
+    normalizeGuestProfile(profile), now);
 }

@@ -128,9 +128,22 @@ test("V2 retains every functional controller hook and loads exactly one shared c
   const v2 = read("index.html");
   const ids = (html) => [...html.matchAll(/\sid="([^"]+)"/g)].map((match) => match[1]);
   assert.equal(new Set(ids(v2)).size, ids(v2).length);
-  for (const id of ids(v1).filter((id) => !["launch-intro", "app-version-heading", "app-version-v1", "app-version-v2"].includes(id))) {
-    assert.ok(ids(v2).includes(id), `Missing shared hook: ${id}`);
-  }
+  // The 36 intentionally removed controls belonged exclusively to the old
+  // account / global-team / private RSVP-name administration surfaces.
+  const retired = [
+    "launch-intro","app-version-heading","app-version-v1","app-version-v2",
+    "owner-login-username","owner-settings-form","owner-name-label",
+    "rsvp-choice","owner-name-trigger","owner-name-display","owner-name-popover",
+    "owner-name-search","owner-name-options","owner-name","owner-team-settings",
+    "teams-choice","owner-teams-trigger","owner-teams-display","owner-teams-chips",
+    "owner-teams-popover","owner-teams-search","owner-teams-options","owner-teams",
+    "user-management","user-list","user-create-form","user-create-username",
+    "user-name-choice","user-create-name-trigger","user-create-name-display",
+    "user-create-name-popover","user-create-name-search","user-create-name-options",
+    "user-create-name","user-create-password","user-create-status",
+  ];
+  const actualMissing=ids(v1).filter(id=>!ids(v2).includes(id)).sort();
+  assert.deepEqual(actualMissing, retired.sort(), "No other functional controller hooks disappear");
   assert.equal([...v2.matchAll(/src="\.\/app\.js\?v=/g)].length, 1);
   assert.doesNotMatch(read("v2/app.js") + read("v2/timeline.js"), /fetch\(|setInterval\(/);
   assert.match(v2, /viewport-fit=cover/);
@@ -209,7 +222,12 @@ test("both workers cache complete local shells and delete only their own obsolet
     }
     worker.listeners.activate({ waitUntil: (promise) => { task = promise; } });
     await task;
-    assert.deepEqual(worker.removed, [version === 1 ? "ballerwatch-v8-8-0-shell" : "ballerwatch-v2-v8-8-0-shell"]);
+    assert.ok(worker.removed.includes(version === 1
+      ? "ballerwatch-v8-8-0-shell" : "ballerwatch-v2-v8-8-0-shell"));
+    assert.ok(worker.removed.includes(version === 1
+      ? "ballerwatch-device-state-v1" : "ballerwatch-v2-device-state-v1"));
+    assert.ok(!worker.removed.includes(version === 1
+      ? "ballerwatch-v2-v8-8-0-shell" : "ballerwatch-v8-8-0-shell"));
   }
 });
 

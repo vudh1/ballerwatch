@@ -121,6 +121,13 @@ jobs:
           node backend/weather/update.mjs
           node backend/shared/runtime-state.mjs push weather
 
+      - name: Remove expired push devices
+        if: steps.gate.outputs.should_run == 'true'
+        working-directory: .
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: node backend/shared/web-push.mjs prune
+
       - name: Signal installed web app
         if: always() && steps.gate.outputs.should_run == 'true'
         working-directory: .
