@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.0.2",
+  "currentVersion": "11.1.0",
   "releases": [
+    {
+      "version": "11.1.0",
+      "date": "2026-10-16",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Validated-main beta channel with independent production site",
+      "webAnnouncement": "BallerWatch Beta now lives at /beta/ and tracks validated main commits. Production stays at the usual address until release promotion. Match edits and hides are device-only and require no account.",
+      "changes": [
+        "Publish a beta PWA at /ballerwatch/beta/ after successful main-branch validation; never advance the production root when updating beta.",
+        "Build each Pages artifact from the pinned production ref and validated main commit, preserving the original production application while aliasing legacy /v2/ links to /beta/.",
+        "Give beta a distinct installation manifest, versioned service worker and isolated caches, settings and match edits so experimenting cannot overwrite production device data.",
+        "Keep edit, hide, reset and restore fully on the viewing device with no user account or shared backend edits; maintain public canonical fixtures and existing protected maintenance releases.",
+        "Add deployment provenance and beta-isolation tests, including browser checks for guest match edits and legacy redirect behavior."
+      ]
+    },
     {
       "version": "11.0.2",
       "date": "2026-10-16",
