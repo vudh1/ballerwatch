@@ -1132,53 +1132,10 @@ async function openRsvpRoster() {
 
 function showLoginSettings(message = "") {
   currentUserSettings = null;
-  // Never retain authenticated RSVP name catalogs after a session expires.
-  settingsChoiceAccount = "";
-  settingsChoiceLoadedAt = 0;
-  if (settingsChoiceControls) {
-    settingsChoiceControls.rsvp.setOptions([]);
-    settingsChoiceControls.newUser.setOptions([]);
-    settingsChoiceControls.teams.setOptions([]);
-    settingsChoiceControls.rsvp.close();
-    settingsChoiceControls.teams.close();
-    settingsChoiceControls.newUser.close();
-  }
   els.settingsLoginView.hidden = false;
   els.settingsOwnerView.hidden = true;
   if (message && pendingMatchAdminAction) els.settingsLoginView.open = true;
-  if (els.ownerLoginUsername) {
-    els.ownerLoginUsername.value = sessionUsername();
-  }
   els.ownerLoginStatus.textContent = message;
-}
-
-function renderManagedUsers(users) {
-  els.userList.replaceChildren();
-  for (const user of Array.isArray(users) ? users : []) {
-    const row = document.createElement("div");
-    row.className = "settings-user-row";
-
-    const copy = document.createElement("div");
-    copy.className = "settings-user-meta";
-    const title = document.createElement("strong");
-    title.textContent = `@${user.username}`;
-    const detail = document.createElement("span");
-    const parts = [user.role === "admin" ? "Administrator" : "User"];
-    if (user.rsvpName) parts.push(`RSVP: ${user.rsvpName}`);
-    detail.textContent = parts.join(" · ");
-    copy.append(title, detail);
-    row.append(copy);
-
-    if (user.username !== "admin") {
-      const remove = document.createElement("button");
-      remove.type = "button";
-      remove.className = "subtle-action subtle-danger user-remove";
-      remove.dataset.username = user.username;
-      remove.textContent = "Remove";
-      row.append(remove);
-    }
-    els.userList.append(row);
-  }
 }
 
 function renderDeletedMatches(matches) {
@@ -1206,97 +1163,24 @@ function renderDeletedMatches(matches) {
   }
 }
 
-// All options stay in this page's memory only. No private roster names go to
-// service-worker caches, localStorage, public APIs or BallerWatch AI prompts.
-let settingsChoiceControls = null;
-let settingsChoicePending = null;
-let settingsChoiceLoadedAt = 0;
-let settingsChoiceAccount = "";
-
-function ensureSettingsChoices() {
-  if (settingsChoiceControls) return settingsChoiceControls;
-  const init = (prefix, root, input, multiple = false, chips = "") =>
-    createSettingsChoice({
-      root: document.querySelector("#" + root),
-      trigger: document.querySelector("#" + prefix + "-trigger"),
-      panel: document.querySelector("#" + prefix + "-popover"),
-      search: document.querySelector("#" + prefix + "-search"),
-      optionsList: document.querySelector("#" + prefix + "-options"),
-      display: document.querySelector("#" + prefix + "-display"),
-      input: document.querySelector("#" + input),
-      chips: chips ? document.querySelector("#" + chips) : null,
-      multiple,
-    });
-  settingsChoiceControls = {
-    rsvp: init("owner-name", "rsvp-choice", "owner-name"),
-    teams: init("owner-teams", "teams-choice", "owner-teams", true, "owner-teams-chips"),
-    newUser: init("user-create-name", "user-name-choice", "user-create-name"),
-  };
-  return settingsChoiceControls;
-}
-
-async function loadSettingsChoiceOptions() {
-  if (!ownerToken()) return;
-  const controls = ensureSettingsChoices();
-  const username = sessionUsername();
-  if (username !== settingsChoiceAccount) {
-    settingsChoiceAccount = username;
-    settingsChoiceLoadedAt = 0;
-    controls.rsvp.setOptions([]);
-    controls.newUser.setOptions([]);
-    controls.teams.setOptions([]);
-  }
-  if (settingsChoicePending) return settingsChoicePending;
-  if (Date.now() - settingsChoiceLoadedAt < 120_000) return;
-  const task = (async () => {
-    try {
-      const result = await api("/web/user/selection-options", {
-        headers: ownerHeaders(), retryNetwork: false, timeoutMs: 5_000,
-      });
-      if (username !== sessionUsername()) return;
-      const names = Array.isArray(result.names) ? result.names : [];
-      const teams = Array.isArray(result.teams) ? result.teams : [];
-      controls.rsvp.setOptions(names);
-      controls.newUser.setOptions(names);
-      controls.teams.setOptions(teams);
-      settingsChoiceLoadedAt = Date.now();
-    } catch {
-      // Current chosen values remain editable when optional sources lag.
-      settingsChoiceLoadedAt = Date.now() - 100_000;
-    }
-  })();
-  settingsChoicePending = task;
-  try { await task; } finally { if (settingsChoicePending === task) settingsChoicePending = null; }
-}
-
 function showOwnerSettings(settings) {
   currentUserSettings = settings || null;
   els.settingsLoginView.hidden = false;
   els.settingsLoginView.open = false;
   els.settingsOwnerView.hidden = false;
-  const username = settings?.username || sessionUsername();
-  saveSessionUsername(username);
-  els.currentUserSummary.textContent =
-    `Signed in as @${username} · ${settings?.role === "admin" ? "Administrator" : "User"}`;
-  const selectors = ensureSettingsChoices();
-  selectors.rsvp.setValue(settings?.ownerName || "");
-  selectors.teams.setValue(Array.isArray(settings?.teams) ? settings.teams : []);
-  selectors.newUser.setValue("");
-  void loadSettingsChoiceOptions();
-  els.ownerTeamSettings.hidden = !settings?.canManageTeams;
-  els.userManagement.hidden = !settings?.canManageUsers;
+  els.currentUserSummary.textContent = "Administrator maintenance unlocked for this session.";
   const deletedMatches = Array.isArray(settings?.deletedMatches) ? settings.deletedMatches : [];
-  els.deletedMatchManagement.hidden = !settings?.canManageMatches || deletedMatches.length === 0;
+  els.deletedMatchManagement.hidden =
+    !settings?.canManageMatches || deletedMatches.length === 0;
   els.releaseManagement.hidden = !settings?.canManageMatches;
-  if (settings?.canManageUsers) renderManagedUsers(settings?.users);
   if (settings?.canManageMatches) renderDeletedMatches(deletedMatches);
   if (!settings?.canManageMatches) {
     currentReleaseStatus = null;
     els.promoteRelease.disabled = true;
   }
   els.ownerPasswordStatus.textContent = settings?.passwordConfigured
-    ? "Your password is set. Changing it revokes your other sessions."
-    : "No password is configured for this account.";
+    ? "Changing the password revokes other maintenance sessions."
+    : "A maintenance password must be configured in the protected repository.";
 }
 
 async function loadOwnerSettings() {
@@ -1573,91 +1457,6 @@ async function loginOwnerDevice(event) {
     els.ownerLoginStatus.textContent = error.message;
   } finally {
     button.disabled = false;
-  }
-}
-
-async function saveOwnerSettings(event) {
-  event.preventDefault();
-  const button = els.ownerSettingsForm.querySelector("button");
-  const body = { ownerName: els.ownerName.value.trim() };
-  if (!els.ownerTeamSettings.hidden) {
-    body.teams = els.ownerTeams.value
-      .split(/\r?\n/)
-      .map((value) => value.trim())
-      .filter(Boolean);
-  }
-  button.disabled = true;
-  els.ownerSettingsStatus.textContent = "Saving…";
-  try {
-    const payload = await api("/web/user/settings", {
-      method: "POST",
-      headers: ownerHeaders(),
-      retryNetwork: true,
-      body: JSON.stringify(body),
-    });
-    showOwnerSettings(payload.settings || {});
-    await loadRsvpStatus();
-    if (currentNextGame) {
-      renderNextGame(currentNextGame, els.spotlightLabel.textContent || "NEXT GAME");
-    }
-    els.ownerSettingsStatus.textContent = els.ownerTeamSettings.hidden
-      ? "Profile saved."
-      : "Saved. Monitoring updates on the next league refresh.";
-  } catch (error) {
-    if (error.status === 401) {
-      clearSession();
-      showLoginSettings("Sign in again to edit user settings.");
-    } else {
-      els.ownerSettingsStatus.textContent = error.message;
-    }
-  } finally {
-    button.disabled = false;
-  }
-}
-
-async function createManagedUser(event) {
-  event.preventDefault();
-  const button = els.userCreateForm.querySelector("button");
-  button.disabled = true;
-  els.userCreateStatus.textContent = "Adding user…";
-  try {
-    const payload = await api("/web/user/users", {
-      method: "POST",
-      headers: ownerHeaders(),
-      body: JSON.stringify({
-        username: els.userCreateUsername.value.trim().toLowerCase(),
-        ownerName: els.userCreateName.value.trim(),
-        password: els.userCreatePassword.value,
-      }),
-    });
-    els.userCreateForm.reset();
-    showOwnerSettings(payload.settings || {});
-    els.userCreateStatus.textContent = "User added.";
-  } catch (error) {
-    if (error.status === 401) {
-      clearSession();
-      showLoginSettings("Sign in again to manage users.");
-    } else {
-      els.userCreateStatus.textContent = error.message;
-    }
-  } finally {
-    button.disabled = false;
-  }
-}
-
-async function removeManagedUser(username) {
-  if (!username || !window.confirm(`Remove @${username}? Their active sessions will stop working.`)) return;
-  els.userCreateStatus.textContent = `Removing @${username}…`;
-  try {
-    const payload = await api("/web/user/users", {
-      method: "DELETE",
-      headers: ownerHeaders(),
-      body: JSON.stringify({ username }),
-    });
-    showOwnerSettings(payload.settings || {});
-    els.userCreateStatus.textContent = `Removed @${username}.`;
-  } catch (error) {
-    els.userCreateStatus.textContent = error.message;
   }
 }
 
