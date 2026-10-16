@@ -874,7 +874,7 @@ test("web calendar ignores legacy shared soft-deletes for every visitor", () => 
           key: "v2:delete-me",
           team: "Team Alpha",
           opponent: "Team Beta",
-          date: "2099-10-09",
+          date: "2099-10-12",
           startTime: "19:00",
           endTime: "21:00",
           location: "League Field",
