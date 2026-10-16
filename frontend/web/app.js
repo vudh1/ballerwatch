@@ -1714,12 +1714,20 @@ async function loadNotificationProfile() {
   return true;
 }
 
+function deviceFollowsNotification(item) {
+  if (item?.channel !== "league" || !guestProfile.teams.length ||
+      !Array.isArray(item?.teams) || !item.teams.length) return true;
+  const normalize = name => String(name || "").trim().replace(/\s+/g," ").toLocaleLowerCase("en");
+  const selected=new Set(guestProfile.teams.map(normalize));
+  return item.teams.some(name=>selected.has(normalize(name)));
+}
 function notificationViewState(entries = currentBoardEntries) {
   const read = storedNotificationIds(NOTIFICATION_READ_KEY);
   const deleted = storedNotificationIds(NOTIFICATION_DELETED_KEY);
   const channels = notificationChannels();
   const allVisible = entries.filter((item) =>
     !deleted.has(notificationId(item)) && !skipPersonalPickupAlert(item) &&
+    deviceFollowsNotification(item) &&
     channels[String(item?.channel || "")] !== false);
   const visible = notificationFilter === "all" ? allVisible
     : allVisible.filter(item => String(item?.channel || "") === notificationFilter);
