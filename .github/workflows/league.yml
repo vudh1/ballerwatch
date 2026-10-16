@@ -80,24 +80,14 @@ jobs:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
         run: node backend/league/history.mjs
 
-      - name: Compare with applied Calendar snapshot
+      - name: Detect material RATS schedule changes
         if: steps.gate.outputs.should_run == 'true'
-        id: calendar_gate
-        shell: bash
+        id: schedule_changes
         run: |
-          node ../backend/league/calendar-gate.mjs | tee /tmp/calendar-gate.txt
-          grep '^needsCalendar=' /tmp/calendar-gate.txt >> "$GITHUB_OUTPUT"
-          grep '^pendingCount=' /tmp/calendar-gate.txt >> "$GITHUB_OUTPUT"
-
-      - name: Sync changed matches to Google Calendar
-        if: steps.gate.outputs.should_run == 'true' && steps.calendar_gate.outputs.needsCalendar == 'true'
-        env:
-          GOOGLE_CALENDAR_WEBHOOK_URL: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_URL }}
-          GOOGLE_CALENDAR_WEBHOOK_SECRET: ${{ secrets.GOOGLE_CALENDAR_WEBHOOK_SECRET }}
-        run: node ../backend/league/google-calendar-sync.mjs
+          node -e 'const fs = require("node:fs"); const {updates=[]} = JSON.parse(fs.readFileSync("notification-update.json", "utf8")); console.log("hasChanges=" + (updates.length > 0));' >> "$GITHUB_OUTPUT"
 
       - name: Record league web notifications
-        # Kickoff reminders must survive a failed or outdated Calendar bridge.
+        # Notifications and reminders are independent of external calendars.
         if: always() && steps.gate.outputs.should_run == 'true'
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
@@ -122,7 +112,7 @@ jobs:
         run: node backend/shared/runtime-state.mjs push league
 
       - name: Refresh weather after league schedule change
-        if: always() && steps.gate.outputs.should_run == 'true' && steps.calendar_gate.outputs.needsCalendar == 'true'
+        if: always() && steps.gate.outputs.should_run == 'true' && steps.schedule_changes.outputs.hasChanges == 'true'
         working-directory: .
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}

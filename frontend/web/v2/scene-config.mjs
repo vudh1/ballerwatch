@@ -13,7 +13,7 @@ export const FEATURE_STORIES = Object.freeze([
   { start: 0.48, label: "BALLERWATCH AI", title: ["Your game,", "explained."],
     description: "Ask about fixtures, opponents, jersey colors, fields and results, with follow-up questions." },
   { start: 0.64, label: "STAY IN THE LOOP", title: ["The updates", "that matter."],
-    description: "Inbox filters, Web Push reminders, unread badges and personal notification preferences. Real schedule changes sync to Google Calendar." },
+    description: "Inbox filters, Web Push reminders, unread badges and personal notification preferences. RATS schedule changes appear in the BallerWatch inbox without connecting a Google account." },
   { start: 0.80, label: "MAKE IT YOURS", title: ["Your teams.", "Your BallerWatch."],
     description: "Your name and teams, optional music, Home Screen/offline access, secure accounts and authorized match administration." },
 ]);

@@ -10,7 +10,6 @@ import { decryptState, encryptState } from "./state-crypto.mjs";
 const FILES = [
   "schedule.json",
   "today.json",
-  "calendar-snapshot.json",
 ];
 
 function statePath(name) {

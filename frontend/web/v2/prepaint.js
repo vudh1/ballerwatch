@@ -24,8 +24,10 @@
       // The retired intro height must not become a dashboard scroll offset.
       if ("scrollRestoration" in history) history.scrollRestoration = "manual";
     }
-    root.classList.toggle("v2-launching", !skip &&
-      sessionStorage.getItem("ballerwatch:v2:launch-seen") !== "1");
+    const firstLaunch = !skip && sessionStorage.getItem("ballerwatch:v2:launch-seen") !== "1";
+    // Claim the splash before first paint so interrupted startup never replays it.
+    if (firstLaunch) sessionStorage.setItem("ballerwatch:v2:launch-seen", "1");
+    root.classList.toggle("v2-launching", firstLaunch);
   } catch {
     root.classList.toggle("v2-launching", !skip);
   }

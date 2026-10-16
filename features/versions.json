@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "9.1.2",
+  "currentVersion": "10.0.0",
   "releases": [
+    {
+      "version": "10.0.0",
+      "date": "2026-10-16",
+      "type": "major",
+      "source": "user-requested",
+      "title": "One uninterrupted first install and calendar-independent BallerWatch",
+      "webAnnouncement": "BallerWatch now opens without repeat loading screens and no longer connects to Google Calendar. Match schedules and alerts remain right inside the app for everyone.",
+      "changes": [
+        "Do not reload the open app when a new service worker takes control; claim the first-launch splash before first paint to avoid repeating it across startup interruptions.",
+        "Retire the Google Apps Script Calendar bridge, reconciliation workflow, credentials, runtime snapshot, and integration tests; no Google connection or Calendar permissions are required.",
+        "Compute material RATS schedule changes from verified upstream fixture snapshots, preserving Web Push, inbox notices, one-hour reminders and weather refresh."
+      ]
+    },
     {
       "version": "9.1.2",
       "date": "2026-10-15",

@@ -208,7 +208,6 @@ let serviceWorkerRegistration = null;
 let liveRefreshInFlight = false;
 let initialLoadComplete = false;
 let consecutiveCalendarFailures = 0;
-let appRefreshDeferred = false;
 let activeSuggestionIndex = -1;
 let lastAnswerExchange = null;
 let feedbackSubmitted = false;
@@ -1785,23 +1784,13 @@ function setCalendarConnectionResult(success) {
 async function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return null;
 
-  let refreshing = false;
-  let previousController = navigator.serviceWorker.controller;
+  // Worker takeover on a new install must not reload the active intro.
   navigator.serviceWorker.addEventListener("controllerchange", () => {
-    const nextController = navigator.serviceWorker.controller;
-    const firstClaim = !previousController;
-    previousController = nextController;
-    if (firstClaim) return;
-    if (refreshing) return;
-    if (!initialLoadComplete) {
-      appRefreshDeferred = true;
-      return;
-    }
-    refreshing = true;
-    window.location.reload();
+    void syncServiceWorkerNotificationPreferences();
+    void syncServiceWorkerRsvpState();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=9.1.2", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=10.0.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -5098,10 +5087,6 @@ document.addEventListener("visibilitychange", () => {
     void startAmbientMusic().then((started) => {
       if (!started) armMusicForFirstGesture();
     });
-  }
-  if (appRefreshDeferred && initialLoadComplete) {
-    window.location.reload();
-    return;
   }
   refreshLiveData().catch(() => null);
   checkForAppUpdate().catch(() => null);

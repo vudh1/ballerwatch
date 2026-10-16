@@ -7,6 +7,7 @@
  */
 import { appendVenueObservations, matchVenue } from "../shared/venue-directory.mjs";
 import fs from "node:fs";
+import { scheduleNotificationUpdates } from "./schedule-updates.mjs";
 import { pathToFileURL } from "node:url";
 import {
   dateInZone,
@@ -681,6 +682,10 @@ export async function runWatcher({
       }
     }
 
+    // Verified upstream changes feed Web Push without third-party calendar sync.
+    writeJson("notification-update.json", {
+      updates: scheduleNotificationUpdates(previous, payload, now),
+    });
     payload.contentHash = digest(payload);
     payload.updatedAt = instantToZonedIso(now, TZ);
     const today = dateInZone(now, TZ);

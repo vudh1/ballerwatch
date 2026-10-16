@@ -4,21 +4,21 @@
  * intercept remote APIs or persist authenticated responses in frontend caches.
  */
 const IS_V2 = /\/v2\/sw\.js$/.test(self.location.pathname);
-const CACHE = IS_V2 ? "ballerwatch-v2-v9-1-2-shell" : "ballerwatch-v9-1-2-shell";
+const CACHE = IS_V2 ? "ballerwatch-v2-v9-1-2-shell" : "ballerwatch-v10-0-0-shell";
 const ROOT_SHELL = [
   "./",
   "./index.html",
-  "./v2/prepaint.js?v=9.1.2",
-  "./styles.css?v=9.1.2",
-  "./v2/styles.css?v=9.1.2",
-  "./app.js?v=9.1.2",
-  "./v2/app.js?v=9.1.2",
+  "./v2/prepaint.js?v=10.0.0",
+  "./styles.css?v=10.0.0",
+  "./v2/styles.css?v=10.0.0",
+  "./app.js?v=10.0.0",
+  "./v2/app.js?v=10.0.0",
   "./v2/timeline.js",
   "./v2/scene-config.mjs",
   "./v2/assets/stadium.svg",
-  "./manifest.webmanifest?v=9.1.2",
-  "./icon.svg?v=9.1.2",
-  "./apple-touch-icon.png?v=9.1.2",
+  "./manifest.webmanifest?v=10.0.0",
+  "./icon.svg?v=10.0.0",
+  "./apple-touch-icon.png?v=10.0.0",
   "./icon-192.png",
   "./icon-512.png",
   "./v2/index.html",

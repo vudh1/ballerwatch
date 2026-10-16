@@ -18,7 +18,7 @@ backend/infra/web-worker/ Cloudflare Worker
 
 cron-job.org --> GitHub Actions --> backend/pickup + backend/league
 GitHub schedule --> backend/watchdog + backend/weather
-RATS changes --> backend/league --> Google Calendar bridge
+RATS changes --> backend/league --> in-app match calendar + Web Push
 ```
 
 - `main`: reviewed integration source.

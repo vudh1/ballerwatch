@@ -68,10 +68,6 @@ jobs:
       - name: Build canonical app and legacy redirect
         run: node scripts/build-web.mjs
 
-      - name: Validate Apps Script syntax
-        run: |
-          cp backend/league/google_apps_script/Code.gs /tmp/ballerwatch-calendar-bridge.mjs
-          node --check /tmp/ballerwatch-calendar-bridge.mjs
 
   browser:
     runs-on: ubuntu-latest
