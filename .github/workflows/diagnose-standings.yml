@@ -17,7 +17,7 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           const base = 'https://ballerwatch-web.vudhone.workers.dev';
-          for (const path of ['/health','/web/config','/web/teams','/web/standings','/web/standings?teams=Third%20Touch%20FC','/web/calendar']) {
+          for (const path of ['/health','/web/config','/web/teams','/web/standings','/web/standings?teams=Third%20Touch%20FC','/web/standings?teams=Unknown%20Club%20XXXX','/web/calendar']) {
             try {
               const start=Date.now();
               const response=await fetch(base+path,{headers:{Origin:'https://vudh1.github.io'},signal:AbortSignal.timeout(12000)});
@@ -28,6 +28,9 @@ jobs:
               console.log(JSON.stringify({path,status:response.status,ms:Date.now()-start,
                 ok:body.ok,ready:body.ready,error:String(body.error||'').slice(0,250),
                 cards:Array.isArray(body.standings?.cards)?body.standings.cards.length:null,
+                readyCards:body.standings?.cards?.filter(x=>x.ready && x.rows?.length)?.length??null,
+                matchupCount:body.standings?.matchups?Object.keys(body.standings.matchups).length:null,
+                responseBytes:text.length,
                 seasonId:body.standings?.seasonId||null,
                 directoryCount:Array.isArray(body.teams)?body.teams.length:null,
                 calendarOk:!!body.calendar?.startDate,
