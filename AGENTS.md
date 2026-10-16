@@ -8,13 +8,13 @@ Always read the current `README.md`, this file, and `features/versions.json` fro
 - Every canonical `runtime-state` file must be a complete hardened AES-GCM envelope. Never persist readable runtime JSON, rosters, settings, chat text, notification data, identifiers, timestamps, secrets, push endpoints, or VAPID private material.
 - The installable GitHub Pages PWA is the only user surface. Cloudflare hosts the web API, authentication, read-only Q&A, Web Push registration, runtime reads/writes, health, and edge refresh helpers.
 - Core web operation requires `TRACKER_STATE_KEY`. Do not add a fallback encryption/signing secret.
-- User settings live in encrypted `state/user.json`. Authenticated users may change only RSVP display name and monitored league teams.
-- User password sign-in is the normal and only app sign-in mechanism. Recovery/bootstrap is repository-admin controlled through **Reset web user password**, using a temporary `BALLERWATCH_RECOVERY_PASSWORD` Actions secret. The recovery workflow must never print the plaintext password and must advance the server-side auth revision to revoke older sessions.
-- User capability tokens carry the server-side auth revision and expire after at most 90 days. Password rotation, recovery reset, and explicit global sign-out revoke prior tokens.
+- RSVP display names, monitored teams and match-card edits persist privately per device without an account or fixed expiry; notification messages/read/deleted state/badges expire after 24 hours.
+- Encrypted `state/user.json` retains protected administrator maintenance credentials; general visitor sign-in and account-backed settings were retired in 11.0.0.
+- Administrator maintenance tokens remain session-only and cannot alter another visitor's locally edited match cards.
 - Wrong-answer feedback uses a short-lived token scoped to the exact answer and grants no settings capability.
 - Exact authenticated Q&A, and anonymous Q&A explicitly marked wrong, may be retained encrypted for at most 48 hours. The engineering-review projection is privacy-minimized and encrypted.
 - Web Push VAPID keys/subscriptions live only in encrypted `state/web-push.json`. Registration and delivery must keep provider allowlisting, endpoint-bound challenges, IP/userinfo/port rejection, DNS public-address validation, and redirects disabled.
-- Public notification-board entries must never include RSVP/waitlist names, private settings, tokens, or user-specific status.
+- Public notification-board, calendar and AI responses never include RSVP/waitlist names, private settings, tokens or user-specific status. The only exception is the on-demand `/web/rsvp-roster` view for an individually published pickup date, with names, guest counts and original order. Never publish an all-date participant catalog, unpublished rosters, contact information or private metadata.
 - Workers KV and Cloudflare Cron Triggers are not part of production.
 - `RELEASE_GITHUB_TOKEN` / Worker `GITHUB_CONTENTS_TOKEN` owns encrypted runtime content reads/writes. `CRON_GITHUB_PAT` / Worker `GITHUB_DISPATCH_TOKEN` is dispatch-only.
 - cron-job.org runs only pickup every 2 minutes and league every 5 minutes. The external watchdog schedule remains retired. Native GitHub watchdog/weather maintenance runs every 6 hours.

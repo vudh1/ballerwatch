@@ -13,19 +13,19 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
 
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   assert.match(html, /manifest\.webmanifest/);
-  assert.match(html, /apple-touch-icon\.png\?v=11\.0\.1/);
+  assert.match(html, /apple-touch-icon\.png\?v=11\.0\.2/);
   assert.match(html, /class="brand-icon"/);
-  assert.match(html, /icon\.svg\?v=11\.0\.1/);
+  assert.match(html, /icon\.svg\?v=11\.0\.2/);
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=11\.0\.1/);
-  assert.match(html, /app\.js\?v=11\.0\.1/);
+  assert.match(html, /styles\.css\?v=11\.0\.2/);
+  assert.match(html, /app\.js\?v=11\.0\.2/);
 
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v11-0-1-shell/);
+  assert.match(sw, /ballerwatch-v11-0-2-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -94,7 +94,7 @@ test("promotion watches Worker and Pages then refreshes the open PWA", () => {
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=11\.0\.1/);
+  assert.match(app, /sw\.js\?v=11\.0\.2/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -791,7 +791,7 @@ test("page uses a soccer-pitch backdrop with readable translucent cards", () => 
   assert.match(icon, /glass soccer ball.*watch ring/);
   assert.match(icon, /<circle cx="256" cy="256" r="100" fill="url\(#ball\)"\/>/);
   assert.match(icon, /stroke="url\(#ring\)"/);
-  assert.match(manifest, /icon\.svg\?v=11\.0\.1/);
+  assert.match(manifest, /icon\.svg\?v=11\.0\.2/);
   assert.match(css, /\.card,[\s\S]*\.footer-install \{[\s\S]*rgba\(6, 18, 22, 0\.57\)/);
   assert.match(css, /\.spotlight-card \{[\s\S]*rgba\(4, 16, 22, 0\.72\)/);
   assert.match(css, /backdrop-filter:\s*blur\(24px\) saturate\(135%\)/);
@@ -1292,7 +1292,7 @@ test("canonical cinematic launch owns first paint and remains reduced-motion saf
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const gate = fs.readFileSync("frontend/web/v2/prepaint.js", "utf8");
   assert.match(html, /<html lang="en" class="v2"/);
-  assert.match(html, /<script src="\.\/v2\/prepaint\.js\?v=11\.0\.1"><\/script>[\s\S]*<link rel="stylesheet"/);
+  assert.match(html, /<script src="\.\/v2\/prepaint\.js\?v=11\.0\.2"><\/script>[\s\S]*<link rel="stylesheet"/);
   assert.match(html, /id="v2-launch"/);
   assert.match(html, /launch-intro-beam-a/);
   assert.match(gate, /prefers-reduced-motion: reduce/);
@@ -1437,7 +1437,7 @@ test("closing a pointer-opened RSVP roster clears the lingering capacity focus r
   );
 });
 
-test("pickup capacity opens a full-width signed-in RSVP roster without public name leakage", () => {
+test("pickup capacity opens accountless event-scoped RSVP roster without catalog leakage", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const css = fs.readFileSync("frontend/web/styles.css", "utf8");
@@ -1454,10 +1454,12 @@ test("pickup capacity opens a full-width signed-in RSVP roster without public na
   assert.match(html, /id="rsvp-roster-rsvp"[\s\S]*>RSVP<\/a>/);
 
   assert.match(app, /async function openRsvpRoster/);
-  assert.match(app, /\/web\/user\/rsvp-roster\?date=/);
-  assert.match(app, /headers:\s*ownerHeaders\(\)/);
+  const guestRoster = app.split("async function openRsvpRoster() {")[1]
+    ?.split("function showLoginSettings")[0] || "";
+  assert.match(guestRoster, /\/web\/rsvp-roster\?date=/);
+  assert.doesNotMatch(guestRoster, /ownerHeaders\(\)|ownerToken\(\)/);
   assert.match(app, /event\.target === els\.rsvpRosterDialog/);
-  assert.match(app, /Sign in to view RSVP names/);
+  assert.doesNotMatch(html, /id="rsvp-roster-sign-in"/);
   assert.match(app, /a, button, \[tabindex\]/);
 
   const rosterSheet = css.split("/* v7.0.25 full-width RSVP roster sheet */")[1] || "";
@@ -1470,11 +1472,9 @@ test("pickup capacity opens a full-width signed-in RSVP roster without public na
   assert.match(css, /\.rsvp-roster-dialog::backdrop/);
   assert.match(css, /\.next-game-capacity\[role="button"\]/);
 
+  assert.match(worker, /url\.pathname === "\/web\/rsvp-roster"/);
+  assert.match(worker, /No published RSVP roster for this date/);
   assert.match(worker, /userRoute\(url\.pathname, "rsvp-roster"\)/);
-  assert.match(
-    worker,
-    /userRoute\(url\.pathname, "rsvp-roster"\)[\s\S]*resolveOwnerCapability\(env, bearerToken\(request\)\)/,
-  );
   assert.match(worker, /export function pickupRsvpRosterView/);
   assert.match(worker, /players:\s*\[\],[\s\S]*waitlist:\s*\[\]/);
 

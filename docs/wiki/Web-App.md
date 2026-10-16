@@ -24,7 +24,7 @@ Pickup match cards deliberately avoid using the same capsule treatment for every
 
 ## Pickup RSVP roster
 
-For RSVP-enabled pickup matches, the capacity area opens a full app-width roster sheet. The sheet shows the signed-in RSVP roster and keeps the external RSVP action in a sticky footer, so the match card does not need a separate RSVP button. On touch devices, including the installed iPhone PWA, match-card swipe navigation excludes links, buttons, ARIA buttons, and form controls so a normal tap on capacity is not consumed by the swipe gesture.
+For published RSVP-enabled pickup matches, the capacity area opens a full app-width roster sheet **without a user account**. The sheet shows that game's confirmed display names, guest counts and waitlist in RSVP order, and keeps the external RSVP action in its sticky footer. The API returns only an individual published game's roster on request; private name catalogs are not exposed. On touch devices, including the installed iPhone PWA, match-card swipe navigation excludes links, buttons, ARIA buttons, and form controls so a normal tap on capacity is not consumed by the swipe gesture.
 
 On desktop pointer devices, the final right-edge carousel hit area starts below the full Pickup/League Edit/Delete trigger zone. Hovering or clicking that match-type action therefore takes priority over moving to the next match.
 

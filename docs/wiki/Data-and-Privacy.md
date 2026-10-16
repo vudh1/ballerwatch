@@ -24,7 +24,7 @@ Recovery uses the manual **Reset web user password** workflow. The temporary rec
 
 ## Public projections
 
-Public PWA/API responses and notification-board entries must never expose RSVP/waitlist names, private settings, tokens, secrets, or user-specific status.
+Public schedules, notification-board entries, AI answers and other PWA/API projections never expose RSVP/waitlist names, private settings, tokens, secrets, or user-specific status. The explicit exception is the on-demand `GET /web/rsvp-roster?date=YYYY-MM-DD` view for a **published pickup game**: it returns only that event's display names, RSVP order and guest counts, never a participant directory, contact details or private preferences. The response uses `Cache-Control: no-store`; source rosters remain encrypted.
 
 ## Device-local retention (11.0.1)
 

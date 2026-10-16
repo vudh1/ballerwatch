@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.0.1",
+  "currentVersion": "11.0.2",
   "releases": [
+    {
+      "version": "11.0.2",
+      "date": "2026-10-16",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Accountless RSVP rosters for published pickup games",
+      "webAnnouncement": "Tap pickup capacity to see confirmed names, guests and waitlist in signup order without an account. Only the selected published game's roster is shown; maintenance and private name catalogs remain protected.",
+      "changes": [
+        "Open the pickup RSVP roster to every visitor without login, preserving original RSVP order, guest counts and RSVP action.",
+        "Allow uncached event-specific API reads for published pickup dates, rejecting unpublished dates and stripping private metadata other than display names and guest counts.",
+        "Keep the source rosters encrypted and accountless device settings unchanged; do not embed participant names into public schedules, notifications, AI replies or searchable directories.",
+        "Add guest Chromium/WebKit browser checks, unpublished-date privacy tests and a versioned PWA shell."
+      ]
+    },
     {
       "version": "11.0.1",
       "date": "2026-10-16",

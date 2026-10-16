@@ -595,9 +595,14 @@ try {
         }
       });
 
-      await scenario(`${engine}: maintenance unlock is session-only; private rosters still require authorization`, async () => {
+      await scenario(`${engine}: guest roster access and session-only maintenance unlock`, async () => {
         const { context, page, calls, errors } = await prepare(browser, { reducedMotion: "reduce" });
         await ready(page, "");
+        await page.locator("#next-game-capacity").click();
+        await page.waitForSelector("#rsvp-roster-confirmed-list li");
+        assert.match(await page.locator("#rsvp-roster-confirmed-list").textContent(), /Fixture Player/);
+        assert.ok(calls.some((call) => call.path === "/web/rsvp-roster" && !call.authorization));
+        await page.locator("#close-rsvp-roster").click();
         await openHubTab(page, "settings");
         await page.locator("#settings-login-view summary").click();
         await page.locator("#owner-login-password").fill("synthetic-only-password");
@@ -610,7 +615,7 @@ try {
         await page.locator("#close-settings").click();
         await page.locator("#next-game-capacity").click();
         await page.waitForSelector("#rsvp-roster-confirmed-list li");
-        assert.ok(calls.some((call) => call.path === "/web/user/rsvp-roster" && call.authorization === "Bearer synthetic-browser-session"));
+        assert.ok(calls.filter((call) => call.path === "/web/rsvp-roster").every((call) => !call.authorization));
         assert.deepEqual(errors, []);
         await context.close();
       });
