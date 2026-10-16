@@ -73,7 +73,11 @@ jobs:
             if [ "$live" != "$sha" ]; then preserved=$((preserved + 1)); continue; fi
             if [ "$superseded" = true ]; then
               tag="archive/2026-10-16/$name"
-              existing="$(gh api "/repos/$repo/git/ref/tags/$tag" --jq '.object.sha' 2>/dev/null || true)"
+              # gh may emit an error JSON body to stdout on a missing ref.
+              # An unsuccessful lookup must never masquerade as an existing tag.
+              if ! existing="$(gh api "/repos/$repo/git/ref/tags/$tag" --jq '.object.sha' 2>/dev/null)"; then
+                existing=""
+              fi
               if [ -z "$existing" ]; then
                 gh api -X POST "/repos/$repo/git/refs" -f "ref=refs/tags/$tag" -f "sha=$sha" >/dev/null
               elif [ "$existing" != "$sha" ]; then echo "::error::Archive tag mismatch"; exit 1; fi
