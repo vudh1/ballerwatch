@@ -687,31 +687,18 @@ test("weather refresh is immediate only for schedule-relevant changes", () => {
   assert.match(pickupWorkflow, /Refresh weather after pickup schedule change/);
   assert.match(pickupWorkflow, /node backend\/weather\/update\.mjs/);
   assert.match(leagueWorkflow, /Refresh weather after league schedule change/);
-  assert.match(leagueWorkflow, /needsCalendar == 'true'/);
+  assert.match(leagueWorkflow, /steps\.schedule_changes\.outputs\.hasChanges == 'true'/);
   assert.doesNotMatch(relevance, /reserved|capacity|players|waitlist/);
 });
 
 
-test("installed app does not interrupt first-load hydration for a service-worker update", () => {
+test("installed app hydrates before starting the worker and never reloads on takeover", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
-
-  assert.match(app, /let initialLoadComplete = false/);
-  assert.match(app, /let appRefreshDeferred = false/);
-  assert.match(
-    app,
-    /if \(!initialLoadComplete\) \{\s*appRefreshDeferred = true;\s*return;\s*\}/,
-  );
-  assert.match(
-    app,
-    /restorePublicStandings\(\);[\s\S]*?restorePublicCalendar\(\);[\s\S]*?void loadStandings\(\{ initial: true \}\)\.catch\(\(\) => false\);[\s\S]*?const calendarOk = await loadCalendar\(\{ initial: true \}\)\.catch\(\(\) => false\);[\s\S]*?initialLoadComplete = true;[\s\S]*?void registerServiceWorker\(\)\.catch\(\(\) => null\);/,
-  );
-  assert.match(app, /initialLoadComplete = true/);
-  assert.match(
-    app,
-    /if \(appRefreshDeferred && initialLoadComplete\) \{\s*window\.location\.reload\(\);\s*return;\s*\}/,
-  );
+  assert.match(app, /restorePublicStandings\(\);[\s\S]*?restorePublicCalendar\(\);[\s\S]*?void loadStandings\(\{ initial: true \}\)\.catch\(\(\) => false\);[\s\S]*?const calendarOk = await loadCalendar\(\{ initial: true \}\)\.catch\(\(\) => false\);[\s\S]*?void registerServiceWorker\(\)\.catch\(\(\) => null\);/);
+  const workerHandoff = app.split("async function registerServiceWorker()")[1].split("async function loadConfig()")[0];
+  assert.match(workerHandoff, /controllerchange/);
+  assert.doesNotMatch(workerHandoff, /window\.location\.reload|appRefreshDeferred/);
 });
-
 
 test("notification inbox tracks unread state, opens full-screen detail, and animates swipe delete", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
@@ -990,14 +977,13 @@ test("production rollout is release-gated and Pages waits for Worker readiness",
   const pages = fs.readFileSync(".github/workflows/pages.yml", "utf8");
   const worker = fs.readFileSync(".github/workflows/deploy-worker.yml", "utf8");
   const webRuntime = fs.readFileSync(".github/workflows/web-app.yml", "utf8");
-  const calendarBridge = fs.readFileSync(".github/workflows/deploy-apps-script.yml", "utf8");
   const promote = fs.readFileSync(".github/workflows/promote-release.yml", "utf8");
   const pickup = fs.readFileSync(".github/workflows/pickup.yml", "utf8");
   const league = fs.readFileSync(".github/workflows/league.yml", "utf8");
   const watchdog = fs.readFileSync(".github/workflows/watchdog.yml", "utf8");
   const schedules = fs.readFileSync("backend/infra/external-schedules.mjs", "utf8");
 
-  for (const workflow of [worker, webRuntime, calendarBridge]) {
+  for (const workflow of [worker, webRuntime]) {
     assert.match(workflow, /release:\s*\n\s*types:\s*\[published\]/);
     assert.doesNotMatch(workflow, /push:\s*\n\s*branches:\s*\[main\]/);
     assert.match(workflow, /github\.event\.release\.tag_name \|\| 'production'/);

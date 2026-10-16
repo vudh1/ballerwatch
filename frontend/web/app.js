@@ -206,7 +206,6 @@ let confirmedRsvpDates = new Set();
 let waitlistedRsvpDates = new Set();
 let serviceWorkerRegistration = null;
 let liveRefreshInFlight = false;
-let initialLoadComplete = false;
 let consecutiveCalendarFailures = 0;
 let activeSuggestionIndex = -1;
 let lastAnswerExchange = null;
@@ -5117,7 +5116,6 @@ if (!calendarOk && !currentCalendar && navigator.onLine !== false) {
   // First-ever launch can retry in a short interval without blocking cards.
   window.setTimeout(() => { void refreshLiveData().catch(() => null); }, 12_000);
 }
-initialLoadComplete = true;
 // Refresh/install the service worker without blocking already visible cards.
 void registerServiceWorker().catch(() => null);
 void Promise.allSettled([
