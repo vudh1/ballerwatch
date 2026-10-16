@@ -1358,14 +1358,17 @@ async function loadGuestTeamOptions() {
 let guestSettingsRefreshVersion = 0;
 function saveGuestSettings() {
   const before = JSON.stringify(guestProfile.teams);
+  const previousName = guestProfile.name;
   const next = {name: els.guestName.value, teams: guestSelector().getValues()};
   if (!saveGuestProfile(localStorage, next)) {
     els.guestSettingsStatus.textContent = "Browser storage is disabled; preferences could not be saved.";
     return;
   }
   guestProfile = readGuestProfile(localStorage);
-  els.guestSettingsStatus.textContent = "Saved on this device.";
+  if (previousName !== guestProfile.name) scheduleDevicePushRefresh();
+  els.guestSettingsStatus.textContent = "Saved on this device for 24 hours.";
   if (JSON.stringify(guestProfile.teams) !== before) {
+    scheduleDevicePushRefresh();
     const version = ++guestSettingsRefreshVersion;
     try {
       localStorage.removeItem(PUBLIC_STANDINGS_DEVICE_KEY);
@@ -4326,6 +4329,15 @@ async function updatePushStatus() {
   }
 }
 
+let pendingDevicePushSync = null;
+function scheduleDevicePushRefresh() {
+  window.clearTimeout(pendingDevicePushSync);
+  pendingDevicePushSync = window.setTimeout(() => {
+    pendingDevicePushSync = null;
+    void syncCurrentPushRegistration({ force: true });
+  }, 550);
+}
+
 async function registerPushSubscription(subscription, action = "subscribe") {
   if (!subscription) return null;
   const serialized = subscription.toJSON();
@@ -4345,11 +4357,20 @@ async function registerPushSubscription(subscription, action = "subscribe") {
   });
 }
 
-async function syncCurrentPushRegistration() {
+async function syncCurrentPushRegistration({ force = false } = {}) {
+  const valid = readGuestProfile(localStorage);
+  if (JSON.stringify(valid) !== JSON.stringify(guestProfile)) {
+    guestProfile = valid;
+    renderGuestSettings();
+  }
   const subscription = await currentSubscription().catch(() => null);
   if (!subscription) return false;
   try {
+    const key = "ballerwatch:push-renewed-v1";
+    const recent = Number(sessionStorage.getItem(key) || 0);
+    if (!force && Date.now() - recent < 4 * 60 * 60 * 1000) return true;
     await registerPushSubscription(subscription, "subscribe");
+    sessionStorage.setItem(key, String(Date.now()));
     return true;
   } catch {
     return false;
@@ -4697,7 +4718,7 @@ async function saveNotificationPreferencesFromUi() {
     saveLocalNotificationChannels(localStorage, channels);
     renderNotificationPreferences();
     renderBoard(currentBoardEntries);
-    void syncCurrentPushRegistration();
+    void syncCurrentPushRegistration({ force: true });
   }
 }
 
