@@ -66,6 +66,22 @@ export function composePages(productionRoot, candidateRoot, destination, revisio
   fs.writeFileSync(swPath, sw.replaceAll("__BETA_BUILD_ID__", rev)
     .replace(/(\?v=\d+\.\d+\.\d+)(?=")/g, "$1&beta=" + rev));
 
+  // A nested beta/v2/ address is a legacy local asset path, not another
+  // /beta/beta/ redirect. Keep its fallback within the beta installation.
+  const betaLegacy = path.join(beta, "v2");
+  const betaLegacyHtml = path.join(betaLegacy, "index.html");
+  if (fs.existsSync(betaLegacyHtml)) {
+    fs.writeFileSync(betaLegacyHtml,
+      fs.readFileSync(betaLegacyHtml, "utf8")
+        .replaceAll("../beta/", "../"));
+  }
+  const betaLegacyJs = path.join(betaLegacy, "redirect.js");
+  if (fs.existsSync(betaLegacyJs)) {
+    fs.writeFileSync(betaLegacyJs,
+      fs.readFileSync(betaLegacyJs, "utf8")
+        .replace('new URL("../beta/",', 'new URL("../",'));
+  }
+
   // Old /v2/ is now an alias to /beta/. Keep query strings and fragments.
   // This compatibility redirect is an artifact-only modification: the root
   // production app assets still come exclusively from production.
