@@ -251,8 +251,9 @@ test("offline navigation is route-specific and missing scripts never receive HTM
       fire(`${worker.scope}v2/`, "navigate");
       assert.equal((await task).headers.get("location"), worker.scope + "beta/");
     }
-    assert.equal(vm.runInContext('safeAppUrl("https://evil.example/")', worker.context), "https://example.com/ballerwatch/");
-    assert.equal(vm.runInContext('safeAppUrl("/ballerwatch/")', worker.context), "https://example.com/ballerwatch/");
+    const expectedApp = "https://example.com/ballerwatch/" + (version === 2 ? "beta/" : "");
+    assert.equal(vm.runInContext('safeAppUrl("https://evil.example/")', worker.context), expectedApp);
+    assert.equal(vm.runInContext('safeAppUrl("/ballerwatch/")', worker.context), expectedApp);
   }
 });
 
