@@ -206,9 +206,7 @@ let confirmedRsvpDates = new Set();
 let waitlistedRsvpDates = new Set();
 let serviceWorkerRegistration = null;
 let liveRefreshInFlight = false;
-let initialLoadComplete = false;
 let consecutiveCalendarFailures = 0;
-let appRefreshDeferred = false;
 let activeSuggestionIndex = -1;
 let lastAnswerExchange = null;
 let feedbackSubmitted = false;
@@ -1785,23 +1783,13 @@ function setCalendarConnectionResult(success) {
 async function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return null;
 
-  let refreshing = false;
-  let previousController = navigator.serviceWorker.controller;
+  // Worker takeover on a new install must not reload the active intro.
   navigator.serviceWorker.addEventListener("controllerchange", () => {
-    const nextController = navigator.serviceWorker.controller;
-    const firstClaim = !previousController;
-    previousController = nextController;
-    if (firstClaim) return;
-    if (refreshing) return;
-    if (!initialLoadComplete) {
-      appRefreshDeferred = true;
-      return;
-    }
-    refreshing = true;
-    window.location.reload();
+    void syncServiceWorkerNotificationPreferences();
+    void syncServiceWorkerRsvpState();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=9.1.2", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=10.0.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -4314,7 +4302,7 @@ async function deleteSelectedMatch({ authorized = false } = {}) {
   const game = { ...currentNextGame };
   const label = game.title || game.dateLabel || "this match";
   if (!window.confirm(
-    `Delete ${label} from BallerWatch?\n\nThis hides the match in BallerWatch only. The RSVP/RATS source and Google Calendar are not deleted.`,
+    `Delete ${label} from BallerWatch?\n\nThis only hides the match in BallerWatch. The original RSVP/RATS fixture is not changed.`,
   )) {
     return;
   }
@@ -5099,10 +5087,6 @@ document.addEventListener("visibilitychange", () => {
       if (!started) armMusicForFirstGesture();
     });
   }
-  if (appRefreshDeferred && initialLoadComplete) {
-    window.location.reload();
-    return;
-  }
   refreshLiveData().catch(() => null);
   checkForAppUpdate().catch(() => null);
 });
@@ -5132,7 +5116,6 @@ if (!calendarOk && !currentCalendar && navigator.onLine !== false) {
   // First-ever launch can retry in a short interval without blocking cards.
   window.setTimeout(() => { void refreshLiveData().catch(() => null); }, 12_000);
 }
-initialLoadComplete = true;
 // Refresh/install the service worker without blocking already visible cards.
 void registerServiceWorker().catch(() => null);
 void Promise.allSettled([

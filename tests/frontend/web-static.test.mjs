@@ -13,19 +13,19 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
 
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   assert.match(html, /manifest\.webmanifest/);
-  assert.match(html, /apple-touch-icon\.png\?v=9\.1\.2/);
+  assert.match(html, /apple-touch-icon\.png\?v=10\.0\.0/);
   assert.match(html, /class="brand-icon"/);
-  assert.match(html, /icon\.svg\?v=9\.1\.2/);
+  assert.match(html, /icon\.svg\?v=10\.0\.0/);
   assert.match(html, /Push notifications/);
   assert.match(html, /id="notification-bell"/);
   assert.match(html, /id="notification-dialog"/);
-  assert.match(html, /styles\.css\?v=9\.1\.2/);
-  assert.match(html, /app\.js\?v=9\.1\.2/);
+  assert.match(html, /styles\.css\?v=10\.0\.0/);
+  assert.match(html, /app\.js\?v=10\.0\.0/);
 
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v9-1-2-shell/);
+  assert.match(sw, /ballerwatch-v10-0-0-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -94,7 +94,7 @@ test("promotion watches Worker and Pages then refreshes the open PWA", () => {
 test("installed PWA aggressively revalidates release assets", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
-  assert.match(app, /sw\.js\?v=9\.1\.2/);
+  assert.match(app, /sw\.js\?v=10\.0\.0/);
   assert.match(app, /updateViaCache:\s*"none"/);
   assert.match(app, /registration\.update\(\)/);
   assert.match(app, /controllerchange/);
@@ -687,31 +687,18 @@ test("weather refresh is immediate only for schedule-relevant changes", () => {
   assert.match(pickupWorkflow, /Refresh weather after pickup schedule change/);
   assert.match(pickupWorkflow, /node backend\/weather\/update\.mjs/);
   assert.match(leagueWorkflow, /Refresh weather after league schedule change/);
-  assert.match(leagueWorkflow, /needsCalendar == 'true'/);
+  assert.match(leagueWorkflow, /steps\.schedule_changes\.outputs\.hasChanges == 'true'/);
   assert.doesNotMatch(relevance, /reserved|capacity|players|waitlist/);
 });
 
 
-test("installed app does not interrupt first-load hydration for a service-worker update", () => {
+test("installed app hydrates before starting the worker and never reloads on takeover", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
-
-  assert.match(app, /let initialLoadComplete = false/);
-  assert.match(app, /let appRefreshDeferred = false/);
-  assert.match(
-    app,
-    /if \(!initialLoadComplete\) \{\s*appRefreshDeferred = true;\s*return;\s*\}/,
-  );
-  assert.match(
-    app,
-    /restorePublicStandings\(\);[\s\S]*?restorePublicCalendar\(\);[\s\S]*?void loadStandings\(\{ initial: true \}\)\.catch\(\(\) => false\);[\s\S]*?const calendarOk = await loadCalendar\(\{ initial: true \}\)\.catch\(\(\) => false\);[\s\S]*?initialLoadComplete = true;[\s\S]*?void registerServiceWorker\(\)\.catch\(\(\) => null\);/,
-  );
-  assert.match(app, /initialLoadComplete = true/);
-  assert.match(
-    app,
-    /if \(appRefreshDeferred && initialLoadComplete\) \{\s*window\.location\.reload\(\);\s*return;\s*\}/,
-  );
+  assert.match(app, /restorePublicStandings\(\);[\s\S]*?restorePublicCalendar\(\);[\s\S]*?void loadStandings\(\{ initial: true \}\)\.catch\(\(\) => false\);[\s\S]*?const calendarOk = await loadCalendar\(\{ initial: true \}\)\.catch\(\(\) => false\);[\s\S]*?void registerServiceWorker\(\)\.catch\(\(\) => null\);/);
+  const workerHandoff = app.split("async function registerServiceWorker()")[1].split("async function loadConfig()")[0];
+  assert.match(workerHandoff, /controllerchange/);
+  assert.doesNotMatch(workerHandoff, /window\.location\.reload|appRefreshDeferred/);
 });
-
 
 test("notification inbox tracks unread state, opens full-screen detail, and animates swipe delete", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
@@ -827,7 +814,7 @@ test("page uses a soccer-pitch backdrop with readable translucent cards", () => 
   assert.match(icon, /glass soccer ball.*watch ring/);
   assert.match(icon, /<circle cx="256" cy="256" r="100" fill="url\(#ball\)"\/>/);
   assert.match(icon, /stroke="url\(#ring\)"/);
-  assert.match(manifest, /icon\.svg\?v=9\.1\.2/);
+  assert.match(manifest, /icon\.svg\?v=10\.0\.0/);
   assert.match(css, /\.card,[\s\S]*\.footer-install \{[\s\S]*rgba\(6, 18, 22, 0\.57\)/);
   assert.match(css, /\.spotlight-card \{[\s\S]*rgba\(4, 16, 22, 0\.72\)/);
   assert.match(css, /backdrop-filter:\s*blur\(24px\) saturate\(135%\)/);
@@ -990,14 +977,13 @@ test("production rollout is release-gated and Pages waits for Worker readiness",
   const pages = fs.readFileSync(".github/workflows/pages.yml", "utf8");
   const worker = fs.readFileSync(".github/workflows/deploy-worker.yml", "utf8");
   const webRuntime = fs.readFileSync(".github/workflows/web-app.yml", "utf8");
-  const calendarBridge = fs.readFileSync(".github/workflows/deploy-apps-script.yml", "utf8");
   const promote = fs.readFileSync(".github/workflows/promote-release.yml", "utf8");
   const pickup = fs.readFileSync(".github/workflows/pickup.yml", "utf8");
   const league = fs.readFileSync(".github/workflows/league.yml", "utf8");
   const watchdog = fs.readFileSync(".github/workflows/watchdog.yml", "utf8");
   const schedules = fs.readFileSync("backend/infra/external-schedules.mjs", "utf8");
 
-  for (const workflow of [worker, webRuntime, calendarBridge]) {
+  for (const workflow of [worker, webRuntime]) {
     assert.match(workflow, /release:\s*\n\s*types:\s*\[published\]/);
     assert.doesNotMatch(workflow, /push:\s*\n\s*branches:\s*\[main\]/);
     assert.match(workflow, /github\.event\.release\.tag_name \|\| 'production'/);
@@ -1347,7 +1333,7 @@ test("canonical cinematic launch owns first paint and remains reduced-motion saf
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const gate = fs.readFileSync("frontend/web/v2/prepaint.js", "utf8");
   assert.match(html, /<html lang="en" class="v2"/);
-  assert.match(html, /<script src="\.\/v2\/prepaint\.js\?v=9\.1\.2"><\/script>[\s\S]*<link rel="stylesheet"/);
+  assert.match(html, /<script src="\.\/v2\/prepaint\.js\?v=10\.0\.0"><\/script>[\s\S]*<link rel="stylesheet"/);
   assert.match(html, /id="v2-launch"/);
   assert.match(html, /launch-intro-beam-a/);
   assert.match(gate, /prefers-reduced-motion: reduce/);
@@ -2073,7 +2059,7 @@ test("cached calendar renders its real Updated timestamp without false reconnect
     startup.indexOf("const calendarOk = await loadCalendar({ initial: true })"));
   assert.ok(startup.indexOf("const calendarOk = await loadCalendar({ initial: true })") <
     startup.indexOf("void registerServiceWorker().catch"));
-  assert.match(startup, /initialLoadComplete = true;/);
+  assert.doesNotMatch(startup, /appRefreshDeferred/);
   assert.doesNotMatch(startup.split("const calendarOk = await loadCalendar")[0], /setSystemState\("stale"\)/);
   assert.match(worker, /url\.pathname === "\/web\/calendar"[\s\S]*?webCalendarDetails\(snapshot, weather/);
   assert.doesNotMatch(worker, /buildMatchupEstimate\(|tuneScoutingWeights\(|buildLeagueStandings\(/);
@@ -2152,4 +2138,25 @@ test("archive lookup discards HTTP error JSON but preserves a real existing SHA"
   assert.equal(run('printf \'%s\' \'{"message":"Not Found","status":"404"}\'; return 1'), "");
   const sha = "a".repeat(40);
   assert.equal(run(`printf '%s' '${sha}'; return 0`), sha);
+});
+
+test("first-install worker takeover never reloads the cinematic introduction", () => {
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const section = app.split("async function registerServiceWorker()")[1].split("async function loadConfig()")[0];
+  assert.match(section, /controllerchange/);
+  assert.doesNotMatch(section, /location\.reload|appRefreshDeferred/);
+  const prepaint = fs.readFileSync("frontend/web/v2/prepaint.js", "utf8");
+  assert.match(prepaint, /if \(firstLaunch\) sessionStorage\.setItem\("ballerwatch:v2:launch-seen", "1"\)/);
+});
+
+test("retired Google Calendar bridge cannot reappear in deployment or runtime paths", () => {
+  const workflows = fs.readdirSync(".github/workflows").filter((name) => name.endsWith(".yml"));
+  assert.equal(workflows.includes("deploy-apps-script.yml"), false);
+  assert.equal(fs.existsSync("backend/league/google_apps_script/Code.gs"), false);
+  assert.equal(fs.existsSync("backend/league/google-calendar-sync.mjs"), false);
+  const productionWorkflows = workflows.map((name) =>
+    fs.readFileSync(".github/workflows/" + name, "utf8")).join("\n");
+  assert.doesNotMatch(productionWorkflows, /GOOGLE_CALENDAR_WEBHOOK|google-calendar-sync|calendar-gate/);
+  const runtimePaths = fs.readFileSync("backend/shared/runtime-paths.mjs", "utf8");
+  assert.doesNotMatch(runtimePaths, /calendar-snapshot/);
 });

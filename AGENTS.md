@@ -54,7 +54,7 @@ Production may proactively deliver only through Web Push / the web notification 
 
 Do not send Web Push for watchdog failures/recovery, tests, smoke runs, builds, deploys, commits, PRs, score-only changes, setup reminders, or engineering/health events.
 
-Tests, audits, smoke tests, and temporary verification runs must never send Web Push or mutate Google Calendar.
+Tests, audits, smoke tests, and temporary verification runs must never send Web Push.
 
 ## Runtime-state behavior
 
@@ -101,7 +101,7 @@ Repository source boundaries are deliberate:
 
 ## PURGE
 
-PURGE removes BallerWatch-managed Calendar events, generated encrypted runtime files, user settings, monitored-team overrides, Web Push subscriptions/board state, watchdog state, weather/Calendar snapshots, and retained chat/review state. It does not delete source code, repository/Worker secrets, or unrelated Calendar events. Defaults and current source snapshots rebuild on later runs.
+PURGE removes generated encrypted runtime files, user settings, monitored-team overrides, Web Push subscriptions/board state, watchdog state, weather snapshots, and retained chat/review state. It does not delete source code or repository/Worker secrets. Defaults and current source snapshots rebuild on later runs.
 
 ## Failure behavior
 

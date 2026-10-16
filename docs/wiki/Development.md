@@ -7,7 +7,7 @@ frontend/web/             static/installable PWA
 frontend/web/lib/         focused browser transport/state modules
 backend/infra/            Cloudflare Worker + scheduler helpers
 backend/pickup/           pickup source and notification logic
-backend/league/           RATS watcher + Calendar integration
+backend/league/           RATS watcher + independent schedule-change notifications
 backend/shared/           encryption, runtime state, auth, push, common logic
 backend/watchdog/         health/release monitoring
 backend/weather/          weather pipeline
@@ -41,6 +41,6 @@ With an authenticated checkout, runtime-state changes should also run:
 node backend/shared/runtime-state.mjs audit
 ```
 
-Tests and smoke helpers must not send Web Push or mutate Google Calendar.
+Tests and smoke helpers must not send Web Push or change production fixture data.
 
 The validation suite also verifies relative imports and rejects reintroduction of the retired messaging integration, its credentials, webhook route, and removed paths.

@@ -1,5 +1,5 @@
 /**
- * Records the single allowed RATS schedule-change web notification after Calendar sync.
+ * Records verified RATS schedule changes and one-hour match reminders as Web Push notifications.
  *
  * Production delivery is Web Push/notification-board only. This module has no
  * external messaging adapter and performs no network sends itself.

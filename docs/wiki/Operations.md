@@ -19,23 +19,13 @@ Allowed proactive Web Push:
 
 Operational health, tests, deployments, commits, PRs, score-only changes, and setup reminders do not generate user notifications.
 
-## Managed Google Calendar reconciliation
+## Independent RATS schedule updates
 
-The Google Apps Script bridge is hosted in the paired account, not GitHub Pages.
-Before deploying BallerWatch 8.1.2's Calendar deletion feature, copy the current
-`backend/league/google_apps_script/Code.gs` into the paired Apps Script project
-and deploy a new **web app version** (same existing deployment URL and secret).
-Verify its authenticated-unrestricted health `doGet` response reports
-`version: 6` and `calendarPaired: true` without exposing any credentials.
-
-Only an explicit administrator deletion of a tracked RATS league match is
-eligible for deletion from the paired Google Calendar. Unknown, untracked or
-temporarily missing upstream events are not deleted. Restoring a hidden match
-or editing its time/location is applied by the next successful league watcher.
-Without bridge v6, deletions fail closed and are retried on later watcher runs.
-
-The paired bridge currently manages RATS league games, **not pickup** games.
-The BallerWatch built-in calendar includes both and refreshes independently.
+The league watcher compares newly validated RATS fixtures with the previous
+verified feed and writes a transient change list. The encrypted BallerWatch
+notification board and Web Push record schedule alerts and one-hour reminders
+without Google permissions or any external calendar. The built-in match
+calendar combines pickup and league games for everyone, including guests.
 
 ## Password recovery
 
@@ -49,7 +39,7 @@ The reset also revokes existing signed-in devices.
 
 ## Factory reset
 
-Run **Purge current data**, type `PURGE`. It deletes BallerWatch-managed Calendar events and generated runtime state, then reinitializes Web Push identity. Source code, repository/Worker secrets, and unrelated Calendar events remain.
+Run **Purge current data**, type `PURGE`. It deletes generated runtime state and reinitializes Web Push identity. Source code and repository/Worker secrets remain.
 
 ## Failure behavior
 
