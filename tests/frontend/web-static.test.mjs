@@ -1001,7 +1001,8 @@ test("repository policy reserves SemVer for product behavior changes", () => {
   assert.match(agents, /documentation-only edits/);
   assert.match(agents, /behavior-preserving refactors/);
   assert.match(agents, /CI\/workflow maintenance/);
-  assert.match(agents, /published GitHub Release\/tag/);
+  assert.match(agents, /manual-only through protected administrator action/);
+  assert.match(agents, /GitHub Release/);
   assert.match(agents, /24 hours/);
 });
 
