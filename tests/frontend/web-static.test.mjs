@@ -1437,7 +1437,7 @@ test("closing a pointer-opened RSVP roster clears the lingering capacity focus r
   );
 });
 
-test("pickup capacity opens a full-width signed-in RSVP roster without public name leakage", () => {
+test("pickup capacity opens accountless event-scoped RSVP roster without catalog leakage", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const css = fs.readFileSync("frontend/web/styles.css", "utf8");
@@ -1454,10 +1454,12 @@ test("pickup capacity opens a full-width signed-in RSVP roster without public na
   assert.match(html, /id="rsvp-roster-rsvp"[\s\S]*>RSVP<\/a>/);
 
   assert.match(app, /async function openRsvpRoster/);
-  assert.match(app, /\/web\/user\/rsvp-roster\?date=/);
-  assert.match(app, /headers:\s*ownerHeaders\(\)/);
+  const guestRoster = app.split("async function openRsvpRoster() {")[1]
+    ?.split("function showLoginSettings")[0] || "";
+  assert.match(guestRoster, /\/web\/rsvp-roster\?date=/);
+  assert.doesNotMatch(guestRoster, /ownerHeaders\(\)|ownerToken\(\)/);
   assert.match(app, /event\.target === els\.rsvpRosterDialog/);
-  assert.match(app, /Sign in to view RSVP names/);
+  assert.doesNotMatch(html, /id="rsvp-roster-sign-in"/);
   assert.match(app, /a, button, \[tabindex\]/);
 
   const rosterSheet = css.split("/* v7.0.25 full-width RSVP roster sheet */")[1] || "";
@@ -1470,11 +1472,9 @@ test("pickup capacity opens a full-width signed-in RSVP roster without public na
   assert.match(css, /\.rsvp-roster-dialog::backdrop/);
   assert.match(css, /\.next-game-capacity\[role="button"\]/);
 
+  assert.match(worker, /url\.pathname === "\/web\/rsvp-roster"/);
+  assert.match(worker, /No published RSVP roster for this date/);
   assert.match(worker, /userRoute\(url\.pathname, "rsvp-roster"\)/);
-  assert.match(
-    worker,
-    /userRoute\(url\.pathname, "rsvp-roster"\)[\s\S]*resolveOwnerCapability\(env, bearerToken\(request\)\)/,
-  );
   assert.match(worker, /export function pickupRsvpRosterView/);
   assert.match(worker, /players:\s*\[\],[\s\S]*waitlist:\s*\[\]/);
 
