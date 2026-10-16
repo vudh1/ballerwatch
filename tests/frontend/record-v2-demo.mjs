@@ -88,7 +88,7 @@ try {
     await new Promise((resolve) => {
       const move = () => {
         frames += 1;
-        const progress = Math.min(1, (performance.now() - start) / 15000);
+        const progress = Math.min(1, (performance.now() - start) / 8000);
         window.scrollTo(0, distance * progress);
         if (progress < 1) requestAnimationFrame(move);
         else resolve();
@@ -98,7 +98,7 @@ try {
     return { frames, seconds: (performance.now() - start) / 1000 };
   });
   console.log(`Native tour animation: ${(tour.frames / tour.seconds).toFixed(1)} frames/sec`);
-  await page.waitForTimeout(1800);
+  await page.waitForTimeout(700);
   console.log("Recording match cards, calendar and standings…");
   const card = await page.locator("#next-game-card").boundingBox();
   const touch = await context.newCDPSession(page);
@@ -111,25 +111,25 @@ try {
   await touch.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
   await touch.detach();
   await page.waitForFunction(() => document.querySelector("#next-game-meta").textContent.includes("Fixture FC"));
-  await page.waitForTimeout(1700);
+  await page.waitForTimeout(800);
   await page.locator("#two-week-calendar").evaluate((el) => el.scrollIntoView({ behavior: "smooth", block: "start" }));
-  await page.waitForTimeout(1600);
+  await page.waitForTimeout(800);
   await page.locator("#league-standings").evaluate((el) => el.scrollIntoView({ behavior: "smooth", block: "start" }));
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(1000);
   console.log("Recording AI, Inbox and personal settings…");
   await page.locator("#chat-launcher").click();
   await page.locator("#question").fill("What jersey color for our next league game?");
   await page.locator('#question-form button[type="submit"]').click();
   await page.waitForFunction(() => document.querySelector("#answer").textContent.includes("Wear white"));
-  await page.waitForTimeout(2200);
+  await page.waitForTimeout(1200);
   await page.locator("#close-chat").click();
   await page.locator("#chat-launcher").click();
   await page.locator("#notification-bell").click();
-  await page.waitForTimeout(1900);
+  await page.waitForTimeout(950);
   await page.locator("#close-notifications").click();
   await page.locator("#chat-launcher").click();
   await page.locator("#settings-button").click();
-  await page.waitForTimeout(2300);
+  await page.waitForTimeout(1200);
   if (errors.length) throw new Error(`Demo browser errors: ${errors.join(", ")}`);
   await context.close();
   const videoPath = await video.path();
