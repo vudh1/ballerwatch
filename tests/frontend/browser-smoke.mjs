@@ -398,7 +398,7 @@ try {
         });
         await page.waitForFunction(() =>
           document.querySelector("#guest-settings-status")?.textContent.startsWith("Saved."));
-        const profile = await page.evaluate(() => JSON.parse(localStorage.getItem("ballerwatch-visitor-profile-v1-24h")).data);
+        const profile = await page.evaluate(() => JSON.parse(localStorage.getItem("ballerwatch-visitor-profile-v2")).data);
         assert.equal(profile.name, "Visitor");
         assert.deepEqual(profile.teams, ["Fixture FC", "Test United"]);
         assert.ok(calls.filter((call) => call.path === "/web/calendar").length >= 2,
