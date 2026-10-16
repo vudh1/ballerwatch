@@ -149,7 +149,6 @@ const els = {
   rsvpRosterWaitlistCount: document.querySelector("#rsvp-roster-waitlist-count"),
   rsvpRosterWaitlistList: document.querySelector("#rsvp-roster-waitlist-list"),
   rsvpRosterRsvp: document.querySelector("#rsvp-roster-rsvp"),
-  rsvpRosterSignIn: document.querySelector("#rsvp-roster-sign-in"),
   nextGameWeather: document.querySelector("#next-game-weather"),
   nextGameActions: document.querySelector("#next-game-actions"),
   nextGameDirections: document.querySelector("#next-game-directions"),
@@ -1047,13 +1046,6 @@ function renderRsvpRosterList(container, entries) {
   });
 }
 
-function showRsvpRosterSignIn() {
-  els.rsvpRosterSummary.textContent = "Sign in to view RSVP names.";
-  els.rsvpRosterConfirmed.hidden = true;
-  els.rsvpRosterQueue.hidden = true;
-  els.rsvpRosterSignIn.hidden = false;
-}
-
 async function openRsvpRoster() {
   const game = currentNextGame ? { ...currentNextGame } : null;
   if (game?.kind !== "pickup" || game.reserved == null) return;
@@ -1066,7 +1058,6 @@ async function openRsvpRoster() {
   els.rsvpRosterSummary.textContent = "Loading RSVP names…";
   els.rsvpRosterConfirmed.hidden = false;
   els.rsvpRosterQueue.hidden = true;
-  els.rsvpRosterSignIn.hidden = true;
   els.rsvpRosterConfirmedCount.textContent = "";
   els.rsvpRosterWaitlistCount.textContent = "";
   els.rsvpRosterConfirmedList.replaceChildren();
@@ -1076,18 +1067,10 @@ async function openRsvpRoster() {
 
   if (!els.rsvpRosterDialog.open) els.rsvpRosterDialog.showModal();
 
-  if (!ownerToken()) {
-    showRsvpRosterSignIn();
-    return;
-  }
-
   try {
     const payload = await api(
-      `/web/user/rsvp-roster?date=${encodeURIComponent(sourceDate)}`,
-      {
-        headers: ownerHeaders(),
-        retryNetwork: true,
-      },
+      `/web/rsvp-roster?date=${encodeURIComponent(sourceDate)}`,
+      { retryNetwork: true },
     );
     if (requestId !== rsvpRosterRequestId || !els.rsvpRosterDialog.open) return;
 
@@ -1124,14 +1107,9 @@ async function openRsvpRoster() {
     }
   } catch (error) {
     if (requestId !== rsvpRosterRequestId || !els.rsvpRosterDialog.open) return;
-    if (error.status === 401) {
-      clearSession();
-      showRsvpRosterSignIn();
-    } else {
-      els.rsvpRosterSummary.textContent = error.message;
-      els.rsvpRosterConfirmed.hidden = true;
-      els.rsvpRosterQueue.hidden = true;
-    }
+    els.rsvpRosterSummary.textContent = error.message;
+    els.rsvpRosterConfirmed.hidden = true;
+    els.rsvpRosterQueue.hidden = true;
   }
 }
 
@@ -1601,7 +1579,7 @@ async function registerServiceWorker() {
     void syncServiceWorkerRsvpState();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=11.0.1", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=11.0.2", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -4638,11 +4616,6 @@ els.rsvpRosterDialog.addEventListener("close", () => {
     window.requestAnimationFrame(() => els.nextGameCapacity.blur());
   }
   rsvpRosterOpenedByPointer = false;
-});
-els.rsvpRosterSignIn.addEventListener("click", async () => {
-  closeRsvpRoster();
-  await openSettings();
-  showLoginSettings("Sign in to view pickup RSVP names.");
 });
 els.nextGameShare.addEventListener("click", shareNextGame);
 els.testNotification.addEventListener("click", scheduleTestNotification);
