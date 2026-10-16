@@ -55,6 +55,12 @@ jobs:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
         run: node backend/pickup/update.mjs
 
+      - name: Refresh private name index for per-device RSVP filtering
+        if: steps.gate.outputs.should_run == 'true'
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: node backend/shared/rsvp-name-index.mjs
+
       - name: Send pickup notifications
         if: steps.gate.outputs.should_run == 'true'
         env:

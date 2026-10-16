@@ -12,12 +12,22 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { decryptState, encryptState } from "./state-crypto.mjs";
 import { normalizeWebPushEndpoint } from "./web-push-endpoint.mjs";
-import { pickupNotificationAudience } from "./notification-audience.mjs";
-import { loadUserSettings } from "./user-state.mjs";
+import { pickupNotificationAudience, leagueNotificationAudience } from "./notification-audience.mjs";
+import { loadRsvpNameIndex } from "./rsvp-name-index.mjs";
 import { loadWebNotificationChannel } from "./web-notifications.mjs";
 
 const STATE_PATH = "state/web-push.json";
-const MAX_SUBSCRIPTIONS = 24;
+const MAX_SUBSCRIPTIONS = 256;
+export const PUSH_LEASE_MS = 24 * 60 * 60 * 1000;
+export function activeDeviceSubscriptions(items, now = new Date()) {
+  return (Array.isArray(items) ? items : []).filter(item =>
+    Date.parse(item?.expiresAt || "") > now.getTime());
+}
+function deviceTeams(value) {
+  return [...new Set((Array.isArray(value) ? value : [])
+    .map(name => clean(name, 120).replace(/\\s+/g," "))
+    .filter(name => name.length >= 2))].slice(0, 8);
+}
 const VAPID_SUBJECT = "mailto:ballerwatch@users.noreply.github.com";
 
 function clean(value, max = 1000) {
@@ -58,23 +68,23 @@ function createState() {
 
 export function loadWebPushState() {
   try {
-    const encrypted = JSON.parse(fs.readFileSync(STATE_PATH, "utf8"));
-    const value = decryptState(encrypted);
-    if (
-      [1, 2].includes(value?.version) &&
-      value?.vapid?.privateJwk &&
-      value?.vapid?.applicationServerKey &&
-      Array.isArray(value?.subscriptions)
-    ) {
-      return {
-        ...value,
-        version: 2,
-        subscriptions: value.subscriptions.map((item) => ({
-          ...item,
-          userId: clean(item?.userId, 32).toLowerCase(),
-          channels: normalizedChannels(item?.channels),
-        })),
-      };
+    const envelope = JSON.parse(fs.readFileSync(STATE_PATH, "utf8"));
+    const value = decryptState(envelope);
+    if ([1,2].includes(value?.version) && value.vapid?.privateJwk &&
+        value.vapid?.applicationServerKey && Array.isArray(value.subscriptions)) {
+      return { ...value, version: 2,
+        subscriptions: activeDeviceSubscriptions(value.subscriptions)
+          .map(item => ({
+            endpoint: item.endpoint,
+            expirationTime: item.expirationTime ?? null,
+            keys: item.keys,
+            channels: normalizedChannels(item.channels),
+            teams: deviceTeams(item.teams),
+            rsvpTag: /^[a-f0-9]{64}$/.test(String(item.rsvpTag || "")) ? item.rsvpTag : "",
+            createdAt: item.createdAt,
+            updatedAt: item.updatedAt,
+            expiresAt: item.expiresAt,
+          })) };
     }
   } catch {}
   return null;
@@ -248,42 +258,48 @@ export async function validateWebPushDestination(
   return normalized;
 }
 
-export function applyRegistrationEvent(event) {
+export function applyRegistrationEvent(event, { now = new Date() } = {}) {
   const state = ensureWebPushState();
   const action = clean(event?.action, 30);
   const subscription = normalizedSubscription(event?.subscription);
-  const userId = clean(event?.userId, 32).toLowerCase();
+  if (!subscription.endpoint) throw new Error("Missing verified Web Push endpoint.");
   const channels = normalizedChannels(event?.channels);
-  const now = new Date().toISOString();
-
+  const timestamp = now.toISOString();
+  const active = activeDeviceSubscriptions(state.subscriptions, now);
   if (action === "subscribe") {
-    const previous = state.subscriptions.find(
-      (item) => item.endpoint === subscription.endpoint,
-    );
-    const existing = state.subscriptions.filter(
-      (item) => item.endpoint !== subscription.endpoint,
-    );
+    const previous = active.find(item => item.endpoint === subscription.endpoint);
     state.subscriptions = [
-      ...existing,
+      ...active.filter(item => item.endpoint !== subscription.endpoint),
       {
         ...subscription,
-        userId,
+        teams: deviceTeams(event?.teams),
+        rsvpTag: /^[a-f0-9]{64}$/.test(String(event?.rsvpTag || "")) ?
+          event.rsvpTag : "",
         channels,
-        createdAt: previous?.createdAt || now,
-        updatedAt: now,
+        createdAt: previous?.createdAt || timestamp,
+        updatedAt: timestamp,
+        expiresAt: new Date(now.getTime() + PUSH_LEASE_MS).toISOString(),
       },
     ].slice(-MAX_SUBSCRIPTIONS);
   } else if (action === "unsubscribe") {
-    state.subscriptions = state.subscriptions.filter(
-      (item) => item.endpoint !== subscription.endpoint,
-    );
+    state.subscriptions = active.filter(item => item.endpoint !== subscription.endpoint);
   } else {
     throw new Error("Unsupported Web Push registration action.");
   }
-
   saveWebPushState(state);
-  console.log(`Applied Web Push ${action}; ${state.subscriptions.length} subscription(s) active.`);
+  console.log("Applied Web Push", action, ";", state.subscriptions.length,
+    "short-lived device(s).");
   return state;
+}
+
+export function pruneDeviceSubscriptions({ now = new Date() } = {}) {
+  const state = ensureWebPushState();
+  const active = activeDeviceSubscriptions(state.subscriptions, now);
+  if (active.length === state.subscriptions.length) return 0;
+  const count = state.subscriptions.length - active.length;
+  state.subscriptions = active;
+  saveWebPushState(state);
+  return count;
 }
 
 export function applyEncryptedRegistrationEventB64(encoded) {
@@ -331,25 +347,14 @@ export async function sendWebPushSignals({
   let sent = 0;
   let failed = 0;
   const staleEndpoints = new Set();
-  // The roster is read only in the encrypted Actions runner. Push remains
-  // payload-free, and no account or participant details are logged.
-  let privateEvents = {};
-  if (channel === "pickup" && entry) {
-    try {
-      const source = JSON.parse(fs.readFileSync(".runtime/pickup/events.json", "utf8"));
-      privateEvents = source?.events || {};
-    } catch {}
-  }
-  const settings = channel === "pickup" && entry ? loadUserSettings() : {};
-
+  // The precomputed index contains secret-keyed name digests, not rosters.
+  const nameIndex = channel === "pickup" && entry ? loadRsvpNameIndex({now}) : null;
   for (const subscription of state.subscriptions) {
-    if (channel && normalizedChannels(subscription?.channels)[channel] === false) {
-      continue;
-    }
+    if (channel && normalizedChannels(subscription?.channels)[channel] === false) continue;
     if (channel === "pickup" && entry &&
-        !pickupNotificationAudience(entry, subscription, settings, privateEvents)) {
-      continue;
-    }
+        !pickupNotificationAudience(entry, subscription, nameIndex)) continue;
+    if (channel === "league" && entry &&
+        !leagueNotificationAudience(entry, subscription)) continue;
 
     let endpoint;
     try {
@@ -446,7 +451,9 @@ if (isCli) {
     await sendWebPushSignals();
   } else if (command === "send-pending") {
     await sendPendingWebPushSignals();
+  } else if (command === "prune") {
+    console.log("Expired device registrations removed:", pruneDeviceSubscriptions());
   } else {
-    throw new Error("Usage: node backend/shared/web-push.mjs ensure|apply-event|send|send-pending");
+    throw new Error("Usage: node backend/shared/web-push.mjs ensure|apply-event|send|send-pending|prune");
   }
 }

@@ -198,6 +198,7 @@ export function recordLeagueStartReminders({ now = new Date() } = {}) {
     title: due.length === 1 ? "Match starts in 1 hour" : "Matches start in 1 hour",
     body: lines.join("\n"),
     tag: leagueReminderTag(due[0].key),
+    teams: due.flatMap(match => [match.team, match.opponent]),
   }, { now, rootDir: webStateRoot() });
 
   for (const match of due) sent.add(String(match.key));
@@ -226,6 +227,7 @@ export function notifyWeb({ now = new Date() } = {}) {
           title: "RATS schedule updated",
           body,
           tag: `rats-${updates[0]?.match?.date || "schedule"}`,
+          teams: updates.flatMap(item => [item.match?.team, item.match?.opponent]),
         }, { now, rootDir: webStateRoot() });
         console.log(`Web notification recorded for ${updates.length} schedule update(s).`);
         recorded = true;
@@ -243,6 +245,7 @@ export function notifyWeb({ now = new Date() } = {}) {
         title: completed === 1 ? "RATS score reported" : "RATS scores reported",
         body,
         tag: "rats-scores",
+        teams: updates.flatMap(item => [item.match?.team, item.match?.opponent]),
       }, { now, rootDir: webStateRoot() });
       console.log(`Web notification recorded for ${completed} monitored score update(s).`);
       recorded = true;

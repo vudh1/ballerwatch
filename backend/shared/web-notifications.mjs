@@ -54,6 +54,8 @@ export function appendWebNotification(
     body: clean(entry?.body, 900),
     url: clean(entry?.url, 500) || "https://vudh1.github.io/ballerwatch/",
     tag: clean(entry?.tag, 120) || `ballerwatch-${channel}`,
+    teams: [...new Set((Array.isArray(entry?.teams) ? entry.teams : [])
+      .map(name => clean(name, 120)).filter(Boolean))].slice(0, 20),
   };
 
   const duplicate = [...current.entries]
