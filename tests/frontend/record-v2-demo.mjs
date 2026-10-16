@@ -142,10 +142,14 @@ try {
   execFileSync("ffmpeg", ["-v", "error", "-threads", "1", "-y", "-i", videoPath, "-vf",
     `${filters},palettegen=max_colors=64:stats_mode=diff`, "-frames:v", "1", palette], { stdio: "ignore" });
   execFileSync("ffmpeg", ["-v", "error", "-threads", "1", "-y", "-i", videoPath, "-i", palette, "-lavfi",
-    `[0:v]${filters}[v];[v][1:v]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle`, "-loop", "0", output], { stdio: "ignore" });
+    `[0:v]${filters}[v];[v][1:v]paletteuse=dither=none:diff_mode=rectangle`, "-loop", "0", output], { stdio: "ignore" });
   if (process.env.BALLERWATCH_GIFSICLE) {
     execFileSync(process.env.BALLERWATCH_GIFSICLE, ["-O3", "--lossy=40", "--careful", "-b", output], { stdio: "ignore" });
+    if (fs.statSync(output).size > 10_000_000) {
+      execFileSync(process.env.BALLERWATCH_GIFSICLE, ["-O3", "--lossy=60", "--careful", "-b", output], { stdio: "ignore" });
+    }
   }
+  if (fs.statSync(output).size > 10_000_000) throw new Error("README GIF exceeds 10 MB; configure BALLERWATCH_GIFSICLE or shorten the tour.");
   console.log(`BallerWatch demo recorded: ${output} (${(fs.statSync(output).size / 1024 / 1024).toFixed(1)} MiB)`);
 } finally {
   await browser.close();

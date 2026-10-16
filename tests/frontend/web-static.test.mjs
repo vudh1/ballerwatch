@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { execFileSync } from "node:child_process";
 
 test("GitHub Pages PWA has installable project-path manifest and service worker", () => {
   const manifest = JSON.parse(fs.readFileSync("frontend/web/manifest.webmanifest", "utf8"));
@@ -2141,3 +2142,14 @@ test("public GET timeout covers the full response body, not only headers", () =>
   assert.match(request, /timeoutMs = 8_000/);
 });
 
+
+test("archive lookup discards HTTP error JSON but preserves a real existing SHA", () => {
+  const workflow = fs.readFileSync(".github/workflows/cleanup-merged-branches.yml", "utf8");
+  const lookup = workflow.match(/              if ! existing="\$\([\s\S]*?\n              fi/)[0];
+  const run = (body) => execFileSync("bash", ["-c",
+    `set -euo pipefail\nrepo=example/repo\ntag=archive/test\ngh() { ${body}; }\n${lookup}\nprintf '%s' "$existing"`,
+  ], { encoding: "utf8" });
+  assert.equal(run('printf \'%s\' \'{"message":"Not Found","status":"404"}\'; return 1'), "");
+  const sha = "a".repeat(40);
+  assert.equal(run(`printf '%s' '${sha}'; return 0`), sha);
+});
