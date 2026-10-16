@@ -25,7 +25,7 @@ export function activeDeviceSubscriptions(items, now = new Date()) {
 }
 function deviceTeams(value) {
   return [...new Set((Array.isArray(value) ? value : [])
-    .map(name => clean(name, 120).replace(/\\s+/g," "))
+    .map(name => clean(name, 120).replace(/\s+/g," "))
     .filter(name => name.length >= 2))].slice(0, 8);
 }
 const VAPID_SUBJECT = "mailto:ballerwatch@users.noreply.github.com";

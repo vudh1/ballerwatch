@@ -1,6 +1,8 @@
 name: Pickup watcher
 
 on:
+  schedule:
+    - cron: '17 * * * *'
   workflow_dispatch:
     inputs:
       external_fallback:
@@ -83,6 +85,12 @@ jobs:
           node backend/shared/runtime-state.mjs pull weather
           node backend/weather/update.mjs
           node backend/shared/runtime-state.mjs push weather
+
+      - name: Remove expired push devices, even without a new alert
+        if: steps.gate.outputs.should_run == 'true'
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: node backend/shared/web-push.mjs prune
 
       - name: Signal installed web app
         if: steps.gate.outputs.should_run == 'true'

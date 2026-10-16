@@ -60,9 +60,16 @@ jobs:
           set -euo pipefail
           for scope in user pickup league watchdog weather web; do
             node backend/shared/runtime-state.mjs pull "$scope"
+            if [ "$scope" = "user" ]; then
+              node backend/shared/accountless-migration.mjs
+            fi
             node backend/shared/runtime-state.mjs push "$scope"
             node backend/shared/runtime-state.mjs clean "$scope"
           done
+          node backend/shared/runtime-state.mjs pull pickup
+          node backend/shared/rsvp-name-index.mjs
+          node backend/shared/runtime-state.mjs push pickup
+          node backend/shared/runtime-state.mjs clean pickup
           node backend/shared/runtime-state.mjs audit
 
       - name: Refresh match weather for released schedule
