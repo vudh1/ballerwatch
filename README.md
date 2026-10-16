@@ -31,9 +31,9 @@ Saturday synthetic pickup is shown simply as **Pickup** and has no RSVP/capacity
 
 ## Demo
 
-![BallerWatch animated demo: cinematic launch, stadium audience and camera flashes, feature tour, original match cards, calendar, standings, AI, aligned Inbox preferences and Settings](docs/demo.gif)
+![BallerWatch animated demo: cinematic launch, stadium audience and camera flashes, feature tour, original match cards, calendar, standings, the AI / Settings / Notifications hub and aligned Inbox preferences](docs/demo.gif)
 
-A 40.3-second walkthrough recorded from the deployed 9.0.0 app, with smooth 20 fps animation. Match details, answers and Inbox entries use synthetic sample data; the recording does not read production accounts or change RSVP, notifications or Calendar entries.
+A 36.4-second walkthrough recorded from the deployed 9.1.1 app, with smooth 20 fps animation. Match details, answers and Inbox entries use synthetic sample data; the recording does not read production accounts or change RSVP, notifications or Calendar entries.
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/)
 
@@ -44,10 +44,6 @@ A 40.3-second walkthrough recorded from the deployed 9.0.0 app, with smooth 20 f
 **v9.1.0** — Faster shot, later keeper reaction, equal-length arms and captain #10 with short sleeves. One AI hub replaces detached header controls. Skip preserves rewind. Evidence-led scouting preparation and weekly Groq/Gemini model proposals are tested against independent historical results before probability changes are eligible. See [Scouting model](docs/wiki/Scouting.md).
 
 **v9.0.0** — The cinematic app takes over the main address. Add audience/camera flashes, fade Settings/Inbox with the card reveal, remove replay/version controls, and align notification checks. Old V2 links redirect to the canonical app.
-
-**v8.14.1** — Full-screen V2 stadium coverage, borderless feature captions and ball/keeper action in front of the words. Remove the scroll instructions and refresh the V2 demo.
-
-**v8.14.0** — A two-second cinematic wordmark, glass panels introducing the site's features, and fixed Settings/Inbox controls throughout the V2 reveal. Switch V1/V2 in Settings, use the new glass soccer-ball icon, and watch the V2 demo above.
 
 That's the recent summary. Older release details live in [GitHub Releases](https://github.com/vudh1/ballerwatch/releases) and the [Versions guide](https://github.com/vudh1/ballerwatch/wiki/Versions). The project keeps the full ledger in [features/versions.json](features/versions.json) rather than repeating it in this README.
 
@@ -228,5 +224,3 @@ Copyright © 2026 BallerWatch. All rights reserved. See [COPYRIGHT.md](COPYRIGHT
 ## More documentation
 
 [Wiki home](https://github.com/vudh1/ballerwatch/wiki) · [Versions](https://github.com/vudh1/ballerwatch/wiki/Versions) · [Operations](https://github.com/vudh1/ballerwatch/wiki/Operations) · [Development](https://github.com/vudh1/ballerwatch/wiki/Development)
-
-Copyright © 2026 BallerWatch. All rights reserved. See `COPYRIGHT.md`.

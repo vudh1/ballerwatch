@@ -1,74 +1,89 @@
-name: One-time merged branch cleanup
+name: Audit and prune completed source branches
 
+# Manual maintenance, also run after this audited policy changes on main.
+# Exact merged PR heads are safe; explicitly reviewed superseded work is tagged
+# before branch removal so no unmerged implementation is discarded.
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths: [".github/workflows/cleanup-merged-branches.yml"]
-  workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ballerwatch-source-branch-cleanup
+  cancel-in-progress: false
+
 jobs:
   cleanup:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
-      - name: Prune only unchanged merged and verified superseded branches
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: main
+
+      - name: Require published healthy production and preserve all unreviewed work
         env:
           GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
           repo="$GITHUB_REPOSITORY"
-          tag_sha="$(gh api "/repos/$repo/git/ref/tags/v7.1.7" --jq '.object.sha')"
-          live_sha="$(gh api "/repos/$repo/git/ref/heads/production" --jq '.object.sha')"
-          if [ "$tag_sha" != "$live_sha" ]; then
-            echo "::error::Refusing cleanup: production does not match release v7.1.7."
+          version="$(node -p 'JSON.parse(require("fs").readFileSync("features/versions.json","utf8")).currentVersion')"
+          released_sha="$(gh api "/repos/$repo/git/ref/tags/v$version" --jq '.object.sha')"
+          production_sha="$(gh api "/repos/$repo/git/ref/heads/production" --jq '.object.sha')"
+          draft="$(gh release view "v$version" --repo "$repo" --json isDraft --jq '.isDraft')"
+          if [ "$draft" != false ] || [ "$production_sha" != "$released_sha" ]; then
+            echo "::error::Release and production must agree before cleanup."
             exit 1
           fi
-          cutoff="$(gh api "/repos/$repo/releases/tags/v7.1.7" --jq '.published_at')"
-          gh api --paginate "/repos/$repo/pulls?state=closed&per_page=100" | jq -r --arg cutoff "$cutoff" '.[] | select(.merged_at != null and .merged_at <= $cutoff) | [.head.ref, .head.sha, (.head.repo.full_name // "")] | join("|")' > /tmp/ballerwatch-merged-refs.txt
-          removed=0
-          skipped=0
-          while IFS='|' read -r ref merged_sha head_repo; do
-            case "$ref" in main|production|runtime-state|"") continue ;; esac
-            if [ "$head_repo" != "$repo" ]; then continue; fi
-            actual="$(gh api "/repos/$repo/git/ref/heads/$ref" --jq '.object.sha' 2>/dev/null || true)"
-            if [ -z "$actual" ]; then continue; fi
-            if [ "$actual" != "$merged_sha" ]; then
-              echo "Preserving changed branch: $ref"
-              skipped=$((skipped + 1))
-              continue
+          pages="$(gh api -X GET "/repos/$repo/actions/workflows/pages.yml/runs" -f head_sha="$released_sha" -f status=completed -f per_page=30 --jq '[.workflow_runs[] | select(.conclusion == "success")] | length')"
+          if [ "$pages" -lt 1 ]; then echo "::error::No successful Pages rollout for production."; exit 1; fi
+          DEPLOYED_SHA="$production_sha"
+          test "$DEPLOYED_SHA" = "$released_sha"
+          gh api --paginate "/repos/$repo/pulls?state=closed&per_page=100" |
+            jq -s --arg repo "$repo" '[.[][] | select(.merged_at != null and .base.ref == "main" and .head.repo.full_name == $repo) | {branch: .head.ref, sha: .head.sha}]' > /tmp/merged-prs.json
+          gh api --paginate "/repos/$repo/pulls?state=open&per_page=100" |
+            jq -s '[.[][] | .head.ref]' > /tmp/open-prs.json
+          gh api --paginate "/repos/$repo/branches?per_page=100" |
+            jq -s '[.[][] | {branch: .name, sha: .commit.sha, protected: .protected}]' > /tmp/branches.json
+          deleted=0
+          archived=0
+          preserved=0
+          echo "### Source branch audit for v$version" >> "$GITHUB_STEP_SUMMARY"
+          while IFS='|' read -r name sha protected; do
+            case "$name" in main|production|runtime-state) continue ;; release/*|fix/*|maintenance/*) ;; *) continue ;; esac
+            if [ "$protected" = true ] || jq -e --arg name "$name" 'index($name) != null' /tmp/open-prs.json >/dev/null; then
+              preserved=$((preserved + 1)); continue
             fi
-            if gh api --method DELETE "/repos/$repo/git/refs/heads/$ref" >/dev/null; then
-              echo "Deleted merged PR branch: $ref"
-              removed=$((removed + 1))
-            else
-              echo "::warning::Unable to delete branch: $ref"
-              skipped=$((skipped + 1))
+            merged="$(jq --arg name "$name" --arg sha "$sha" '[.[] | select(.branch == $name and .sha == $sha)] | length' /tmp/merged-prs.json)"
+            superseded=false
+            # Reviewed in docs/releases/9.1.1-verification.md; immutable source
+            # preserved in archive tags before deleting these three branch refs.
+            case "$name:$sha" in
+              release/8.6.0-scoring-snapshot-reliability:7867be757a2f794564ffe825357f50011466b90b|release/8.9.0:97f73b5a55279e11bfe4feccdcae6adcae7e01fd|release/8.9.3:2bce5cc3a7449d4bce922b3f1e107afc214f8019) superseded=true ;;
+            esac
+            if [ "$merged" -lt 1 ] && [ "$superseded" != true ]; then
+              preserved=$((preserved + 1)); echo "- Preserved unmerged/changed: $name" >> "$GITHUB_STEP_SUMMARY"; continue
             fi
-          done < /tmp/ballerwatch-merged-refs.txt
-
-          if [ "$(gh api "/repos/$repo/pulls/105" --jq '.merged')" = "true" ] && [ "$(gh api "/repos/$repo/pulls/106" --jq '.merged')" = "true" ] && [ "$(gh api "/repos/$repo/pulls/92" --jq '.merged')" = "true" ]; then
-            for spec in "ops/rats-history-rebuild:c1d1e5ae813225696a6214f7262dab171bc00cb4" "release/7.1.1:085ce96689fdefbf3f967392c7ffde2a550fbbce" "feat/7.0.16-rsvp-roster-popup:2f77a88733b6a2af39dee34810c0856e92103b5f"; do
-              ref="${spec%%:*}"
-              expected="${spec#*:}"
-              actual="$(gh api "/repos/$repo/git/ref/heads/$ref" --jq '.object.sha' 2>/dev/null || true)"
-              if [ "$actual" = "$expected" ]; then
-                if gh api --method DELETE "/repos/$repo/git/refs/heads/$ref" >/dev/null; then
-                  echo "Deleted superseded RATS branch: $ref"
-                  removed=$((removed + 1))
-                else
-                  echo "::warning::Unable to delete superseded branch: $ref"
-                  skipped=$((skipped + 1))
-                fi
-              fi
-            done
-          fi
-          {
-            echo "### Branch cleanup for v7.1.7"
-            echo "- Removed: $removed"
-            echo "- Skipped: $skipped"
-            echo "- Preserved: main, production, runtime-state"
-          } >> "$GITHUB_STEP_SUMMARY"
+            live="$(gh api "/repos/$repo/git/ref/heads/$name" --jq '.object.sha')"
+            if [ "$live" != "$sha" ]; then preserved=$((preserved + 1)); continue; fi
+            if [ "$superseded" = true ]; then
+              tag="archive/2026-10-16/$name"
+              existing="$(gh api "/repos/$repo/git/ref/tags/$tag" --jq '.object.sha' 2>/dev/null || true)"
+              if [ -z "$existing" ]; then
+                gh api -X POST "/repos/$repo/git/refs" -f "ref=refs/tags/$tag" -f "sha=$sha" >/dev/null
+              elif [ "$existing" != "$sha" ]; then echo "::error::Archive tag mismatch"; exit 1; fi
+              archived=$((archived + 1))
+              echo "- Archived reviewed superseded work: $name → $tag" >> "$GITHUB_STEP_SUMMARY"
+            fi
+            live="$(gh api "/repos/$repo/git/ref/heads/$name" --jq '.object.sha')"
+            if [ "$live" != "$sha" ]; then preserved=$((preserved + 1)); continue; fi
+            gh api -X DELETE "/repos/$repo/git/refs/heads/$name" >/dev/null
+            deleted=$((deleted + 1))
+            echo "- Removed unchanged completed source branch: $name" >> "$GITHUB_STEP_SUMMARY"
+          done < <(jq -r '.[] | [.branch, .sha, (.protected|tostring)] | join("|")' /tmp/branches.json)
+          echo "Deleted $deleted branches; archived $archived reviewed heads; preserved $preserved unreviewed/active candidates. Core refs untouched." >> "$GITHUB_STEP_SUMMARY"

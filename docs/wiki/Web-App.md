@@ -4,6 +4,10 @@ The installable PWA is BallerWatch's sole user surface.
 
 Anonymous use is public-safe/read-only. Private Settings uses user-password authentication.
 
+## App hub
+
+The badged AI icon opens three connected sections: **AI / Settings / Notifications**. It fades in with the main app and remains available while reading cards, without detached header controls. Switching sections preserves the existing account/Q&A/Inbox controllers.
+
 ## Settings
 
 A signed-in user can change:
@@ -52,13 +56,15 @@ Privacy-safe engineering review now distinguishes RATS historical-record, head-t
 
 ## Web Push
 
-The notification bell controls subscription state. Registration uses a short-lived endpoint-bound challenge and recognized push-provider policy. Notification navigation is constrained to the BallerWatch Pages origin/path.
+The hub’s Notifications section controls subscription state. Registration uses a short-lived endpoint-bound challenge and recognized push-provider policy. Notification navigation is constrained to the BallerWatch Pages origin/path.
 
 Inbox and notification details both use modal top-layer dialogs. Returning from a notification detail reopens Inbox as a modal, so the notification surface remains above dashboard cards until the user closes it.
 
 ## Launch experience
 
-On a fresh site/app session, the cinematic launch overlay is selected before the browser's first paint so the dashboard cannot flash underneath it. The intro remains once-per-session and is skipped when the device requests reduced motion.
+On a fresh site/app session, the cinematic launch overlay is selected before the browser's first paint so the dashboard cannot flash underneath it. A two-second brand launch leads to the native-scroll soccer tour and original cards. Skip jumps to the real card reveal, so scrolling up can rewind during that document’s lifetime. Subsequent session entries and reduced motion may enter directly. See [Cinematic app](V2).
+
+Scouting reports and forecast challengers are prepared in bounded background jobs; see [Scouting and forecasts](Scouting).
 
 ## Music
 
@@ -72,4 +78,4 @@ The Live indicator is shown only when runtime-backed config, game/calendar data,
 
 ## Installation
 
-On iPhone, open the site in Safari, choose **Add to Home Screen**, then open the installed app and enable Push notifications from the bell panel.
+On iPhone, open the site in Safari, choose **Add to Home Screen**, then open the installed app and enable Push notifications from **AI icon → Notifications**.

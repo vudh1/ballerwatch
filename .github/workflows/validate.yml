@@ -2,6 +2,7 @@ name: Validate code
 
 on:
   push:
+    branches: [main, production]
     paths:
       - "backend/pickup/**"
       - "backend/league/**"
@@ -64,7 +65,7 @@ jobs:
       - name: Enforce public-repository privacy
         run: node scripts/privacy-audit.mjs
 
-      - name: Build both static production routes
+      - name: Build canonical app and legacy redirect
         run: node scripts/build-web.mjs
 
       - name: Validate Apps Script syntax
@@ -84,10 +85,10 @@ jobs:
       - name: Install Chromium and WebKit
         run: node /tmp/ballerwatch-browser/node_modules/playwright/cli.js install --with-deps chromium webkit
 
-      - name: Build V1 and V2 production assets
+      - name: Build canonical app and legacy compatibility assets
         run: node scripts/build-web.mjs
 
-      - name: Verify V1 and V2 with synthetic browser data
+      - name: Verify canonical app and legacy compatibility with synthetic data
         env:
           BALLERWATCH_PLAYWRIGHT_MODULE: /tmp/ballerwatch-browser/node_modules/playwright
           BALLERWATCH_WEB_ROOT: /tmp/ballerwatch-web-build

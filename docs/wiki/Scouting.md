@@ -28,7 +28,7 @@ These are conservative operational gates, not proof that future forecasts are ca
 
 ## State and failure behavior
 
-`league/state/scout-model.json` stores the selected weights and aggregate evaluation metadata in a complete AES-GCM envelope. The hourly builder uses an eligible same-season candidate for at most eight days; otherwise it uses the release-reviewed champion. A failed gate explicitly publishes champion status. Missing providers do not prevent numerical baseline evaluation or ordinary report preparation.
+`league/state/scout-model.json` stores the selected weights and aggregate evaluation metadata in a complete AES-GCM envelope. The hourly builder uses an eligible same-season candidate while its eight-day eligibility is valid at publication; otherwise it uses the release-reviewed champion. If background preparation is unavailable, last-known projections retain their source timestamps and may be stale. A failed gate explicitly publishes champion status. Missing providers do not prevent numerical baseline evaluation or ordinary report preparation.
 
 `league/state/scout-index.json` holds the complete encrypted serving projection, report facts and bounded daily ranking cache. Neither raw history nor plaintext derived data is committed to source. Model and projection preparation share one `ballerwatch-league` job and the existing runtime snapshot reconciler. They do not deliver Web Push or change Calendar events. PURGE covers these generated paths through the canonical runtime scope.
 

@@ -26,4 +26,4 @@ for (const route of ["", "v2/"]) {
 }
 fs.mkdirSync(destination, { recursive: true });
 fs.cpSync(source, destination, { recursive: true });
-console.log(`Static production build ready: ${destination} (V1 + V2)`);
+console.log(`Static production build ready: ${destination} (canonical app + legacy redirect)`);
