@@ -8,6 +8,7 @@
  * Updated v7.1.0: serves deterministic all-season RATS history Q&A from encrypted runtime state.
  * Updated v8.0.0: grounded, multi-turn RATS fixture intelligence without a paid model dependency.
  * Updated v8.1.0: privacy-gated model intent fallback and authenticated RSVP facts.
+ * Updated v11.0.2: published pickup-event RSVP rosters available without login.
  */
 import {
   fetchPickupSnapshot,
@@ -2455,6 +2456,13 @@ export function pickupRsvpRosterView(snapshot, date) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(safeDate)) {
     throw new Error("Invalid pickup date.");
   }
+  // Only an individually published pickup date may expose its own roster.
+  // Unpublished/historical encrypted rosters remain inaccessible.
+  const published = (snapshot?.pickup?.dates || []).some((entry) =>
+    (typeof entry === "string" ? entry : entry?.date) === safeDate);
+  if (!published || snapshot?.pickup?.events?.[safeDate]?.ok !== true) {
+    throw new Error("RSVP roster is unavailable for this date.");
+  }
   const event = snapshot?.pickupPrivate?.events?.[safeDate] || {};
   return {
     date: safeDate,
@@ -4196,11 +4204,9 @@ export default {
       }
     }
 
-    if (request.method === "GET" && userRoute(url.pathname, "rsvp-roster")) {
-      const account = await resolveOwnerCapability(env, bearerToken(request)).catch(() => null);
-      if (!account) {
-        return webJson(request, { ok: false, error: "User sign-in is required." }, { status: 401 });
-      }
+    // Event-scoped names are public on request, but other projections and
+    // the participant catalog remain anonymous.
+    if (request.method === "GET" && url.pathname === "/web/rsvp-roster") {
       try {
         return webJson(request, {
           ok: true,
@@ -4211,17 +4217,22 @@ export default {
         });
       } catch (error) {
         const message = cleanText(error?.message, 160);
-        const status = /Invalid pickup date/.test(message) ? 400 : 503;
-        if (status === 503) console.error("User pickup RSVP roster load failed", error);
-        return webJson(
-          request,
-          {
-            ok: false,
-            error: status === 400 ? message : "Unable to load the RSVP roster right now.",
-          },
-          { status },
-        );
+        const status = /Invalid pickup date/.test(message) ? 400
+          : /RSVP roster is unavailable for this date/.test(message) ? 404 : 503;
+        if (status === 503) console.error("Pickup RSVP roster load failed", error);
+        return webJson(request, {
+          ok: false,
+          error: status === 400 ? message
+            : status === 404 ? "No published RSVP roster for this date."
+            : "Unable to load the RSVP roster right now.",
+        }, { status });
       }
+    }
+    // Older account-backed PWAs should upgrade to the public route.
+    if (userRoute(url.pathname, "rsvp-roster")) {
+      return webJson(request, {
+        ok: false, error: "Update BallerWatch to see RSVP names without an account.",
+      }, { status: 410 });
     }
 
     // Selection catalog is lazy, authenticated and name-only. The public
