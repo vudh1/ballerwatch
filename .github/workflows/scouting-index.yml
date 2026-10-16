@@ -26,7 +26,7 @@ jobs:
   index:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
@@ -42,6 +42,16 @@ jobs:
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
         run: node backend/league/history.mjs
+
+      # Keep model refresh in the same serialized writer as hourly snapshots.
+      # Separate pending jobs in one Actions concurrency group replace each
+      # other, even when cancel-in-progress is false.
+      - name: Evaluate weekly scouting model when due
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: node backend/league/scouting-model.mjs --if-due
 
       - name: Prepare compact encrypted scouting report
         env:

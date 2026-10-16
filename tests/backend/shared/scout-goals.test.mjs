@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { goalForecast, blendGoalForecast, validGoalConfig } from "../../../backend/shared/scout-goals.mjs";
 import { briefingFacts, applyBriefing, rankBriefingFacts } from "../../../backend/shared/scout-briefing.mjs";
-import { modelFromEvaluation, usableModel, proposeGoalConfigs } from "../../../backend/league/scouting-model.mjs";
+import { modelFromEvaluation, usableModel, proposeGoalConfigs, modelRefreshDue } from "../../../backend/league/scouting-model.mjs";
 import { PRODUCTION_SCOUT_WEIGHTS } from "../../../backend/shared/scout-calibration.mjs";
 const config = { blend: 0.4, prior: 6, decay: 0.94 };
 const strong = Array.from({ length: 10 }, () => ({ scored: 4, conceded: 1 }));
@@ -30,7 +30,10 @@ test("weekly promotion fails closed for expiry, new season and invalid configura
   assert.ok(!usableModel(model, "fall-2026", new Date("2026-10-25")));
   assert.ok(!usableModel({ ...model, pairedLogLossLift95Lower: 0 }, "fall-2026", now));
   assert.ok(!usableModel({ ...model, weights: { ...model.weights, form: 2 } }, "fall-2026", now));
-  assert.equal(modelFromEvaluation({ ...evaluation, productionPromotionRecommended: false }, "fall-2026", now).status, "production-locked");
+  const retained = modelFromEvaluation({ ...evaluation, productionPromotionRecommended: false }, "fall-2026", now);
+  assert.equal(retained.status, "production-locked");
+  assert.ok(usableModel(retained, "fall-2026", now), "Publish fresh benchmark metadata when champion is retained");
+  assert.ok(!usableModel({ ...retained, weights: { ...retained.weights, goals: config } }, "fall-2026", now));
 });
 test("both providers propose bounded settings from development aggregates only", async () => {
   const prompts = [];
@@ -60,4 +63,15 @@ test("briefings always retain evidence limits and discard ungrounded provider ou
   assert.doesNotMatch(inputs.join(""), /privateTeamSentinel/);
   assert.deepEqual(await rankBriefingFacts(reports, { GEMINI_API_KEY: "fake", GROQ_API_KEY: "fake" }, async () =>
     ({ reports: [{ id: "0", facts: ["made-up"] }] })), {});
+});
+
+test("weekly model work is due within the hourly writer, including policy/season changes", () => {
+  const now = new Date("2026-10-16T12:00:00Z");
+  const current = { schemaVersion: 1, policyVersion: "9.1.1", seasonId: "fall-2026",
+    generatedAt: now.toISOString(), expiresAt: "2026-10-24T12:00:00Z" };
+  assert.equal(modelRefreshDue(current, "fall-2026", now), false);
+  assert.equal(modelRefreshDue(current, "fall-2026", new Date("2026-10-23T12:00:00Z")), true);
+  assert.equal(modelRefreshDue(current, "winter-2027", now), true);
+  assert.equal(modelRefreshDue({ ...current, policyVersion: "old" }, "fall-2026", now), true);
+  assert.equal(modelRefreshDue(null, "fall-2026", now), true);
 });

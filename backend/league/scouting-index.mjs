@@ -58,7 +58,9 @@ export function buildScoutingIndex({
   };
   if (usableModel(modelState, seasonId, new Date(generatedAt))) {
     Object.assign(calibration, modelState, { modelVersion: 3,
-      note: "Weekly development-selected goal-rate ensemble passed independent holdout and paired date-group gates. Falls back to release-reviewed weights on expiry or season change. Provisional, not bookmaker odds." });
+      note: modelState.status === "holdout-gated-ensemble"
+        ? "Weekly goal-rate ensemble passed independent holdout and paired date-group gates. Falls back on expiry or season change. Provisional, not bookmaker odds."
+        : "Latest weekly evaluation retained the reviewed champion; challenger gates did not all pass. Aggregate holdout metadata is current. Provisional, not bookmaker odds." });
   }
   const standings = buildLeagueStandings(
     history, seasonId, monitored, today, fixtures, calibration.weights,

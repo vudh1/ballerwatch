@@ -50,6 +50,8 @@ Signed-in Inbox read/delete state is merged into the encrypted user profile so m
 
 ## Current development line
 
+- **9.1.1** — Correct reload position after Skip and consolidate weekly-due evaluation into the hourly scouting writer.
+
 - **9.1.0** — Realistic late-save choreography and captain #10, single AI/Settings/Notifications hub, rewind after Skip, evidence-led prepared scouting reports and independently gated weekly goal-rate challengers with bounded Groq/Gemini proposals.
 - **9.0.0** — Canonical cinematic root app, stadium crowd/flashes, original functional cards and old `/v2/` redirect.
 

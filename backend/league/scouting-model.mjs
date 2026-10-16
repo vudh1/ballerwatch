@@ -35,7 +35,7 @@ export function modelFromEvaluation(evaluation, seasonId, now = new Date()) {
   const eligible = evaluation.productionPromotionRecommended === true;
   const heldout = evaluation.comparisons[eligible ? evaluation.selectedModel : "champion-production"]?.holdout;
   return {
-    schemaVersion: 1, seasonId, generatedAt: now.toISOString(),
+    schemaVersion: 1, policyVersion: "9.1.1", seasonId, generatedAt: now.toISOString(),
     expiresAt: new Date(now.getTime() + 8 * 86400000).toISOString(),
     status: eligible ? "holdout-gated-ensemble" : "production-locked",
     weights: eligible ? evaluation.selectedWeights : { ...PRODUCTION_SCOUT_WEIGHTS },
@@ -45,20 +45,38 @@ export function modelFromEvaluation(evaluation, seasonId, now = new Date()) {
     pairedDateGroups: evaluation.pairedDateGroups,
     pairedLogLossLift95Lower: evaluation.pairedLogLossLift95Lower,
     selectedModel: evaluation.selectedModel,
+    candidateHoldoutLogLoss: evaluation.comparisons[evaluation.selectedModel]?.holdout?.logLoss ?? null,
+    candidateHoldoutBrier: evaluation.comparisons[evaluation.selectedModel]?.holdout?.brier ?? null,
     gateReason: evaluation.productionPromotionBlockedReason,
   };
 }
 export function usableModel(model, seasonId, now = new Date()) {
-  return model?.schemaVersion === 1 && model.seasonId === seasonId &&
-    new Date(model.generatedAt).getTime() <= now.getTime() &&
-    new Date(model.expiresAt).getTime() > now.getTime() &&
-    model.status === "holdout-gated-ensemble" && validGoalConfig(model.weights?.goals) &&
-    Object.entries(PRODUCTION_SCOUT_WEIGHTS).every(([key, value]) => model.weights[key] === value) &&
+  if (!(model?.schemaVersion === 1 && model.seasonId === seasonId &&
+      new Date(model.generatedAt).getTime() <= now.getTime() &&
+      new Date(model.expiresAt).getTime() > now.getTime() && model.weights &&
+      Object.entries(PRODUCTION_SCOUT_WEIGHTS).every(([key, value]) => model.weights[key] === value))) return false;
+  if (model.status === "production-locked") return !model.weights.goals;
+  return model.status === "holdout-gated-ensemble" && Boolean(validGoalConfig(model.weights.goals)) &&
     model.holdoutGames >= 100 && model.pairedDateGroups >= 12 && model.pairedLogLossLift95Lower > 0;
+}
+export function modelRefreshDue(model, seasonId, now = new Date()) {
+  const generated = Date.parse(model?.generatedAt || "");
+  return model?.schemaVersion !== 1 || model.policyVersion !== "9.1.1" ||
+    model.seasonId !== seasonId || !Number.isFinite(generated) ||
+    generated > now.getTime() || now.getTime() - generated >= 7 * 86400000 ||
+    !(Date.parse(model.expiresAt) > now.getTime());
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const history = decryptState(JSON.parse(fs.readFileSync("league/state/history.json", "utf8")));
   const league = decryptState(JSON.parse(fs.readFileSync("league/state/schedule.json", "utf8")));
+  if (process.argv.includes("--if-due")) {
+    let previous = null;
+    try { previous = decryptState(JSON.parse(fs.readFileSync(SCOUT_MODEL_FILE, "utf8"))); } catch { /* Missing/stale state is rebuilt. */ }
+    if (!modelRefreshDue(previous, league.seasonId)) {
+      console.log("Weekly model evaluation current; retained encrypted model.");
+      process.exit(0);
+    }
+  }
   const initial = evaluateArchive(history, league.seasonId);
   const proposals = await proposeGoalConfigs(initial, process.env);
   const result = proposals.length ? evaluateArchive(history, league.seasonId, proposals) : initial;

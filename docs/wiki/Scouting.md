@@ -1,6 +1,6 @@
 # Scouting and forecasts
 
-BallerWatch prepares scouting once in GitHub Actions, then serves encrypted projections through the Worker. Browser requests do not scan the historical archive, train models or ask an LLM to invent a probability. Current release: **9.1.0**.
+BallerWatch prepares scouting once in GitHub Actions, then serves encrypted projections through the Worker. Browser requests do not scan the historical archive, train models or ask an LLM to invent a probability. Current release: **9.1.1**.
 
 ## Report evidence
 
@@ -12,7 +12,7 @@ The hourly cache job may ask Gemini and Groq to rank up to 12 report fact catalo
 
 The reviewed champion uses recent weighted results, division tier, format and head-to-head meetings. 9.1 adds a challenger combining that model with independent Poisson goal rates, regularized toward a neutral two-goal prior. Extreme scores are capped only for predictor influence; match records remain untouched. Ensemble influence shrinks with the smaller team's sample, reaching zero when either team has no scored history. Three-way estimates still round to five percentage points and sum to 100.
 
-Weekly evaluation runs on Monday at 09:23 UTC and after production promotion. It checks out `production`, reads encrypted history in memory and asks both providers for up to three bounded goal-model configurations using **development aggregates only**. Candidate blend, prior and decay values are allowlisted and rescored numerically. Provider suggestions cannot directly edit weights or outputs.
+The hourly scouting writer checks whether evaluation is due: no valid model, a season/policy change, or seven days since its last evaluation. It runs evaluation and then rebuilds projections in the same serialized job; repeated promotion events cannot replace a separate queued model job. The workflow checks out `production`, reads encrypted history in memory and asks both providers for up to three bounded goal-model configurations using **development aggregates only**. Candidate blend, prior and decay values are allowlisted and rescored numerically. Provider suggestions cannot directly edit weights or outputs.
 
 Selection uses completed development seasons, excluding the newest completed season and current season. The selected challenger then faces the newest completed season as a held-out chronological replay. All games on a date are predicted before any of that date's outcomes update history. Calibration and replay share format/tier parsing and the same forecasting function used by prepared cards.
 
@@ -30,6 +30,6 @@ These are conservative operational gates, not proof that future forecasts are ca
 
 `league/state/scout-model.json` stores the selected weights and aggregate evaluation metadata in a complete AES-GCM envelope. The hourly builder uses an eligible same-season candidate for at most eight days; otherwise it uses the release-reviewed champion. A failed gate explicitly publishes champion status. Missing providers do not prevent numerical baseline evaluation or ordinary report preparation.
 
-`league/state/scout-index.json` holds the complete encrypted serving projection, report facts and bounded daily ranking cache. Neither raw history nor plaintext derived data is committed to source. Both jobs share `ballerwatch-league` concurrency and the existing runtime snapshot reconciler. They do not deliver Web Push or change Calendar events. PURGE covers these generated paths through the canonical runtime scope.
+`league/state/scout-index.json` holds the complete encrypted serving projection, report facts and bounded daily ranking cache. Neither raw history nor plaintext derived data is committed to source. Model and projection preparation share one `ballerwatch-league` job and the existing runtime snapshot reconciler. They do not deliver Web Push or change Calendar events. PURGE covers these generated paths through the canonical runtime scope.
 
 Aggregate Actions output records model status, holdout counts, log loss, Brier, proposal count and the paired lower bound. The hourly job records the serving model. Inspect those results before claiming a measured improvement; a retained champion is an expected safe outcome.
