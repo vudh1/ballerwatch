@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, an in-app match calendar, and quick answers into one installable app.
 
-**Current source version: 10.0.0**
+**Current source version: 10.0.1**
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
 
@@ -39,7 +39,7 @@ The original 727-frame walkthrough of the deployed 9.1.1 app, retimed from 36.4 
 
 ## What's new
 
-**v10.0.0** — A single uninterrupted first-install launch; Google Calendar integration is retired. BallerWatch's own match calendar, schedule alerts, and Web Push remain available to every visitor without a Google connection.
+**v10.0.1** — Restore dependable RATS standings by sending only monitored/selected team predictions, keeping the response small enough for on-device caching, and automatically retrying after transient cold-start failures.\n\n**v10.0.0** — A single uninterrupted first-install launch; Google Calendar integration is retired. BallerWatch's own match calendar, schedule alerts, and Web Push remain available to every visitor without a Google connection.
 
 **v9.1.2** — Remove Skip to matches from the loading splash, align the upper-right × across AI / Settings / Notifications, and make the full README animation about 22 seconds without cutting scenes.
 

@@ -167,7 +167,7 @@ jobs:
           grep -qi '^permissions-policy:' "$CONFIG_HEADERS"
           rm -f "$CONFIG_HEADERS"
 
-          for path in /web/next-game /web/calendar; do
+          for path in /web/next-game /web/calendar /web/standings; do
             BODY="/tmp/ballerwatch-$(echo "$path" | tr '/' '-').json"
             STATUS="$(curl --max-time 15 --silent --show-error \
               --output "$BODY" --write-out "%{http_code}" \
@@ -179,6 +179,10 @@ jobs:
           const value = JSON.parse(fs.readFileSync(process.argv[3], "utf8"));
           if (value.ok !== true) process.exit(1);
           if (path === "/web/calendar" && !value.calendar) process.exit(1);
+          if (path === "/web/standings" &&
+            (!Array.isArray(value.standings?.cards) ||
+              !value.standings.cards.length ||
+              Object.keys(value.standings.matchups || {}).length > 96)) process.exit(1);
           if (path === "/web/next-game" && !Object.prototype.hasOwnProperty.call(value, "game")) process.exit(1);
           NODE
             rm -f "$BODY"

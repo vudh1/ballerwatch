@@ -25,7 +25,7 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v10-0-0-shell/);
+  assert.match(sw, /ballerwatch-v10-0-1-shell/);
 });
 
 test("static web app contains no repository secrets or private runtime data", () => {
@@ -2160,3 +2160,15 @@ test("retired Google Calendar bridge cannot reappear in deployment or runtime pa
   const runtimePaths = fs.readFileSync("backend/shared/runtime-paths.mjs", "utf8");
   assert.doesNotMatch(runtimePaths, /calendar-snapshot/);
 });
+
+test("RATS standings startup automatically retries rather than staying unavailable", () => {
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const cache = fs.readFileSync("frontend/web/lib/public-standings-cache.js", "utf8");
+  assert.match(app, /function scheduleStandingsRetry\(\)/);
+  assert.match(app, /standingsRetryTimer = window\.setTimeout/);
+  assert.match(app, /scheduleStandingsRetry\(\);/);
+  assert.match(app, /Standings are reconnecting\. Retrying automatically/);
+  assert.doesNotMatch(app, /Standings are unavailable\. The RATS results index/);
+  assert.match(cache, /entries\.length > 96/);
+});
+
