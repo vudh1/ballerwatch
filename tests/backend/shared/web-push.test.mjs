@@ -5,12 +5,14 @@ import path from "node:path";
 import test from "node:test";
 
 import { encryptState } from "../../../backend/shared/state-crypto.mjs";
-import { saveUserState } from "../../../backend/shared/user-state.mjs";
+import { nameTag, buildRsvpNameIndex } from "../../../backend/shared/rsvp-name-index.mjs";
 import {
   isUnsafeWebPushAddress,
   applyEncryptedRegistrationEventB64,
   buildVapidAuthorization,
   ensureWebPushState,
+  pruneDeviceSubscriptions,
+  PUSH_LEASE_MS,
   loadWebPushState,
   publicWebPushConfig,
   sendWebPushSignals,
@@ -44,6 +46,7 @@ function writeSubscriptionState(subscription) {
     keys: { p256dh: "x", auth: "y" },
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now()+PUSH_LEASE_MS).toISOString(),
     ...subscription,
   }];
   fs.writeFileSync(
@@ -135,7 +138,7 @@ test("applies encrypted subscribe and unsubscribe registration events", (t) => {
   assert.equal(loadWebPushState().subscriptions.length, 0);
 });
 
-test("subscription registration stores account and notification categories", (t) => {
+test("subscription registration stores short-lived device teams and notification categories", (t) => {
   inTempDir(t);
   ensureWebPushState();
   const subscription = {
@@ -147,13 +150,15 @@ test("subscription registration stores account and notification categories", (t)
   const subscribe = Buffer.from(JSON.stringify(encryptState({
     action: "subscribe",
     subscription,
-    userId: "teammate",
+    teams:["Example FC"],
     channels: { pickup: true, league: false, version: true },
   }))).toString("base64");
   applyEncryptedRegistrationEventB64(subscribe);
 
   const saved = loadWebPushState().subscriptions[0];
-  assert.equal(saved.userId, "teammate");
+  assert.equal(saved.userId, undefined);
+  assert.deepEqual(saved.teams,["Example FC"]);
+  assert.ok(Date.parse(saved.expiresAt) > Date.now());
   assert.deepEqual(saved.channels, {
     pickup: true,
     league: false,
@@ -280,35 +285,42 @@ test("validates all DNS answers for a recognized public endpoint", async () => {
   );
 });
 
-test("push sender skips booked players without using notification payloads", async (t) => {
+test("push sender suppresses booked device via encrypted private name tags", async (t) => {
   inTempDir(t);
+  const name="Casey Sample";
   writeSubscriptionState({
     endpoint: MOZILLA_ENDPOINT,
-    userId: "admin",
-    channels: {pickup: true, league: true, version: true},
+    rsvpTag: nameTag(name),
+    channels: {pickup:true,league:true,version:true},
   });
-  saveUserState({ownerRsvpName: "Casey Sample"});
-  fs.mkdirSync(".runtime/pickup", {recursive: true});
-  fs.writeFileSync(".runtime/pickup/events.json", JSON.stringify({
-    events: {"2026-10-15": {
-      players: [{name: "Casey Sample"}],
-      waitlist: [],
-    }},
-  }));
-  let calls = 0;
-  const common = {
-    channel: "pickup",
-    resolveHost: async () => [{address: "34.120.0.1", family: 4}],
-    fetchImpl: async () => { calls += 1; return {ok: true, status: 201}; },
+  const privateIndex=buildRsvpNameIndex({"2026-10-15":{
+    players:[{name}], waitlist:[],
+  }},new Date(),process.env.TRACKER_STATE_KEY);
+  fs.mkdirSync("pickup/state",{recursive:true});
+  fs.writeFileSync("pickup/state/name-index.json",
+    JSON.stringify(encryptState(privateIndex),null,2)+"\n");
+  let calls=0;
+  const common={channel:"pickup",
+    resolveHost:async()=>[{address:"34.120.0.1",family:4}],
+    fetchImpl:async()=>{calls+=1;return {ok:true,status:201};},
   };
-  const blocked = await sendWebPushSignals({
-    ...common, entry: {tag: "pickup-rsvp-reminder-2026-10-15"},
+  const blocked=await sendWebPushSignals({
+    ...common,entry:{tag:"pickup-rsvp-reminder-2026-10-15"},
   });
-  assert.equal(blocked.sent, 0);
-  assert.equal(calls, 0);
-  const kickoff = await sendWebPushSignals({
-    ...common, entry: {tag: "pickup-start-reminder-2026-10-15"},
+  assert.equal(blocked.sent,0);
+  assert.equal(calls,0);
+  const kickoff=await sendWebPushSignals({
+    ...common,entry:{tag:"pickup-start-reminder-2026-10-15"},
   });
-  assert.equal(kickoff.sent, 1);
-  assert.equal(calls, 1);
+  assert.equal(kickoff.sent,1);
+  assert.equal(calls,1);
+});
+
+test("24-hour push leases are physically pruned, and no user identity survives",t=>{
+  inTempDir(t);
+  writeSubscriptionState({endpoint:MOZILLA_ENDPOINT,
+    expiresAt:"2020-01-01T00:00:00Z",userId:"legacy-name"});
+  assert.equal(pruneDeviceSubscriptions(),1);
+  assert.equal(loadWebPushState().subscriptions.length,0);
+  assert.doesNotMatch(JSON.stringify(loadWebPushState()),/legacy-name/);
 });
