@@ -1153,6 +1153,16 @@ test("public match endpoints do not block on optional historical scouting archiv
 
 
 
+test("public RSVP roster is accountless and does not publish name catalogs", () => {
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
+  const publicRoute = worker.split('url.pathname === "/web/rsvp-roster"')[1]
+    ?.split('userRoute(url.pathname, "rsvp-roster")')[0] || "";
+  assert.match(publicRoute, /pickupRsvpRosterView/);
+  assert.doesNotMatch(publicRoute, /resolveOwnerCapability|bearerToken|selection-options/);
+  assert.match(publicRoute, /status === 404/);
+  assert.match(worker, /Personal signup names are entered locally/);
+});
+
 test("public fixtures strip legacy shared-edit state and reject writes by old PWA clients", () => {
   const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
   const safe=worker.match(/export function webSafeSnapshot\(snapshot\) \{[\s\S]*?\n\}/)?.[0] || "";
