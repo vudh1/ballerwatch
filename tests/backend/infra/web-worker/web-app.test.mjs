@@ -692,7 +692,7 @@ test("web feedback keeps original question and answer before encrypted review di
 });
 
 
-test("web calendar and next-game views honor encrypted match overrides while keeping source IDs", () => {
+test("web calendar and next-game ignore legacy shared overrides but keep source IDs", () => {
   const snapshot = {
     pickup: {
       dates: [{ date: "2099-10-08" }],
@@ -741,18 +741,18 @@ test("web calendar and next-game views honor encrypted match overrides while kee
   );
   const overriddenPickup = calendar.games.find((game) => game.id === "pickup:2099-10-08");
   assert.ok(overriddenPickup);
-  assert.equal(overriddenPickup.date, "2099-10-09");
-  assert.equal(overriddenPickup.location, "Manual Field");
-  assert.equal(overriddenPickup.overrideActive, true);
+  assert.equal(overriddenPickup.date, "2099-10-08");
+  assert.equal(overriddenPickup.location, "Source Field");
+  assert.equal(overriddenPickup.overrideActive, false);
   assert.equal(overriddenPickup.sourceDate, "2099-10-08");
   assert.equal(overriddenPickup.sourceStartTime, "8:00 PM");
   assert.equal(overriddenPickup.sourceLocation, "Source Field");
 
   const next = webNextGameDetails(snapshot, new Date("2099-10-08T12:00:00-07:00"));
   assert.equal(next.id, "pickup:2099-10-08");
-  assert.equal(next.date, "2099-10-09");
-  assert.equal(next.startTime, "9:00 PM");
-  assert.equal(next.overrideActive, true);
+  assert.equal(next.date, "2099-10-08");
+  assert.equal(next.startTime, "8:00 PM");
+  assert.equal(next.overrideActive, false);
   assert.equal(next.rsvpUrl, "https://nhcuong95.github.io/rsvp/?date=2099-10-08");
 });
 
@@ -843,7 +843,7 @@ test("Saturday free pickup can become the next game without exposing RSVP state"
 });
 
 
-test("web calendar omits encrypted soft-deleted pickup, league, and free-pickup matches", () => {
+test("web calendar ignores legacy shared soft-deletes for every visitor", () => {
   const snapshot = {
     pickup: {
       dates: [{ date: "2099-10-08" }],
@@ -912,9 +912,9 @@ test("web calendar omits encrypted soft-deleted pickup, league, and free-pickup 
     "2099-10-01",
     new Date("2099-10-01T12:00:00Z"),
   );
-  assert.equal(calendar.games.some((game) => game.id === "pickup:2099-10-08"), false);
-  assert.equal(calendar.games.some((game) => game.id === "league:v2:delete-me"), false);
-  assert.equal(calendar.games.some((game) => game.id === "free:2099-10-10"), false);
+  assert.equal(calendar.games.some((game) => game.id === "pickup:2099-10-08"), true);
+  assert.equal(calendar.games.some((game) => game.id === "league:v2:delete-me"), true);
+  assert.equal(calendar.games.some((game) => game.id === "free:2099-10-10"), true);
 });
 
 test("calendar shares verified venue GPS from geocoded weather, never city-wide weather fallback", () => {
@@ -979,9 +979,9 @@ test("RATS-published map destination and GPS appear on calendar but not stale ov
   }}};
   const edited = webCalendarDetails(changed, {}, 14, "2099-10-01");
   const overridden=edited.games.find(item=>item.id==="league:v2:rats-maps");
-  assert.equal(overridden.location, "Replacement Field");
-  assert.equal(overridden.locationUrl, "");
-  assert.equal(overridden.coordinates, null);
+  assert.equal(overridden.location, "RATS Field");
+  assert.equal(overridden.locationUrl, baseMatch.locationUrl);
+  assert.deepEqual(overridden.coordinates, baseMatch.venueCoordinates);
 });
 
 test("calendar and next-game share immutable RATS venue cache for renamed and misspelled fields", () => {
@@ -1090,8 +1090,8 @@ test("new RSVP dates remain visible while venue details are pending", () => {
       id:"pickup:2099-10-29", date:"2099-10-29", hiddenAt:"2099-10-01T12:00:00Z",
     }}}}, {}, 14, "2099-10-01",new Date("2099-10-01T12:00:00-07:00"))
       .games.filter(game => game.id==="pickup:2099-10-29"),
-    [],
-    "administrator-hidden dates remain hidden",
+    [card],
+    "legacy shared hidden dates no longer hide published matches",
   );
 });
 
@@ -1151,3 +1151,15 @@ test("public match endpoints do not block on optional historical scouting archiv
   assert.match(worker, /pendingJsonLoads\.has\(key\)/);
 });
 
+
+
+test("public fixtures strip legacy shared-edit state and reject writes by old PWA clients", () => {
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
+  const safe=worker.match(/export function webSafeSnapshot\(snapshot\) \{[\s\S]*?\n\}/)?.[0] || "";
+  const routes=worker.split('userRoute(url.pathname, "match")')[1]
+    ?.split('userRoute(url.pathname, "rsvp-status")')[0] || "";
+  assert.match(safe, /settings: \{\}/);
+  assert.doesNotMatch(safe, /settings\.matchOverrides|settings\.hiddenMatches/);
+  assert.match(routes, /status: 410/);
+  assert.doesNotMatch(routes, /saveMatchOverrideDirect|saveMatchVisibilityDirect/);
+});
