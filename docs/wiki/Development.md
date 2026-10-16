@@ -7,7 +7,7 @@ frontend/web/             static/installable PWA
 frontend/web/lib/         focused browser transport/state modules
 backend/infra/            Cloudflare Worker + scheduler helpers
 backend/pickup/           pickup source and notification logic
-backend/league/           RATS watcher + Calendar integration
+backend/league/           RATS watcher + independent schedule-change notifications
 backend/shared/           encryption, runtime state, auth, push, common logic
 backend/watchdog/         health/release monitoring
 backend/weather/          weather pipeline
