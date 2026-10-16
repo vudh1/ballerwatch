@@ -1,7 +1,19 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "9.1.1",
+  "currentVersion": "9.1.2",
   "releases": [
+    {
+      "version": "9.1.2",
+      "date": "2026-10-15",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Simplify loading screen, unify hub exits and speed up complete demo",
+      "changes": [
+        "Remove the visible Skip to matches button from the brand splash while preserving a keyboard-accessible intro bypass and the later Skip intro action.",
+        "Place a consistent upper-right close button in the shared AI, Settings and Notifications hub tab row without changing dialog event hooks.",
+        "Retiming the existing README demo to approximately 22 seconds preserves every original GIF frame; future recordings also capture the full tour in the shorter runtime."
+      ]
+    },
     {
       "version": "9.1.1",
       "date": "2026-10-15",

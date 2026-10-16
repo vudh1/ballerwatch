@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, Calendar sync, and quick answers into one installable app.
 
-**Current source version: 9.1.1**
+**Current source version: 9.1.2**
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
 
@@ -10,7 +10,7 @@ BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS leag
 
 ## What you can do
 
-- **One BallerWatch at the main address:** a two-second brand launch, full-screen scroll hero with a stadium audience and camera flashes behind feature text, then the original matchday cards. A single badged AI icon fades in with the cards and opens AI, Settings and Notifications. Skip keeps upward rewind available. Old `/v2/` links redirect to the root; account, RSVP, Calendar, AI, notification and administration features use the same controller and encrypted backend. See the [cinematic app and migration guide](docs/wiki/V2.md).
+- **One BallerWatch at the main address:** a two-second brand launch, full-screen scroll hero with a stadium audience and camera flashes behind feature text, then the original matchday cards. A single badged AI icon fades in with the cards and opens AI, Settings and Notifications. The brand splash no longer has a skip button; the later intro skip retains upward rewind. Old `/v2/` links redirect to the root; account, RSVP, Calendar, AI, notification and administration features use the same controller and encrypted backend. See the [cinematic app and migration guide](docs/wiki/V2.md).
 
 - See the next **Pickup** or **League** match with a cleaner visual hierarchy for location, weather, RSVP, and secondary actions. Newly published RSVP dates remain in the match-card carousel and expanded calendar even beyond the initial 14-day grid; missing field details show *Venue to be announced* until the RSVP source publishes a location.
 - See RSVP capacity for pickup games; tap the capacity area to open the full-width roster sheet and RSVP from inside it.
@@ -33,11 +33,13 @@ Saturday synthetic pickup is shown simply as **Pickup** and has no RSVP/capacity
 
 ![BallerWatch animated demo: cinematic launch, stadium audience and camera flashes, feature tour, original match cards, calendar, standings, the AI / Settings / Notifications hub and aligned Inbox preferences](docs/demo.gif)
 
-A 36.4-second walkthrough recorded from the deployed 9.1.1 app, with smooth 20 fps animation. Match details, answers and Inbox entries use synthetic sample data; the recording does not read production accounts or change RSVP, notifications or Calendar entries.
+The original 727-frame walkthrough of the deployed 9.1.1 app, retimed from 36.4 to 22 seconds without removing or re-encoding any frames. Match details, answers and Inbox entries use synthetic sample data; the recording does not read production accounts or change RSVP, notifications or Calendar entries.
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/)
 
 ## What's new
+
+**v9.1.2** — Remove Skip to matches from the loading splash, align the upper-right × across AI / Settings / Notifications, and make the full README animation about 22 seconds without cutting scenes.
 
 **v9.1.1** — Reload after Skip restores the main-page position. Weekly scouting evaluation now runs when due inside the hourly writer, avoiding cancelled standalone evaluation jobs.
 
