@@ -11,12 +11,12 @@
   <meta name="apple-mobile-web-app-title" content="BallerWatch">
   <meta name="description" content="A moment of football. Then everything you need for your next match.">
   <title>BallerWatch — Your matchday</title>
-  <link rel="manifest" href="./manifest.webmanifest?v=10.0.1">
-  <link rel="icon" href="./icon.svg?v=10.0.1" type="image/svg+xml">
-  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=10.0.1">
-  <script src="./v2/prepaint.js?v=10.0.1"></script>
-  <link rel="stylesheet" href="./styles.css?v=10.0.1">
-  <link rel="stylesheet" href="./v2/styles.css?v=10.0.1">
+  <link rel="manifest" href="./manifest.webmanifest?v=11.0.0">
+  <link rel="icon" href="./icon.svg?v=11.0.0" type="image/svg+xml">
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=11.0.0">
+  <script src="./v2/prepaint.js?v=11.0.0"></script>
+  <link rel="stylesheet" href="./styles.css?v=11.0.0">
+  <link rel="stylesheet" href="./v2/styles.css?v=11.0.0">
 </head>
 <body>
   <div class="status-bar-glass" aria-hidden="true"></div>
@@ -74,7 +74,7 @@
     <p class="v2-static-welcome" hidden>Matchday, at your pace. Motion is reduced on this device.</p>
     <header class="hero">
       <div class="brand-lockup">
-        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=10.0.1" alt=""></div>
+        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=11.0.0" alt=""></div>
         <div>
           <p class="eyebrow">SOCCER AT A GLANCE</p>
           <h1 id="matchday-heading" tabindex="-1">BallerWatch</h1>
@@ -436,15 +436,15 @@
 
 
       <section aria-label="Offline files">
-        <details id="v2-offline-tools"><summary>Offline files</summary><p class="hint">Clear frontend files while keeping your sign-in and device preferences.</p><button id="clear-v2-caches" class="secondary compact-button" type="button">Clear app frontend cache</button><p id="v2-cache-status" class="hint" role="status"></p></details>
+        <details id="v2-offline-tools"><summary>Offline files</summary><p class="hint">Clear frontend files without changing device preferences.</p><button id="clear-v2-caches" class="secondary compact-button" type="button">Clear app frontend cache</button><p id="v2-cache-status" class="hint" role="status"></p></details>
       </section>
       <div class="settings-divider"></div>
 
       <section id="guest-settings-view" aria-label="Personal preferences on this device">
-        <p class="muted">Use BallerWatch without an account. Your name, followed teams and notification preferences stay on this device.</p>
+        <p class="muted">No account or sign-in needed. Your preferences expire 24 hours after you save them and are removed the next time you open BallerWatch.</p>
         <div id="guest-settings-form" class="settings-form">
-          <label for="guest-name">Your name (optional)</label>
-          <input id="guest-name" type="text" maxlength="120" autocomplete="nickname" placeholder="Your name">
+          <label for="guest-name">Pickup RSVP name (optional)</label>
+          <input id="guest-name" type="text" maxlength="120" autocomplete="nickname" placeholder="Enter your own RSVP name">
           <div class="settings-choice-field">
             <label for="guest-teams-trigger">Follow RATS teams</label>
             <div class="settings-choice" id="guest-teams-choice">
@@ -463,119 +463,37 @@
               </div>
             </div>
             <textarea id="guest-teams" rows="1" hidden></textarea>
-            <p class="hint">Personal standings only. This does not change another visitor's schedule or settings.</p>
+            <p class="hint">All current-season teams are indexed in advance. Team changes update your cards instantly, without changing other visitors’ settings.</p>
           </div>
-          <p class="hint">Your preferences save automatically on this device.</p>
+          <p class="hint">Saved instantly on this device for 24 hours. Other players’ RSVP names are never published.</p>
           <p class="hint" id="guest-settings-status" role="status"></p>
         </div>
       </section>
       <div class="settings-divider"></div>
       <details id="settings-login-view" class="admin-settings-details">
-        <summary>Advanced · Administrator sign-in</summary>
-        <p class="muted">Administrator permission is required for shared match edits, private RSVP rosters, account management and releases.</p>
+        <summary>Advanced · Administrator maintenance</summary>
+        <p class="muted">Only shared match edits, private rosters and app releases need this protected unlock. Visitors never need an account.</p>
         <form id="owner-login-form" class="settings-form">
-          <label for="owner-login-username">Username</label>
-          <input id="owner-login-username" type="text" autocomplete="username"
-            maxlength="32" value="admin" placeholder="Username" required>
-          <label for="owner-login-password">Password</label>
+          <label for="owner-login-password">Maintenance password</label>
           <input id="owner-login-password" type="password" autocomplete="current-password"
-            maxlength="200" placeholder="Password" required>
-          <button type="submit">Sign in</button>
+            maxlength="200" placeholder="Maintenance password" required>
+          <button type="submit">Unlock maintenance</button>
         </form>
         <p class="hint" id="owner-login-status"></p>
-        <p class="privacy-note">The existing BallerWatch account is <strong>admin</strong>. Password recovery is performed from <strong>Reset web user password</strong> and now targets a username.</p>
       </details>
 
       <section id="settings-owner-view" hidden>
         <p class="settings-account-summary" id="current-user-summary"></p>
-        <form id="owner-settings-form" class="settings-form">
-          <div class="settings-choice-field">
-            <label id="owner-name-label" for="owner-name-trigger">Pickup RSVP name</label>
-            <div class="settings-choice" id="rsvp-choice">
-              <button class="settings-choice-trigger" id="owner-name-trigger" type="button"
-                aria-haspopup="listbox" aria-expanded="false" aria-controls="owner-name-options">
-                <span id="owner-name-display">Choose your RSVP name</span>
-                <span class="choice-chevron" aria-hidden="true">⌄</span>
-              </button>
-              <div class="settings-choice-popover" id="owner-name-popover" hidden>
-                <label for="owner-name-search" class="choice-search-label">Find a name</label>
-                <input type="search" id="owner-name-search" placeholder="Search RSVP names…" autocomplete="off">
-                <div class="settings-choice-options" id="owner-name-options" role="listbox"
-                  aria-label="Pickup RSVP names"></div>
-                <p class="hint choice-hint">Can't find yourself? Search a name to use it.</p>
-              </div>
-            </div>
-            <input id="owner-name" type="hidden" maxlength="120">
-          </div>
-
-          <div id="owner-team-settings" class="settings-choice-field">
-            <label for="owner-teams-trigger">League teams to monitor</label>
-            <div class="settings-choice" id="teams-choice">
-              <button class="settings-choice-trigger" id="owner-teams-trigger" type="button"
-                aria-haspopup="listbox" aria-expanded="false" aria-controls="owner-teams-options">
-                <span id="owner-teams-display">Choose monitored teams</span>
-                <span class="choice-chevron" aria-hidden="true">⌄</span>
-              </button>
-              <div class="settings-choice-chips" id="owner-teams-chips" aria-label="Selected league teams"></div>
-              <div class="settings-choice-popover" id="owner-teams-popover" hidden>
-                <label for="owner-teams-search" class="choice-search-label">Find league teams</label>
-                <input type="search" id="owner-teams-search" placeholder="Search teams…" autocomplete="off">
-                <div class="settings-choice-options" id="owner-teams-options" role="listbox"
-                  aria-label="League teams" aria-multiselectable="true"></div>
-                <p class="hint choice-hint">Select multiple teams. You can add a team not yet indexed.</p>
-              </div>
-            </div>
-            <textarea id="owner-teams" rows="1" maxlength="1200" hidden></textarea>
-            <p class="hint">Administrator shared setting. Personal team favorites are saved above.</p>
-          </div>
-
-          <button type="submit">Save changes</button>
-        </form>
-        <p class="hint" id="owner-settings-status"></p>
-
-        <section id="user-management" hidden>
-          <div class="settings-divider"></div>
-          <h3 class="settings-subheading">Users</h3>
-          <div class="settings-user-list" id="user-list"></div>
-          <form id="user-create-form" class="settings-form">
-            <label for="user-create-username">New username</label>
-            <input id="user-create-username" maxlength="32" autocomplete="off"
-              placeholder="teammate" required>
-            <div class="settings-choice-field">
-              <label for="user-create-name-trigger">Pickup RSVP name</label>
-              <div class="settings-choice" id="user-name-choice">
-                <button class="settings-choice-trigger" id="user-create-name-trigger" type="button"
-                  aria-haspopup="listbox" aria-expanded="false" aria-controls="user-create-name-options">
-                  <span id="user-create-name-display">Choose RSVP name</span>
-                  <span class="choice-chevron" aria-hidden="true">⌄</span>
-                </button>
-                <div class="settings-choice-popover" id="user-create-name-popover" hidden>
-                  <label for="user-create-name-search" class="choice-search-label">Find a name</label>
-                  <input type="search" id="user-create-name-search" placeholder="Search RSVP names…" autocomplete="off">
-                  <div class="settings-choice-options" id="user-create-name-options" role="listbox"
-                    aria-label="New user's RSVP name"></div>
-                </div>
-              </div>
-              <input id="user-create-name" type="hidden" maxlength="120">
-            </div>
-            <label for="user-create-password">Initial password</label>
-            <input id="user-create-password" type="password" minlength="12" maxlength="200"
-              autocomplete="new-password" placeholder="At least 12 characters" required>
-            <button type="submit">Add user</button>
-          </form>
-          <p class="hint" id="user-create-status"></p>
-        </section>
-
+        <p class="hint">Visitor RSVP name, teams and notifications are saved above, privately on each device.</p>
         <section id="deleted-match-management" hidden>
           <div class="settings-divider"></div>
-          <h3 class="settings-subheading">Deleted matches</h3>
+          <h3 class="settings-subheading">Hidden matches</h3>
           <div class="deleted-match-list" id="deleted-match-list"></div>
-          <p class="hint">Delete hides this match in BallerWatch only. The original RSVP/RATS fixture is not changed.</p>
+          <p class="hint">Hiding a match here never edits its RATS or RSVP source.</p>
         </section>
-
         <section id="release-management" hidden>
           <div class="settings-divider"></div>
-          <h3 class="settings-subheading">App</h3>
+          <h3 class="settings-subheading">App release</h3>
           <div class="release-status-row">
             <div>
               <strong id="release-version-summary">Checking versions…</strong>
@@ -583,25 +501,22 @@
             </div>
             <button id="promote-release" type="button" disabled>Checking…</button>
           </div>
-          <p class="hint" id="promote-release-status">
-            Runs the existing validated app-update workflow. No GitHub token is exposed to the app.
-          </p>
+          <p class="hint" id="promote-release-status">All validation and deployment gates remain required.</p>
         </section>
-
         <div class="settings-divider"></div>
         <form id="owner-password-form" class="settings-form">
-          <label for="owner-password-new">User sign-in password</label>
+          <label for="owner-password-new">Change maintenance password</label>
           <input id="owner-password-new" type="password" autocomplete="new-password"
             minlength="12" maxlength="200" placeholder="At least 12 characters" required>
-          <label for="owner-password-confirm">Confirm password</label>
+          <label for="owner-password-confirm">Confirm maintenance password</label>
           <input id="owner-password-confirm" type="password" autocomplete="new-password"
-            minlength="12" maxlength="200" placeholder="Repeat user password" required>
-          <button type="submit">Set or change password</button>
+            minlength="12" maxlength="200" placeholder="Repeat password" required>
+          <button type="submit">Change password</button>
         </form>
         <p class="hint" id="owner-password-status"></p>
-        <p class="privacy-note">Password recovery and first-time bootstrap are handled by the repository's <strong>Reset web user password</strong> GitHub Action. The plaintext password is never written to runtime state or workflow logs.</p>
-        <button class="subtle-action" id="owner-disconnect" type="button">Disconnect this device</button>
-        <button class="subtle-action" id="owner-revoke" type="button">Sign out all my devices</button>
+        <button class="subtle-action" id="owner-disconnect" type="button">Lock maintenance</button>
+        <button class="subtle-action" id="owner-revoke" type="button">Revoke other maintenance sessions</button>
+        <p class="privacy-note">The maintenance password is managed through the protected repository recovery workflow, never published on this page.</p>
       </section>
     </div>
   </dialog>
@@ -665,7 +580,7 @@
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=10.0.1"></script>
-  <script type="module" src="./v2/app.js?v=10.0.1"></script>
+  <script type="module" src="./app.js?v=11.0.0"></script>
+  <script type="module" src="./v2/app.js?v=11.0.0"></script>
 </body>
 </html>
