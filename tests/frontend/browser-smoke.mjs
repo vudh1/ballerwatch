@@ -483,6 +483,9 @@ try {
         assert.equal(await page.locator("#matchday-app").evaluate((el) => el.inert), true);
         assert.equal(await page.locator("#soccer-intro").isVisible(), true, "Skip preserves upward rewind");
         await atProgress(page, 1);
+        await page.reload();
+        await page.waitForFunction(() => document.documentElement.dataset.timelineReady === "true" && !document.querySelector("#matchday-app").inert);
+        assert.ok(await page.locator("#matchday-heading").evaluate((el) => el.getBoundingClientRect().top >= 0), "Reload immediately after Skip must retain the main header position");
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
         await page.locator("#two-week-calendar").scrollIntoViewIfNeeded();
         assert.equal(await page.locator("#two-week-calendar").isVisible(), true);

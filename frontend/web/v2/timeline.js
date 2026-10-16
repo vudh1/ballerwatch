@@ -167,6 +167,10 @@ try {
   });
   listen();
   window.addEventListener("pagehide", () => {
+    if (active) {
+      try { sessionStorage.setItem("ballerwatch:v2:main-scroll", String(Math.max(0, window.scrollY - distance))); }
+      catch { /* Native browser restoration remains available without storage. */ }
+    }
     cancelAnimationFrame(frame);
     clearTimeout(launchTimer);
     frame = 0;
@@ -201,5 +205,9 @@ try {
   } else {
     dismissLaunch();
     revealApp(true);
+    if (root.dataset.mainScroll !== undefined) {
+      window.scrollTo({ top: Number(root.dataset.mainScroll), behavior: "instant" });
+      delete root.dataset.mainScroll;
+    }
   }
 } catch { finishIntro(); }

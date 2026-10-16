@@ -10,12 +10,20 @@
     if (event.animationName === "v2-launch-out") root.dataset.launchStarted = String(performance.now());
   });
   try {
+    if ("scrollRestoration" in history) history.scrollRestoration = "auto";
     if (sessionStorage.getItem("ballerwatch:v2:entry-revision") !== root.dataset.entryRevision) {
       sessionStorage.removeItem("ballerwatch:v2:launch-seen");
       sessionStorage.removeItem("ballerwatch:v2:intro-seen");
       sessionStorage.setItem("ballerwatch:v2:entry-revision", root.dataset.entryRevision);
     }
     skip ||= sessionStorage.getItem("ballerwatch:v2:intro-seen") === "1";
+    const resume = sessionStorage.getItem("ballerwatch:v2:main-scroll");
+    sessionStorage.removeItem("ballerwatch:v2:main-scroll");
+    if (skip && resume !== null && Number.isFinite(Number(resume))) {
+      root.dataset.mainScroll = String(Math.max(0, Math.min(500000, Number(resume))));
+      // The retired intro height must not become a dashboard scroll offset.
+      if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+    }
     root.classList.toggle("v2-launching", !skip &&
       sessionStorage.getItem("ballerwatch:v2:launch-seen") !== "1");
   } catch {

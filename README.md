@@ -2,7 +2,7 @@
 
 BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, Calendar sync, and quick answers into one installable app.
 
-**Current source version: 9.1.0**
+**Current source version: 9.1.1**
 
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
 
@@ -38,6 +38,8 @@ A 40.3-second walkthrough recorded from the deployed 9.0.0 app, with smooth 20 f
 [Open BallerWatch](https://vudh1.github.io/ballerwatch/)
 
 ## What's new
+
+**v9.1.1** — Reload after Skip restores the main-page position. Weekly scouting evaluation now runs when due inside the hourly writer, avoiding cancelled standalone evaluation jobs.
 
 **v9.1.0** — Faster shot, later keeper reaction, equal-length arms and captain #10 with short sleeves. One AI hub replaces detached header controls. Skip preserves rewind. Evidence-led scouting preparation and weekly Groq/Gemini model proposals are tested against independent historical results before probability changes are eligible. See [Scouting model](docs/wiki/Scouting.md).
 
@@ -164,7 +166,7 @@ More detail: [Data and Privacy](https://github.com/vudh1/ballerwatch/wiki/Data-a
 | Watchdog + weather | every 6 hours | GitHub Actions |
 | Release eligibility | hourly | GitHub Actions |
 | Scouting snapshots | hourly | GitHub Actions; bounded dual-provider fact ranking at most daily |
-| Scouting model | weekly | GitHub Actions; development selection and independent holdout gates |
+| Scouting model | every 7 days, checked hourly | Same GitHub Actions scouting writer; independent holdout gates |
 | Web API | on demand | Cloudflare Worker |
 | Calendar sync | on reconciled RATS changes | GitHub Actions → Apps Script |
 

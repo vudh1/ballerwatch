@@ -1,7 +1,19 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "9.1.0",
+  "currentVersion": "9.1.1",
   "releases": [
+    {
+      "version": "9.1.1",
+      "date": "2026-10-15",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Restore logical scroll after Skip reload and guarantee periodic scouting evaluation",
+      "changes": [
+        "Preserve the main-page scroll offset when leaving the cinematic document; consume it before native restoration on the next direct-app load so reloading after Skip does not land at the footer. Upward rewind remains available before reload.",
+        "Consolidate weekly-due numerical evaluation and dual-provider model proposals into the serialized hourly scouting writer. Eliminate the separate evaluation queue that repeated promotion events could cancel; retry missing, expired, changed-season or changed-policy evaluations on the next hourly run.",
+        "Add regression coverage for post-Skip reload position and bounded weekly model refresh eligibility; retain full hub, late-save choreography, evidence-led reports and champion fallback."
+      ]
+    },
     {
       "version": "9.1.0",
       "date": "2026-10-15",
