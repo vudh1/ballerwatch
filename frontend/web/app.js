@@ -1413,13 +1413,13 @@ async function openSettings(options = {}) {
 
 async function loginOwnerDevice(event) {
   event.preventDefault();
-  const username = els.ownerLoginUsername.value.trim().toLowerCase();
+  const username = "admin";
   const password = els.ownerLoginPassword.value;
   const button = els.ownerLoginForm.querySelector("button");
   button.disabled = true;
   els.ownerLoginStatus.textContent = "Signing in…";
   try {
-    const payload = await api("/web/user/login", {
+    const payload = await api("/web/admin/unlock", {
       method: "POST",
       body: JSON.stringify({ username, password }),
     });
@@ -1430,11 +1430,7 @@ async function loginOwnerDevice(event) {
     els.ownerLoginPassword.value = "";
     const resumeMatchAction = pendingMatchAdminAction;
     await loadOwnerSettings();
-    await Promise.all([
-      loadRsvpStatus(),
-      loadNotificationProfile(),
-    ]);
-    void syncCurrentPushRegistration();
+    // Visitor preferences and notifications are independent of maintenance unlock.
     if (currentNextGame) {
       renderNextGame(currentNextGame, els.spotlightLabel.textContent || "NEXT GAME");
     }
@@ -1590,7 +1586,7 @@ async function registerServiceWorker() {
     void syncServiceWorkerRsvpState();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=10.0.1", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=11.0.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -1669,7 +1665,7 @@ function notificationTimeText(item) {
 }
 
 function accountNotificationStateActive() {
-  return Boolean(ownerToken() && currentNotificationProfile);
+  return false;
 }
 
 function notificationChannels() {
@@ -1697,7 +1693,7 @@ function renderNotificationPreferences() {
   if (els.notificationPrefLeague) els.notificationPrefLeague.checked = channels.league;
   if (els.notificationPrefVersion) els.notificationPrefVersion.checked = channels.version;
 
-  const signedIn = accountNotificationStateActive();
+  const signedIn = false;
   if (els.notificationPreferences) {
     els.notificationPreferences.classList.toggle("is-local-only", !signedIn);
   }
@@ -1709,107 +1705,15 @@ function renderNotificationPreferences() {
     if (input) input.disabled = false;
   }
   if (els.notificationSyncStatus) {
-    els.notificationSyncStatus.textContent = signedIn
-      ? `Synced when active for @${sessionUsername()}`
-      : "Saved on this device. No account needed.";
+    els.notificationSyncStatus.textContent = "Device-only · expires after 24 hours.";
   }
 }
 
-function applyNotificationProfile(profile) {
-  currentNotificationProfile = profile
-    ? normalizedNotificationProfile(profile)
-    : null;
+async function loadNotificationProfile() {
+  currentNotificationProfile = null;
   renderNotificationPreferences();
   renderBoard(currentBoardEntries);
-}
-
-function optimisticNotificationProfile({ readIds = [], deletedIds = [], channels = null } = {}) {
-  if (!accountNotificationStateActive()) return;
-  const current = normalizedNotificationProfile(currentNotificationProfile);
-  currentNotificationProfile = normalizedNotificationProfile({
-    ...current,
-    readIds: [...current.readIds, ...readIds],
-    deletedIds: [...current.deletedIds, ...deletedIds],
-    channels: channels ? { ...current.channels, ...channels } : current.channels,
-  });
-}
-
-function persistNotificationProfile(mutation, { refreshPush = false } = {}) {
-  if (!ownerToken()) return Promise.resolve(null);
-  notificationSyncPromise = notificationSyncPromise
-    .catch(() => null)
-    .then(async () => {
-      try {
-        const payload = await api("/web/user/notifications", {
-          method: "POST",
-          headers: ownerHeaders(),
-          retryNetwork: true,
-          body: JSON.stringify(mutation || {}),
-        });
-        currentNotificationProfile = normalizedNotificationProfile(payload.profile || {});
-        renderNotificationPreferences();
-        renderBoard(currentBoardEntries);
-        if (refreshPush) await syncCurrentPushRegistration();
-        return currentNotificationProfile;
-      } catch (error) {
-        if (error.status === 401) {
-          clearSession();
-          currentNotificationProfile = null;
-          renderNotificationPreferences();
-        } else if (els.notificationSyncStatus) {
-          els.notificationSyncStatus.textContent =
-            "Sync delayed. This device will retry on the next notification action.";
-        }
-        return null;
-      }
-    });
-  return notificationSyncPromise;
-}
-
-async function loadNotificationProfile({ migrateLocal = true } = {}) {
-  if (!ownerToken()) {
-    currentNotificationProfile = null;
-    renderNotificationPreferences();
-    renderBoard(currentBoardEntries);
-    return false;
-  }
-
-  try {
-    let payload = await api("/web/user/notifications", {
-      headers: ownerHeaders(),
-      retryNetwork: true,
-    });
-    currentNotificationProfile = normalizedNotificationProfile(payload.profile || {});
-
-    if (migrateLocal) {
-      const local = localNotificationProfile();
-      if (local.readIds.length || local.deletedIds.length) {
-        payload = await api("/web/user/notifications", {
-          method: "POST",
-          headers: ownerHeaders(),
-          retryNetwork: true,
-          body: JSON.stringify({
-            readIds: local.readIds,
-            deletedIds: local.deletedIds,
-          }),
-        });
-        currentNotificationProfile = normalizedNotificationProfile(payload.profile || {});
-        clearLocalNotificationProfile();
-      }
-    }
-
-    renderNotificationPreferences();
-    renderBoard(currentBoardEntries);
-    return true;
-  } catch (error) {
-    if (error.status === 401) {
-      clearSession();
-      currentNotificationProfile = null;
-    }
-    renderNotificationPreferences();
-    renderBoard(currentBoardEntries);
-    return false;
-  }
+  return true;
 }
 
 function notificationViewState(entries = currentBoardEntries) {
@@ -4431,10 +4335,11 @@ async function registerPushSubscription(subscription, action = "subscribe") {
   });
   return api(`/web/push/${action}`, {
     method: "POST",
-    headers: ownerHeaders(),
     body: JSON.stringify({
       subscription: serialized,
       challenge: challenge.challenge,
+      name: guestProfile.name,
+      teams: guestProfile.teams,
       channels: notificationChannels(),
     }),
   });
@@ -4813,14 +4718,10 @@ document.querySelectorAll("[data-hub-target]").forEach((button) => {
 els.musicToggle?.addEventListener("click", () => void toggleMusic());
 els.closeSettings.addEventListener("click", () => els.settingsDialog.close());
 els.ownerLoginForm.addEventListener("submit", loginOwnerDevice);
-els.ownerSettingsForm.addEventListener("submit", saveOwnerSettings);
+
 els.ownerPasswordForm.addEventListener("submit", saveOwnerPassword);
-els.userCreateForm.addEventListener("submit", createManagedUser);
+
 els.promoteRelease.addEventListener("click", promoteProductionRelease);
-els.userList.addEventListener("click", (event) => {
-  const button = event.target.closest(".user-remove");
-  if (button?.dataset?.username) void removeManagedUser(button.dataset.username);
-});
 els.ownerDisconnect.addEventListener("click", disconnectOwnerDevice);
 els.ownerRevoke.addEventListener("click", revokeOwnerDevices);
 els.nextGameCapacity.addEventListener("click", () => {
@@ -4943,7 +4844,7 @@ void Promise.allSettled([
   loadConfig(), loadBoard(), loadNotificationProfile(),
 ]);
 void updatePushStatus();
-if (ownerToken()) void syncCurrentPushRegistration();
+void syncCurrentPushRegistration();
 
 window.setInterval(() => {
   refreshLiveData().catch(() => null);
