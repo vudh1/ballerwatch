@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.0.0",
+  "currentVersion": "11.0.1",
   "releases": [
+    {
+      "version": "11.0.1",
+      "date": "2026-10-16",
+      "type": "patch",
+      "source": "user-clarification",
+      "title": "Persistent device preferences and private match edits",
+      "webAnnouncement": "Your RSVP name and monitored teams now stay saved on this device until you change them. Only notification preferences, read state and push registrations expire after 24 hours. Team-match edits, hides and restores are private to the device and update cards immediately.",
+      "changes": [
+        "Replace the 24-hour visitor-name/team lease with persistent browser storage; migrate older device preferences, even a saved lease that passed its former expiration, without restoring account-backed profiles.",
+        "Keep existing 24-hour expiration and cleanup for notification categories, read/deleted state, badges and encrypted Web Push registrations; require an active device to renew push.",
+        "Apply and cache match date/time/venue corrections and hidden matches on the editing device only. Changes immediately update match cards, calendar dots, directions and share details; Reset/Restore are local and do not require sign-in.",
+        "Serve canonical RATS and pickup fixtures without legacy shared overrides or hidden-match state. Reject retired shared match-write endpoints, including calls from older app versions.",
+        "Precompute current-season team data as before, while storing the selected teams locally with RSVP name; add browser, privacy and cross-device isolation regression checks."
+      ]
+    },
     {
       "version": "11.0.0",
       "date": "2026-10-16",
