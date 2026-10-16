@@ -79,13 +79,16 @@ function cleanNotificationProfiles(value) {
   return profiles;
 }
 
-function cleanSettings(value) {
+export function cleanAccountlessSettings(value) {
   const source = value && typeof value === "object" ? value : {};
   const next = {
     ...defaults(),
     ...source,
-    webUsers: cleanWebUsers(source.webUsers),
-    notificationProfiles: cleanNotificationProfiles(source.notificationProfiles),
+    // No ordinary user records, claimed RSVP identities, or cross-device
+    // notification profiles survive a persistence or migration cycle.
+    ownerRsvpName: "",
+    webUsers: {},
+    notificationProfiles: {},
     matchOverrides: cleanMatchOverrides(source.matchOverrides),
     hiddenMatches: cleanHiddenMatches(source.hiddenMatches),
   };
@@ -96,19 +99,20 @@ function cleanSettings(value) {
   return next;
 }
 
+
 export function loadUserState() {
   try {
     const raw = JSON.parse(fs.readFileSync(USER_STATE_PATH, "utf8"));
     const current = decryptState(raw);
     if (current && typeof current === "object") {
       return {
-        settings: cleanSettings(current.settings),
+        settings: cleanAccountlessSettings(current.settings),
       };
     }
 
     // Compatibility with pre-v5.8 files that encrypted only the settings object.
     return {
-      settings: cleanSettings(decryptState(raw.settings)),
+      settings: cleanAccountlessSettings(decryptState(raw.settings)),
     };
   } catch {
     return { settings: defaults() };
@@ -117,7 +121,7 @@ export function loadUserState() {
 
 export function saveUserState(settings) {
   const current = loadUserState().settings;
-  const next = cleanSettings(settings);
+  const next = cleanAccountlessSettings(settings);
   if (JSON.stringify(current) === JSON.stringify(next)) return false;
 
   fs.mkdirSync(path.dirname(USER_STATE_PATH), { recursive: true });
