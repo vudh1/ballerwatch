@@ -37,7 +37,9 @@ test("V2 separates a brief launch and scroll hero from unchanged V1 cards", () =
   assert.match(css, /\.soccer-stage \{[^}]*position: sticky/);
   assert.doesNotMatch(css, /\.v2 \.(?:card|next-game-card|calendar-card|standings-slide)\s*\{/);
   assert.doesNotMatch(html, /v2-sidebar|v2-editorial|v2-shortcuts|v2-bottom-nav|V2 experience/);
-  assert.ok(html.indexOf('class="hero-actions v2-quick-actions"') < html.indexOf('<main id="matchday-app"'));
+  assert.doesNotMatch(html, /hero-actions v2-quick-actions/);
+  assert.equal((html.match(/class="app-hub-tabs"/g) || []).length, 3);
+  assert.match(html, /id="scene-captain-band"/);
   assert.match(html, /id="scene-player-number"[^>]*>10<\/text>/);
   assert.doesNotMatch(html, /M6-70h14l-11 28/);
   const cardFeed = (source, end) => source.slice(source.indexOf('    <div class="spotlight-carousel"'), source.indexOf(end));
@@ -82,11 +84,11 @@ test("every pose reverses exactly with scroll, clamps input and stays finite", (
 
 test("upper-corner shot narrowly clears the outstretched glove", () => {
   const distances = Array.from({ length: 61 }, (_, index) => {
-    const pose = scenePose(0.78 + index / 1000);
+    const pose = scenePose(0.70 + index / 500);
     const angle = pose.keeper.rotation * Math.PI / 180;
-    // SVG glove center is (-120, -120) with a 7-unit radius.
-    const gloveX = pose.keeper.x - 120 * Math.cos(angle) + 120 * Math.sin(angle);
-    const gloveY = pose.keeper.y - 120 * Math.sin(angle) - 120 * Math.cos(angle);
+    // Equal-length arms end at glove centers (+/-72, -130).
+    const gloveX = pose.keeper.x - 72 * Math.cos(angle) + 130 * Math.sin(angle);
+    const gloveY = pose.keeper.y - 72 * Math.sin(angle) - 130 * Math.cos(angle);
     return Math.hypot(pose.ball.x - gloveX, pose.ball.y - gloveY) - (20 * pose.ball.scale + 7);
   });
   assert.ok(Math.min(...distances) > 3, "The ball must not intersect the glove");
@@ -226,4 +228,11 @@ test("offline navigation is route-specific and missing scripts never receive HTM
     assert.equal(vm.runInContext('safeAppUrl("https://evil.example/")', worker.context), "https://example.com/ballerwatch/");
     assert.equal(vm.runInContext('safeAppUrl("/ballerwatch/")', worker.context), "https://example.com/ballerwatch/");
   }
+});
+
+test("keeper reacts only after the fast shot has covered most of its flight", () => {
+  const reaction = scenePose(SCENE.diveStart);
+  assert.equal(reaction.dive, 0);
+  assert.ok((reaction.ball.x - SCENE.ball.start.x) / (SCENE.ball.corner.x - SCENE.ball.start.x) > 0.75);
+  assert.ok(scenePose(SCENE.flightEnd).dive < 0.5, "Ball beats the dive to goal");
 });

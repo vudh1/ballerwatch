@@ -1,7 +1,23 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "9.0.0",
+  "currentVersion": "9.1.0",
   "releases": [
+    {
+      "version": "9.1.0",
+      "date": "2026-10-15",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Late-save soccer choreography, a unified app hub and evidence-gated scouting",
+      "webAnnouncement": "A faster shot and later goalkeeper dive, captain #10, and one AI icon for AI, Settings and Notifications. Skip intro now preserves upward rewind. Richer scouting reports are prepared ahead of time, with measured weekly model evaluation.",
+      "changes": [
+        "Redraw equal-length goalkeeper arms and gloves; shorten ball flight, flatten its trajectory and delay the save attempt until the shot approaches goal. Connect the shooter neck/collar and add short sleeves and a captain band while retaining number 10.",
+        "Replace floating header utilities with a single badged AI launcher and linked AI, Settings and Notifications panes; retain every account, notification, Q&A and administration control, with matching reveal opacity and mobile safe areas.",
+        "Skip intro and Skip to matches scroll to the actual card reveal without removing the scene, so scrolling upward rewinds it; reduced-motion and asset/script failures still enter directly.",
+        "Add deterministic match-preparation facts with form, scoring/defending and sample/coverage limits. Gemini and Groq periodically rank only validated fact IDs from anonymous public statistics; provider prose and fabricated tactics never enter reports.",
+        "Benchmark regularized goal-rate ensembles against the actual production predictor, Elo, goal difference and league-average baselines. Weekly dual-provider bounded proposals use development aggregates only; completed-season holdout, minimum samples, paired date-group uncertainty, log-loss and Brier gates control encrypted candidate eligibility.",
+        "Publish only encrypted model and scouting snapshots; hourly preparation uses an eligible, unexpired same-season model or the reviewed champion, without training in web requests. Fix AI accuracy answers to show the real published holdout metrics."
+      ]
+    },
     {
       "version": "9.0.0",
       "date": "2026-10-15",

@@ -131,3 +131,13 @@ test("BallerWatch AI reports only published out-of-sample scouting metrics", () 
   assert.equal(missing.ok, true);
   assert.match(missing.reply, /validation sample is not yet available/);
 });
+
+test("accuracy answers expose the actual published holdout instead of claiming it is missing", () => {
+  const result = answerScoutingQuestion("How accurate is the scouting model?", {
+    model: { status: "production-locked", holdoutSeason: "summer-2026", holdoutGames: 1474,
+      holdoutLogLoss: 0.95638, baselineHoldoutLogLoss: 0.96162, holdoutBrier: 0.57217 },
+  });
+  assert.match(result.reply, /1474 scored fixtures/);
+  assert.match(result.reply, /0.95638/);
+  assert.doesNotMatch(result.reply, /not yet available|conservative baseline retained/);
+});

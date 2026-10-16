@@ -1,14 +1,15 @@
 /**
  * Offline, aggregate-only chronological evaluation for public RATS results.
  * v8.11.0: decrypt the canonical archive in Actions memory; never log games,
- * teams, secrets or predictions. This job cannot change production weights.
+ * teams, secrets or predictions. The separate weekly model job applies gates.
  */
 import fs from "node:fs";
+import { validGoalConfig } from "../shared/scout-goals.mjs";
 import { pathToFileURL } from "node:url";
 import { decryptState } from "../shared/state-crypto.mjs";
 import { historyTeamKey } from "../shared/rats-history.mjs";
 import {
-  DEFAULT_SCOUT_WEIGHTS, forecastFromFeatures, roundThreeWay, tuneScoutingWeights,
+  DEFAULT_SCOUT_WEIGHTS, PRODUCTION_SCOUT_WEIGHTS, scoutingFormat as format, scoutingTier as tier, forecastFromFeatures, roundThreeWay, tuneScoutingWeights,
 } from "../shared/scout-calibration.mjs";
 
 const seasonOrder = (value) => {
@@ -17,18 +18,6 @@ const seasonOrder = (value) => {
 };
 const bounded = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const round = (v) => Number.isFinite(v) ? +v.toFixed(5) : null;
-const format = (t) => {
-  const s = String(t?.leagueName || t?.divisionLabel || "");
-  if (/8\s*(?:v|vs|x|on)\s*8/i.test(s)) return "8v8";
-  if (/11\s*(?:v|vs|x|on)\s*11/i.test(s)) return "11v11";
-  return "unknown";
-};
-const tier = (team) => {
-  const s = [team?.divisionLabel, team?.division, team?.leagueName].join(" ").toLowerCase();
-  const m = /(?:^|[^a-z0-9])(?:d|division)[\s_-]*([123])[\s_-]*([abc])?(?=$|[^a-z0-9])/.exec(s);
-  const key = m ? m[1]+(m[2] || "") : /\b2[abc]\b/.exec(s)?.[0];
-  return {1:1.30,2:1.10,"2a":1.18,"2b":1.10,"2c":1.03,3:0.90}[key] || 1;
-};
 const outcomeIndex = (a,b) => a > b ? 0 : a===b ? 1 : 2;
 const goalsEvent = (game,home) => ({
   date:game.date,scored:home?game.a:game.b,conceded:home?game.b:game.a,
@@ -130,7 +119,7 @@ function groupStats(records,by) {
   return Object.fromEntries([...new Set(records.map(by))].sort().map(label=>[label,diagnostics(records.filter(x=>by(x)===label))]));
 }
 /** Public aggregate models are replayed in date batches: games on the same day never train on each other. */
-export function evaluateArchive(history,currentSeasonId) {
+export function evaluateArchive(history,currentSeasonId, proposals = []) {
   const {games,seasons,coverage}=gameRows(history,currentSeasonId);
   const completed=seasons.filter(s=>s.seasonId!==currentSeasonId && seasonOrder(s.seasonId)<seasonOrder(currentSeasonId));
   const holdout=completed.at(-1)?.seasonId;
@@ -138,7 +127,17 @@ export function evaluateArchive(history,currentSeasonId) {
   // The untouched last full season never enters parameter selection.
   const model=tuneScoutingWeights({seasons:train},currentSeasonId);
   const candidate=model.weights || DEFAULT_SCOUT_WEIGHTS;
-  const models=["champion-v0","candidate","league-average","goal-difference","elo"];
+  const configs = [];
+  for (const blend of [0.2, 0.4, 0.6]) for (const prior of [3, 6, 10]) {
+    configs.push({ blend, prior, decay: 0.94 });
+  }
+  for (const proposal of proposals.slice(0, 6)) {
+    const config = validGoalConfig(proposal);
+    if (config && !configs.some((item) => JSON.stringify(item) === JSON.stringify(config))) configs.push(config);
+  }
+  const challengers = Object.fromEntries(configs.map((goals, index) =>
+    [`goals-${index}`, { ...PRODUCTION_SCOUT_WEIGHTS, goals }]));
+  const models=["champion-v0","champion-production","candidate","league-average","goal-difference","elo", ...Object.keys(challengers)];
   const records=Object.fromEntries(models.map(m=>[m,[]]));
   const histories=new Map(),elo=new Map(),seasonCount=new Map();
   const rated=(t)=>elo.get(t)??1500;
@@ -154,13 +153,16 @@ export function evaluateArchive(history,currentSeasonId) {
       const outcome=outcomeIndex(game.a,game.b);
       const projections={
         "champion-v0":scoreCandidate(ours,theirs,meetings,DEFAULT_SCOUT_WEIGHTS),
+        "champion-production":scoreCandidate(ours,theirs,meetings,PRODUCTION_SCOUT_WEIGHTS),
+        ...Object.fromEntries(Object.entries(challengers).map(([name, weights]) =>
+          [name, scoreCandidate(ours, theirs, meetings, weights)])),
         candidate:scoreCandidate(ours,theirs,meetings,candidate),
         "league-average":{win:.395,draw:.21,loss:.395},
         "goal-difference":gdProbability(ours,theirs),
         elo:eloProbability(rated(game.home),rated(game.away)),
       };
       for(const name of models) records[name].push({
-        p:projections[name],outcome,season:game.season,
+        p:projections[name],outcome,date:game.date,season:game.season,
         division:game.division,phase:order<=3?"1-3":order<=6?"4-6":"7+",
         holdout:game.season===holdout});
     }
@@ -184,28 +186,58 @@ export function evaluateArchive(history,currentSeasonId) {
   }
   const select=(list,isHoldout)=>list.filter(x=>x.holdout===isHoldout);
   const reports=Object.fromEntries(models.map(name=>[name,{
-    development:diagnostics(select(records[name],false)),
+    development:diagnostics(records[name].filter((entry) => !entry.holdout && seasonOrder(entry.season) < seasonOrder(holdout))),
     holdout:diagnostics(select(records[name],true)),
     bySeason:groupStats(records[name],x=>x.season),
     byDivision:groupStats(records[name],x=>x.division),
     bySeasonGameNumber:groupStats(records[name],x=>x.phase),
   }]));
-  const holdoutScore=reports.candidate.holdout?.logLoss;
-  const superior=holdoutScore!=null && ["champion-v0","league-average","goal-difference","elo"]
-    .every(name=>holdoutScore<reports[name].holdout?.logLoss);
+  // Select on completed DEVELOPMENT seasons only. Current scores and the
+  // newest complete holdout never participate in hyperparameter selection.
+  const development = (name) => diagnostics(records[name].filter((entry) =>
+    !entry.holdout && seasonOrder(entry.season) < seasonOrder(holdout)));
+  const pool = ["champion-production", ...Object.keys(challengers)];
+  const selected = pool.reduce((best, name) =>
+    (development(name)?.logLoss ?? Infinity) < (development(best)?.logLoss ?? Infinity) ? name : best,
+  "champion-production");
+  const incumbent = reports["champion-production"].holdout;
+  const tested = reports[selected].holdout;
+  const losses = (entry) => -Math.log(Math.max(1e-9,
+    [entry.p.win, entry.p.draw, entry.p.loss][entry.outcome]));
+  // Pair by date rather than pretending fixtures on the same day are independent.
+  const differences = new Map();
+  records[selected].forEach((entry, index) => {
+    if (!entry.holdout) return;
+    const list = differences.get(entry.date) || [];
+    list.push(losses(records["champion-production"][index]) - losses(entry));
+    differences.set(entry.date, list);
+  });
+  const means = [...differences.values()].map((items) => items.reduce((a, b) => a + b, 0) / items.length);
+  const mean = means.reduce((a, b) => a + b, 0) / Math.max(1, means.length);
+  const se = means.length > 1 ? Math.sqrt(means.reduce((sum, v) => sum + (v - mean) ** 2, 0) /
+    (means.length * (means.length - 1))) : Infinity;
+  const superior = selected !== "champion-production" && tested?.n >= 100 && means.length >= 12 &&
+    incumbent.logLoss - tested.logLoss >= 0.005 && mean - 1.96 * se > 0 &&
+    tested.brier <= incumbent.brier && ["league-average", "goal-difference", "elo"]
+      .every((name) => tested.logLoss < reports[name].holdout?.logLoss);
   return {schemaVersion:1,createdAt:new Date().toISOString(),
     dataSources:["canonical encrypted RATS aggregate index (website-derived; no plaintext output)"],
     seasons:coverage,archiveSeasonCount:seasons.length,scoredGames:games.length,
     holdoutSeason:holdout||null,holdoutUnseenDuringTuning:true,
     candidateWeights:candidate,candidateStatus:model.status,
-    productionPromotionRecommended:superior && records.candidate.filter(x=>x.holdout).length>=100,
-    productionPromotionBlockedReason:superior?"Holdout sample under 100, if flagged": "Candidate must beat all baselines on untouched holdout log loss",
+    challengerConfigs: challengers,
+    selectedModel: selected,
+    selectedWeights: challengers[selected] || { ...PRODUCTION_SCOUT_WEIGHTS },
+    pairedDateGroups: means.length,
+    pairedLogLossLift95Lower: round(mean - 1.96 * se),
+    productionPromotionRecommended:superior,
+    productionPromotionBlockedReason:superior ? null : "Retain champion: candidate must pass development selection, 100 holdout games, 12 date groups, positive paired lift and all baseline gates",
     comparisons:reports,
     warnings:["Unknown formats remain neutral; ambiguous same-season team aliases and unscored games excluded.",
       "Tier inferred only from published team labels; no guessing missing match results.",
       "All games sharing a date use ratings from prior dates only.",
       "The development replay uses fixed selected parameters and is diagnostic, not independent validation.",
-      "The final full-data refit is not independently validated; no model is automatically promoted."],
+      "Only a development-selected challenger passing all independent holdout gates is eligible for the next encrypted snapshot."],
   };
 }
 export function evaluateEncryptedHistory(path="league/state/history.json",currentSeason="") {

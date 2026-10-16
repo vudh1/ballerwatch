@@ -45,6 +45,8 @@ jobs:
 
       - name: Prepare compact encrypted scouting report
         env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
         run: node backend/league/scouting-index.mjs
 

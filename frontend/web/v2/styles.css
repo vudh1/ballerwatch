@@ -26,11 +26,13 @@
 .v2-launch .launch-intro-word-main { color: #eafff5; text-shadow: 0 0 12px #86efac55, 0 0 38px #38bdf82e; }
 #skip-launch { position: absolute; bottom: max(1.5rem, calc(env(safe-area-inset-bottom) + 1rem)); background: transparent; color: #b7d1cb; font-size: var(--type-small); border-color: #a7f3d026; }
 @keyframes v2-launch-out { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
-.v2-quick-actions { position: fixed; z-index: 40; top: max(2.2rem, calc(env(safe-area-inset-top) + 1rem)); right: max(calc(var(--v2-safe-right) + .75rem), calc((100vw - var(--app-surface-width)) / 2 + 1.35rem)); display: flex; flex-direction: row; flex-wrap: nowrap; width: max-content; max-width: calc(100vw - 2rem); gap: .45rem; padding: .3rem; border: 1px solid #e2e8f026; border-radius: 99px; background: #06121699; box-shadow: inset 0 1px 0 #ffffff20, 0 12px 32px #00000030; backdrop-filter: blur(18px) saturate(135%); -webkit-backdrop-filter: blur(18px) saturate(135%); }
-.v2 .v2-quick-actions .utility-button { width: 44px; height: 44px; flex: 0 0 44px; }
-.v2-quick-actions { opacity: 1; }
-.v2-cinematic .v2-quick-actions { opacity: var(--app-reveal, 0); }
-.v2-cinematic:not(.v2-revealing) .v2-quick-actions, .v2-launching .v2-quick-actions { visibility: hidden; pointer-events: none; }
+.v2 .hero { padding-right: 0; }
+.v2 .chat-launcher { opacity: var(--app-reveal, 1); right: max(1rem, calc(var(--v2-safe-right) + .65rem)); }
+.app-hub-tabs { display: flex; gap: .35rem; padding: .35rem; margin: 0 0 1rem; border-radius: 18px; background: #061a1870; border: 1px solid #ffffff12; }
+.app-hub-tabs button { flex: 1; min-width: 0; padding: .65rem .35rem; border: 0; background: transparent; color: var(--muted); font-size: var(--type-small); border-radius: 14px; }
+.app-hub-tabs button[aria-current="true"] { color: var(--text); background: #c2fff018; box-shadow: inset 0 1px 0 #ffffff20; }
+.chat-launcher .notification-badge { position: absolute; top: -.15rem; right: -.15rem; }
+.v2-revealing) .v2-quick-actions, .v2-launching .v2-quick-actions { visibility: hidden; pointer-events: none; }
 .v2 .hero { padding-right: 112px; }
 .v2-revealing .soccer-stage { pointer-events: none; }
 .soccer-intro { display: none; }
@@ -85,6 +87,6 @@
 @media (prefers-reduced-motion: reduce) {
   .v2 .soccer-intro, .v2 .v2-launch { display: none; }
   .v2 .v2-shell { margin-top: 0; opacity: 1; }
-  .v2 .v2-quick-actions { opacity: 1; visibility: visible; pointer-events: auto; }
+  .v2 .chat-launcher { opacity: 1; visibility: visible; pointer-events: auto; }
   .v2 *, .v2 *::before, .v2 *::after { scroll-behavior: auto !important; animation-duration: .001ms !important; transition-duration: .001ms !important; }
 }

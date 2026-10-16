@@ -37,7 +37,7 @@ function dismissLaunch() {
 function revealApp(ready) {
   root.classList.toggle("v2-app-ready", ready);
   app.inert = !ready;
-  if (ready) document.querySelector(".v2-quick-actions").inert = false;
+  if (ready) document.querySelector("#chat-launcher").inert = false;
   intro.setAttribute("aria-hidden", String(ready));
 }
 export function finishIntro({ focus = false } = {}) {
@@ -52,6 +52,16 @@ export function finishIntro({ focus = false } = {}) {
   window.scrollTo({ top: 0, behavior: "instant" });
   if (focus) document.querySelector("#matchday-heading")?.focus({ preventScroll: true });
 }
+function skipIntro() {
+  if (motion.matches || !active) return finishIntro({ focus: true });
+  dismissLaunch();
+  remember("intro-seen");
+  measure();
+  window.scrollTo({ top: distance, behavior: "instant" });
+  lastProgress = -1;
+  render();
+  document.querySelector("#matchday-heading")?.focus({ preventScroll: true });
+}
 function render() {
   frame = 0;
   if (!active || document.hidden) return;
@@ -64,7 +74,7 @@ function render() {
     root.style.setProperty("--app-reveal", String(pose.reveal));
     root.classList.toggle("v2-revealing", progress >= SCENE.revealStart);
     revealApp(pose.reveal >= 0.1);
-    document.querySelector(".v2-quick-actions").inert = pose.reveal <= 0;
+    document.querySelector("#chat-launcher").inert = pose.reveal <= 0;
     const set = (name, value) => elements[name].setAttribute("transform", value);
     const camera = `translate(${sceneWidth / 2 - pose.focus} 0)`;
     set("world", camera);
@@ -149,11 +159,11 @@ try {
   if (!Object.values(elements).every(Boolean)) throw new Error("Incomplete scene");
   root.style.setProperty("--scroll-screens", SCENE.scrollScreens);
   root.style.setProperty("--launch-ms", `${SCENE.launchMs}ms`);
-  document.querySelector("#skip-intro").addEventListener("click", () => finishIntro({ focus: true }));
-  document.querySelector("#skip-launch").addEventListener("click", () => finishIntro({ focus: true }));
+  document.querySelector("#skip-intro").addEventListener("click", skipIntro);
+  document.querySelector("#skip-launch").addEventListener("click", skipIntro);
   document.querySelector(".v2-skip-link").addEventListener("click", (event) => {
     event.preventDefault();
-    finishIntro({ focus: true });
+    skipIntro();
   });
   listen();
   window.addEventListener("pagehide", () => {
