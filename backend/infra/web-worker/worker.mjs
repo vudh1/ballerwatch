@@ -3263,14 +3263,10 @@ export function webSafeSnapshot(snapshot) {
     league: snapshot?.league || { teams: [] },
     today: snapshot?.today || { games: [] },
     teams: Array.isArray(snapshot?.teams) ? snapshot.teams : [],
-    settings: (() => {
-      const matchOverrides = cleanMatchOverrides(snapshot?.settings?.matchOverrides);
-      const hiddenMatches = cleanHiddenMatches(snapshot?.settings?.hiddenMatches);
-      const settings = {};
-      if (Object.keys(matchOverrides).length) settings.matchOverrides = matchOverrides;
-      if (Object.keys(hiddenMatches).length) settings.hiddenMatches = hiddenMatches;
-      return settings;
-    })(),
+    // Public fixture data is canonical. Legacy shared overrides/soft-deletes
+    // remain encrypted for audit but must never affect another visitor.
+    // All future card edits and hides live exclusively in browser storage.
+    settings: {},
     ownerName: "",
     version: snapshot?.version || "unknown",
   };
@@ -4167,100 +4163,13 @@ export default {
       }
     }
 
-    if (
-      (request.method === "POST" || request.method === "DELETE") &&
-      userRoute(url.pathname, "match")
-    ) {
-      const account = await resolveOwnerCapability(env, bearerToken(request)).catch(() => null);
-      if (!account) {
-        return webJson(request, { ok: false, error: "User sign-in is required." }, { status: 401 });
-      }
-      if (account.role !== "admin") {
-        return webJson(request, { ok: false, error: "Administrator access is required." }, { status: 403 });
-      }
-
-      let body;
-      try { body = await request.json(); }
-      catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
-
-      try {
-        const saved = await saveMatchVisibilityDirect(
-          env,
-          body,
-          { hidden: request.method === "DELETE" },
-        );
-        ctx.waitUntil(
-          (
-            saved.id.startsWith("league:")
-              ? dispatchWorkflow(env, "league.yml")
-              : saved.id.startsWith("pickup:")
-                ? dispatchWorkflow(env, "pickup.yml")
-                : dispatchWorkflow(env, "watchdog.yml", { external_fallback: true })
-          ).catch((error) => console.warn("Match visibility reconciliation dispatch failed", error)),
-        );
-        return webJson(request, {
-          ok: true,
-          id: saved.id,
-          hidden: saved.hidden,
-          deletedMatches: saved.deletedMatches,
-        });
-      } catch (error) {
-        const message = cleanText(error?.message, 220);
-        const status = /Invalid match override/.test(message) ? 400 : 503;
-        return webJson(
-          request,
-          { ok: false, error: status === 400 ? message : "Unable to update match visibility right now." },
-          { status },
-        );
-      }
-    }
-
-    if (
-      (request.method === "POST" || request.method === "DELETE") &&
-      userRoute(url.pathname, "match-override")
-    ) {
-      const account = await resolveOwnerCapability(env, bearerToken(request)).catch(() => null);
-      if (!account) {
-        return webJson(request, { ok: false, error: "User sign-in is required." }, { status: 401 });
-      }
-      if (account.role !== "admin") {
-        return webJson(request, { ok: false, error: "Administrator access is required." }, { status: 403 });
-      }
-
-      let body;
-      try { body = await request.json(); }
-      catch { return webJson(request, { ok: false, error: "Invalid JSON." }, { status: 400 }); }
-
-      try {
-        const saved = await saveMatchOverrideDirect(
-          env,
-          body,
-          { reset: request.method === "DELETE" },
-        );
-        ctx.waitUntil(
-          (
-            saved.kind === "pickup"
-              ? dispatchWorkflow(env, "pickup.yml")
-              : saved.kind === "league"
-                ? dispatchWorkflow(env, "league.yml")
-                : dispatchWorkflow(env, "watchdog.yml", { external_fallback: true })
-          ).catch((error) => console.warn("Match override reconciliation dispatch failed", error)),
-        );
-        return webJson(request, {
-          ok: true,
-          id: saved.id,
-          override: saved.override,
-          reset: request.method === "DELETE",
-        });
-      } catch (error) {
-        const message = cleanText(error?.message, 220);
-        const status = /Invalid match override|Match date|Match time/.test(message) ? 400 : 503;
-        return webJson(
-          request,
-          { ok: false, error: status === 400 ? message : "Unable to save match override right now." },
-          { status },
-        );
-      }
+    // Do not let an older installed PWA write a shared match or hide a
+    // league game for every visitor. The 11.0.1 app edits locally only.
+    if (userRoute(url.pathname, "match") ||
+        userRoute(url.pathname, "match-override")) {
+      return webJson(request, {ok: false,
+        error: "Shared match editing has been retired. Edit on this device instead.",
+      }, {status: 410});
     }
 
     if (request.method === "GET" && userRoute(url.pathname, "rsvp-status")) {
