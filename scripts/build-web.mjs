@@ -14,6 +14,9 @@ for (const route of ["", "v2/"]) {
   const html = fs.readFileSync(path.join(source, route, "index.html"), "utf8");
   for (const match of html.matchAll(/(?:src|href)="([^"#]+)"/g)) {
     if (!match[1].startsWith(".")) continue;
+    // /beta/ is generated from the validated main checkout below, not
+    // checked in as a duplicate source directory.
+    if (route === "v2/" && match[1] === "../beta/") continue;
     const file = path.resolve(source, route, match[1].split("?")[0]);
     if (!file.startsWith(source) || !fs.existsSync(file)) {
       throw new Error(`Missing local asset in /${route}: ${match[1]}`);
