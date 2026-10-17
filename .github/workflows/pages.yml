@@ -137,7 +137,7 @@ jobs:
         if: steps.beta.outputs.publish == 'true'
         id: deployment
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
-# Deployed status alone does not prove the public beta path has updated.
+      # Deployed status alone does not prove the public beta path has updated.
       # Compare exact static bytes after publishing, including the validated
       # beta revision's service-worker cache identity. No API or state writes.
       - name: Verify live beta route and unchanged production root
