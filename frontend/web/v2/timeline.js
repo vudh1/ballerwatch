@@ -1,6 +1,6 @@
 /**
  * V2 branded entry and layered native-scroll soccer hero, before V1 cards.
- * Baseline: v8.14.0. Transforms/opacity only; no API work or data polling.
+ * Baseline: v11.2.0. Transforms/opacity only; no API work or data polling.
  */
 import { SCENE, featureStory, scenePose, cameraFlash, clamp } from "./scene-config.mjs";
 
@@ -12,7 +12,7 @@ const launch = document.querySelector("#v2-launch");
 const topLine = document.querySelector(".intro-topline");
 const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const elements = Object.fromEntries([
-  "world", "background-world", "ball", "shooting-leg", "player-body", "keeper", "net",
+  "world", "background-world", "ball", "player", "shooting-leg", "shooting-calf", "plant-leg", "player-body", "player-arms", "keeper", "keeper-arms", "keeper-legs", "net",
   "grass", "flash", "phase", "headline", "description", "progress", "scene-content", "copy",
 ].map((name) => [name, document.querySelector(`#scene-${name}`)]));
 let frame = 0;
@@ -24,6 +24,8 @@ let lastStory = null;
 let lastProgress = -1;
 let active = root.classList.contains("v2-cinematic");
 let listening = false;
+const cameraFlashes = [...document.querySelectorAll("[data-camera-flash]")];
+const launcher = document.querySelector("#chat-launcher");
 
 function remember(name) {
   try { sessionStorage.setItem(`ballerwatch:v2:${name}`, "1"); } catch { /* Session storage is optional. */ }
@@ -37,7 +39,7 @@ function dismissLaunch() {
 function revealApp(ready) {
   root.classList.toggle("v2-app-ready", ready);
   app.inert = !ready;
-  if (ready) document.querySelector("#chat-launcher").inert = false;
+  if (ready) launcher.inert = false;
   intro.setAttribute("aria-hidden", String(ready));
 }
 export function finishIntro({ focus = false } = {}) {
@@ -74,17 +76,23 @@ function render() {
     root.style.setProperty("--app-reveal", String(pose.reveal));
     root.classList.toggle("v2-revealing", progress >= SCENE.revealStart);
     revealApp(pose.reveal >= 0.1);
-    document.querySelector("#chat-launcher").inert = pose.reveal <= 0;
+    launcher.inert = pose.reveal <= 0;
     const set = (name, value) => elements[name].setAttribute("transform", value);
     const camera = `translate(${sceneWidth / 2 - pose.focus} 0)`;
     set("world", camera);
     set("background-world", camera);
     set("ball", `translate(${pose.ball.x} ${pose.ball.y}) scale(${pose.ball.scale}) rotate(${pose.ball.rotation})`);
+    set("player", `translate(${350 + pose.player.shiftX} ${605 + pose.player.bob})`);
     set("shooting-leg", `rotate(${pose.kick} 13 18)`);
-    set("player-body", `translate(${-pose.kick * 0.12} 0) rotate(${-pose.kick * 0.05})`);
+    set("shooting-calf", `rotate(${pose.knee} 45 75)`);
+    set("plant-leg", `rotate(${pose.player.plant} -5 15)`);
+    set("player-body", `rotate(${pose.player.torso} 8 -50)`);
+    set("player-arms", `rotate(${pose.player.arms} 0 -85)`);
     set("keeper", `translate(${pose.keeper.x} ${pose.keeper.y}) rotate(${pose.keeper.rotation})`);
+    set("keeper-arms", `rotate(${-pose.keeper.reach} 0 -70)`);
+    set("keeper-legs", `rotate(${pose.keeper.load - 7 * pose.keeper.landing} 0 -10)`);
     set("net", `translate(${pose.netPulse * 9} ${pose.netPulse * 3}) scale(${1 + pose.netPulse * 0.025} 1)`);
-    document.querySelectorAll("[data-camera-flash]").forEach((flash, index) => {
+    cameraFlashes.forEach((flash, index) => {
       flash.setAttribute("opacity", String(cameraFlash(progress, index)));
     });
     elements.grass.style.opacity = String(pose.grass);
