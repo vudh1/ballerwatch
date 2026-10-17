@@ -46,7 +46,9 @@ The existing scouting evaluator replays matches in chronological order, compares
 
 BallerWatch does not require a visitor account or Google Calendar access. Your RSVP name, followed teams and local match edits remain on your device until you change them or clear site data. In-app notification messages and read/deleted state expire after 24 hours. Optional push subscriptions persist until you disable them or the provider invalidates them. Published single-event pickup RSVP rosters are available on demand; there is no public searchable participant directory. Administrator software maintenance stays protected.
 
-To install on iPhone, open the site in Safari, tap **Share → Add to Home Screen**. On supported desktop and Android browsers, use **Install app** in the browser menu. Add Beta separately if you want to test it without replacing the stable app. Offline mode shows previously saved frontend files and compatible cached public data, not live status.
+To install on **Android**, open BallerWatch in Chrome or a supported browser, tap **How to install** in the app, and use the native **Install app** option when offered. You can also choose **Install app** or **Add to Home screen** from the browser menu. On **iPhone/iPad**, use Safari's **Share → Add to Home Screen**, then open the installed app before enabling Web Push. On **Windows, macOS or Linux**, use the browser's install action if available, or keep using the website without installation.
+
+The app targets current Chromium (including Chrome and Edge), Firefox and WebKit/Safari browsers, with automated Android-size portrait/landscape and iPadOS checks. Browser tests are not a substitute for real-device certification: notification permission, Web Push, native installation and app-icon badges depend on OS/browser support. Production and Beta are separate installations. Offline mode uses previously saved frontend files and public data, not live status.
 
 Read the [Data and Privacy guide](docs/wiki/Data-and-Privacy.md) for more details.
 
