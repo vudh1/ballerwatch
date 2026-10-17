@@ -6132,7 +6132,8 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
   min-height: 1rem;
   margin-top: auto;
   padding-top: 0.68rem;
-  border-top: 1px solid rgba(148, 163, 184, 0.10);
+  /* Keep the match, standings and calendar credits visually seamless. */
+  border-top: 0;
   text-align: right;
 }
 .standings-slide .bw-card-footer {
