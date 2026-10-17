@@ -118,7 +118,7 @@ test("seasonal regression reports are aggregate only without fixture/player name
 
 test("probability rounding never produces NaN or negative values", () => {
   for (const invalid of [null, {}, {win: NaN, draw: -10, loss: Infinity},
-    {win: 0, draw: 0, loss: 0}, {win: 4, draw: 3, loss: 2}]) {
+    {win: 0, draw: 0, loss: 0}, {win: 4, draw: 3, loss: 2}, {win: 1e308, draw: 1e308, loss: 1e308}]) {
     const result = roundThreeWay(invalid);
     for (const key of ["winPct","drawPct","lossPct"]) {
       assert.ok(Number.isFinite(result[key]));
