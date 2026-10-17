@@ -193,7 +193,8 @@ self.addEventListener("activate", (event) => {
       caches.keys().then(keys=>Promise.all(keys
         .filter(key => key !== DEVICE_STATE_CACHE &&
           (IS_BETA ? /^ballerwatch-beta-device-state-v\d+$/.test(key) :
-            /^ballerwatch-(?:v2-)?device-state-v\d+$/.test(key)))
+            IS_V2 ? /^ballerwatch-v2-device-state-v\d+$/.test(key) :
+            /^ballerwatch-device-state-v\d+$/.test(key)))
         .map(key=>caches.delete(key)))),
       ))
       .then(() => self.clients.claim()),
