@@ -900,14 +900,69 @@ function installInteractionFeedback() {
 }
 
 function ios() {
-  return /iPad|iPhone|iPod/.test(navigator.userAgent);
+  // iPadOS may advertise a desktop Mac user agent while retaining touch input.
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+let pendingInstallPrompt = null;
+
+function installPlatform() {
+  if (ios()) return "ios";
+  if (/android/i.test(navigator.userAgent)) return "android";
+  return "desktop";
 }
 
 function applyInstallState() {
   if (standalone()) {
     els.installCard?.remove();
+    return;
   }
+  const platform = installPlatform();
+  const title = platform === "ios" ? "Install on iPhone or iPad"
+    : platform === "android" ? "Install on Android" : "Install on your computer";
+  const notes = {
+    ios: "iPhone and iPad Web Push requires opening the installed Home Screen app.",
+    android: "Android browser installation and Web Push support vary by browser.",
+    desktop: "Installation and Web Push availability depend on your browser.",
+  };
+  const copy = {
+    ios: "Add BallerWatch to your iPhone or iPad Home Screen for easy matchday access.",
+    android: "Install BallerWatch on Android for quick access to your matches and alerts.",
+    desktop: "Install BallerWatch from your browser, or use this website normally.",
+  };
+  if (els.installCard) {
+    const description = els.installCard.querySelector("#install-copy");
+    if (description) description.textContent = copy[platform];
+  }
+  const heading = els.installDialog?.querySelector("#install-title");
+  if (heading) heading.textContent = title;
+  const note = els.installDialog?.querySelector("#install-note");
+  if (note) note.textContent = notes[platform];
+  for (const guide of els.installDialog?.querySelectorAll("[data-install-guide]") || []) {
+    guide.hidden = guide.dataset.installGuide !== platform;
+  }
+  const native = els.installDialog?.querySelector("#install-native");
+  if (native) native.hidden = !pendingInstallPrompt;
 }
+
+function showInstallHelp() {
+  applyInstallState();
+  if (!standalone() && !els.installDialog.open) els.installDialog.showModal();
+}
+
+// Android/desktop Chromium exposes an install prompt on a user gesture. Other
+// browsers retain platform-specific instructions instead of a broken button.
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  pendingInstallPrompt = event;
+  applyInstallState();
+});
+window.addEventListener("appinstalled", () => {
+  pendingInstallPrompt = null;
+  els.installDialog?.close();
+  els.installCard?.remove();
+});
 
 function urlBase64ToUint8Array(value) {
   const padding = "=".repeat((4 - (value.length % 4)) % 4);
@@ -1580,7 +1635,7 @@ async function registerServiceWorker() {
     void syncServiceWorkerRsvpState();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=11.2.0", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=11.2.1", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -4091,7 +4146,7 @@ async function scheduleTestNotification() {
       throw new Error("Notifications are not supported on this device.");
     }
     if (ios() && !standalone()) {
-      els.installDialog.showModal();
+      showInstallHelp();
       throw new Error("Open BallerWatch from its Home Screen icon first.");
     }
 
@@ -4244,8 +4299,12 @@ async function syncCurrentPushRegistration({ force = false } = {}) {
 
 async function enablePush() {
   try {
+    if (!("Notification" in window) || !("PushManager" in window) ||
+        !("serviceWorker" in navigator)) {
+      throw new Error("Web Push is not supported by this browser or device.");
+    }
     if (ios() && !standalone()) {
-      els.installDialog.showModal();
+      showInstallHelp();
       throw new Error("Open BallerWatch from its Home Screen icon first.");
     }
     if (!config?.push?.ready || !config.push.applicationServerKey) {
@@ -4658,7 +4717,19 @@ els.bellPushToggle.addEventListener("change", async () => {
   }
   await updatePushStatus();
 });
-els.installHelp?.addEventListener("click", () => els.installDialog.showModal());
+els.installHelp?.addEventListener("click", showInstallHelp);
+els.installDialog?.querySelector("#install-native")?.addEventListener("click", async () => {
+  if (!pendingInstallPrompt) return;
+  const installEvent = pendingInstallPrompt;
+  pendingInstallPrompt = null;
+  applyInstallState();
+  try {
+    await installEvent.prompt();
+    await installEvent.userChoice;
+  } catch {
+    // The browser's native installation control is optional. Keep instructions.
+  }
+});
 
 let spotlightResizeTimer = null;
 window.addEventListener("resize", () => {

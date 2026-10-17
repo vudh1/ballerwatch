@@ -11,12 +11,12 @@
   <meta name="apple-mobile-web-app-title" content="BallerWatch">
   <meta name="description" content="A moment of football. Then everything you need for your next match.">
   <title>BallerWatch — Your matchday</title>
-  <link rel="manifest" href="./manifest.webmanifest?v=11.2.0">
-  <link rel="icon" href="./icon.svg?v=11.2.0" type="image/svg+xml">
-  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=11.2.0">
-  <script src="./v2/prepaint.js?v=11.2.0"></script>
-  <link rel="stylesheet" href="./styles.css?v=11.2.0">
-  <link rel="stylesheet" href="./v2/styles.css?v=11.2.0">
+  <link rel="manifest" href="./manifest.webmanifest?v=11.2.1">
+  <link rel="icon" href="./icon.svg?v=11.2.1" type="image/svg+xml">
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=11.2.1">
+  <script src="./v2/prepaint.js?v=11.2.1"></script>
+  <link rel="stylesheet" href="./styles.css?v=11.2.1">
+  <link rel="stylesheet" href="./v2/styles.css?v=11.2.1">
 </head>
 <body>
   <div class="status-bar-glass" aria-hidden="true"></div>
@@ -74,7 +74,7 @@
     <p class="v2-static-welcome" hidden>Matchday, at your pace. Motion is reduced on this device.</p>
     <header class="hero">
       <div class="brand-lockup">
-        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=11.2.0" alt=""></div>
+        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=11.2.1" alt=""></div>
         <div>
           <p class="eyebrow">SOCCER AT A GLANCE</p>
           <h1 id="matchday-heading" tabindex="-1">BallerWatch</h1>
@@ -184,7 +184,7 @@
         <div class="footer-install-copy">
           <p class="eyebrow">INSTALL</p>
           <strong>Home Screen app</strong>
-          <p id="install-copy">Add BallerWatch to your iPhone Home Screen for quick access and notifications.</p>
+          <p id="install-copy">Install BallerWatch on your device for quick access, offline access to saved pages, and supported notifications.</p>
         </div>
         <button class="secondary compact-button" id="install-help" type="button">How to install</button>
       </section>
@@ -576,20 +576,31 @@
 
   <dialog id="install-dialog">
     <form method="dialog">
-      <h2>Install on iPhone</h2>
-      <ol>
-        <li>Open this page in Safari.</li>
-        <li>Tap the Share button.</li>
-        <li>Choose <strong>Add to Home Screen</strong>.</li>
-        <li>Open BallerWatch from the new Home Screen icon.</li>
-        <li>Open the notification bell and turn <strong>Push notifications</strong> on.</li>
+      <h2 id="install-title">Install BallerWatch</h2>
+      <ol data-install-guide="ios" hidden>
+        <li>Open this page in Safari on your iPhone or iPad.</li>
+        <li>Tap Share, then <strong>Add to Home Screen</strong>.</li>
+        <li>Open BallerWatch from your Home Screen icon.</li>
+        <li>Open Notifications in the app to enable Web Push.</li>
       </ol>
-      <p class="muted">iPhone Web Push requires the site to be opened as a Home Screen web app.</p>
-      <button>Done</button>
+      <ol data-install-guide="android" hidden>
+        <li>Open this page in Chrome or another browser that offers web app installation.</li>
+        <li>Tap <strong>Install app</strong> or <strong>Add to Home screen</strong> in your browser menu.</li>
+        <li>Open BallerWatch from the new Home Screen icon.</li>
+        <li>Allow notifications in the app and in Android settings if supported.</li>
+      </ol>
+      <ol data-install-guide="desktop" hidden>
+        <li>Use your browser's <strong>Install app</strong> action, if available.</li>
+        <li>Otherwise bookmark this page; the website still works without installation.</li>
+        <li>Push notifications depend on browser and operating-system support.</li>
+      </ol>
+      <p class="muted" id="install-note">Installation and notifications depend on browser support.</p>
+      <button id="install-native" type="button" hidden>Install app</button>
+      <button type="submit">Done</button>
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=11.2.0"></script>
-  <script type="module" src="./v2/app.js?v=11.2.0"></script>
+  <script type="module" src="./app.js?v=11.2.1"></script>
+  <script type="module" src="./v2/app.js?v=11.2.1"></script>
 </body>
 </html>

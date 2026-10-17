@@ -1,5 +1,5 @@
 /**
- * Chromium/WebKit browser regressions at the real GitHub Pages base path.
+ * Chromium, Firefox and WebKit browser regressions at the real GitHub Pages base path.
  * Baseline: v8.10.0. All API traffic is intercepted with synthetic contracts;
  * no request from this suite can notify users, change RSVP or mutate Calendar.
  */
@@ -98,6 +98,15 @@ async function prepare(browser, options = {}) {
   return { context, page, calls, errors, controls };
 }
 
+async function activateSpotlightControl(page, id) {
+  const control = page.locator(id);
+  // Headless Firefox sometimes exposes (hover: none), intentionally hiding
+  // mouse-only edge affordances. Exercise their navigation handler without
+  // demanding a hover-only control on a touch-oriented browser context.
+  if (await control.isVisible()) await control.click();
+  else await control.evaluate((element) => element.click());
+}
+
 async function ready(page, route = "") {
   await page.goto(`${origin}/ballerwatch/${route}`);
   try {
@@ -155,6 +164,66 @@ try {
       args: ["--no-sandbox", "--disable-gpu", "--allow-insecure-localhost", "--ignore-certificate-errors", ...(shell ? ["--disable-blink-features=Badging"] : [])],
     } : {}) });
     try {
+      await scenario(`${engine}: Android install guidance, native prompt and mobile layout`, async () => {
+        const { context, page, errors } = await prepare(browser, {
+          viewport: { width: 412, height: 915 },
+          hasTouch: true,
+          ...(engine === "firefox" ? {} : { isMobile: true }),
+          userAgent: "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36",
+          reducedMotion: "reduce",
+        });
+        await ready(page);
+        assert.match(await page.locator("#install-copy").textContent(), /Android/);
+        await page.locator("#install-help").click();
+        assert.equal(await page.locator("#install-title").textContent(), "Install on Android");
+        assert.equal(await page.locator('[data-install-guide="android"]').isVisible(), true);
+        assert.equal(await page.locator('[data-install-guide="ios"]').isVisible(), false);
+        assert.equal(await page.locator("#install-native").isVisible(), false);
+        await page.locator('#install-dialog button[type="submit"]').click();
+        await page.evaluate(() => {
+          window.testNativeInstallCalls = 0;
+          const install = new Event("beforeinstallprompt", { cancelable: true });
+          install.prompt = async () => { window.testNativeInstallCalls += 1; };
+          install.userChoice = Promise.resolve({ outcome: "accepted" });
+          window.dispatchEvent(install);
+          window.testInstallPrevented = install.defaultPrevented;
+        });
+        assert.equal(await page.evaluate(() => window.testInstallPrevented), true);
+        await page.locator("#install-help").click();
+        assert.equal(await page.locator("#install-native").isVisible(), true);
+        await page.locator("#install-native").click();
+        assert.equal(await page.evaluate(() => window.testNativeInstallCalls), 1);
+        await page.locator('#install-dialog button[type="submit"]').click();
+        for (const viewport of [{ width: 412, height: 915 }, { width: 915, height: 412 }]) {
+          await page.setViewportSize(viewport);
+          assert.ok(await page.evaluate(() =>
+            document.documentElement.scrollWidth <= window.innerWidth + 1), "Android layout must not overflow");
+          assert.ok(await page.locator("#next-game-card").isVisible());
+        }
+        await page.evaluate(() => window.dispatchEvent(new Event("appinstalled")));
+        assert.equal(await page.locator("#install-card").count(), 0);
+        assert.deepEqual(errors, []);
+        await context.close();
+      });
+
+      await scenario(`${engine}: iPad desktop user agent shows Apple Home Screen instructions`, async () => {
+        const { context, page, errors } = await prepare(browser, {
+          viewport: { width: 820, height: 1180 }, hasTouch: true, reducedMotion: "reduce",
+          userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+        });
+        await context.addInitScript(() => {
+          Object.defineProperty(navigator, "platform", { configurable: true, value: "MacIntel" });
+          Object.defineProperty(navigator, "maxTouchPoints", { configurable: true, value: 5 });
+        });
+        await ready(page);
+        await page.locator("#install-help").click();
+        assert.equal(await page.locator("#install-title").textContent(), "Install on iPhone or iPad");
+        assert.equal(await page.locator('[data-install-guide="ios"]').isVisible(), true);
+        assert.equal(await page.locator('[data-install-guide="android"]').isVisible(), false);
+        assert.deepEqual(errors, []);
+        await context.close();
+      });
+
       await scenario(`${engine}: brief brand launch leads to the hero before any cards appear`, async () => {
         const { context, page, calls, errors } = await prepare(browser);
         await page.clock.install({ time: new Date("2026-10-15T19:00:00Z") });
@@ -258,7 +327,8 @@ try {
 
       await scenario(`${engine}: full-screen stadium and foreground action surround borderless feature text`, async () => {
         const { context, page, errors } = await prepare(browser, {
-          viewport: { width: 390, height: 560 }, isMobile: true, hasTouch: true,
+          viewport: { width: 390, height: 560 }, hasTouch: true,
+          ...(engine === "firefox" ? {} : { isMobile: true }),
         });
         await context.addInitScript(() => { Object.defineProperty(navigator, "standalone", { value: true }); });
         await ready(page);
@@ -354,7 +424,7 @@ try {
       await scenario(`${engine}: three-way forecast uses initials and a borderless shared track`, async () => {
         const { context, page, errors } = await prepare(browser, { reducedMotion: "reduce" });
         await ready(page);
-        await page.locator("#spotlight-next").click();
+        await activateSpotlightControl(page, "#spotlight-next");
         await page.waitForFunction(() => document.querySelector("#next-game-form")?.textContent.includes("FFC 45%"));
         assert.deepEqual(await page.locator("#next-game-form .win-chance-labels span").allTextContents(),
           ["FFC 45%", "Draw 20%", "TU 35%"]);
@@ -504,10 +574,10 @@ try {
         assert.equal(await page.locator("#calendar-game-picker").isVisible(), false);
         await day.click();
         assert.match(await page.locator("#next-game-meta").textContent(), /Fixture FC vs Test United/);
-        await page.locator("#spotlight-next").click();
+        await activateSpotlightControl(page, "#spotlight-next");
         await page.waitForFunction(() =>
           document.querySelector("#next-game-meta")?.textContent.includes("Fixture FC vs Second FC"));
-        await page.locator("#spotlight-previous").click();
+        await activateSpotlightControl(page, "#spotlight-previous");
         await page.waitForFunction(() =>
           document.querySelector("#next-game-meta")?.textContent.includes("Fixture FC vs Test United"));
         assert.deepEqual(errors, []);
@@ -532,7 +602,9 @@ try {
       });
 
       await scenario(`${engine}: skip, direct refresh, navigation, iPhone portrait and landscape`, async () => {
-        const { context, page, errors } = await prepare(browser, { ...playwright.devices["iPhone 13"], defaultBrowserType: undefined });
+        const { context, page, errors } = await prepare(browser, { ...(engine === "firefox"
+          ? { viewport: { width: 390, height: 844 }, hasTouch: true, userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1" }
+          : { ...playwright.devices["iPhone 13"], defaultBrowserType: undefined }) });
         await ready(page);
         await page.waitForFunction(() => !document.documentElement.classList.contains("v2-launching"));
         await shot(page, `${engine}-intro-iphone`);
@@ -610,7 +682,9 @@ try {
       });
 
       await scenario(`${engine}: reduced motion, standalone mode and asset/script failure reveal the app`, async () => {
-        const reduced = await prepare(browser, { ...playwright.devices["iPhone 13"], reducedMotion: "reduce" });
+        const reduced = await prepare(browser, { ...(engine === "firefox"
+          ? { viewport: { width: 390, height: 844 }, hasTouch: true, userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1" }
+          : playwright.devices["iPhone 13"]), reducedMotion: "reduce" });
         await reduced.context.addInitScript(() => { Object.defineProperty(navigator, "standalone", { value: true }); });
         await ready(reduced.page);
         assert.equal(await reduced.page.locator("#soccer-intro").isVisible(), false);

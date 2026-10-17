@@ -2,7 +2,7 @@
 
 The installable PWA is BallerWatch's sole user surface.
 
-Anonymous use is public-safe/read-only. Private Settings uses user-password authentication.
+The website works without a visitor account. RSVP rosters for an individual published pickup event are readable without sign-in; RSVP names, monitored teams, match edits and notification choices stay on each browser installation. Administrator software maintenance remains password-protected.
 
 ## App hub
 
@@ -10,13 +10,7 @@ The badged AI icon opens three connected sections: **AI / Settings / Notificatio
 
 ## Settings
 
-A signed-in user can change:
-- pickup RSVP display name;
-- monitored RATS league teams;
-- user password;
-- global session revocation.
-
-There is no in-app pairing-code recovery path. First-time bootstrap or forgotten-password recovery is administrator-controlled through **Reset web user password** with a temporary `BALLERWATCH_RECOVERY_PASSWORD` Actions secret.
+Every visitor can change their RSVP display name, up to eight monitored RATS league teams, local match edits and notification choices without an account. These preferences persist on that device until the visitor changes them or clears the browser's site data. Only notification-center messages/read state expire after 24 hours. Maintenance credentials and release actions are restricted to the protected administrator section.
 
 ## Match-card action hierarchy
 
@@ -76,6 +70,12 @@ The preference remains local to the device. Playback starts only after a browser
 
 The Live indicator is shown only when runtime-backed config, game/calendar data, and notification-board reads succeed. A healthy static shell with unavailable runtime data must display Offline.
 
-## Installation
+## Installation and supported browsers
 
-On iPhone, open the site in Safari, choose **Add to Home Screen**, then open the installed app and enable Push notifications from **AI icon → Notifications**.
+- **Android (Chrome/Chromium):** open the site, choose **How to install** and use the native **Install app** button if offered, or select **Install app / Add to Home screen** from the browser menu. Firefox or other Android browsers may offer a different menu and have different push support.
+- **iPhone/iPad (Safari):** use **Share → Add to Home Screen**, launch from the new icon, then open **AI icon → Notifications**. iPadOS may use a desktop-looking user agent; BallerWatch still shows Apple instructions.
+- **Desktop (Windows/macOS/Linux):** use the browser installation action where supported. BallerWatch remains usable as a regular tab without installation.
+
+The PWA exposes a manifest, an offline service-worker shell and browser-appropriate install help. Web Push, notification permissions and app-icon badges are optional and controlled by the browser and OS. A browser without Web Push keeps the public match and calendar features usable, with unsupported push controls disabled. Device preferences and service-worker caches stay isolated across Production, Beta and legacy V2 installs during updates.
+
+Continuous integration tests Chromium, Firefox and WebKit with synthetic API data, Android mobile/landscape viewports, iPhone/iPad emulation, PWA upgrade/cache safety and offline routes. These are simulated browser checks, not claims of hands-on physical device testing.
