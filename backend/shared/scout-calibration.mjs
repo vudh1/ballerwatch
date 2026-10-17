@@ -148,9 +148,21 @@ export function forecastFromFeatures(ours, theirs, meetings, settings = DEFAULT_
   }, ours, theirs, weights.goals);
 }
 export function roundThreeWay(probs) {
-  const winPct = bounded(Math.round(probs.win * 20) * 5, 0, 100);
-  const drawPct = bounded(Math.round(probs.draw * 20) * 5, 0, 100 - winPct);
-  return { winPct, drawPct, lossPct: 100 - winPct - drawPct };
+  // Normalize even partially missing/nonfinite caller inputs, then allocate
+  // the twenty 5% units by largest remainder rather than clipping the draw.
+  const values = [probs?.win, probs?.draw, probs?.loss].map((value) =>
+    Number.isFinite(value) && value > 0 ? value : 0);
+  const largest = Math.max(...values);
+  const scaled = largest > 0 ? values.map((value) => value / largest) : [];
+  const total = scaled.reduce((sum, value) => sum + value, 0);
+  const safe = total > 0 ? scaled.map((value) => value / total) : [0.39, 0.22, 0.39];
+  const exact = safe.map((value) => value * 20);
+  const units = exact.map(Math.floor);
+  const remaining = 20 - units.reduce((sum, value) => sum + value, 0);
+  const order = [0, 1, 2].sort((a, b) => (exact[b] - units[b]) -
+    (exact[a] - units[a]) || a - b);
+  for (let i = 0; i < remaining; i += 1) units[order[i]] += 1;
+  return { winPct: units[0] * 5, drawPct: units[1] * 5, lossPct: units[2] * 5 };
 }
 
 function eventForSide(match, home) {

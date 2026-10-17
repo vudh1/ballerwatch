@@ -81,3 +81,12 @@ test("Pages workflow only publishes validated main and never deploys main at pro
   assert.match(workflow, /path: \/tmp\/ballerwatch-pages/);
   assert.doesNotMatch(workflow, /path: frontend\/web/);
 });
+
+test("channel selector is shipped only as beta source and not injected into production checkout", () => {
+  const html = fs.readFileSync("frontend/web/index.html", "utf8");
+  const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
+  assert.match(html, /id="app-channel"/);
+  assert.match(html, /Beta — preview features before production/);
+  assert.match(sw, /"\.\/lib\/app-channel\.js"/);
+  assert.match(fs.readFileSync("frontend/web/app.js","utf8"), /switchChannel\(target\)/);
+});

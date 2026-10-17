@@ -263,3 +263,46 @@ test("keeper reacts only after the fast shot has covered most of its flight", ()
   assert.ok((reaction.ball.x - SCENE.ball.start.x) / (SCENE.ball.corner.x - SCENE.ball.start.x) > 0.75);
   assert.ok(scenePose(SCENE.flightEnd).dive < 0.5, "Ball beats the dive to goal");
 });
+
+test("the planted foot meets the stationary ball only at shot contact", () => {
+  const contact = scenePose(SCENE.contact);
+  for (const progress of [0, 0.1, SCENE.setupEnd, SCENE.contact - 1e-6]) {
+    const pose = scenePose(progress);
+    assert.equal(pose.ball.x, SCENE.ball.start.x);
+    assert.equal(pose.ball.y, SCENE.ball.start.y);
+    assert.equal(pose.ball.rotation, 0);
+    assert.equal(pose.dive, 0);
+  }
+  assert.equal(contact.player.shiftX, 0);
+  assert.equal(contact.player.bob, 0);
+  assert.equal(contact.kick, 0);
+  assert.equal(contact.knee, 0);
+  // Contact toe = player origin + calf endpoint; ball's leftmost surface.
+  const toe = {x: 350 + 106, y: 605 + 131};
+  assert.ok(Math.abs((contact.ball.x - 20 * contact.ball.scale) - toe.x) <= 2);
+  assert.ok(Math.abs(contact.ball.y - toe.y) <= 6);
+  assert.ok(scenePose(SCENE.contact + .01).ball.x > contact.ball.x);
+});
+
+test("ball travel slows continuously into the goal and reverses without state", () => {
+  const epsilon = 1e-5;
+  const before = scenePose(SCENE.flightEnd - epsilon).ball;
+  const at = scenePose(SCENE.flightEnd).ball;
+  const after = scenePose(SCENE.flightEnd + epsilon).ball;
+  assert.ok(Math.hypot(at.x - before.x, at.y - before.y) < .05);
+  assert.ok(Math.hypot(after.x - at.x, after.y - at.y) < .05);
+  assert.ok(at.scale >= .4 && at.scale <= 1);
+  assert.ok(scenePose(.90).ball.y >= at.y);
+  assert.deepEqual(scenePose(.57), scenePose(.57));
+  assert.deepEqual(scenePose(1), scenePose(3));
+});
+
+test("timeline updates articulated joints without extra data polling", () => {
+  const timeline = read("v2/timeline.js");
+  const html = read("index.html");
+  for (const id of ["scene-plant-leg","scene-player-arms","scene-shooting-calf",
+    "scene-keeper-arms","scene-keeper-legs"]) assert.match(html, new RegExp('id="' + id + '"'));
+  assert.match(timeline, /set\("shooting-calf"/);
+  assert.match(timeline, /set\("keeper-arms"/);
+  assert.doesNotMatch(timeline, /setInterval\(|fetch\(/);
+});

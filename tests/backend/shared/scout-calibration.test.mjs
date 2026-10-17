@@ -115,3 +115,16 @@ test("seasonal regression reports are aggregate only without fixture/player name
   assert.match(serialized, /qualityNextSeasonCorrelation/);
   assert.doesNotMatch(serialized, /Alpha|Bravo|Charlie|Delta|Foxtrot|homeTeam|awayTeam|players|RSVP/);
 });
+
+test("probability rounding never produces NaN or negative values", () => {
+  for (const invalid of [null, {}, {win: NaN, draw: -10, loss: Infinity},
+    {win: 0, draw: 0, loss: 0}, {win: 4, draw: 3, loss: 2}, {win: 1e308, draw: 1e308, loss: 1e308}]) {
+    const result = roundThreeWay(invalid);
+    for (const key of ["winPct","drawPct","lossPct"]) {
+      assert.ok(Number.isFinite(result[key]));
+      assert.ok(result[key] >= 0 && result[key] <= 100);
+      assert.equal(result[key] % 5, 0);
+    }
+    assert.equal(result.winPct + result.drawPct + result.lossPct, 100);
+  }
+});

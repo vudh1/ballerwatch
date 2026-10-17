@@ -36,6 +36,7 @@ import {
   clearLocalMatchOverride, setLocalMatchHidden,
 } from "./lib/local-match-edits.js";
 import { experienceKey } from "./lib/experience.js";
+import { activeChannel, switchChannel } from "./lib/app-channel.js";
 import { PUBLIC_CALENDAR_LOCAL_KEY, readPublicCalendar, todaySeattleKey,
   writePublicCalendar } from "./lib/public-calendar-cache.js";
 import { PUBLIC_STANDINGS_LOCAL_KEY, readPublicStandings, writePublicStandings }
@@ -1579,7 +1580,7 @@ async function registerServiceWorker() {
     void syncServiceWorkerRsvpState();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=11.1.0", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=11.2.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -2052,6 +2053,9 @@ function renderWinChanceBar(target, game, estimate) {
     target.removeAttribute("title");
     return;
   }
+  const sample = Math.min(Number(estimate.teamGames) || 0, Number(estimate.opponentGames) || 0);
+  const reliability = sample < 3 ? "Insufficient history" :
+    sample < 6 ? "Low reliability" : sample < 10 ? "Moderate reliability" : "Stronger historical coverage";
   const labels = document.createElement("span");
   labels.className = "win-chance-labels";
   for (const [text, pct, fullName] of [
@@ -2063,6 +2067,10 @@ function renderWinChanceBar(target, game, estimate) {
     label.title = fullName;
     labels.append(label);
   }
+  const draw = document.createElement("span");
+  draw.textContent = `Draw ${estimate.drawPct}%`;
+  draw.className = "win-chance-draw-label";
+  labels.insertBefore(draw, labels.children[1]);
   const track = document.createElement("span");
   track.className = "win-chance-track";
   track.setAttribute("aria-hidden", "true");
@@ -2078,8 +2086,8 @@ function renderWinChanceBar(target, game, estimate) {
   target.append(labels, track);
   target.setAttribute("role", "img");
   target.setAttribute("aria-label",
-    `${game.team} win ${estimate.winPct}%, tie ${estimate.drawPct}%, ${game.opponent} win ${estimate.lossPct}%; provisional scouting estimate`);
-  target.title = `Based on prepared scouting history: ${estimate.teamGames}/${estimate.opponentGames} recent scored games and ${estimate.headToHeadGames} previous meetings. Not betting odds.`;
+    `${game.team} win ${estimate.winPct}%, draw ${estimate.drawPct}%, ${game.opponent} win ${estimate.lossPct}%; provisional scouting estimate, ${reliability}`);
+  target.title = `${reliability} · Estimate only. Based on ${estimate.teamGames ?? 0}/${estimate.opponentGames ?? 0} scored games and ${estimate.headToHeadGames ?? 0} past meetings. Not betting odds.`;
 }
 
 function spotlightModel(game, label = "NEXT GAME") {
@@ -4735,3 +4743,25 @@ window.setInterval(() => {
     checkForAppUpdate().catch(() => null);
   }
 }, APP_UPDATE_CHECK_MS);
+
+/** Version/channel switching is a normal device setting, never a promotion. */
+const channelSelect = document.querySelector("#app-channel");
+if (channelSelect) {
+  const channelStatus = document.querySelector("#app-channel-status");
+  channelSelect.value = activeChannel();
+  channelSelect.addEventListener("change", async () => {
+    const target = channelSelect.value;
+    channelSelect.disabled = true;
+    channelStatus.textContent = target === "beta" ? "Checking the beta preview…" : "Opening production…";
+    try {
+      const result = await switchChannel(target);
+      if (result.unavailable) {
+        channelSelect.value = "production";
+        channelStatus.textContent = "Beta is temporarily unavailable. Staying on Production.";
+      }
+    } catch {
+      channelSelect.value = activeChannel();
+      channelStatus.textContent = "Unable to change app channel. Try again when online.";
+    } finally { channelSelect.disabled = false; }
+  });
+}

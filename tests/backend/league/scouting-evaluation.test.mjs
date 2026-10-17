@@ -67,3 +67,14 @@ test("in-progress season outcomes never select a goal-rate challenger", () => {
     assert.deepEqual(a.comparisons[name].holdout, b.comparisons[name].holdout);
   }
 });
+
+test("holdout diagnostics show draw recall and confidence calibration", () => {
+  const result = evaluateArchive(sample(), "fall-2026");
+  for (const name of ["champion-production","league-average", result.selectedModel]) {
+    const score = result.comparisons[name].holdout;
+    assert.ok(score.n > 0);
+    assert.ok(score.drawRecall === null || score.drawRecall >= 0 && score.drawRecall <= 1);
+    assert.ok(score.predictedDrawPct >= 0 && score.predictedDrawPct <= 100);
+    assert.ok(score.expectedCalibrationError >= 0 && score.expectedCalibrationError <= 1);
+  }
+});

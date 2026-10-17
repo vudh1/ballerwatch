@@ -1,226 +1,59 @@
 # BallerWatch
 
-BallerWatch is a privacy-first soccer PWA for pickup games and Seattle RATS league matches. It brings schedules, RSVP capacity, weather, reminders, league updates, an in-app match calendar, and quick answers into one installable app.
+**Your soccer matchday in one place.** BallerWatch shows pickup RSVP availability, Seattle RATS games, field directions, weather, team standings, and match reminders in an installable web app — no account required.
 
-**Current source version: 11.1.0**
+**[Open Production](https://vudh1.github.io/ballerwatch/)** · **[Open Beta](https://vudh1.github.io/ballerwatch/beta/)** · **[Project documentation](docs/wiki/Home.md)**
 
-[Open BallerWatch](https://vudh1.github.io/ballerwatch/) · [Beta](https://vudh1.github.io/ballerwatch/beta/) · [Version guide →](https://github.com/vudh1/ballerwatch/wiki/Versions) · [GitHub Releases](https://github.com/vudh1/ballerwatch/releases)
-
-> `main` publishes automatically to the isolated **/beta/** preview after its validation succeeds. `production` is the exact promoted release commit powering the **root** site; beta changes cannot move the production ref.
+Production is the stable, manually released app. Beta previews validated changes before they are promoted. The code currently in development is **v11.2.0**; that does **not** mean production has been upgraded.
 
 ## What you can do
 
-- **One BallerWatch at the main address:** a two-second brand launch, full-screen scroll hero with a stadium audience and camera flashes behind feature text, then the original matchday cards. A single badged AI icon fades in with the cards and opens AI, Settings and Notifications. The brand splash no longer has a skip button; the later intro skip retains upward rewind. Old `/v2/` links now redirect to the beta preview; accountless RSVP, Calendar, AI, notification and maintenance controls retain the same controller and API. See the [cinematic app and migration guide](docs/wiki/V2.md).
+- **Find your next match quickly.** Swipe through pickup and league match cards; open the schedule calendar for later games. Skip the optional cinematic introduction or use reduced-motion mode.
+- **Check pickup spots and RSVPs.** See capacity and the published event's RSVP roster or waitlist in signup order, without signing in. Only that selected, published event's display names and guest counts are shown.
+- **Get there.** Open directions, share a venue map link, and check available game-window weather.
+- **Follow teams.** Choose up to eight RATS teams on your device; inspect individual standings cards, historical scores, and prepared scouting reports.
+- **Stay informed.** Use the in-app notification center and optional Web Push for real schedule changes and reminders.
+- **Ask BallerWatch AI.** Look up indexed match facts, opponents, jersey colors and historical results. Answers are constrained by the available data.
 
-- See the next **Pickup** or **League** match with a cleaner visual hierarchy for location, weather, RSVP, and secondary actions. Newly published RSVP dates remain in the match-card carousel and expanded calendar even beyond the initial 14-day grid; missing field details show *Venue to be announced* until the RSVP source publishes a location.
-- See RSVP capacity for pickup games; tap the capacity area to view that published game's confirmed names and waitlist in signup order, without an account, and RSVP from inside the full-width sheet.
-- **Share just the field:** the Share button sends the RATS-published Google Maps venue link (or a verified GPS/field-name lookup fallback) with no team names, match date, or kickoff summary; clipboard fallback copies the same link.
-- Browse a rolling match calendar and swipe between match cards; on desktop, the waterfall stays visually full-height while the Pickup/League Edit/Delete trigger keeps pointer priority over the carousel hit area.
-- **Follow RATS Standings as a card train:** swipe between individual full-width team cards or use subtle edge arrows. Each current-season division table highlights your team, and tapping another team opens its indexed scored match history. The compact table shows played, W-D-L, goal difference and points. Results-based rankings are provisional.
-- Use a real **Inbox** with Pickup / League / App filters, mark-all-read and swipe delete, with notification state expiring after 24 hours on each device.
-- Choose device-only notification categories and keep the unread count synchronized to the installed app badge on supported devices.
-- Get allowed Web Push reminders and real schedule-change notifications.
-- **Dynamic pickup capacity alerts:** RSVP bookings trigger at **25%, 50%, and 75%** of each published match's capacity, then each additional occupied spot through full. Thresholds round up to whole reservations (e.g., 16 slots alerts at 4, 8, 12, 13, 14, 15, and 16). A new match starts with a silent baseline, so past thresholds are not replayed; cancellations or settings-only capacity changes do not trigger booking alerts. The 24-hour RSVP and one-hour kickoff reminders remain separate, and muting/snoozing is honored.
-- Open the **AI icon** for three connected sections: **AI / Settings / Notifications**, including the unread badge.
-- Ask **BallerWatch AI** about opponents, match fields, jersey colors, weekly briefings, next games, and indexed RATS results—with follow-ups for a specific fixture.
-- No user account is required. Each device keeps its chosen RSVP name and monitored teams until the user changes them. Match-card edits and hides affect only that device. Published event-specific RSVP lists are public; administrator maintenance remains protected.
-- Get verified RATS schedule-change updates directly in BallerWatch, with no Google account or Calendar permissions.
+## A short preview
 
-Saturday synthetic pickup is shown simply as **Pickup** and has no RSVP/capacity watcher.
+![BallerWatch animated demo: cinematic matchday preview](docs/demo.gif)
 
-## Demo
+*This older synthetic-data walkthrough demonstrates the app's general layout. It is not a recording of the new beta motion or current live scores.*
 
-![BallerWatch animated demo: cinematic launch, stadium audience and camera flashes, feature tour, original match cards, calendar, standings, the AI / Settings / Notifications hub and aligned Inbox preferences](docs/demo.gif)
+## Production and Beta
 
-The original 727-frame walkthrough of the deployed 9.1.1 app, retimed from 36.4 to 22 seconds without removing or re-encoding any frames. Match details, answers and Inbox entries use synthetic sample data; the recording does not read production accounts or change RSVP or notification state.
-
-[Open BallerWatch](https://vudh1.github.io/ballerwatch/)
-
-## What's new
-
-**v11.1.0** — Validated `main` builds now automatically publish to [BallerWatch Beta](https://vudh1.github.io/ballerwatch/beta/) with an independently scoped install, browser preferences and match edits. The familiar [production URL](https://vudh1.github.io/ballerwatch/) only changes after promotion. Older `/v2/` links point to beta. Edit, Hide, Reset and Restore require no visitor account.
-
-**v11.0.2** — Tap the capacity of a published pickup game to view its confirmed RSVP roster and waitlist without signing in. Only that game's display names and guest counts are returned on demand, not a directory of all participants.
-
-**v11.0.1** — RSVP names and selected teams stay on each device indefinitely (unless the browser clears site data). Only notification messages/read markers and badges expire after 24 hours; choices and valid push subscriptions remain active. Match-card corrections, hides and resets are local to the editing device; older shared-write endpoints are retired. All-season RATS team statistics remain independently precomputed.
-
-**v11.0.0** — Public, accountless visitor experience (initial 24-hour device preference policy, revised in 11.0.1). Private RSVP name matches use encrypted precomputed HMAC tags, never a public player directory. The initial push expiry policy was corrected in 11.0.1; releases still require protected maintenance authentication.
-
-**v10.0.1** — Restore dependable RATS standings by sending only monitored/selected team predictions, keeping the response small enough for on-device caching, and automatically retrying after transient cold-start failures.\n\n**v10.0.0** — A single uninterrupted first-install launch; Google Calendar integration is retired. BallerWatch's own match calendar, schedule alerts, and Web Push remain available to every visitor without a Google connection.
-
-**v9.1.2** — Remove Skip to matches from the loading splash, align the upper-right × across AI / Settings / Notifications, and make the full README animation about 22 seconds without cutting scenes.
-
-**v9.1.1** — Reload after Skip restores the main-page position. Weekly scouting evaluation now runs when due inside the hourly writer, avoiding cancelled standalone evaluation jobs.
-
-**v9.1.0** — Faster shot, later keeper reaction, equal-length arms and captain #10 with short sleeves. One AI hub replaces detached header controls. Skip preserves rewind. Evidence-led scouting preparation and weekly Groq/Gemini model proposals are tested against independent historical results before probability changes are eligible. See [Scouting model](docs/wiki/Scouting.md).
-
-**v9.0.0** — The cinematic app takes over the main address. Add audience/camera flashes, fade Settings/Inbox with the card reveal, remove replay/version controls, and align notification checks. Old V2 links redirect to the canonical app.
-
-That's the recent summary. Older release details live in [GitHub Releases](https://github.com/vudh1/ballerwatch/releases) and the [Versions guide](https://github.com/vudh1/ballerwatch/wiki/Versions). The project keeps the full ledger in [features/versions.json](features/versions.json) rather than repeating it in this README.
-
-See the [Card design system](docs/CARD-DESIGN-SYSTEM.md) for the shared typography, waterfall, mobile gesture and bottom-footer rules.
-
-## App updates
-
-Administrators can open **Settings → App** and explicitly promote a validated source version. No hourly or automatic production promotion runs: validated main commits are sent to beta first, while the production URL stays unchanged until an administrator starts promotion.
-
-Promotion is intentionally staged:
-
-1. the release is validated and `production` advances;
-2. the Cloudflare Worker deploys and passes live readiness/security checks;
-3. GitHub Pages deploys the matching PWA from `production`;
-4. the already-open PWA detects that both Worker and Pages reached the target version, updates its service worker, and **refreshes itself automatically**.
-
-You should not need to close and reopen the installed app after a normal promotion.
-
-For the difference between source, production, tags, and releases, see the **[Versions guide](https://github.com/vudh1/ballerwatch/wiki/Versions)**.
-
-## How it is built
-
-```text
-GitHub Pages PWA
-       |
-       v
-Cloudflare Worker
-  |        |
-  |        +--> encrypted runtime-state
-  +-----------> maintenance / public Q&A / push registration / API
-
-cron-job.org
-  |--> Pickup watcher every 2 min
-  +--> RATS watcher every 5 min
-
-GitHub Actions
-  |--> RATS schedule detection + Web Push
-  |--> watchdog/weather every 6 hr
-  |--> release promotion/deployment
-```
-
-Workers KV and Cloudflare Cron Triggers are intentionally not part of production.
-
-## Repository map
-
-The repository now separates browser code from backend code explicitly:
-
-```text
-frontend/
-  web/                    GitHub Pages PWA: HTML, CSS, app shell, manifest, service worker
-    lib/                  session/API transport + notification-state modules
-
-backend/
-  infra/                  Cloudflare Worker + scheduler/infrastructure helpers
-  pickup/                 pickup ingestion and notification logic
-  league/                 RATS watcher + direct schedule-change detection
-  shared/                 encryption, runtime state, auth, push, common domain logic
-  watchdog/               health/release monitoring
-  weather/                match-window weather pipeline
-
-tests/
-  frontend/               PWA/browser regression tests
-  backend/                backend tests mirrored by domain
-
-docs/
-  demo.gif                animated README walkthrough
-  wiki/                   maintained project documentation
-
-features/versions.json    product version ledger
-scripts/                  repository checks/tooling
-.github/workflows/        validation, runtime, release, recovery, deployment
-```
-
-The encrypted `runtime-state` branch intentionally keeps stable storage paths such as `pickup/state/`, `league/state/`, and `state/`. Those are storage contracts and do **not** mirror the source directory layout.
-
-## Device-only preferences and maintenance
-
-Regular visitors do not register or sign in. The RSVP name and monitored RATS teams are saved in browser-local storage for that installation until the user changes them or clears the browser's site data. Beta uses separate device keys and PWA caches from production, even on the same browser. These fields are never kept in shared web-user profiles. Match date/time/venue corrections and hidden games are also private to that browser, and never change other visitors' cards or the RATS/RSVP source.
-
-Only **notification messages**, their read/deleted status and unread app badges expire after 24 hours. Notification category selections and Web Push registrations stay enabled until the user changes/disables them or the push provider invalidates a subscription, so reminders continue even when the app has not opened recently.
-
-The protected administrator maintenance password remains available for releases and private roster access. Maintenance recovery uses the repository-admin password workflow; it is not a visitor sign-in system.
-
-## Privacy and security
-
-The public source repository is never used as readable application-data storage.
-
-Canonical shared runtime documents are stored as hardened AES-GCM envelopes on the dedicated `runtime-state` branch, including maintenance credentials, schedules, weather/geocode cache, user-enabled Web Push registrations, notification-board state, and retained feedback/feature-request state. Visitor RSVP names, selected teams and local match edits are not stored in shared runtime-state.
-
-Other important boundaries:
-
-- Web Push registration accepts only validated public browser push-service endpoints and revalidates them before delivery.
-- Device-local RSVP names, match corrections, notification read/delete state and category preferences are never put on the public notification board. Private RSVP membership indices remain encrypted.
-- Web Push signals remain payload-free; account/category metadata stays inside encrypted runtime state.
-- The Worker API emits CSP/anti-framing/content-type/referrer/permissions security headers.
-- Tests, smoke checks, builds, deploys, watchdog health events, commits, PRs, and score-only changes never send user notifications.
-- Exact Q&A text is retained only under the narrow documented conditions and time limits.
-
-More detail: [Data and Privacy](https://github.com/vudh1/ballerwatch/wiki/Data-and-Privacy) · [Architecture](https://github.com/vudh1/ballerwatch/wiki/Architecture)
-
-## Scheduling
-
-| Work | Cadence | Executor |
+| | Production | Beta |
 | --- | --- | --- |
-| Pickup watcher | every 2 minutes | cron-job.org → GitHub Actions |
-| RATS watcher | every 5 minutes | cron-job.org → GitHub Actions |
-| Watchdog + weather | every 6 hours | GitHub Actions |
-| Release eligibility | hourly | GitHub Actions |
-| Scouting snapshots | hourly | GitHub Actions; bounded dual-provider fact ranking at most daily |
-| Scouting model | every 7 days, checked hourly | Same GitHub Actions scouting writer; independent holdout gates |
-| Web API | on demand | Cloudflare Worker |
+| Address | [Open Production](https://vudh1.github.io/ballerwatch/) | [Open Beta](https://vudh1.github.io/ballerwatch/beta/) |
+| Updates | Only after a manual release | After successful validation and publication from `main` |
+| Installation | Stable Home Screen app | Separate Home Screen app with a Beta marker |
+| Offline files and device settings | Production-scoped | Independently scoped for beta |
 
-## Release flow
+In the updated app, open **Settings → App channel** and choose Production or Beta. Switching opens the corresponding address rather than replacing the running app. Beta may change or be temporarily unavailable; if an availability check fails, the selector stays on Production. The production site cannot show this new setting until a future manual production release, so you can always use the direct [Beta link](https://vudh1.github.io/ballerwatch/beta/) meanwhile.
 
-1. Create `release/<version>` from current `main`.
-2. Implement and pass **Validate code**.
-3. Update `features/versions.json` and current docs.
-4. Open a PR to `main`; squash merge only after checks pass.
-5. Promotion publishes the GitHub Release and advances `production`.
-6. Worker readiness must pass before Pages deploys.
-7. The open PWA auto-refreshes when the complete release is live.
+Beta and production keep separate browser preferences, match edits, caches and service workers. Changing a date or hiding a match affects only the device and environment where you did it. Beta currently uses the stable production API for published match data; it has no independent notification writer or scheduler. Production does not advance automatically.
 
-Automatic promotion uses a 24-hour soak; an administrator can manually request promotion without bypassing validation.
+For details, read [Beta and cinematic app](docs/wiki/V2.md) and [Release Process](docs/wiki/Release-Process.md).
 
-See [Release Process](https://github.com/vudh1/ballerwatch/wiki/Release-Process) and [Versions](https://github.com/vudh1/ballerwatch/wiki/Versions).
+## What scouting estimates mean
 
-## Required configuration
+The three-way **win / draw / loss** percentages are estimates based on previously indexed public match results, not predictions of certain outcomes or betting advice. Reports show the available recent scored-game sample, opponent-adjusted form and archive limitations. New teams or thin histories receive cautious, lower-reliability results.
 
-| Area | Configuration |
-| --- | --- |
-| Core runtime | `TRACKER_STATE_KEY`, `OWNER_RSVP_NAME`, `UPSTREAM_ENDPOINT` |
-| GitHub/scheduling | `CRON_GITHUB_PAT`, `CRON_JOB_ORG_API_KEY`, `RELEASE_GITHUB_TOKEN` |
-| Cloudflare | `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` |
-| AI | `GEMINI_API_KEY`, `GROQ_API_KEY` |
-| Recovery | temporary `BALLERWATCH_RECOVERY_PASSWORD` |
+The existing scouting evaluator replays matches in chronological order, compares an unchanged production predictor with baselines and challengers, and holds the latest completed season outside tuning. A challenger is adopted only if its held-out probability scores improve by the established safety margin. The beta also makes draw handling and confidence diagnostics clearer; no improvement is claimed without measured evidence. [Scouting methodology](docs/wiki/Scouting.md).
 
-Web Push VAPID material is generated by BallerWatch and stored encrypted in runtime state.
+## Privacy and installation
 
-## Local validation
+BallerWatch does not require a visitor account or Google Calendar access. Your RSVP name, followed teams and local match edits remain on your device until you change them or clear site data. In-app notification messages and read/deleted state expire after 24 hours. Optional push subscriptions persist until you disable them or the provider invalidates them. Published single-event pickup RSVP rosters are available on demand; there is no public searchable participant directory. Administrator software maintenance stays protected.
 
-```bash
-node --test
-node backend/infra/validate-versions.mjs
-node scripts/privacy-audit.mjs
-```
+To install on iPhone, open the site in Safari, tap **Share → Add to Home Screen**. On supported desktop and Android browsers, use **Install app** in the browser menu. Add Beta separately if you want to test it without replacing the stable app. Offline mode shows previously saved frontend files and compatible cached public data, not live status.
 
-With an authenticated repository checkout, runtime-state changes should also run:
+Read the [Data and Privacy guide](docs/wiki/Data-and-Privacy.md) for more details.
 
-```bash
-node backend/shared/runtime-state.mjs audit
-```
+## For developers and maintainers
 
-Tests and smoke helpers must remain notification-silent.
+The [Card design system](docs/CARD-DESIGN-SYSTEM.md) describes the shared styling. The [project wiki](docs/wiki/Home.md) covers [architecture](docs/wiki/Architecture.md), [development](docs/wiki/Development.md), [operations](docs/wiki/Operations.md), [scouting](docs/wiki/Scouting.md) and [releases](docs/wiki/Release-Process.md).
 
-## Copyright
+The code is grouped under `frontend/web/` (GitHub Pages PWA), `backend/` (Cloudflare API, RATS/pickup watchers and encrypted runtime integrations), `tests/` (Node/browser regressions), and `scripts/` (validation and Pages composition). The source version and release history are in [features/versions.json](features/versions.json); live releases appear on [GitHub Releases](https://github.com/vudh1/ballerwatch/releases).
 
-Copyright © 2026 BallerWatch. All rights reserved. See [COPYRIGHT.md](COPYRIGHT.md) for the repository publication notice.
-
-## Failure behavior
-
-- **Cloudflare unavailable:** live app API/Q&A/board reads fail closed; scheduled GitHub reconciliation can continue.
-- **runtime-state unavailable:** supported workflows may recover from the encrypted last-known Actions cache.
-- **RATS temporarily unavailable:** bounded retries run; a verified last-good schedule may be retained for transient source failures.
-- **Invalid release/content credentials:** release/deployment readiness fails closed.
-- **Web Push:** once a validated subscription is stored, delivery does not require Cloudflare at send time.
-
-## More documentation
-
-[Wiki home](https://github.com/vudh1/ballerwatch/wiki) · [Versions](https://github.com/vudh1/ballerwatch/wiki/Versions) · [Operations](https://github.com/vudh1/ballerwatch/wiki/Operations) · [Development](https://github.com/vudh1/ballerwatch/wiki/Development)
+A normal change begins from the latest `main` on a feature/release branch, passes **Validate code**, and merges through review. Validated `main` is packaged into `/beta/`; the root always comes from the separate `production` ref. Production promotion is a separate explicit administrator action. Never put plaintext private runtime data into this public repository.
