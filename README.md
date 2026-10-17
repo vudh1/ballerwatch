@@ -4,7 +4,7 @@
 
 **[Open Production](https://vudh1.github.io/ballerwatch/)** · **[Open Beta](https://vudh1.github.io/ballerwatch/beta/)** · **[Project documentation](docs/wiki/Home.md)**
 
-**v11.2.1 is now released to both Production and Beta.** Production updates only by explicit, validated release; Beta continues to preview successfully validated `main` changes.
+**v11.2.2 is the seamless-footer patch candidate.** It will reach Beta after validation and Production only through the explicit, gated release process. Production updates only by explicit, validated release; Beta continues to preview successfully validated `main` changes.
 
 ## What you can do
 
