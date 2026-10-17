@@ -90,3 +90,14 @@ test("channel selector is shipped only as beta source and not injected into prod
   assert.match(sw, /"\.\/lib\/app-channel\.js"/);
   assert.match(fs.readFileSync("frontend/web/app.js","utf8"), /switchChannel\(target\)/);
 });
+test("Pages deployment verifies public beta HTML and worker while guarding released production bytes", () => {
+  const workflow = fs.readFileSync(".github/workflows/pages.yml", "utf8");
+  assert.match(workflow, /Verify live beta route and unchanged production root/);
+  assert.match(workflow, /PAGE_URL: \$\{\{ steps\.deployment\.outputs\.page_url \}\}/);
+  assert.match(workflow, /BETA_SHA: \$\{\{ steps\.beta\.outputs\.sha \}\}/);
+  assert.match(workflow, /ballerwatch-pages\/beta\/index\.html/);
+  assert.match(workflow, /ballerwatch-pages\/beta\/sw\.js/);
+  assert.match(workflow, /production-src\/frontend\/web\/index\.html/);
+  assert.match(workflow, /curl -fsSL/);
+  assert.match(workflow, /cmp -s/);
+});

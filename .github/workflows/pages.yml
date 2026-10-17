@@ -137,3 +137,35 @@ jobs:
         if: steps.beta.outputs.publish == 'true'
         id: deployment
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+      # Deployed status alone does not prove the public beta path has updated.
+      # Compare exact static bytes after publishing, including the validated
+      # beta revision's service-worker cache identity. No API or state writes.
+      - name: Verify live beta route and unchanged production root
+        if: steps.beta.outputs.publish == 'true'
+        shell: bash
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+          BETA_SHA: ${{ steps.beta.outputs.sha }}
+        run: |
+          set -euo pipefail
+          base="${PAGE_URL%/}/"
+          test -n "${PAGE_URL}" && test -n "${BETA_SHA}"
+          for attempt in $(seq 1 25); do
+            if curl -fsSL --max-time 12 -H 'Cache-Control: no-cache' \
+                "${base}beta/?revision=${BETA_SHA}" -o /tmp/ballerwatch-beta-live.html 2>/dev/null &&
+               curl -fsSL --max-time 12 -H 'Cache-Control: no-cache' \
+                "${base}beta/sw.js?revision=${BETA_SHA}" -o /tmp/ballerwatch-beta-live-sw.js 2>/dev/null &&
+               curl -fsSL --max-time 12 -H 'Cache-Control: no-cache' \
+                "${base}?revision=${BETA_SHA}" -o /tmp/ballerwatch-production-live.html 2>/dev/null &&
+               cmp -s /tmp/ballerwatch-pages/beta/index.html /tmp/ballerwatch-beta-live.html &&
+               cmp -s /tmp/ballerwatch-pages/beta/sw.js /tmp/ballerwatch-beta-live-sw.js &&
+               cmp -s production-src/frontend/web/index.html /tmp/ballerwatch-production-live.html; then
+              echo "Verified beta HTML, beta worker and unchanged production root at ${base}beta/"
+              echo "Validated beta commit: ${BETA_SHA}"
+              exit 0
+            fi
+            echo "Waiting for Pages CDN to serve validated beta artifact (check ${attempt}/25)."
+            sleep 4
+          done
+          echo "::error::Live Pages content did not match the validated beta artifact and production checkout."
+          exit 1
