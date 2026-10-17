@@ -111,7 +111,7 @@ export function scenePose(value, settings = SCENE) {
     progress, phase, kick, knee, dive, netPulse,
     player: {
       shiftX: mix(-9, 0, approach),
-      bob: -3 * Math.sin(Math.PI * approach) + 2 * follow,
+      bob: -3 * Math.sin(Math.PI * approach) * (1 - approach) + 2 * follow,
       torso: progress < settings.contact ? -5 * backswing + 5 * strike : 8 * follow,
       arms: progress < settings.contact ? -8 * backswing + 8 * strike : -7 * follow,
       plant: 11 * backswing * (1 - strike) + 5 * follow,
