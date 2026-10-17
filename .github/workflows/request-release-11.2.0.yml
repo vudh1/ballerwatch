@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   request:
-    if: startsWith(github.event.head_commit.message, 'chore(release): request 11.2.0 production promotion')
+    if: "startsWith(github.event.head_commit.message, 'chore(release): request 11.2.0 production promotion')"
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
