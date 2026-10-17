@@ -164,6 +164,25 @@ try {
       args: ["--no-sandbox", "--disable-gpu", "--allow-insecure-localhost", "--ignore-certificate-errors", ...(shell ? ["--disable-blink-features=Badging"] : [])],
     } : {}) });
     try {
+      await scenario(`${engine}: all dashboard card footers have no divider line`, async () => {
+        const { context, page, errors } = await prepare(browser, { reducedMotion: "reduce" });
+        await ready(page);
+        await page.waitForSelector(".standings-slide .standings-card-footer");
+        for (const viewport of [{ width: 1440, height: 1000 },
+          { width: 390, height: 844 }, { width: 844, height: 390 }]) {
+          await page.setViewportSize(viewport);
+          const widths = await page.evaluate(() => [
+            ".match-card-footer.bw-card-footer",
+            ".standings-slide .standings-card-footer.bw-card-footer",
+            ".calendar-card-footer.bw-card-footer",
+          ].map((selector) => getComputedStyle(document.querySelector(selector)).borderTopWidth));
+          assert.deepEqual(widths, ["0px", "0px", "0px"],
+            "Match, standings and calendar credits should not have divider lines");
+        }
+        assert.deepEqual(errors, []);
+        await context.close();
+      });
+
       await scenario(`${engine}: Android install guidance, native prompt and mobile layout`, async () => {
         const { context, page, errors } = await prepare(browser, {
           viewport: { width: 412, height: 915 },
