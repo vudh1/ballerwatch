@@ -36,6 +36,7 @@ import {
   clearLocalMatchOverride, setLocalMatchHidden,
 } from "./lib/local-match-edits.js";
 import { experienceKey } from "./lib/experience.js";
+import { activeChannel, switchChannel } from "./lib/app-channel.js";
 import { PUBLIC_CALENDAR_LOCAL_KEY, readPublicCalendar, todaySeattleKey,
   writePublicCalendar } from "./lib/public-calendar-cache.js";
 import { PUBLIC_STANDINGS_LOCAL_KEY, readPublicStandings, writePublicStandings }
@@ -1579,7 +1580,7 @@ async function registerServiceWorker() {
     void syncServiceWorkerRsvpState();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=11.1.0", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=11.2.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -4735,3 +4736,25 @@ window.setInterval(() => {
     checkForAppUpdate().catch(() => null);
   }
 }, APP_UPDATE_CHECK_MS);
+
+/** Version/channel switching is a normal device setting, never a promotion. */
+const channelSelect = document.querySelector("#app-channel");
+if (channelSelect) {
+  const channelStatus = document.querySelector("#app-channel-status");
+  channelSelect.value = activeChannel();
+  channelSelect.addEventListener("change", async () => {
+    const target = channelSelect.value;
+    channelSelect.disabled = true;
+    channelStatus.textContent = target === "beta" ? "Checking the beta preview…" : "Opening production…";
+    try {
+      const result = await switchChannel(target);
+      if (result.unavailable) {
+        channelSelect.value = "production";
+        channelStatus.textContent = "Beta is temporarily unavailable. Staying on Production.";
+      }
+    } catch {
+      channelSelect.value = activeChannel();
+      channelStatus.textContent = "Unable to change app channel. Try again when online.";
+    } finally { channelSelect.disabled = false; }
+  });
+}
