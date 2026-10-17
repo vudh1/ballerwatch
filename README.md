@@ -4,7 +4,7 @@
 
 **[Open Production](https://vudh1.github.io/ballerwatch/)** · **[Open Beta](https://vudh1.github.io/ballerwatch/beta/)** · **[Project documentation](docs/wiki/Home.md)**
 
-Production is the stable, manually released app. Beta previews validated changes before they are promoted. The code currently in development is **v11.2.0**; that does **not** mean production has been upgraded.
+**v11.2.0 is now released to both Production and Beta.** Production updates only by explicit, validated release; Beta continues to preview successfully validated `main` changes.
 
 ## What you can do
 
@@ -30,7 +30,7 @@ Production is the stable, manually released app. Beta previews validated changes
 | Installation | Stable Home Screen app | Separate Home Screen app with a Beta marker |
 | Offline files and device settings | Production-scoped | Independently scoped for beta |
 
-In the updated app, open **Settings → App channel** and choose Production or Beta. Switching opens the corresponding address rather than replacing the running app. Beta may change or be temporarily unavailable; if an availability check fails, the selector stays on Production. The production site cannot show this new setting until a future manual production release, so you can always use the direct [Beta link](https://vudh1.github.io/ballerwatch/beta/) meanwhile.
+In the updated app, open **Settings → App channel** and choose Production or Beta. Switching opens the corresponding address rather than replacing the running app. Beta may change or be temporarily unavailable; if an availability check fails, the selector stays on Production. Both released environments now include the channel selector; you can also use the direct [Beta link](https://vudh1.github.io/ballerwatch/beta/).
 
 Beta and production keep separate browser preferences, match edits, caches and service workers. Changing a date or hiding a match affects only the device and environment where you did it. Beta currently uses the stable production API for published match data; it has no independent notification writer or scheduler. Production does not advance automatically.
 
