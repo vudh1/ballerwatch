@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.2.1",
+  "currentVersion": "11.2.2",
   "releases": [
+    {
+      "version": "11.2.2",
+      "date": "2026-10-17",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Seamless match and standings card footers",
+      "webAnnouncement": "Match and standings cards now have the same seamless footer as the schedule card. All published game information and local settings are unchanged.",
+      "changes": [
+        "Remove the visible 1px shared footer divider from match and standings cards so all three dashboard card footers match the existing borderless schedule card.",
+        "Preserve standings table separators, match and standings credit text, spacing, carousel behavior, and device-local preferences.",
+        "Verify zero computed footer-border width for match, standings and schedule cards on desktop, phone portrait and landscape in Chromium, Firefox and WebKit."
+      ]
+    },
     {
       "version": "11.2.1",
       "date": "2026-10-16",

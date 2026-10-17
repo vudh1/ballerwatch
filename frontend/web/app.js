@@ -1635,7 +1635,7 @@ async function registerServiceWorker() {
     void syncServiceWorkerRsvpState();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=11.2.1", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=11.2.2", {
     scope: "./",
     updateViaCache: "none",
   });
