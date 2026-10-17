@@ -113,6 +113,16 @@ function diagnostics(records) {
     mostLikelyAccuracy:round(sum(x=>Number(per(x).indexOf(Math.max(...per(x)))===x.outcome))),
     favoriteAccuracyExcludingDraws:favorites.length?round(favoriteCorrect/favorites.length):null,
     actualDrawPct:round(100*records.filter(x=>x.outcome===1).length/n),
+    predictedDrawPct:round(100*records.filter(x=>per(x).indexOf(Math.max(...per(x)))===1).length/n),
+    drawRecall:(()=>{const drawn=records.filter(x=>x.outcome===1);return drawn.length
+      ? round(drawn.filter(x=>per(x).indexOf(Math.max(...per(x)))===1).length/drawn.length):null;})(),
+    expectedCalibrationError:round(Array.from({length:10},(_,bin)=>{
+      const rows=records.filter(x=>Math.min(9,Math.floor(Math.max(...per(x))*10))===bin);
+      if(!rows.length)return 0;
+      const confidence=rows.reduce((total,x)=>total+Math.max(...per(x)),0)/rows.length;
+      const accuracy=rows.filter(x=>per(x).indexOf(Math.max(...per(x)))===x.outcome).length/rows.length;
+      return rows.length/n*Math.abs(confidence-accuracy);
+    }).reduce((total,value)=>total+value,0)),
     roundedTo5LogLoss:round(rounded),reliability:bins};
 }
 function groupStats(records,by) {
