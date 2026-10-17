@@ -152,8 +152,10 @@ export function roundThreeWay(probs) {
   // the twenty 5% units by largest remainder rather than clipping the draw.
   const values = [probs?.win, probs?.draw, probs?.loss].map((value) =>
     Number.isFinite(value) && value > 0 ? value : 0);
-  const total = values.reduce((sum, value) => sum + value, 0);
-  const safe = total > 0 ? values.map((value) => value / total) : [0.39, 0.22, 0.39];
+  const largest = Math.max(...values);
+  const scaled = largest > 0 ? values.map((value) => value / largest) : [];
+  const total = scaled.reduce((sum, value) => sum + value, 0);
+  const safe = total > 0 ? scaled.map((value) => value / total) : [0.39, 0.22, 0.39];
   const exact = safe.map((value) => value * 20);
   const units = exact.map(Math.floor);
   const remaining = 20 - units.reduce((sum, value) => sum + value, 0);
