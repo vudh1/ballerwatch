@@ -18,6 +18,7 @@ const cacheNames = [
   "ballerwatch-device-state-v2",
   "ballerwatch-v2-device-state-v1",
   "ballerwatch-v2-device-state-v2",
+  "ballerwatch-beta-device-state-v0",
   "ballerwatch-beta-device-state-v1",
 ];
 
@@ -58,7 +59,8 @@ test("beta activation keeps production and legacy device preferences", async () 
   const names = await activate("/ballerwatch/beta/sw.js");
   assert.ok(names.has("ballerwatch-device-state-v2"));
   assert.ok(names.has("ballerwatch-v2-device-state-v2"));
-  assert.ok(!names.has("ballerwatch-beta-device-state-v1"));
+  assert.ok(names.has("ballerwatch-beta-device-state-v1"));
+  assert.ok(!names.has("ballerwatch-beta-device-state-v0"));
   assert.ok(names.has("ballerwatch-v11-2-0-shell"));
 });
 
