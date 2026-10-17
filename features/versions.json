@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.1.0",
+  "currentVersion": "11.2.0",
   "releases": [
+    {
+      "version": "11.2.0",
+      "date": "2026-10-16",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Motion realism and channel switch with evidence-first scouting",
+      "webAnnouncement": "Preview smoother reversible soccer action and improved scouting clarity in Beta. Switch between Beta and Production from Settings in the updated app; production stays unchanged until a manual release.",
+      "changes": [
+        "Use deterministic joint animation for the shooter and goalkeeper with a gravity-like ballistic shot, distance-based ball rotation and a reversible net response; keep native scrolling, Skip and reduced-motion behavior.",
+        "Add a channel selector using a small shared device-only preference and direct canonical navigation; check beta reachability before leaving production and fail safely when unavailable.",
+        "Make three-way probability rounding finite and sum to 100%, show draws and evidence-based sample reliability, and extend existing held-out scouting diagnostics with draw recall and expected calibration error. The production-reviewed predictor remains the default unless independently gated evaluation approves a challenger.",
+        "Expand animation, beta navigation, caching and calibration regression coverage. Build beta only from validated main without advancing the production branch or API."
+      ]
+    },
     {
       "version": "11.1.0",
       "date": "2026-10-16",
