@@ -11,12 +11,12 @@
   <meta name="apple-mobile-web-app-title" content="BallerWatch">
   <meta name="description" content="A moment of football. Then everything you need for your next match.">
   <title>BallerWatch — Your matchday</title>
-  <link rel="manifest" href="./manifest.webmanifest?v=11.1.0">
-  <link rel="icon" href="./icon.svg?v=11.1.0" type="image/svg+xml">
-  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=11.1.0">
-  <script src="./v2/prepaint.js?v=11.1.0"></script>
-  <link rel="stylesheet" href="./styles.css?v=11.1.0">
-  <link rel="stylesheet" href="./v2/styles.css?v=11.1.0">
+  <link rel="manifest" href="./manifest.webmanifest?v=11.2.0">
+  <link rel="icon" href="./icon.svg?v=11.2.0" type="image/svg+xml">
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=11.2.0">
+  <script src="./v2/prepaint.js?v=11.2.0"></script>
+  <link rel="stylesheet" href="./styles.css?v=11.2.0">
+  <link rel="stylesheet" href="./v2/styles.css?v=11.2.0">
 </head>
 <body>
   <div class="status-bar-glass" aria-hidden="true"></div>
@@ -74,7 +74,7 @@
     <p class="v2-static-welcome" hidden>Matchday, at your pace. Motion is reduced on this device.</p>
     <header class="hero">
       <div class="brand-lockup">
-        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=11.1.0" alt=""></div>
+        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=11.2.0" alt=""></div>
         <div>
           <p class="eyebrow">SOCCER AT A GLANCE</p>
           <h1 id="matchday-heading" tabindex="-1">BallerWatch</h1>
@@ -433,6 +433,16 @@
       </div>
 
 
+      <section class="app-channel-settings" aria-label="App channel">
+        <label for="app-channel">App channel</label>
+        <select id="app-channel" class="app-channel-select">
+          <option value="production">Production — stable released version</option>
+          <option value="beta">Beta — preview features before production</option>
+        </select>
+        <p class="hint" id="app-channel-status" role="status">Beta may change or be temporarily unavailable. Switching opens a separate app installation; your local preferences stay on this device.</p>
+      </section>
+      <div class="settings-divider"></div>
+
       <section aria-label="Offline files">
         <details id="v2-offline-tools"><summary>Offline files</summary><p class="hint">Clear frontend files without changing device preferences.</p><button id="clear-v2-caches" class="secondary compact-button" type="button">Clear app frontend cache</button><p id="v2-cache-status" class="hint" role="status"></p></details>
       </section>
@@ -579,7 +589,7 @@
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=11.1.0"></script>
-  <script type="module" src="./v2/app.js?v=11.1.0"></script>
+  <script type="module" src="./app.js?v=11.2.0"></script>
+  <script type="module" src="./v2/app.js?v=11.2.0"></script>
 </body>
 </html>
