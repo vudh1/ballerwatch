@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import { evaluateArchive } from "../../../backend/league/scouting-evaluation.mjs";
 
 function sample() {
@@ -77,4 +78,14 @@ test("holdout diagnostics show draw recall and confidence calibration", () => {
     assert.ok(score.predictedDrawPct >= 0 && score.predictedDrawPct <= 100);
     assert.ok(score.expectedCalibrationError >= 0 && score.expectedCalibrationError <= 1);
   }
+});
+
+test("read-only live historical evaluation has no release, scheduler or state mutation", () => {
+  const workflow = fs.readFileSync(".github/workflows/scouting-evaluation-readonly.yml", "utf8");
+  assert.match(workflow, /permissions:\s*\n\s*contents: read/);
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.match(workflow, /scouting-evaluation\.mjs/);
+  assert.match(workflow, /runtime-state\.mjs pull league/);
+  assert.match(workflow, /runtime-state\.mjs clean league/);
+  assert.doesNotMatch(workflow, /runtime-state\.mjs push|scouting-model\.mjs|scouting-index\.mjs|web-push|calendar|promote-release/);
 });
