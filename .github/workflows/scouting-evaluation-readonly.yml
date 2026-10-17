@@ -29,9 +29,24 @@ jobs:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
         run: node backend/shared/runtime-state.mjs pull league
 
+      - name: Resolve the current season from encrypted league schedule
+        id: season
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          import { decryptState } from "./backend/shared/state-crypto.mjs";
+          const envelope = JSON.parse(fs.readFileSync("league/state/schedule.json", "utf8"));
+          const season = String(decryptState(envelope)?.seasonId || "");
+          if (!/^[a-z0-9][a-z0-9_-]{1,79}$/i.test(season)) throw Error("Invalid current season");
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, "season=" + season + "\n");
+          NODE
+
       - name: Score chronological held-out matches without mutating state
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+          SCOUT_CURRENT_SEASON: ${{ steps.season.outputs.season }}
         run: node backend/league/scouting-evaluation.mjs
 
       - name: Remove temporary decrypted runtime data
