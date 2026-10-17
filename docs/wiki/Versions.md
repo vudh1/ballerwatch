@@ -44,12 +44,11 @@ This means an installed app should not need to be manually closed and reopened a
 
 ## Current development line
 
-- **11.2.0 (beta candidate)** — Joint-driven soccer motion, device-only app channel navigation, safer three-way rounding and extended holdout diagnostics. Production stays on the last manually released commit.
+- **11.2.0 (released October 16, 2026 Pacific)** — Joint-driven soccer motion, device-only app channel navigation, safer three-way rounding and extended holdout diagnostics. Both Production and Beta now serve v11.2.0.
 
 - **11.1.0** — Validated-main beta channel at /beta/, isolated Pages/PWA caches, and anonymous local match edits.
 
 - **11.0.2** — Event-specific public pickup RSVP lists for signed-out visitors.
-
 
 - **9.1.1** — Correct reload position after Skip and consolidate weekly-due evaluation into the hourly scouting writer.
 
