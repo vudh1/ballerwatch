@@ -1,6 +1,6 @@
 /**
- * Original V2 soccer choreography; pure reversible poses from normalized scroll.
- * Baseline: v8.10.0. No network, storage, physics engine or production data.
+ * BallerWatch soccer choreography; deterministic reversible joints and projected ball flight.
+ * Baseline: v11.2.0. No network, storage, physics engine or production data.
  * Coordinates refer to the 1440 × 900 scene; edit these controls to retime play.
  */
 export const FEATURE_STORIES = Object.freeze([
@@ -15,13 +15,14 @@ export const FEATURE_STORIES = Object.freeze([
   { start: 0.64, label: "STAY IN THE LOOP", title: ["The updates", "that matter."],
     description: "Inbox filters, Web Push reminders, unread badges and personal notification preferences. RATS schedule changes appear in the BallerWatch inbox without connecting a Google account." },
   { start: 0.80, label: "MAKE IT YOURS", title: ["Your teams.", "Your BallerWatch."],
-    description: "Your name and teams, optional music, Home Screen/offline access, secure accounts and authorized match administration." },
+    description: "Your name and teams, optional music, Home Screen/offline access, device-only settings and protected maintenance." },
 ]);
 
 export const SCENE = Object.freeze({
   launchMs: 2000,
   scrollScreens: 3.2,
   setupEnd: 0.15,
+  backswingEnd: 0.245,
   contact: 0.30,
   followThroughEnd: 0.41,
   cameraStart: 0.28,
@@ -34,7 +35,8 @@ export const SCENE = Object.freeze({
   keeper: { x: 1120, y: 570, travelX: 38, travelY: 44, rotation: 60 },
   ball: {
     start: { x: 477, y: 741 },
-    control: { x: 875, y: 450 },
+    lift: 58,
+    curl: 12,
     corner: { x: 1260, y: 390 },
   },
 });
@@ -48,37 +50,85 @@ export function featureStory(value) {
 }
 
 const mix = (start, end, progress) => start + (end - start) * progress;
-const segment = (progress, start, end) => clamp((progress - start) / (end - start));
+const segment = (progress, start, end) => clamp((progress - start) / Math.max(0.00001, end - start));
 const ease = (value) => value * value * (3 - 2 * value);
 
+// Hermite tail: preserve entry speed, decelerate into the net without a
+// velocity discontinuity. All coordinates depend on progress, never prior frames.
+function flightTime(progress) {
+  if (progress <= 0.85) return progress;
+  const t = (progress - 0.85) / 0.15;
+  return 0.85 + 0.15 * (t + t * t - t * t * t);
+}
+
+function projectile(t, ball) {
+  const start = ball.start, target = ball.corner;
+  // y increases downward. The parabolic lift corresponds to a downward
+  // gravity-like acceleration in screen space; curl is a small lateral term.
+  return {
+    x: mix(start.x, target.x, t) + ball.curl * Math.sin(Math.PI * t),
+    y: mix(start.y, target.y, t) - 4 * ball.lift * t * (1 - t),
+  };
+}
+
+function traveledDistance(t, ball) {
+  // Arc-length approximation is deterministic, bounded and inexpensive.
+  let length = 0;
+  let previous = projectile(0, ball);
+  for (let step = 1; step <= 12; step += 1) {
+    const next = projectile(t * step / 12, ball);
+    length += Math.hypot(next.x - previous.x, next.y - previous.y);
+    previous = next;
+  }
+  return length;
+}
+
 export function scenePose(value, settings = SCENE) {
-  const progress = clamp(Number(value) || 0);
-  const flight = segment(progress, settings.contact, settings.flightEnd);
-  const curve = settings.ball;
-  const a = (1 - flight) ** 2;
-  const b = 2 * (1 - flight) * flight;
-  const c = flight ** 2;
-  const dive = ease(segment(progress, settings.diveStart, settings.diveEnd));
+  const progress = clamp(Number.isFinite(Number(value)) ? Number(value) : 0);
+  const flight = flightTime(segment(progress, settings.contact, settings.flightEnd));
+  const approach = ease(segment(progress, 0, settings.setupEnd));
+  const backswing = ease(segment(progress, settings.setupEnd, settings.backswingEnd));
+  const strike = ease(segment(progress, settings.backswingEnd, settings.contact));
+  const follow = ease(segment(progress, settings.contact, settings.followThroughEnd));
+  const shot = progress >= settings.contact;
+  const diveRaw = segment(progress, settings.diveStart, settings.diveEnd);
+  const dive = ease(diveRaw);
+  const push = ease(segment(progress, settings.diveStart + 0.035, settings.diveEnd));
+  const settle = ease(segment(progress, settings.diveEnd, settings.revealStart));
   const impact = segment(progress, settings.flightEnd, settings.revealStart);
   const netPulse = Math.sin(impact * Math.PI) * (1 - impact);
-  const kick = progress < settings.setupEnd ? mix(32, 48, ease(progress / settings.setupEnd)) :
-    progress < settings.contact ? mix(48, 0, ease(segment(progress, settings.setupEnd, settings.contact))) :
-      mix(0, -42, ease(segment(progress, settings.contact, settings.followThroughEnd)));
+  const kick = progress < settings.setupEnd ? mix(12, 27, approach) :
+    progress < settings.backswingEnd ? mix(27, 46, backswing) :
+      progress < settings.contact ? mix(46, 0, strike) : mix(0, -32, follow);
+  const knee = progress < settings.setupEnd ? mix(4, 9, approach) :
+    progress < settings.backswingEnd ? mix(9, -27, backswing) :
+      progress < settings.contact ? mix(-27, 0, strike) : mix(0, 14, follow);
   const phase = progress < settings.setupEnd ? 0 : progress < settings.contact ? 1 :
     progress < settings.diveStart ? 2 : progress < settings.diveEnd ? 3 :
       progress < settings.revealStart ? 4 : 5;
+  const flyingBall = projectile(flight, settings.ball);
   return {
-    progress, phase, kick, dive, netPulse,
+    progress, phase, kick, knee, dive, netPulse,
+    player: {
+      shiftX: mix(-9, 0, approach),
+      bob: -3 * Math.sin(Math.PI * approach) + 2 * follow,
+      torso: progress < settings.contact ? -5 * backswing + 5 * strike : 8 * follow,
+      arms: progress < settings.contact ? -8 * backswing + 8 * strike : -7 * follow,
+      plant: 11 * backswing * (1 - strike) + 5 * follow,
+    },
     keeper: {
       x: settings.keeper.x + dive * settings.keeper.travelX,
-      y: settings.keeper.y - dive * settings.keeper.travelY,
+      y: settings.keeper.y - dive * settings.keeper.travelY + 4 * (1 - settle) * diveRaw,
       rotation: dive * settings.keeper.rotation,
+      load: 5 * ease(segment(progress, settings.diveStart, settings.diveStart + 0.07)) * (1 - dive),
+      reach: 4 * push,
+      landing: settle * dive,
     },
     ball: {
-      x: a * curve.start.x + b * curve.control.x + c * curve.corner.x,
-      y: a * curve.start.y + b * curve.control.y + c * curve.corner.y + impact * 32,
+      x: flyingBall.x + (shot ? 5 * ease(impact) : 0),
+      y: flyingBall.y + (shot ? 18 * ease(impact) : 0),
       scale: mix(1, 0.52, flight),
-      rotation: flight * 1080,
+      rotation: shot ? traveledDistance(flight, settings.ball) / 20 * 180 / Math.PI : 0,
     },
     focus: mix(490, 1120, ease(segment(progress, settings.cameraStart, settings.cameraEnd))),
     reveal: ease(segment(progress, settings.revealStart, 1)),
