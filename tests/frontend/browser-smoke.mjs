@@ -374,7 +374,7 @@ try {
         assert.equal(appearance.border, "0px");
         assert.equal(appearance.padding, "0px");
         assert.equal(appearance.background, "rgba(0, 0, 0, 0)");
-        assert.match(appearance.aria, /Fixture FC win 45%, tie 20%, Test United win 35%/);
+        assert.match(appearance.aria, /Fixture FC win 45%, draw 20%, Test United win 35%/);
         assert.deepEqual(errors, []);
         await context.close();
       });
