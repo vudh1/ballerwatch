@@ -98,6 +98,15 @@ async function prepare(browser, options = {}) {
   return { context, page, calls, errors, controls };
 }
 
+async function activateSpotlightControl(page, id) {
+  const control = page.locator(id);
+  // Headless Firefox sometimes exposes (hover: none), intentionally hiding
+  // mouse-only edge affordances. Exercise their navigation handler without
+  // demanding a hover-only control on a touch-oriented browser context.
+  if (await control.isVisible()) await control.click();
+  else await control.evaluate((element) => element.click());
+}
+
 async function ready(page, route = "") {
   await page.goto(`${origin}/ballerwatch/${route}`);
   try {
@@ -415,7 +424,7 @@ try {
       await scenario(`${engine}: three-way forecast uses initials and a borderless shared track`, async () => {
         const { context, page, errors } = await prepare(browser, { reducedMotion: "reduce" });
         await ready(page);
-        await page.locator("#spotlight-next").click();
+        await activateSpotlightControl(page, "#spotlight-next");
         await page.waitForFunction(() => document.querySelector("#next-game-form")?.textContent.includes("FFC 45%"));
         assert.deepEqual(await page.locator("#next-game-form .win-chance-labels span").allTextContents(),
           ["FFC 45%", "Draw 20%", "TU 35%"]);
@@ -565,10 +574,10 @@ try {
         assert.equal(await page.locator("#calendar-game-picker").isVisible(), false);
         await day.click();
         assert.match(await page.locator("#next-game-meta").textContent(), /Fixture FC vs Test United/);
-        await page.locator("#spotlight-next").click();
+        await activateSpotlightControl(page, "#spotlight-next");
         await page.waitForFunction(() =>
           document.querySelector("#next-game-meta")?.textContent.includes("Fixture FC vs Second FC"));
-        await page.locator("#spotlight-previous").click();
+        await activateSpotlightControl(page, "#spotlight-previous");
         await page.waitForFunction(() =>
           document.querySelector("#next-game-meta")?.textContent.includes("Fixture FC vs Test United"));
         assert.deepEqual(errors, []);
