@@ -85,6 +85,8 @@ test("read-only live historical evaluation has no release, scheduler or state mu
   assert.match(workflow, /permissions:\s*\n\s*contents: read/);
   assert.match(workflow, /workflow_dispatch:/);
   assert.match(workflow, /scouting-evaluation\.mjs/);
+  assert.match(workflow, /SCOUT_CURRENT_SEASON:/);
+  assert.match(workflow, /league\/state\/schedule\.json/);
   assert.match(workflow, /runtime-state\.mjs pull league/);
   assert.match(workflow, /runtime-state\.mjs clean league/);
   assert.doesNotMatch(workflow, /runtime-state\.mjs push|scouting-model\.mjs|scouting-index\.mjs|web-push|calendar|promote-release/);
