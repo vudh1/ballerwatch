@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.2.0",
+  "currentVersion": "11.2.1",
   "releases": [
+    {
+      "version": "11.2.1",
+      "date": "2026-10-16",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Android and cross-browser PWA compatibility",
+      "webAnnouncement": "BallerWatch now has Android-aware installation help with native install prompts when available, better iPad Home Screen guidance and safer device cache upgrades. Match cards, RSVPs and notifications remain accountless with browser-supported features.",
+      "changes": [
+        "Provide platform-specific install instructions for Android, iPhone/iPad and desktop, and offer Chromium's native beforeinstallprompt flow when supported. Keep regular website browsing available when installation is unavailable.",
+        "Detect desktop-style iPadOS user agents for Home Screen and Web Push guidance, and fail gracefully when Web Push APIs are unavailable on a given browser.",
+        "Scope service-worker state-cache cleanup to the owning Production, Beta or legacy V2 installation, preserving the other installations' persistent device preferences and notifications.",
+        "Run Chromium, Firefox and WebKit browser smoke tests in independent CI jobs, adding Android portrait/landscape, native install prompts, modern iPadOS and cache-isolation regression coverage."
+      ]
+    },
     {
       "version": "11.2.0",
       "date": "2026-10-16",
