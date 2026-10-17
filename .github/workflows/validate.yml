@@ -72,14 +72,18 @@ jobs:
   browser:
     runs-on: ubuntu-latest
     timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit, firefox]
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
       - name: Install pinned browser test runner
         run: npm install --prefix /tmp/ballerwatch-browser --no-save playwright@1.56.1
 
-      - name: Install Chromium and WebKit
-        run: node /tmp/ballerwatch-browser/node_modules/playwright/cli.js install --with-deps chromium webkit
+      - name: Install ${{ matrix.browser }}
+        run: node /tmp/ballerwatch-browser/node_modules/playwright/cli.js install --with-deps ${{ matrix.browser }}
 
       - name: Build canonical app and legacy compatibility assets
         run: node scripts/build-web.mjs
@@ -88,5 +92,6 @@ jobs:
         env:
           BALLERWATCH_PLAYWRIGHT_MODULE: /tmp/ballerwatch-browser/node_modules/playwright
           BALLERWATCH_WEB_ROOT: /tmp/ballerwatch-web-build
+          BALLERWATCH_BROWSERS: ${{ matrix.browser }}
         run: node tests/frontend/browser-smoke.mjs
 
