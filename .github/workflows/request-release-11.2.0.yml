@@ -1,0 +1,61 @@
+name: Request BallerWatch 11.2.0 production promotion
+
+# One-time release request after explicit approval. This workflow only calls
+# the existing protected/manual production promotion; it cannot move a branch,
+# publish a GitHub Release, deploy Workers or edit runtime state itself.
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/request-release-11.2.0.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  request:
+    if: "startsWith(github.event.head_commit.message, 'chore(release): request 11.2.0 production promotion')"
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Verify immutable 11.2.0 candidate and deployment readiness
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$GH_TOKEN" || { echo "::error::Missing RELEASE_GITHUB_TOKEN"; exit 1; }
+          candidate="$(git log -1 --format=%H HEAD -- features/versions.json)"
+          test "$candidate" = "860c7a1b4ed2f4d68be82b821a45eff23be3dddd" || {
+            echo "::error::Candidate release commit unexpectedly changed."
+            exit 1
+          }
+          version="$(git show "$candidate:features/versions.json" | node -e 'let s="";process.stdin.on("data",x=>s+=x).on("end",()=>process.stdout.write(JSON.parse(s).currentVersion))')"
+          test "$version" = "11.2.0" || {
+            echo "::error::Candidate version is not 11.2.0."
+            exit 1
+          }
+          successful="$(gh api -X GET "/repos/$GITHUB_REPOSITORY/actions/workflows/validate.yml/runs" \
+            -f head_sha="$candidate" -f status=completed -f per_page=40 \
+            --jq '[.workflow_runs[] | select(.conclusion == "success")] | length')"
+          test "$successful" -ge 1 || {
+            echo "::error::The exact release commit has no successful CI."
+            exit 1
+          }
+          if gh release view v11.2.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::notice::v11.2.0 already has a GitHub Release; checking downstream workflows."
+          fi
+
+      - name: Request existing release-gated production workflow
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh workflow run promote-release.yml --repo "$GITHUB_REPOSITORY" --ref main
+          echo "Dispatched the existing production promotion. Worker and Pages readiness gates remain mandatory."
