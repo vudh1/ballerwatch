@@ -2086,7 +2086,7 @@ function renderWinChanceBar(target, game, estimate) {
   target.append(labels, track);
   target.setAttribute("role", "img");
   target.setAttribute("aria-label",
-    `${game.team} win ${estimate.winPct}%, draw ${estimate.drawPct}%, ${game.opponent} win ${estimate.lossPct}%; scouting estimate, ${reliability}`);
+    `${game.team} win ${estimate.winPct}%, draw ${estimate.drawPct}%, ${game.opponent} win ${estimate.lossPct}%; provisional scouting estimate, ${reliability}`);
   target.title = `${reliability} · Estimate only. Based on ${estimate.teamGames ?? 0}/${estimate.opponentGames ?? 0} scored games and ${estimate.headToHeadGames ?? 0} past meetings. Not betting odds.`;
 }
 
