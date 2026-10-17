@@ -17,7 +17,7 @@ Production is the stable, manually released app. Beta previews validated changes
 
 ## A short preview
 
-![BallerWatch cinematic matchday demo](docs/demo.gif)
+![BallerWatch animated demo: cinematic matchday preview](docs/demo.gif)
 
 *This older synthetic-data walkthrough demonstrates the app's general layout. It is not a recording of the new beta motion or current live scores.*
 
@@ -52,7 +52,7 @@ Read the [Data and Privacy guide](docs/wiki/Data-and-Privacy.md) for more detail
 
 ## For developers and maintainers
 
-The [project wiki](docs/wiki/Home.md) covers [architecture](docs/wiki/Architecture.md), [development](docs/wiki/Development.md), [operations](docs/wiki/Operations.md), [scouting](docs/wiki/Scouting.md) and [releases](docs/wiki/Release-Process.md).
+The [Card design system](docs/CARD-DESIGN-SYSTEM.md) describes the shared styling. The [project wiki](docs/wiki/Home.md) covers [architecture](docs/wiki/Architecture.md), [development](docs/wiki/Development.md), [operations](docs/wiki/Operations.md), [scouting](docs/wiki/Scouting.md) and [releases](docs/wiki/Release-Process.md).
 
 The code is grouped under `frontend/web/` (GitHub Pages PWA), `backend/` (Cloudflare API, RATS/pickup watchers and encrypted runtime integrations), `tests/` (Node/browser regressions), and `scripts/` (validation and Pages composition). The source version and release history are in [features/versions.json](features/versions.json); live releases appear on [GitHub Releases](https://github.com/vudh1/ballerwatch/releases).
 
