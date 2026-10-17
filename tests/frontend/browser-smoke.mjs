@@ -357,7 +357,7 @@ try {
         await page.locator("#spotlight-next").click();
         await page.waitForFunction(() => document.querySelector("#next-game-form")?.textContent.includes("FFC 45%"));
         assert.deepEqual(await page.locator("#next-game-form .win-chance-labels span").allTextContents(),
-          ["FFC 45%", "TU 35%"]);
+          ["FFC 45%", "Draw 20%", "TU 35%"]);
         assert.ok(await page.locator("#next-game-form").evaluate((element) => {
           const address = document.querySelector("#next-game-location");
           const style = getComputedStyle(element);
