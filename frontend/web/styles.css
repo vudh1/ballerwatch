@@ -6346,15 +6346,14 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
 .next-game-form[hidden] { display: none !important; }
 .win-chance-labels {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.25rem;
   font-size: var(--type-caption);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 .win-chance-labels span:nth-child(1) { text-align: left; color: #a7f3d0; }
-.win-chance-labels span:nth-child(2) { text-align: center; color: #e2e8f0; }
-.win-chance-labels span:nth-child(3) { text-align: right; color: #fecdd3; }
+.win-chance-labels span:nth-child(2) { text-align: right; color: #fecdd3; }
 .win-chance-track {
   display: flex;
   width: 100%;
@@ -6367,6 +6366,7 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
 .win-chance-win { background: #4ade80; }
 .win-chance-draw { background: #a7b4c8; }
 .win-chance-loss { background: #fb7185; }
+.next-game-capacity-track[hidden] { display: none !important; }
 @media (max-width: 390px) {
   .next-game-form { padding: 0; }
   .win-chance-labels { font-size: 0.66rem; }
@@ -6378,8 +6378,6 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
 .admin-settings-details { margin-top: 0.8rem; }
 .admin-settings-details > summary { cursor: pointer; padding: 0.75rem 0; font-weight: 700; color: var(--muted); }
 .admin-settings-details[open] > summary { color: var(--accent, #4ade80); }
-.win-chance-labels { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.win-chance-labels span:nth-child(2) { text-align: right; color: #fecdd3; }
 
 /* v8.12.1: individual match dots, not a number or extra selection pills. */
 .calendar-signal { display:flex; align-items:center; justify-content:center; gap:0.18rem; min-height:0.72rem; }

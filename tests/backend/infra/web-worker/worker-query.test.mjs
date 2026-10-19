@@ -29,6 +29,7 @@ function snapshot() {
           ok: true,
           reserved: 14,
           capacity: 16,
+          publishedCapacity: 16,
           startTime: "20:00:00",
           endTime: "22:00:00",
         },
@@ -190,6 +191,14 @@ test("date schedule reply combines available published data", () => {
   const pickup = gamesOnDate(snapshot(), "2099-10-08");
   assert.match(pickup, /14\/16 reserved/);
   assert.match(pickup, /Test Field/);
+});
+
+test("AI pickup answers do not invent the 16-slot notification cap", () => {
+  const data = snapshot();
+  data.pickup.events["2099-10-08"].publishedCapacity = null;
+  const reply = gamesOnDate(data, "2099-10-08");
+  assert.match(reply, /14 reserved/);
+  assert.doesNotMatch(reply, new RegExp("14/16|full|spot.*left", "i"));
 });
 
 test("next game considers league, RSVP pickup, and generated Saturday pickup schedules", () => {

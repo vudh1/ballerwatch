@@ -69,7 +69,7 @@ async function prepare(browser, options = {}) {
     viewport: { width: 1440, height: 1000 }, ...options });
   const calls = [];
   const errors = [];
-  const controls = { offlineApi: false, optionalFailure: false, animationFailure: false, scriptFailure: false, noPickupCap: false };
+  const controls = { offlineApi: false, optionalFailure: false, animationFailure: false, scriptFailure: false, noPickupCap: false, camelCaseTeam: false };
   await context.route("**/*", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -83,11 +83,25 @@ async function prepare(browser, options = {}) {
         return;
       }
       const fixture = structuredClone(fixtureResponse(url.pathname, request.method()));
-      if (controls.noPickupCap && url.pathname === "/web/next-game") fixture.game.capacity = null;
+      if (controls.noPickupCap && url.pathname === "/web/next-game") {
+        fixture.game.capacity = null;
+        fixture.game.publishedCapacity = null;
+      }
       if (controls.noPickupCap && url.pathname === "/web/calendar") {
         for (const game of fixture.calendar.games) {
-          if (game.kind === "pickup") game.capacity = null;
+          if (game.kind === "pickup") {
+            game.capacity = null;
+            game.publishedCapacity = null;
+          }
         }
+      }
+      if (controls.camelCaseTeam && url.pathname === "/web/calendar") {
+        const game = fixture.calendar.games.find((match) => match.kind === "league");
+        game.opponent = "PhoSaiGon";
+        game.title = "Fixture FC vs PhoSaiGon";
+      }
+      if (controls.camelCaseTeam && url.pathname === "/web/standings") {
+        fixture.standings.matchups.fixtureVsTest.opponent = "PhoSaiGon";
       }
       await route.fulfill({ headers, contentType: "application/json", body: JSON.stringify(fixture) });
     } else if (controls.animationFailure && url.pathname.endsWith("/stadium.svg")) {
@@ -447,13 +461,13 @@ try {
         await context.close();
       });
 
-      await scenario(`${engine}: three-way forecast uses initials and a borderless shared track`, async () => {
+      await scenario(`${engine}: three-way forecast aligns win, tie, opponent and a borderless shared track`, async () => {
         const { context, page, errors } = await prepare(browser, { reducedMotion: "reduce" });
         await ready(page);
         await activateSpotlightControl(page, "#spotlight-next");
         await page.waitForFunction(() => document.querySelector("#next-game-form")?.textContent.includes("FFC 45%"));
         assert.deepEqual(await page.locator("#next-game-form .win-chance-labels span").allTextContents(),
-          ["FFC 45%", "Draw 20%", "TU 35%"]);
+          ["FFC 45%", "TU 35%"]);
         assert.ok(await page.locator("#next-game-form").evaluate((element) => {
           const address = document.querySelector("#next-game-location");
           const style = getComputedStyle(element);
@@ -470,7 +484,21 @@ try {
         assert.equal(appearance.border, "0px");
         assert.equal(appearance.padding, "0px");
         assert.equal(appearance.background, "rgba(0, 0, 0, 0)");
+        assert.equal(await page.locator("#next-game-form .win-chance-labels").evaluate((element) =>
+          getComputedStyle(element).gridTemplateColumns.split(" ").length), 2);
         assert.match(appearance.aria, /Fixture FC win 45%, draw 20%, Test United win 35%/);
+        assert.deepEqual(errors, []);
+        await context.close();
+      });
+
+      await scenario(`${engine}: CamelCase team names use capitalized-word abbreviations`, async () => {
+        const { context, page, controls, errors } = await prepare(browser, { reducedMotion: "reduce" });
+        controls.camelCaseTeam = true;
+        await ready(page);
+        await activateSpotlightControl(page, "#spotlight-next");
+        await page.waitForFunction(() => document.querySelector("#next-game-form")?.textContent.includes("PSG 35%"));
+        assert.deepEqual(await page.locator("#next-game-form .win-chance-labels span").allTextContents(),
+          ["FFC 45%", "PSG 35%"]);
         assert.deepEqual(errors, []);
         await context.close();
       });
@@ -732,15 +760,16 @@ try {
         }
       });
 
-      await scenario(`${engine}: missing RSVP cap defaults to 16 in match and roster views`, async () => {
+      await scenario(`${engine}: missing RSVP cap is hidden in match and roster while internal alerts use 16`, async () => {
         const { context, page, controls, errors } = await prepare(browser, { reducedMotion: "reduce" });
         controls.noPickupCap = true;
         await ready(page);
-        assert.match(await page.locator("#next-game-capacity-label").textContent(), /12 \/ 16 reserved/);
-        assert.match(await page.locator("#next-game-capacity-spots").textContent(), /4 spots left/);
+        assert.equal(await page.locator("#next-game-capacity-label").textContent(), "12 reserved");
+        assert.equal(await page.locator("#next-game-capacity-spots").textContent(), "");
+        assert.equal(await page.locator("#next-game-capacity .next-game-capacity-track").isVisible(), false);
         await page.locator("#next-game-capacity").click();
         await page.waitForSelector("#rsvp-roster-confirmed-list li");
-        assert.match(await page.locator("#rsvp-roster-summary").textContent(), /\/ 16 spots reserved/);
+        assert.match(await page.locator("#rsvp-roster-summary").textContent(), /^1 spot reserved · RSVP order$/);
         assert.deepEqual(errors, []);
         await context.close();
       });
