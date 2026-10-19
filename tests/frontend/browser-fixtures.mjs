@@ -6,7 +6,7 @@ export const fixtureGame = {
   id: "pickup:2099-10-15", kind: "pickup", date: "2099-10-15",
   dateLabel: "Thursday, October 15", title: "Pickup soccer", time: "8–10 PM",
   location: "Fixture Park Soccer", mapsQuery: "Fixture Park Soccer",
-  reserved: 12, capacity: 16, sourceUpdatedAt: "2099-10-14T20:00:00Z",
+  reserved: 12, capacity: 16, publishedCapacity: 16, sourceUpdatedAt: "2099-10-14T20:00:00Z",
   rsvpUrl: "https://nhcuong95.github.io/rsvp/index.html",
   weather: { rainProbability: 20, weatherCode: 2, temperature: 14 },
 };
