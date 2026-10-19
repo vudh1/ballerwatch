@@ -27,6 +27,13 @@ const SEASONS = ["winter", "spring", "summer", "fall"];
 const round = (value, digits = 4) => Number(Number(value).toFixed(digits));
 const bounded = (number, lo, hi) => Math.min(hi, Math.max(lo, number));
 
+/** Weight scheduled cross-division opponents without amplifying thin samples. */
+export function opponentTierWeight(ownTier, opposingTier) {
+  if (!Number.isFinite(ownTier) || ownTier <= 0 ||
+      !Number.isFinite(opposingTier) || opposingTier <= 0) return 1;
+  return bounded(opposingTier / ownTier, 0.8, 1.25);
+}
+
 function chronologicalKey(value) {
   const match = /^(winter|spring|summer|fall)-(\d{4})$/i.exec(String(value || ""));
   return match ? Number(match[2]) * 4 + SEASONS.indexOf(match[1].toLowerCase()) : null;
@@ -108,7 +115,8 @@ export function forecastFromFeatures(ours, theirs, meetings, settings = DEFAULT_
     for (const [i, entry] of entries.slice(0, 10).entries()) {
       const recent = Math.pow(weights.decay, i);
       const factor = entry.format === "11v11" ? weights.format11 : 1;
-      const weight = recent * factor * (Number(entry.tier) || 1);
+      const weight = recent * factor * (Number(entry.tier) || 1) *
+        opponentTierWeight(entry.tier, entry.opponentTier);
       wins += (entry.scored > entry.conceded ? 1 : 0) * weight;
       draws += (entry.scored === entry.conceded ? 1 : 0) * weight;
       total += weight;
@@ -171,6 +179,7 @@ function eventForSide(match, home) {
     scored: home ? match.homeScore : match.awayScore,
     conceded: home ? match.awayScore : match.homeScore,
     tier: home ? match.homeTier : match.awayTier,
+    opponentTier: home ? match.awayTier : match.homeTier,
     format: home ? match.homeFormat : match.awayFormat,
     opponent: home ? match.away : match.home,
   };
@@ -269,12 +278,14 @@ function priorQualityIndex(prior, team, weights = DEFAULT_SCOUT_WEIGHTS) {
   for (const [i, entry] of entries.entries()) {
     const recent = Math.pow(weights.decay, i);
     const format = entry.format === "11v11" ? weights.format11 : 1;
-    const importance = recent * (entry.tier || 1) * format;
+    const importance = recent * (entry.tier || 1) * format *
+      opponentTierWeight(entry.tier, entry.opponentTier);
     const opponentGames = (prior.get(entry.opponent) || [])
       .filter((game) => game.opponent !== team).slice(0, 10);
     let opponentWins = 0, opponentDraws = 0, total = 0;
     for (const [j, game] of opponentGames.entries()) {
       const w = Math.pow(weights.decay, j) * (game.tier || 1) *
+        opponentTierWeight(game.tier, game.opponentTier) *
         (game.format === "11v11" ? weights.format11 : 1);
       total += w;
       if (game.scored > game.conceded) opponentWins += w;
@@ -394,6 +405,7 @@ export function gamePredictionFeatures(history, entries, tierResolver, formatRes
       scored: isHome ? match.homeScore : match.awayScore,
       conceded: isHome ? match.awayScore : match.homeScore,
       tier: tierResolver(history, match, team),
+      opponentTier: tierResolver(history, match, opponent),
       format: formatResolver(history, match, team),
     };
   });
