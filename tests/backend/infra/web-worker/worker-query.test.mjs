@@ -198,7 +198,7 @@ test("AI pickup answers do not invent the 16-slot notification cap", () => {
   data.pickup.events["2099-10-08"].publishedCapacity = null;
   const reply = gamesOnDate(data, "2099-10-08");
   assert.match(reply, /14 reserved/);
-  assert.doesNotMatch(reply, /14\\/16|full|spot.*left/i);
+  assert.doesNotMatch(reply, new RegExp("14/16|full|spot.*left", "i"));
 });
 
 test("next game considers league, RSVP pickup, and generated Saturday pickup schedules", () => {
