@@ -59,13 +59,16 @@ test("real pickup watcher writes one encrypted alert per threshold and per new s
     const items = board().filter(item => item.tag === `pickup-capacity-${date}-${count}`);
     assert.equal(items.length,1,`expected single ${label} alert at ${count}`);
     assert.match(items[0].title,label);
+    if (date === firstDate) assert.match(items[0].body, new RegExp(`${count}/16 reserved`));
     assert.ok(fs.existsSync(pendingPath), "web push marker queued");
     const encrypted = fs.readFileSync(boardPath,"utf8");
     assert.doesNotMatch(encrypted,/Synthetic Pickup Field|20:00|reserved/);
     fs.rmSync(pendingPath);
   }
 
-  writeCount(firstDate,3,16);
+  // Upstream RSVP publishes this event without a cap; the watcher must
+  // treat it as 16 slots for milestone, remaining-spot and full alerts.
+  writeCount(firstDate,3,null);
   writeCount(secondDate,0,20);
   run();
   assert.equal(board().length,0,"initial observation seeds baseline silently");
@@ -76,7 +79,7 @@ test("real pickup watcher writes one encrypted alert per threshold and per new s
     [4,/25%/], [8,/50%/], [12,/75%/], [13,/3 spots left/],
     [14,/2 spots left/], [15,/1 spot left/], [16,/full/],
   ]) {
-    writeCount(firstDate,count,16);
+    writeCount(firstDate,count,null);
     run();
     expectAlert(firstDate,count,title);
     const n=board().length;
