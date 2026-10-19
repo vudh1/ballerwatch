@@ -1085,7 +1085,9 @@ test("new RSVP dates remain visible while venue details are pending", () => {
   assert.equal(card.mapsQuery,"");
   assert.equal(card.capacity,16, "unconfigured RSVP cap defaults to 16, not a full 0-slot match");
   assert.equal(card.rsvpUrl,"https://nhcuong95.github.io/rsvp/?date=2099-10-29");
-  const next = webNextGameDetails(snapshot, new Date("2099-10-01T12:00:00-07:00"));
+  // On the RSVP date the synthetic Saturday free pickup is no longer earlier.
+  const next = webNextGameDetails(snapshot, new Date("2099-10-29T12:00:00-07:00"));
+  assert.equal(next.kind, "pickup");
   assert.equal(next.capacity, 16, "next-game endpoint and calendar share the same default");
   for (const [raw, expected] of [[0, 16], ["", 16], ["unlimited", 16], [24, 24]]) {
     const custom = structuredClone(snapshot);
