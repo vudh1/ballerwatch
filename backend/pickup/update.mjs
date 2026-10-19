@@ -9,6 +9,7 @@ import { decryptState, encryptState } from "../shared/state-crypto.mjs";
 import { loadUserSettings } from "../shared/user-state.mjs";
 import { discoverPublicRsvpEndpoint, shouldRediscoverEndpoint } from "./upstream-endpoint.mjs";
 import { pickupWeatherChanged } from "../weather/relevance.mjs";
+import { effectivePickupCapacity } from "../shared/pickup-capacity.mjs";
 
 const TIME_ZONE = "America/Los_Angeles";
 const DATES_DIR = ".runtime/pickup/data/dates";
@@ -285,10 +286,7 @@ async function main() {
       timezone: TIME_ZONE,
       date,
       reserved: Number(tally.totalCount || 0),
-      capacity:
-        detail.capacity == null || detail.capacity === ""
-          ? null
-          : Number(detail.capacity),
+      capacity: effectivePickupCapacity(detail.capacity),
       startTime: String(detail.startTime || ""),
       endTime: String(detail.endTime || ""),
     };

@@ -1140,10 +1140,8 @@ async function openRsvpRoster() {
       (sum, entry) => sum + Math.max(1, Number(entry?.participantCount || 1)),
       0,
     );
-    const capacity = Number(game.capacity);
-    const capacityText = Number.isFinite(capacity) && capacity > 0
-      ? `${confirmedSpots} / ${capacity} spots reserved`
-      : `${confirmedSpots} spot${confirmedSpots === 1 ? "" : "s"} reserved`;
+    const capacity = pickupDisplayCapacity(game.capacity);
+    const capacityText = `${confirmedSpots} / ${capacity} spots reserved`;
 
     els.rsvpRosterSummary.textContent = `${capacityText} · RSVP order`;
     els.rsvpRosterConfirmed.hidden = false;
@@ -1635,7 +1633,7 @@ async function registerServiceWorker() {
     void syncServiceWorkerRsvpState();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=11.2.2", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=11.2.3", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -2145,6 +2143,13 @@ function renderWinChanceBar(target, game, estimate) {
   target.title = `${reliability} · Estimate only. Based on ${estimate.teamGames ?? 0}/${estimate.opponentGames ?? 0} scored games and ${estimate.headToHeadGames ?? 0} past meetings. Not betting odds.`;
 }
 
+// Old cached calendar responses can predate backend normalization.
+function pickupDisplayCapacity(value) {
+  if (value == null || String(value).trim() === "") return 16;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 16;
+}
+
 function spotlightModel(game, label = "NEXT GAME") {
   if (!game) {
     return {
@@ -2169,11 +2174,7 @@ function spotlightModel(game, label = "NEXT GAME") {
   }
 
   const capacityText = game.kind === "pickup" && game.reserved != null
-    ? (
-        game.capacity == null
-          ? `${game.reserved} reserved`
-          : `${game.reserved} / ${game.capacity} reserved`
-      )
+    ? `${game.reserved} / ${pickupDisplayCapacity(game.capacity)} reserved`
     : "";
 
   const locationParts = [];
@@ -2191,11 +2192,11 @@ function spotlightModel(game, label = "NEXT GAME") {
     locationParts.push(`${game.jerseyColor} jersey`);
   }
 
-  const capacity = Number(game.capacity);
+  const capacity = game.kind === "pickup" ? pickupDisplayCapacity(game.capacity) : 0;
   const reserved = Number(game.reserved);
   const hasCapacity = game.kind === "pickup" && game.reserved != null &&
     Number.isFinite(reserved);
-  const capacityKnown = game.capacity != null && Number.isFinite(capacity);
+  const capacityKnown = hasCapacity;
   const capacityPercent = hasCapacity && capacityKnown && capacity > 0
     ? Math.max(0, Math.min(100, Math.round((reserved / capacity) * 100)))
     : 0;

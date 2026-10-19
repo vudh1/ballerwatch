@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.2.2",
+  "currentVersion": "11.2.3",
   "releases": [
+    {
+      "version": "11.2.3",
+      "date": "2026-10-19",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "16-player default for pickup RSVPs without a cap",
+      "webAnnouncement": "RSVP pickup games without an assigned capacity now show 16 spots, including remaining-spots and capacity alerts. Published caps override the default.",
+      "changes": [
+        "Use 16 as BallerWatch's effective RSVP capacity when the published pickup cap is missing, empty, zero or invalid; preserve every valid, positive source capacity and leave non-RSVP free-pickup matches without capacity.",
+        "Apply the same effective cap to new encrypted pickup feeds, legacy snapshots read by the API, calendar and next-game cards, RSVP roster, read-only AI answers, and existing notification threshold logic without retroactive notifications.",
+        "Add synthetic API, helper, 16-slot alert and Chromium/Firefox/WebKit browser regressions for capless pickup while leaving the external RSVP service and participant data unchanged."
+      ]
+    },
     {
       "version": "11.2.2",
       "date": "2026-10-17",

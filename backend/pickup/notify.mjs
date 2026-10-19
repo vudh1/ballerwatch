@@ -20,6 +20,7 @@ import {
 } from "../shared/match-reminders.mjs";
 import { parseTime, selectPrimaryEvent, weekStart } from "./selection.mjs";
 import { pickupCapacityAlert } from "./capacity-policy.mjs";
+import { effectivePickupCapacity } from "../shared/pickup-capacity.mjs";
 
 const TIME_ZONE = "America/Los_Angeles";
 const STATE_PATH = "pickup/state/notify.json";
@@ -162,6 +163,7 @@ function eventForDate(sourceDate, settings = {}) {
   }, settings);
   return {
     ...event,
+    capacity: effectivePickupCapacity(event.capacity),
     date: effective.date,
     sourceDate,
     startTime: effective.startTime,
