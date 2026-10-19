@@ -766,7 +766,7 @@ try {
         await ready(page);
         assert.equal(await page.locator("#next-game-capacity-label").textContent(), "12 reserved");
         assert.equal(await page.locator("#next-game-capacity-spots").textContent(), "");
-        assert.equal(await page.locator(".next-game-capacity-track").isVisible(), false);
+        assert.equal(await page.locator("#next-game-capacity .next-game-capacity-track").isVisible(), false);
         await page.locator("#next-game-capacity").click();
         await page.waitForSelector("#rsvp-roster-confirmed-list li");
         assert.match(await page.locator("#rsvp-roster-summary").textContent(), /^1 spot reserved · RSVP order$/);
