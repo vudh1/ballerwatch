@@ -4,7 +4,7 @@
 
 **[Open Production](https://vudh1.github.io/ballerwatch/)** · **[Open Beta](https://vudh1.github.io/ballerwatch/beta/)** · **[Project documentation](docs/wiki/Home.md)**
 
-**v11.2.2 is released to both Production and Beta.** Match, standings and schedule cards share a seamless, borderless freshness footer; Production updates only through a validated release. Production updates only by explicit, validated release; Beta continues to preview successfully validated `main` changes.
+**v11.2.3 is a validated release candidate.** Capless RSVP pickup games use a 16-player display/notification default, while explicit source caps are preserved. Beta updates after successful `main` validation; Production requires a separate release.
 
 ## What you can do
 
