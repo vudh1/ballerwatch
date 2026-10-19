@@ -3151,6 +3151,8 @@ export function webNextGameDetails(snapshot, now = new Date()) {
       address,
       mapsQuery: address || location,
       rsvpUrl: pickupRsvpUrl(facts.sourceDate || next.date),
+      reserved: facts.reserved,
+      capacity: facts.capacity,
       sourceDate: facts.sourceDate,
       sourceStartTime: facts.sourceStart,
       sourceEndTime: facts.sourceEnd,
