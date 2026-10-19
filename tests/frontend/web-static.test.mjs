@@ -564,7 +564,7 @@ test("typography uses one native system stack and normalized scale", () => {
 test("pickup spotlight shows reserved and capacity", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   assert.match(app, /game\.kind === "pickup" && game\.reserved != null/);
-  assert.match(app, /\$\{game\.reserved\} \/ \$\{game\.capacity\} reserved/);
+  assert.match(app, /capacity == null \? `\$\{game\.reserved\} reserved`/);
   assert.match(app, /capacityText/);
   assert.match(app, /weatherApproximate/);
   assert.match(app, /Seattle-area/);
@@ -1521,8 +1521,8 @@ test("new pickup cards show venue pending instead of hiding the match or guessin
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
   assert.match(app, /game\.kind === "pickup"\)[\s\S]{0,100}Venue to be announced/);
-  assert.match(app, /const capacityKnown = hasCapacity/);
-  assert.match(app, /pickupDisplayCapacity\(game\.capacity\)/);
+  assert.match(app, /const capacityKnown = hasCapacity && capacity != null/);
+  assert.match(app, /pickupDisplayCapacity\(game\)/);
   assert.match(worker, /if \(date < startDate\) continue;\s*const facts = pickupFacts\(safe, date\);/);
   assert.doesNotMatch(worker, /!\(facts\.field && facts\.address\)/);
 });
@@ -1686,6 +1686,10 @@ test("match card renders shared precomputed 3-way win/draw/loss as a horizontal 
   assert.match(standings, /recentForm: buildTeamRecentForm\(history, team\.name, today\)/);
   assert.match(css, /\.win-chance-track \{/);
   assert.match(css, /\.win-chance-fill \{/);
+  assert.match(css, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.doesNotMatch(css, /\.win-chance-labels \{ grid-template-columns: repeat\(2/);
+  assert.match(app, /draw\.textContent = `\$\{estimate\.drawPct\}%`/);
+  assert.match(app, /replace\(\/\(\[a-z0-9\]\)\(\[A-Z\]\)\/g, "\$1 \$2"\)/);
   assert.doesNotMatch(html, /calendar-window-next/);
 });
 
