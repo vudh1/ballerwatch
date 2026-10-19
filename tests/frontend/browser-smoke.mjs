@@ -467,7 +467,7 @@ try {
         await activateSpotlightControl(page, "#spotlight-next");
         await page.waitForFunction(() => document.querySelector("#next-game-form")?.textContent.includes("FFC 45%"));
         assert.deepEqual(await page.locator("#next-game-form .win-chance-labels span").allTextContents(),
-          ["FFC 45%", "20%", "TU 35%"]);
+          ["FFC 45%", "TU 35%"]);
         assert.ok(await page.locator("#next-game-form").evaluate((element) => {
           const address = document.querySelector("#next-game-location");
           const style = getComputedStyle(element);
@@ -485,7 +485,7 @@ try {
         assert.equal(appearance.padding, "0px");
         assert.equal(appearance.background, "rgba(0, 0, 0, 0)");
         assert.equal(await page.locator("#next-game-form .win-chance-labels").evaluate((element) =>
-          getComputedStyle(element).gridTemplateColumns.split(" ").length), 3);
+          getComputedStyle(element).gridTemplateColumns.split(" ").length), 2);
         assert.match(appearance.aria, /Fixture FC win 45%, draw 20%, Test United win 35%/);
         assert.deepEqual(errors, []);
         await context.close();
@@ -498,7 +498,7 @@ try {
         await activateSpotlightControl(page, "#spotlight-next");
         await page.waitForFunction(() => document.querySelector("#next-game-form")?.textContent.includes("PSG 45%"));
         assert.deepEqual(await page.locator("#next-game-form .win-chance-labels span").allTextContents(),
-          ["PSG 45%", "20%", "TU 35%"]);
+          ["PSG 45%", "TU 35%"]);
         assert.deepEqual(errors, []);
         await context.close();
       });
@@ -769,7 +769,7 @@ try {
         assert.equal(await page.locator(".next-game-capacity-track").isVisible(), false);
         await page.locator("#next-game-capacity").click();
         await page.waitForSelector("#rsvp-roster-confirmed-list li");
-        assert.match(await page.locator("#rsvp-roster-summary").textContent(), /^1 spots reserved · RSVP order$/);
+        assert.match(await page.locator("#rsvp-roster-summary").textContent(), /^1 spot reserved · RSVP order$/);
         assert.deepEqual(errors, []);
         await context.close();
       });
