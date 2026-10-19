@@ -1521,7 +1521,8 @@ test("new pickup cards show venue pending instead of hiding the match or guessin
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
   assert.match(app, /game\.kind === "pickup"\)[\s\S]{0,100}Venue to be announced/);
-  assert.match(app, /const capacityKnown = game\.capacity != null && Number\.isFinite\(capacity\)/);
+  assert.match(app, /const capacityKnown = hasCapacity/);
+  assert.match(app, /pickupDisplayCapacity\(game\.capacity\)/);
   assert.match(worker, /if \(date < startDate\) continue;\s*const facts = pickupFacts\(safe, date\);/);
   assert.doesNotMatch(worker, /!\(facts\.field && facts\.address\)/);
 });
