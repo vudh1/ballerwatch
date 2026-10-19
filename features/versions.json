@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.2.4",
+  "currentVersion": "11.2.5",
   "releases": [
+    {
+      "version": "11.2.5",
+      "date": "2026-10-19",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Count interdivision results in standings and opponent-adjusted scouting",
+      "webAnnouncement": "Official RATS games against teams from a different division now count toward each team's own standings and scouting. Predictions account for the opposing team's division strength while preserving the last-ten scoring window.",
+      "changes": [
+        "Count each completed, published interdivision result separately for the registered home and away teams in their respective division tables, without adding foreign teams or combining divisions. Preserve 3/1/0 points, games played and existing tie breakers.",
+        "Do not count future/unscored, unregistered or ambiguous name-only fixture results; prevent duplicate-name clubs in other divisions from attributing points incorrectly.",
+        "Apply bounded opponent-versus-own division tier weighting to ten-game recent form and win/draw/loss forecasting, retaining existing format/recency and opponent-adjusted quality signals; use the same relative weights for chronological calibration and holdout tests.",
+        "Add notification-silent synthetic all-team RATS aggregate regressions for cross-division wins, losses, draws, unknown/duplicate teams, cutoff dates and opponent-tier weighted forecasts."
+      ]
+    },
     {
       "version": "11.2.4",
       "date": "2026-10-19",

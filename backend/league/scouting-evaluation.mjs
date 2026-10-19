@@ -21,7 +21,9 @@ const round = (v) => Number.isFinite(v) ? +v.toFixed(5) : null;
 const outcomeIndex = (a,b) => a > b ? 0 : a===b ? 1 : 2;
 const goalsEvent = (game,home) => ({
   date:game.date,scored:home?game.a:game.b,conceded:home?game.b:game.a,
-  tier:home?game.homeTier:game.awayTier,format:home?game.homeFormat:game.awayFormat,
+  tier:home?game.homeTier:game.awayTier,
+  opponentTier:home?game.awayTier:game.homeTier,
+  format:home?game.homeFormat:game.awayFormat,
   opponent:home?game.away:game.home,
 });
 function gameRows(history, currentSeason) {

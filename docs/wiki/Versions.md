@@ -44,6 +44,8 @@ This means an installed app should not need to be manually closed and reopened a
 
 ## Current development line
 
+- **11.2.5 (October 19, 2026 Pacific)** — Count scored official interdivision RATS games for each participant within its own division standings; include them in the last-ten scouting model and use bounded opposing-division tier weighting. No foreign teams are inserted into division rankings; unknown/ambiguous matches do not invent points.
+
 - **11.2.4 (October 19, 2026 Pacific)** — Three-part win/tie/opponent probability track with only the two teams' labeled win percentages and CamelCase abbreviations. An unspecified RSVP cap is no longer displayed as 16; 16 stays an internal alert threshold while valid published caps remain visible.
 
 - **11.2.3 (released October 19, 2026 Pacific)** — Default unspecified RSVP pickup capacity to 16 across feed, API, match/roster display and threshold notifications, preserving explicit source caps and non-RSVP games.

@@ -49,7 +49,7 @@ function archive() {
           { date: "2026-10-20", homeTeam: "Other A", awayTeam: "Third Touch FC",
             homeScore: 9, awayScore: 0 },
           { date: "2026-10-11", homeTeam: "Other A", awayTeam: "Other C",
-            homeScore: 1, awayScore: 9 },
+            homeScore: null, awayScore: null },
         ],
       },
     ],

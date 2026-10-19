@@ -6,7 +6,7 @@
  * Added in v8.2.0; division-aware model revised in v8.7.0.
  */
 import { completedHistoryMatches, historyTeamKey, normalizeHistoryTeamName } from "./rats-history.mjs";
-import { DEFAULT_SCOUT_WEIGHTS, forecastFromFeatures, gamePredictionFeatures, roundThreeWay } from "./scout-calibration.mjs";
+import { DEFAULT_SCOUT_WEIGHTS, forecastFromFeatures, gamePredictionFeatures, opponentTierWeight, roundThreeWay } from "./scout-calibration.mjs";
 
 const SEASON_NAMES = ["winter", "spring", "summer", "fall"];
 
@@ -75,6 +75,14 @@ function divisionStandings(season, trackedTeam, today) {
     });
   }
 
+  // Resolve team names across the whole season, not just this division.
+  // When a name belongs to multiple divisions, the archive's name-only
+  // match cannot reliably identify the side: never assign it to both.
+  const rosterNames = new Map();
+  for (const member of season.teams) {
+    const name = normalizeHistoryTeamName(member.name);
+    if (name) rosterNames.set(name, (rosterNames.get(name) || 0) + 1);
+  }
   const matches = Array.isArray(season.matches) ? season.matches : [];
   for (const match of matches) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(match?.date || "")) ||
@@ -82,13 +90,18 @@ function divisionStandings(season, trackedTeam, today) {
     const homeScore = resultScore(match.homeScore);
     const awayScore = resultScore(match.awayScore);
     if (homeScore === null || awayScore === null) continue;
-    const home = unique.get(normalizeHistoryTeamName(match.homeTeam));
-    const away = unique.get(normalizeHistoryTeamName(match.awayTeam));
-    // Never count interdivision, unknown, or ambiguous results in a division.
-    if (!home || !away || home === away) continue;
+    const homeName = normalizeHistoryTeamName(match.homeTeam);
+    const awayName = normalizeHistoryTeamName(match.awayTeam);
+    if (!homeName || !awayName || homeName === awayName ||
+        rosterNames.get(homeName) !== 1 || rosterNames.get(awayName) !== 1) continue;
+    // A published game against another division counts toward each team's
+    // own table. The visitor must never appear as an extra division member.
+    const home = unique.get(homeName);
+    const away = unique.get(awayName);
     for (const [row, scored, conceded] of [
       [home, homeScore, awayScore], [away, awayScore, homeScore],
     ]) {
+      if (!row) continue;
       row.played += 1;
       row.goalsFor += scored;
       row.goalsAgainst += conceded;
@@ -219,19 +232,6 @@ function leagueFormat(team) {
   return "unknown";
 }
 
-function scoredDivisionMatches(season, team, today) {
-  const members = new Set((season?.teams || [])
-    .filter((member) => normalizedDivision(member) === normalizedDivision(team))
-    .map((member) => normalizeHistoryTeamName(member.name)));
-  return (season?.matches || []).filter((match) =>
-    /^\d{4}-\d{2}-\d{2}$/.test(String(match.date || "")) &&
-    match.date <= today &&
-    resultScore(match.homeScore) !== null && resultScore(match.awayScore) !== null &&
-    normalizeHistoryTeamName(match.homeTeam) !== normalizeHistoryTeamName(match.awayTeam) &&
-    members.has(normalizeHistoryTeamName(match.homeTeam)) &&
-    members.has(normalizeHistoryTeamName(match.awayTeam)));
-}
-
 function matchPoints(scored, conceded) {
   return scored > conceded ? 3 : scored === conceded ? 1 : 0;
 }
@@ -269,8 +269,16 @@ export function divisionStrengthMultiplier(team) {
 function indexedMatchWeight(history, match, teamName) {
   const season = seasonData(history, match.seasonId);
   const team = matchingTeam(season?.teams || [], teamName);
+  const opponent = historyTeamKey(match.homeTeam) === historyTeamKey(teamName)
+    ? match.awayTeam : match.homeTeam;
+  const opponentTeam = matchingTeam(season?.teams || [], opponent);
   const format = leagueFormat(team);
-  return FORMAT_WEIGHTS[format] * divisionStrengthMultiplier(team);
+  const ownTier = divisionStrengthMultiplier(team);
+  // A cross-division win against tougher opposition contributes more than
+  // beating a weaker division; unknown/ambiguous metadata stays neutral.
+  return FORMAT_WEIGHTS[format] * ownTier *
+    (team && opponentTeam
+      ? opponentTierWeight(ownTier, divisionStrengthMultiplier(opponentTeam)) : 1);
 }
 // Both caches are keyed by a public archive/results instance. WeakMap references
 // do not retain older archives when the encrypted runtime index is refreshed.
