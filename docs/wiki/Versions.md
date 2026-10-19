@@ -44,6 +44,8 @@ This means an installed app should not need to be manually closed and reopened a
 
 ## Current development line
 
+- **11.2.3 (release candidate)** — Default unspecified RSVP pickup capacity to 16 across feed, API, match/roster display and threshold notifications, preserving explicit source caps and non-RSVP games.
+
 - **11.2.2 (released October 17, 2026 Pacific)** — Remove the match and standings card footer divider so their freshness credits are seamlessly integrated like the schedule footer. Keep standings row separators intact and test the rendered footer edges in Chromium, Firefox and WebKit.
 
 - **11.2.1 (released October 16, 2026 Pacific)** — Android install prompts and platform-aware help, iPadOS detection, safer independent PWA device-cache updates, and automated Chromium/Firefox/WebKit coverage including mobile layouts.
