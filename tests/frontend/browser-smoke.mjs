@@ -69,7 +69,7 @@ async function prepare(browser, options = {}) {
     viewport: { width: 1440, height: 1000 }, ...options });
   const calls = [];
   const errors = [];
-  const controls = { offlineApi: false, optionalFailure: false, animationFailure: false, scriptFailure: false };
+  const controls = { offlineApi: false, optionalFailure: false, animationFailure: false, scriptFailure: false, noPickupCap: false };
   await context.route("**/*", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -82,7 +82,14 @@ async function prepare(browser, options = {}) {
         await route.abort();
         return;
       }
-      await route.fulfill({ headers, contentType: "application/json", body: JSON.stringify(fixtureResponse(url.pathname, request.method())) });
+      const fixture = structuredClone(fixtureResponse(url.pathname, request.method()));
+      if (controls.noPickupCap && url.pathname === "/web/next-game") fixture.game.capacity = null;
+      if (controls.noPickupCap && url.pathname === "/web/calendar") {
+        for (const game of fixture.calendar.games) {
+          if (game.kind === "pickup") game.capacity = null;
+        }
+      }
+      await route.fulfill({ headers, contentType: "application/json", body: JSON.stringify(fixture) });
     } else if (controls.animationFailure && url.pathname.endsWith("/stadium.svg")) {
       await route.abort();
     } else if (controls.scriptFailure && /\/v2\/(?:app|timeline)\.js$/.test(url.pathname)) {
@@ -723,6 +730,19 @@ try {
           assert.equal(await instance.page.locator("#next-game-title").textContent(), "Thursday, October 15");
           await instance.context.close();
         }
+      });
+
+      await scenario(`${engine}: missing RSVP cap defaults to 16 in match and roster views`, async () => {
+        const { context, page, controls, errors } = await prepare(browser, { reducedMotion: "reduce" });
+        controls.noPickupCap = true;
+        await ready(page);
+        assert.match(await page.locator("#next-game-capacity-label").textContent(), /12 \/ 16 reserved/);
+        assert.match(await page.locator("#next-game-capacity-spots").textContent(), /4 spots left/);
+        await page.locator("#next-game-capacity").click();
+        await page.waitForSelector("#rsvp-roster-confirmed-list li");
+        assert.match(await page.locator("#rsvp-roster-summary").textContent(), /\/ 16 spots reserved/);
+        assert.deepEqual(errors, []);
+        await context.close();
       });
 
       await scenario(`${engine}: guest roster access and session-only maintenance unlock`, async () => {
