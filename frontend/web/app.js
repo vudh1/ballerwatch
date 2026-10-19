@@ -1140,8 +1140,10 @@ async function openRsvpRoster() {
       (sum, entry) => sum + Math.max(1, Number(entry?.participantCount || 1)),
       0,
     );
-    const capacity = pickupDisplayCapacity(game.capacity);
-    const capacityText = `${confirmedSpots} / ${capacity} spots reserved`;
+    const capacity = pickupDisplayCapacity(game);
+    const capacityText = capacity == null
+      ? `${confirmedSpots} spots reserved`
+      : `${confirmedSpots} / ${capacity} spots reserved`;
 
     els.rsvpRosterSummary.textContent = `${capacityText} · RSVP order`;
     els.rsvpRosterConfirmed.hidden = false;
@@ -2088,9 +2090,12 @@ function monitoredWinForm(game) {
     estimate.winPct + estimate.drawPct + estimate.lossPct === 100 ? estimate : null;
 }
 
-/** Short, deterministic initials for team labels (full names remain accessible). */
+/** Derive team shorthand from capitalized word parts, including CamelCase names. */
 function teamAcronym(name) {
-  const words = String(name || "").normalize("NFKD").match(/[a-z0-9]+/gi) || [];
+  const words = String(name || "").normalize("NFKD")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/([A-Z])([A-Z][a-z])/g, "$1 $2")
+    .match(/[a-z0-9]+/gi) || [];
   if (!words.length) return "?";
   if (words.length === 1) return words[0].slice(0, 4).toUpperCase();
   return words.map((word) => /^[A-Z0-9]{2,4}$/.test(word) ? word : word[0])
@@ -2121,7 +2126,7 @@ function renderWinChanceBar(target, game, estimate) {
     labels.append(label);
   }
   const draw = document.createElement("span");
-  draw.textContent = `Draw ${estimate.drawPct}%`;
+  draw.textContent = `${estimate.drawPct}%`;
   draw.className = "win-chance-draw-label";
   labels.insertBefore(draw, labels.children[1]);
   const track = document.createElement("span");
@@ -2143,11 +2148,15 @@ function renderWinChanceBar(target, game, estimate) {
   target.title = `${reliability} · Estimate only. Based on ${estimate.teamGames ?? 0}/${estimate.opponentGames ?? 0} scored games and ${estimate.headToHeadGames ?? 0} past meetings. Not betting odds.`;
 }
 
-// Old cached calendar responses can predate backend normalization.
-function pickupDisplayCapacity(value) {
-  if (value == null || String(value).trim() === "") return 16;
+// Public cards never turn the 16-slot notification fallback into a source cap.
+// Old cached API responses may contain an ambiguous fallback 16 with no marker.
+function pickupDisplayCapacity(game) {
+  const verified = Object.prototype.hasOwnProperty.call(game ?? {}, "publishedCapacity");
+  const value = verified ? game.publishedCapacity : game?.capacity;
+  if (value == null || String(value).trim() === "") return null;
   const parsed = Number(value);
-  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 16;
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) return null;
+  return !verified && parsed === 16 ? null : parsed;
 }
 
 function spotlightModel(game, label = "NEXT GAME") {
@@ -2161,6 +2170,7 @@ function spotlightModel(game, label = "NEXT GAME") {
       location: "",
       capacityText: "",
       capacityPercent: 0,
+      capacityKnown: false,
       spotsText: "",
       weather: "",
       updated: "",
@@ -2173,8 +2183,9 @@ function spotlightModel(game, label = "NEXT GAME") {
     };
   }
 
+  const capacity = game.kind === "pickup" ? pickupDisplayCapacity(game) : null;
   const capacityText = game.kind === "pickup" && game.reserved != null
-    ? `${game.reserved} / ${pickupDisplayCapacity(game.capacity)} reserved`
+    ? (capacity == null ? `${game.reserved} reserved` : `${game.reserved} / ${capacity} reserved`)
     : "";
 
   const locationParts = [];
@@ -2192,11 +2203,10 @@ function spotlightModel(game, label = "NEXT GAME") {
     locationParts.push(`${game.jerseyColor} jersey`);
   }
 
-  const capacity = game.kind === "pickup" ? pickupDisplayCapacity(game.capacity) : 0;
   const reserved = Number(game.reserved);
   const hasCapacity = game.kind === "pickup" && game.reserved != null &&
     Number.isFinite(reserved);
-  const capacityKnown = hasCapacity;
+  const capacityKnown = hasCapacity && capacity != null;
   const capacityPercent = hasCapacity && capacityKnown && capacity > 0
     ? Math.max(0, Math.min(100, Math.round((reserved / capacity) * 100)))
     : 0;
@@ -2215,6 +2225,7 @@ function spotlightModel(game, label = "NEXT GAME") {
     form: "",
     capacityText,
     capacityPercent,
+    capacityKnown,
     spotsText,
     weather: weatherSummary(
       game.weather,
@@ -2276,6 +2287,7 @@ function applySpotlightModel(targets, game, label = "NEXT GAME") {
   targets.capacityLabel.textContent = model.capacityText;
   targets.capacitySpots.textContent = model.spotsText;
   targets.capacityFill.style.width = `${model.capacityPercent}%`;
+  targets.capacityFill.parentElement.hidden = !model.capacityKnown;
   targets.weather.textContent = model.weather;
   targets.weather.hidden = !model.weather;
   targets.updated.textContent = model.updated;
@@ -2326,9 +2338,9 @@ function renderNextGame(game, label = "NEXT GAME") {
           game.location,
           game.kind === "pickup" && game.reserved != null
             ? (
-                game.capacity == null
-                  ? `${game.reserved} reserved`
-                  : `${game.reserved} / ${game.capacity} reserved`
+                pickupDisplayCapacity(game) == null
+                   ? `${game.reserved} reserved`
+                   : `${game.reserved} / ${pickupDisplayCapacity(game)} reserved`
               )
             : "",
         ].filter(Boolean).join("\n"),
