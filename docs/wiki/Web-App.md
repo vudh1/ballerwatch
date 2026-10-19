@@ -26,6 +26,8 @@ The visual waterfall is independent from that hit area: its blur/glow still span
 
 When the RSVP roster is opened by mouse or touch, closing it clears the temporary capacity-pill focus state so the green focus outline does not linger. Keyboard-opened rosters retain focus for accessibility.
 
+For published RSVP pickup dates, BallerWatch uses **16 spots as the fallback capacity** when the source leaves the cap blank or unspecified. A valid positive cap from the source always takes precedence. Match cards, the roster sheet, AI capacity answers and notifications use the same effective value; the 16-slot default yields capacity milestones at 4, 8, 12 and then every additional signup through 16. This is an app display/alert default, not a change to the external RSVP service's admission rules. Free pickup games without RSVP remain uncapped and have no roster.
+
 ## Cached RATS venue directions and sharing
 
 Directions and Share use the same venue resolution. First they look for a confidently matched name in the encrypted, append-only `league/state/venues.json` directory, populated by live monitored league fixtures and historical aggregate scans. Only URLs explicitly published in RATS event fields/notes (or other validated public venue URLs) are cached; a synthesized search result is never mistaken for a verified published link. New location names are added automatically; a stored destination is never overwritten, though an unresolved entry may receive its first verified URL or coordinates.
