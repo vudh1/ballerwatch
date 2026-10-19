@@ -6346,15 +6346,14 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
 .next-game-form[hidden] { display: none !important; }
 .win-chance-labels {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.25rem;
   font-size: var(--type-caption);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 .win-chance-labels span:nth-child(1) { text-align: left; color: #a7f3d0; }
-.win-chance-labels span:nth-child(2) { text-align: center; color: #e2e8f0; }
-.win-chance-labels span:nth-child(3) { text-align: right; color: #fecdd3; }
+.win-chance-labels span:nth-child(2) { text-align: right; color: #fecdd3; }
 .win-chance-track {
   display: flex;
   width: 100%;
