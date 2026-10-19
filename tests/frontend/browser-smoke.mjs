@@ -97,11 +97,11 @@ async function prepare(browser, options = {}) {
       }
       if (controls.camelCaseTeam && url.pathname === "/web/calendar") {
         const game = fixture.calendar.games.find((match) => match.kind === "league");
-        game.team = "PhoSaiGon";
-        game.title = "PhoSaiGon vs Test United";
+        game.opponent = "PhoSaiGon";
+        game.title = "Fixture FC vs PhoSaiGon";
       }
       if (controls.camelCaseTeam && url.pathname === "/web/standings") {
-        fixture.standings.matchups.fixtureVsTest.team = "PhoSaiGon";
+        fixture.standings.matchups.fixtureVsTest.opponent = "PhoSaiGon";
       }
       await route.fulfill({ headers, contentType: "application/json", body: JSON.stringify(fixture) });
     } else if (controls.animationFailure && url.pathname.endsWith("/stadium.svg")) {
@@ -496,9 +496,9 @@ try {
         controls.camelCaseTeam = true;
         await ready(page);
         await activateSpotlightControl(page, "#spotlight-next");
-        await page.waitForFunction(() => document.querySelector("#next-game-form")?.textContent.includes("PSG 45%"));
+        await page.waitForFunction(() => document.querySelector("#next-game-form")?.textContent.includes("PSG 35%"));
         assert.deepEqual(await page.locator("#next-game-form .win-chance-labels span").allTextContents(),
-          ["PSG 45%", "TU 35%"]);
+          ["FFC 45%", "PSG 35%"]);
         assert.deepEqual(errors, []);
         await context.close();
       });
