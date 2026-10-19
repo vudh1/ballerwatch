@@ -4,7 +4,7 @@
 
 **[Open Production](https://vudh1.github.io/ballerwatch/)** · **[Open Beta](https://vudh1.github.io/ballerwatch/beta/)** · **[Project documentation](docs/wiki/Home.md)**
 
-**v11.2.3 is a validated release candidate.** Capless RSVP pickup games use a 16-player display/notification default, while explicit source caps are preserved. Beta updates after successful `main` validation; Production requires a separate release.
+**v11.2.3 is released to Production and Beta.** RSVP pickup games without a published cap now use a 16-player app display and alert default; a valid source cap takes priority.
 
 ## What you can do
 
