@@ -1142,7 +1142,7 @@ async function openRsvpRoster() {
     );
     const capacity = pickupDisplayCapacity(game);
     const capacityText = capacity == null
-      ? `${confirmedSpots} spots reserved`
+      ? `${confirmedSpots} spot${confirmedSpots === 1 ? "" : "s"} reserved`
       : `${confirmedSpots} / ${capacity} spots reserved`;
 
     els.rsvpRosterSummary.textContent = `${capacityText} · RSVP order`;
@@ -2125,10 +2125,6 @@ function renderWinChanceBar(target, game, estimate) {
     label.title = fullName;
     labels.append(label);
   }
-  const draw = document.createElement("span");
-  draw.textContent = `${estimate.drawPct}%`;
-  draw.className = "win-chance-draw-label";
-  labels.insertBefore(draw, labels.children[1]);
   const track = document.createElement("span");
   track.className = "win-chance-track";
   track.setAttribute("aria-hidden", "true");
