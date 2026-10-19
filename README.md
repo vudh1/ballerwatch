@@ -4,6 +4,8 @@
 
 **[Open Production](https://vudh1.github.io/ballerwatch/)** · **[Open Beta](https://vudh1.github.io/ballerwatch/beta/)** · **[Project documentation](docs/wiki/Home.md)**
 
+**v11.2.5:** Cross-division RATS games now count toward both teams’ own division standings, including season played/won/drawn/lost and points. Scouting uses the same results in its last-ten sample and adjusts for opponent division strength. Forecast labels and uncapped RSVP display remain as updated in v11.2.4.
+
 **v11.2.4:** The match forecast bar shows your win, tie, then opponent-win segments; only the two teams' win percentages are labeled, using clear abbreviations such as PhoSaiGon → PSG. Pickup games without a published cap show their actual RSVP count, not an invented 16-player limit or remaining-spots meter. The 16-player default is kept **only for notifications**; a real published cap is still displayed.
 
 ## What you can do
