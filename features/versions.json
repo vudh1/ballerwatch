@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.2.3",
+  "currentVersion": "11.2.4",
   "releases": [
+    {
+      "version": "11.2.4",
+      "date": "2026-10-19",
+      "type": "patch",
+      "source": "user-clarification",
+      "title": "Clear three-way win bar and honest RSVP capacities",
+      "webAnnouncement": "Match forecasts now show just the two teams' win percentages around a three-part win/tie/opponent bar; PhoSaiGon abbreviates to PSG. Pickup RSVPs without a published cap show reservation counts without an invented limit. The 16-player fallback remains for alerts.",
+      "changes": [
+        "Align the forecast's three probability segments win, tie, then opponent win, without a visible tie percentage; label only the two teams and form abbreviations from capitalized name parts such as PhoSaiGon → PSG.",
+        "Record the source-published pickup capacity separately from the effective 16-player notification threshold; show caps and remaining spots only when the source publishes a positive cap.",
+        "Expose the published cap consistently in calendar, next match, RSVP roster, share fallback and read-only AI, handling old ambiguous 16-cap cache snapshots conservatively while preserving legitimate published caps.",
+        "Add synthetic API, helper, notification-policy, static and cross-browser regression coverage without sending test notifications."
+      ]
+    },
     {
       "version": "11.2.3",
       "date": "2026-10-19",
