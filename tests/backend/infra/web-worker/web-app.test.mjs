@@ -1083,8 +1083,18 @@ test("new RSVP dates remain visible while venue details are pending", () => {
   assert.ok(card, "published date cannot be hidden solely for missing field details");
   assert.equal(card.location,"");
   assert.equal(card.mapsQuery,"");
-  assert.equal(card.capacity,null, "unknown capacity must not be shown as a full 0-slot match");
+  assert.equal(card.capacity,16, "unconfigured RSVP cap defaults to 16, not a full 0-slot match");
   assert.equal(card.rsvpUrl,"https://nhcuong95.github.io/rsvp/?date=2099-10-29");
+  const next = webNextGameDetails(snapshot, new Date("2099-10-01T12:00:00-07:00"));
+  assert.equal(next.capacity, 16, "next-game endpoint and calendar share the same default");
+  for (const [raw, expected] of [[0, 16], ["", 16], ["unlimited", 16], [24, 24]]) {
+    const custom = structuredClone(snapshot);
+    custom.pickup.events["2099-10-29"].capacity = raw;
+    const cardWithCap = webCalendarDetails(custom, {}, 14, "2099-10-01",
+      new Date("2099-10-01T12:00:00-07:00")).games.find(item => item.kind === "pickup");
+    assert.equal(cardWithCap.capacity, expected, `RSVP cap ${String(raw)}`);
+  }
+
   assert.deepEqual(
     webCalendarDetails({...snapshot,settings:{hiddenMatches:{"pickup:2099-10-29":{
       id:"pickup:2099-10-29", date:"2099-10-29", hiddenAt:"2099-10-01T12:00:00Z",
