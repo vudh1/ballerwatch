@@ -48,6 +48,7 @@ import {
   furthestIsoDate,
   saturdayFreePickupDates,
 } from "../../shared/free-pickup.mjs";
+import { effectivePickupCapacity } from "../../shared/pickup-capacity.mjs";
 import { ALL_RUNTIME_FILE_PATHS } from "../../shared/runtime-paths.mjs";
 import { DEFAULT_LEAGUE_TEAMS } from "../../shared/defaults.mjs";
 import { KEY_CONTEXT } from "../../shared/security-contexts.mjs";
@@ -2299,7 +2300,7 @@ function pickupFacts(snapshot, date) {
   if (!pub?.ok) return null;
   const effective = effectivePickupRecord(snapshot, sourceDate);
   const reserved = pub.reserved == null ? NaN : Number(pub.reserved);
-  const capacity = pub.capacity == null ? NaN : Number(pub.capacity);
+  const capacity = effectivePickupCapacity(pub.capacity);
   return {
     id: effective.id,
     sourceDate,
