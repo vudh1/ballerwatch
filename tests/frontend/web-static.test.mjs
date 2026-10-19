@@ -1686,9 +1686,8 @@ test("match card renders shared precomputed 3-way win/draw/loss as a horizontal 
   assert.match(standings, /recentForm: buildTeamRecentForm\(history, team\.name, today\)/);
   assert.match(css, /\.win-chance-track \{/);
   assert.match(css, /\.win-chance-fill \{/);
-  assert.match(css, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
-  assert.doesNotMatch(css, /\.win-chance-labels \{ grid-template-columns: repeat\(2/);
-  assert.match(app, /draw\.textContent = `\$\{estimate\.drawPct\}%`/);
+  assert.match(css, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.doesNotMatch(app, /draw\.textContent/);
   assert.match(app, /replace\(\/\(\[a-z0-9\]\)\(\[A-Z\]\)\/g, "\$1 \$2"\)/);
   assert.doesNotMatch(html, /calendar-window-next/);
 });
