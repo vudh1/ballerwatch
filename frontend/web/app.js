@@ -1098,6 +1098,13 @@ function renderRsvpRosterList(container, entries) {
       detail.textContent = guest;
       item.append(detail);
     }
+    if (entry?.withdrawRequested === true) {
+      item.classList.add("is-withdrawal-requested");
+      const status = document.createElement("span");
+      status.className = "rsvp-roster-withdrawal";
+      status.textContent = "Withdrawal requested";
+      item.append(status);
+    }
     container.append(item);
   });
 }
@@ -1145,7 +1152,12 @@ async function openRsvpRoster() {
       ? `${confirmedSpots} spot${confirmedSpots === 1 ? "" : "s"} reserved`
       : `${confirmedSpots} / ${capacity} spots reserved`;
 
-    els.rsvpRosterSummary.textContent = `${capacityText} · RSVP order`;
+    const withdrawalRequests = [...confirmedEntries, ...queuedEntries]
+      .filter((entry) => entry?.withdrawRequested === true).length;
+    els.rsvpRosterSummary.textContent = `${capacityText} · RSVP order` +
+      (withdrawalRequests
+        ? ` · ${withdrawalRequests} withdrawal request${withdrawalRequests === 1 ? "" : "s"}`
+        : "");
     els.rsvpRosterConfirmed.hidden = false;
     els.rsvpRosterConfirmedCount.textContent =
       `${confirmedEntries.length} player${confirmedEntries.length === 1 ? "" : "s"}`;

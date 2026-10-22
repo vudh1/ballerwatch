@@ -8,6 +8,7 @@ import {
   issuePushRegistrationChallenge,
   normalizeUserName,
   pickupUserRsvpView,
+  pickupRsvpRosterView,
   personalPickupAnswer,
   verifyOwnerCapability,
   normalizeOwnerSettingsInput,
@@ -1176,6 +1177,39 @@ test("public match endpoints do not block on optional historical scouting archiv
 });
 
 
+
+test("public RSVP roster preserves withdrawal requests without leaking private metadata", () => {
+  const date = "2099-10-08";
+  const snapshot = {
+    pickup: {
+      dates: [{ date }],
+      events: { [date]: { ok: true } },
+    },
+    pickupPrivate: {
+      events: {
+        [date]: {
+          players: [
+            { name: "Player Two", participantCount: 2, voteOrder: 2, withdrawRequested: true, email: "private@example.com" },
+            { name: "Player One", participantCount: 1, voteOrder: 1 },
+          ],
+          waitlist: [
+            { name: "Waiting Player", participantCount: 1, voteOrder: 3, withdrawRequested: true },
+          ],
+        },
+      },
+    },
+  };
+  const roster = pickupRsvpRosterView(snapshot, date);
+  assert.deepEqual(roster.players, [
+    { name: "Player One", participantCount: 1, withdrawRequested: false },
+    { name: "Player Two", participantCount: 2, withdrawRequested: true },
+  ]);
+  assert.deepEqual(roster.waitlist, [
+    { name: "Waiting Player", participantCount: 1, withdrawRequested: true },
+  ]);
+  assert.doesNotMatch(JSON.stringify(roster), /private@example.com|voteOrder|firstSeenAt/);
+  assert.throws(() => pickupRsvpRosterView(snapshot, "2099-10-15"), /unavailable/);
+});
 
 test("public RSVP roster is accountless and does not publish name catalogs", () => {
   const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");

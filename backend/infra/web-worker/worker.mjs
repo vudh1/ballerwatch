@@ -9,6 +9,7 @@
  * Updated v8.0.0: grounded, multi-turn RATS fixture intelligence without a paid model dependency.
  * Updated v8.1.0: privacy-gated model intent fallback and authenticated RSVP facts.
  * Updated v11.0.2: published pickup-event RSVP rosters available without login.
+ * Updated v11.3.0: event-scoped rosters expose only the upstream withdrawal-request flag per participant.
  */
 import {
   fetchPickupSnapshot,
@@ -2414,6 +2415,7 @@ function cleanPrivateRosterList(entries = []) {
       const participantCount = Number(entry?.participantCount || 1);
       return {
         name: cleanText(entry?.name, 120),
+        withdrawRequested: entry?.withdrawRequested === true,
         participantCount:
           Number.isFinite(participantCount)
             ? Math.max(1, Math.min(5, participantCount))

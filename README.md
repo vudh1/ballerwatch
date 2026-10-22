@@ -4,6 +4,8 @@
 
 **[Open Production](https://vudh1.github.io/ballerwatch/)** · **[Open Beta](https://vudh1.github.io/ballerwatch/beta/)** · **[Project documentation](docs/wiki/Home.md)**
 
+**v11.3.0:** Published pickup RSVP lists now identify confirmed or waitlisted participants who have requested to withdraw. Their pending requests stay visible in original RSVP order and do not change reserved-space totals until the external RSVP source removes the signup.
+
 **v11.2.5:** Cross-division RATS games now count toward both teams’ own division standings, including season played/won/drawn/lost and points. Scouting uses the same results in its last-ten sample and adjusts for opponent division strength. Forecast labels and uncapped RSVP display remain as updated in v11.2.4.
 
 **v11.2.4:** The match forecast bar shows your win, tie, then opponent-win segments; only the two teams' win percentages are labeled, using clear abbreviations such as PhoSaiGon → PSG. Pickup games without a published cap show their actual RSVP count, not an invented 16-player limit or remaining-spots meter. The 16-player default is kept **only for notifications**; a real published cap is still displayed.
@@ -11,7 +13,7 @@
 ## What you can do
 
 - **Find your next match quickly.** Swipe through pickup and league match cards; open the schedule calendar for later games. Skip the optional cinematic introduction or use reduced-motion mode.
-- **Check pickup spots and RSVPs.** See capacity and the published event's RSVP roster or waitlist in signup order, without signing in. Only that selected, published event's display names and guest counts are shown.
+- **Check pickup spots and RSVPs.** See capacity and the published event's RSVP roster or waitlist in signup order, without signing in. Withdrawal requests are marked beside affected names, but do not cancel a signup inside BallerWatch. Only that selected, published event's display names, guest counts and pending withdrawal status are shown.
 - **Get there.** Open directions, share a venue map link, and check available game-window weather.
 - **Follow teams.** Choose up to eight RATS teams on your device; inspect individual standings cards, historical scores, and prepared scouting reports.
 - **Stay informed.** Use the in-app notification center and optional Web Push for real schedule changes and reminders.

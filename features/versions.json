@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.2.5",
+  "currentVersion": "11.3.0",
   "releases": [
+    {
+      "version": "11.3.0",
+      "date": "2026-10-21",
+      "type": "minor",
+      "source": "user-clarification",
+      "title": "Show pending withdrawal requests in pickup RSVP rosters",
+      "webAnnouncement": "Pickup RSVP lists now mark players who have requested to withdraw, whether confirmed or waitlisted. Pending requests stay visible in their original RSVP order until the signup source removes them.",
+      "changes": [
+        "Display a clear Withdrawal requested indicator beside source-flagged players in confirmed and waitlist rosters, without adding a withdrawal action or requiring a BallerWatch account.",
+        "Preserve the signup order, guest counts, and existing reserved-slot totals while withdrawal requests are pending; never treat a request as a completed cancellation.",
+        "Expose only a boolean withdrawal-request status on the published date-specific RSVP roster endpoint; keep private roster metadata and cross-date identity catalogs unavailable.",
+        "Add synthetic backend and frontend regressions for the flag, unchanged ordering, absent status, privacy, and browser rendering without sending notifications."
+      ]
+    },
     {
       "version": "11.2.5",
       "date": "2026-10-19",

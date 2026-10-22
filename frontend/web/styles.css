@@ -4608,6 +4608,23 @@ body:has(.chat-dialog[open]) {
   font-variant-numeric: tabular-nums;
 }
 .rsvp-roster-name { font-weight: 600; }
+.rsvp-roster-person.is-withdrawal-requested .rsvp-roster-name {
+  color: rgba(226, 232, 240, 0.74);
+}
+.rsvp-roster-withdrawal {
+  display: inline-block;
+  margin-left: 0.55rem;
+  color: rgba(253, 230, 138, 0.95);
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.4;
+  vertical-align: middle;
+}
+.rsvp-roster-withdrawal::before {
+  content: "●";
+  margin-right: 0.28rem;
+  font-size: 0.55rem;
+}
 .rsvp-roster-guest {
   margin-left: 0.45rem;
   color: rgba(148, 163, 184, 0.64);
