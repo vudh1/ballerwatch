@@ -1442,6 +1442,20 @@ test("closing a pointer-opened RSVP roster clears the lingering capacity focus r
   );
 });
 
+test("withdrawal requests are visibly marked on confirmed and waitlisted RSVP rows", () => {
+  const app = fs.readFileSync("frontend/web/app.js", "utf8");
+  const css = fs.readFileSync("frontend/web/styles.css", "utf8");
+  const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
+  const pickupUpdate = fs.readFileSync("backend/pickup/update.mjs", "utf8");
+  assert.match(pickupUpdate, /withdrawRequested: Boolean\(player\?\.withdrawRequested\)/);
+  assert.match(worker, /withdrawRequested: entry\?\.withdrawRequested === true/);
+  assert.match(app, /entry\?\.withdrawRequested === true/);
+  assert.match(app, /status\.textContent = "Withdrawal requested"/);
+  assert.match(app, /withdrawalRequests = \[\.\.\.confirmedEntries, \.\.\.queuedEntries\]/);
+  assert.match(css, /\.rsvp-roster-withdrawal \{/);
+  assert.doesNotMatch(app, /withdrawRequested\s*\?\s*confirmedSpots/);
+});
+
 test("pickup capacity opens accountless event-scoped RSVP roster without catalog leakage", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
