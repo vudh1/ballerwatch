@@ -116,12 +116,12 @@ test("private RSVP roster is ordered without exposing private ordering metadata"
 
   const roster = pickupRsvpRosterView(data, "2099-10-08");
   assert.deepEqual(roster.players, [
-    { name: "First Player", participantCount: 1 },
-    { name: "Later Player", participantCount: 2 },
+    { name: "First Player", participantCount: 1, withdrawRequested: false },
+    { name: "Later Player", participantCount: 2, withdrawRequested: false },
   ]);
   assert.deepEqual(roster.waitlist, [
-    { name: "Waiting One", participantCount: 1 },
-    { name: "Waiting Two", participantCount: 1 },
+    { name: "Waiting One", participantCount: 1, withdrawRequested: false },
+    { name: "Waiting Two", participantCount: 1, withdrawRequested: false },
   ]);
   assert.equal("voteOrder" in roster.players[0], false);
   assert.equal("firstSeenAt" in roster.players[0], false);
