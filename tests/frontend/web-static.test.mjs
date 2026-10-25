@@ -749,16 +749,21 @@ test("next-game sharing sends only the field URL through the native share sheet"
 
 
 
-test("app and repository expose explicit BallerWatch copyright notices", () => {
+test("app and repository expose consistent Apache-2.0 licensing notices", () => {
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const worker = fs.readFileSync("backend/infra/web-worker/worker.mjs", "utf8");
   const copyright = fs.readFileSync("COPYRIGHT.md", "utf8");
+  const license = fs.readFileSync("LICENSE", "utf8");
 
-  assert.match(html, /© 2026 BallerWatch\. All rights reserved\./);
-  assert.match(app, /Copyright © 2026 BallerWatch\. All rights reserved\./);
-  assert.match(worker, /Copyright © 2026 BallerWatch\. All rights reserved\./);
-  assert.match(copyright, /Publication of the source code in a public repository does not by itself grant a license/);
+  assert.match(html, /© 2026 Duong Vu · Apache 2\.0/);
+  assert.match(app, /Copyright © 2026 Duong Vu and contributors\./);
+  assert.match(app, /SPDX-License-Identifier: Apache-2\.0/);
+  assert.match(worker, /SPDX-License-Identifier: Apache-2\.0/);
+  assert.match(copyright, /Apache License, Version 2\.0/);
+  assert.match(copyright, /does \*\*not\*\* grant rights to third-party software/);
+  assert.match(license, /Apache License\s+Version 2\.0, January 2004/);
+  assert.doesNotMatch(html, /All rights reserved/i);
 });
 
 test("footer contains no secondary messaging shortcut", () => {
