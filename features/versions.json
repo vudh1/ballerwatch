@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.4.0",
+  "currentVersion": "11.4.1",
   "releases": [
+    {
+      "version": "11.4.1",
+      "date": "2026-10-24",
+      "type": "patch",
+      "source": "user-requested",
+      "title": "Reliable first professional fixture index and ongoing iCalendar updates",
+      "webAnnouncement": "BallerWatch now indexes up to a year of published NBA, European club and international fixtures using ESPN's supported monthly pages and a verified, encrypted runtime snapshot. Watched fixtures and iCalendar subscriptions refresh automatically.",
+      "changes": [
+        "Replace retired ESPN date range queries with YYYYMM queries and explicit result limits, preserving a 366-day rolling horizon and provider team-ID normalization.",
+        "Validate at least one upcoming published fixture for each of the NBA and top-five domestic club leagues before publishing an encrypted sports snapshot.",
+        "Automatically bootstrap the initial encrypted sports index on integration to main, before protected production promotion.",
+        "Add a regression for Pacific date conversion and different team display names returned by schedule and catalogue endpoints."
+      ]
+    },
     {
       "version": "11.4.0",
       "date": "2026-10-24",
