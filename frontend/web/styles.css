@@ -6433,32 +6433,8 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
 .app-channel-select:focus-visible { outline: 2px solid #86efac; outline-offset: 3px; }
 
 
-/* Professional-sports fixtures belong to the calendar, never the match carousel. */
+/* Shared hidden state and public calendar subscription controls. */
 [hidden] { display: none !important; }
-.watch-calendar-list {
-  padding: 0 1.25rem 1rem;
-  display: grid;
-  gap: .6rem;
-}
-.watch-calendar-heading {
-  font-size: .7rem;
-  font-weight: 600;
-  letter-spacing: .12em;
-  opacity: .66;
-}
-.watch-calendar-event {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: baseline;
-  column-gap: .75rem;
-  row-gap: .15rem;
-  padding: .5rem 0;
-  border-bottom: 1px solid rgba(255,255,255,.055);
-}
-.watch-calendar-event:last-child { border-bottom: 0; }
-.watch-calendar-event strong { font-size: .85rem; font-weight: 600; }
-.watch-calendar-event span { font-size: .75rem; opacity: .7; }
 .calendar-subscribe-settings { display: grid; gap: .55rem; margin-top: .9rem; }
 .calendar-subscribe-settings .secondary { justify-self: start; }
 
