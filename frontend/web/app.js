@@ -30,11 +30,12 @@ import {
   saveLocalNotificationChannels,
 } from "./lib/notification-state.js";
 import { createSettingsChoice } from "./lib/settings-choice.js";
-import { createFirstRunWizard, needsFirstRun } from "./lib/first-run.js";
+import { createFirstRunWizard, isFirstRunDevice } from "./lib/first-run.js";
 import { PLAY, WATCH, modeGames, watchMatchDetails } from "./lib/match-modes.mjs";
 import { DEFAULT_WATCH_SERVICES } from "./lib/watch-coverage.mjs";
 import { watchedDayGroups, watchedDaySportIcons } from "./lib/watch-day-groups.mjs";
-import { readGuestProfile, saveGuestProfile, MAX_GUEST_TEAMS } from "./lib/guest-profile.js";
+import { readGuestProfile, saveGuestProfile, MAX_GUEST_TEAMS,
+  DEVICE_GUEST_PROFILE_KEY } from "./lib/guest-profile.js";
 import {
   applyLocalMatchEdits, readLocalMatchEdits, setLocalMatchOverride,
   clearLocalMatchOverride, setLocalMatchHidden,
@@ -303,6 +304,10 @@ const SPOTLIGHT_IDLE_RESET_MS = 15_000;
 const INTERACTION_VIBRATION_MS = 8;
 const INTRO_SESSION_KEY = "ballerwatch-intro-seen-v1";
 const MUSIC_ENABLED_KEY = experienceKey("ballerwatch-music-enabled-v1", "music");
+const IS_FIRST_RUN_DEVICE = isFirstRunDevice(localStorage, FIRST_RUN_KEY, [
+  DEVICE_GUEST_PROFILE_KEY, WATCH_TEAM_KEY, PUBLIC_CALENDAR_DEVICE_KEY,
+  PUBLIC_STANDINGS_DEVICE_KEY, MUSIC_ENABLED_KEY,
+]);
 const LAUNCH_INTRO_VISIBLE_MS = 2_250;
 const LAUNCH_INTRO_FADE_MS = 420;
 const AMBIENT_PHRASE_MS = 6_400;
@@ -1669,7 +1674,7 @@ async function loadRsvpNameOptions() {
 }
 
 function beginFirstRunSetup() {
-  if (!needsFirstRun(localStorage, FIRST_RUN_KEY)) return;
+  if (!IS_FIRST_RUN_DEVICE) return;
   const dialog = document.querySelector("#first-run-dialog");
   const app = document.querySelector("#matchday-app");
   if (!dialog || !app) return;
