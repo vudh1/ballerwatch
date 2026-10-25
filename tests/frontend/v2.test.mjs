@@ -51,10 +51,11 @@ test("V2 separates a brief launch and scroll hero from unchanged V1 cards", () =
   assert.match(html, /id="scene-player-number"[^>]*>10<\/text>/);
   assert.doesNotMatch(html, /M6-70h14l-11 28/);
   const cardFeed = (source, end) => source.slice(source.indexOf('    <div class="spotlight-carousel"'), source.indexOf(end));
-  // The professional watchlist is an additive calendar-only feature.
-  // Existing personal match and standings markup must remain unchanged.
+  // Watch-specific TV metadata is additive; existing personal match and
+  // standings markup must otherwise remain unchanged.
   const withoutWatchlist = cardFeed(html, '    <footer>')
-    .replace(/^.*<div class="watch-calendar-list"[^>]*><\/div>\n/m, "");
+    .replace(/^.*<div class="watch-calendar-list"[^>]*><\/div>\n/m, "")
+    .replace(/^.*<p class="next-game-watch"[^>]*><\/p>\n/m, "");
   assert.equal(withoutWatchlist, cardFeed(v1, '    <footer>'));
   assert.match(read("v2/prepaint.js"), /ballerwatch:v2:intro-seen/);
   assert.match(read("v2/prepaint.js"), /ballerwatch:v2:launch-seen/);
