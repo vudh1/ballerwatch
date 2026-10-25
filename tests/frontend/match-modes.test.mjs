@@ -14,11 +14,13 @@ test("default play mode contains only personal games and not watch fixtures", ()
   assert.deepEqual(modeGames(WATCH, play, watched).map(g => g.id), ["watch:nba:1"]);
   assert.deepEqual(modeGames(WATCH, play, []), []);
 });
-test("watch presentation uses Pacific match time with DST and no personal controls", () => {
+test("watch presentation uses device-local kickoff and no unknown TV label", () => {
   assert.deepEqual(watchMatchDetails(watched[0]), {
     title: "Lakers vs Warriors", competition: "NBA",
-    time: "Mon, Oct 26, 7:00 PM PT", location: "Arena",
-    whereToWatch: "TV channel not announced",
+    time: new Intl.DateTimeFormat("en-US", {
+      weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+    }).format(new Date(watched[0].startUtc)), location: "Arena",
+    whereToWatch: "",
   });
   assert.equal(watchMatchDetails(play[0]), null);
 });
@@ -29,13 +31,13 @@ test("show only actual listed channels on the user's chosen services", () => {
     "ESPN · NBA TV · check DrogonTV guide");
   assert.equal(watchCoverage({broadcasts:["NBA TV"]}), "NBA TV · check DrogonTV guide");
   assert.equal(watchCoverage({broadcasts:["Peacock","Paramount+"]}),
-    "No confirmed channel on your services");
-  assert.equal(watchCoverage({broadcasts:[]}), "TV channel not announced");
+    "");
+  assert.equal(watchCoverage({broadcasts:[]}), "");
 });
 
 test("unselected services are not advertised to a device", () => {
   assert.equal(watchCoverage({broadcasts:["Prime Video","ESPN"]},
     {prime:false,espn:true,drogon:false}), "ESPN");
   assert.equal(watchCoverage({broadcasts:["Prime Video"]},
-    {prime:false,espn:false,drogon:false}), "Choose TV services in Settings");
+    {prime:false,espn:false,drogon:false}), "");
 });

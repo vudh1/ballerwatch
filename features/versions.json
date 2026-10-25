@@ -1,7 +1,23 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.6.0",
+  "currentVersion": "11.6.1",
   "releases": [
+    {
+      "version": "11.6.1",
+      "date": "2026-10-25",
+      "type": "patch",
+      "source": "user-feedback",
+      "title": "Carousel of watched match days with local kickoff times",
+      "webAnnouncement": "Teams to Watch now shows one daily match card at a time, with swipe or arrow navigation like standings. Tap a date in the schedule to jump straight to its card. Unknown TV channels are hidden; teams and local kickoff times always remain visible.",
+      "changes": [
+        "Replace stacked watched-day sections with a one-card-at-a-time day carousel, keyboard/touch/arrows, live card position and adaptive height.",
+        "Selecting a match date in the schedule jumps to the matching carousel card, expanding the loaded horizon when needed; Play cards and standings remain unchanged.",
+        "List all watched matches on that date sorted by kickoff, with match details in a dialog; hide any unknown or unowned channel without placeholder noise.",
+        "Use device-local time and date for watched fixtures, retaining timezone-correct UTC iCalendar events.",
+        "Add three-browser carousel and missing-channel coverage; version caches for offline support.",
+        "Keep next/previous Watch controls visible despite the shared standings waterfall styles; scroll very busy match days inside the card without enlarging the carousel."
+      ]
+    },
     {
       "version": "11.6.0",
       "date": "2026-10-25",

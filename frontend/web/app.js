@@ -125,7 +125,12 @@ const els = {
   spotlightCarousel: document.querySelector("#spotlight-carousel"),
   watchDays: document.querySelector("#watch-days"),
   watchDayList: document.querySelector("#watch-day-list"),
-  watchShowMore: document.querySelector("#watch-show-more"),
+  watchDayViewport: document.querySelector("#watch-day-viewport"),
+  watchPrevious: document.querySelector("#watch-previous"),
+  watchNext: document.querySelector("#watch-next"),
+  watchDayPosition: document.querySelector("#watch-day-position"),
+  watchMatchChannelRow: document.querySelector("#watch-match-channel-row"),
+  watchMatchGuideNote: document.querySelector("#watch-match-guide-note"),
   watchMatchDialog: document.querySelector("#watch-match-dialog"),
   watchMatchTitle: document.querySelector("#watch-match-title"),
   watchMatchTime: document.querySelector("#watch-match-time"),
@@ -1452,8 +1457,15 @@ function activeModeGames() {
   return modeGames(activeMatchMode, currentCalendar?.games || [], watchedGames);
 }
 
+function localWatchDate(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
+  const pad = n => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
 function activeCalendarStartDate() {
-  return activeMatchMode === WATCH ? todaySeattleKey() : currentCalendar?.startDate || "";
+  return activeMatchMode === WATCH ? localWatchDate() : currentCalendar?.startDate || "";
 }
 
 function syncPersonalCardVisibility() {
@@ -1531,7 +1543,12 @@ async function loadWatchIndex() {
     if (selection !== JSON.stringify(watchedTeams)) return;
     if (!payload?.ok || !Array.isArray(payload.teams)) throw new Error("Unavailable");
     watchSelector().setOptions([...new Set([...watchedTeams, ...payload.teams])]);
-    watchedGames = Array.isArray(payload.games) ? payload.games.filter(g => g.kind === WATCH) : [];
+    watchedGames = Array.isArray(payload.games) ? payload.games.filter(g => g.kind === WATCH)
+      .map(game => ({ ...game,
+        // A watch day is the device-local date of the actual published kickoff.
+        // Calendar subscriptions retain UTC DTSTART so each client adjusts it.
+        date: localWatchDate(game.startUtc) || game.date,
+      })) : [];
     watchedUpdatedAt = payload.updatedAt || "";
     const status = document.querySelector("#watch-teams-status");
     if (status) status.textContent = payload.updatedAt
@@ -1804,7 +1821,7 @@ async function registerServiceWorker() {
     void syncServiceWorkerRsvpState();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=11.6.0", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=11.6.1", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -2807,9 +2824,7 @@ function selectCalendarDate(date, { scrollToSpotlight = false, gameId = "" } = {
       button.setAttribute("aria-selected", String(button.dataset.date === date));
     }
     if (scrollToSpotlight) {
-      const target = [...els.watchDayList.querySelectorAll(".watch-day-card")]
-        .find(card => card.dataset.watchDate === date);
-      target?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      els.watchDays?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
     return;
   }
@@ -3147,6 +3162,8 @@ function showWatchDetails(game) {
   els.watchMatchTime.textContent = details.time;
   els.watchMatchVenue.textContent = details.location;
   els.watchMatchChannel.textContent = details.whereToWatch;
+  els.watchMatchChannelRow.hidden = !details.whereToWatch;
+  els.watchMatchGuideNote.hidden = !details.whereToWatch.includes("DrogonTV guide");
   els.watchMatchSource.hidden = true;
   els.watchMatchSource.removeAttribute("href");
   try {
@@ -3159,17 +3176,78 @@ function showWatchDetails(game) {
   if (!els.watchMatchDialog.open) els.watchMatchDialog.showModal();
 }
 
+function watchDaySlides() {
+  return [...(els.watchDayList?.querySelectorAll(".watch-day-card") || [])];
+}
+
+function syncWatchDaySlide(index = 0) {
+  if (!els.watchDayViewport || !els.watchDayList) return;
+  const slides = watchDaySlides();
+  if (!slides.length) {
+    els.watchPrevious.disabled = true;
+    els.watchNext.disabled = true;
+    els.watchDayPosition.textContent = "";
+    els.watchDayViewport.style.removeProperty("height");
+    return;
+  }
+  const target = Math.min(Math.max(0, index), slides.length - 1);
+  const date = slides[target].dataset.watchDate;
+  selectedCalendarDate = date;
+  els.watchDayList.style.transform =
+    `translate3d(-${target * els.watchDayViewport.clientWidth}px, 0, 0)`;
+  for (const [i, slide] of slides.entries()) {
+    slide.setAttribute("aria-hidden", String(i !== target));
+    slide.inert = i !== target;
+  }
+  const height = slides[target].offsetHeight;
+  if (height > 0) els.watchDayViewport.style.height = height + "px";
+  const more = watchVisibleDays < 366 && watchedGames.some(game =>
+    game.date > addIsoDays(activeCalendarStartDate(), watchVisibleDays - 1));
+  els.watchPrevious.disabled = target === 0;
+  els.watchNext.disabled = target === slides.length - 1 && !more;
+  els.watchDayPosition.textContent = `${target + 1} / ${slides.length} days`;
+  for (const day of els.calendarGrid.querySelectorAll(".calendar-day")) {
+    day.setAttribute("aria-selected", String(day.dataset.date === date));
+  }
+}
+
+function stepWatchDay(direction) {
+  if (activeMatchMode !== WATCH || !direction) return;
+  let slides = watchDaySlides();
+  const index = slides.findIndex(slide => slide.dataset.watchDate === selectedCalendarDate);
+  if (direction > 0 && index >= slides.length - 1 && watchVisibleDays < 366) {
+    const priorDate = selectedCalendarDate;
+    const lastGameDate = watchedGames.map(game => game.date).filter(Boolean).sort().at(-1);
+    while (watchVisibleDays < 366 && lastGameDate &&
+        lastGameDate > addIsoDays(activeCalendarStartDate(), watchVisibleDays - 1)) {
+      watchVisibleDays = Math.min(366, watchVisibleDays + 14);
+      const groups = watchedDayGroups(watchedGames, activeCalendarStartDate(), watchVisibleDays);
+      if (groups.some(group => group.date > priorDate)) break;
+    }
+    renderWatchDayList();
+    slides = watchDaySlides();
+  }
+  const current = slides.findIndex(slide => slide.dataset.watchDate === selectedCalendarDate);
+  syncWatchDaySlide(current + Math.sign(direction));
+}
+
 function renderWatchDayList() {
+  if (!els.watchDayList) return;
   els.watchDayList.replaceChildren();
   const start = activeCalendarStartDate();
   if (!start) return;
   const groups = watchedDayGroups(watchedGames, start, watchVisibleDays);
   if (!groups.length) {
-    const empty = document.createElement("p");
-    empty.className = "muted";
-    empty.textContent = watchedTeams.length
-      ? "No published matches in this period. Upcoming fixtures will appear automatically when announced."
-      : "Choose teams in Settings to show the matches you want to watch.";
+    const empty = document.createElement("section");
+    empty.className = "card watch-day-card bw-card-frame";
+    empty.dataset.watchDate = start;
+    const note = document.createElement("p");
+    note.className = "muted";
+    note.style.padding = "1.1rem";
+    note.textContent = watchedTeams.length
+      ? "No published matches in this period. New matches appear automatically when announced."
+      : "Choose teams in Settings to see their upcoming match days.";
+    empty.append(note);
     els.watchDayList.append(empty);
   }
   for (const group of groups) {
@@ -3204,8 +3282,7 @@ function renderWatchDayList() {
       const meta = document.createElement("span");
       meta.className = "watch-match-meta";
       meta.textContent = details.competition +
-        (Array.isArray(game.broadcasts) && game.broadcasts.length
-          ? " · " + details.whereToWatch : "");
+        (details.whereToWatch ? " · " + details.whereToWatch : "");
       row.append(name, time, meta);
       row.addEventListener("click", () => showWatchDetails(game));
       matches.append(row);
@@ -3213,9 +3290,43 @@ function renderWatchDayList() {
     card.append(header, matches);
     els.watchDayList.append(card);
   }
-  const moreAvailable = watchedGames.some(game => game.date >= start &&
-    game.date > addIsoDays(start, watchVisibleDays - 1));
-  els.watchShowMore.hidden = !moreAvailable;
+  const selectedIndex = watchDaySlides().findIndex(slide =>
+    slide.dataset.watchDate === selectedCalendarDate);
+  syncWatchDaySlide(selectedIndex < 0 ? 0 : selectedIndex);
+}
+
+function installWatchDayNavigation() {
+  if (!els.watchDayViewport) return;
+  els.watchPrevious.addEventListener("click", () => stepWatchDay(-1));
+  els.watchNext.addEventListener("click", () => stepWatchDay(1));
+  els.watchDayViewport.addEventListener("keydown", (event) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    stepWatchDay(event.key === "ArrowRight" ? 1 : -1);
+  });
+  let start = null;
+  let ignoreClickUntil = 0;
+  els.watchDayViewport.addEventListener("touchstart", event => {
+    const touch = event.touches[0];
+    start = event.touches.length === 1 ? { x: touch.clientX, y: touch.clientY } : null;
+  }, { passive: true });
+  els.watchDayViewport.addEventListener("touchend", event => {
+    if (!start || !event.changedTouches?.length) return;
+    const dx = event.changedTouches[0].clientX - start.x;
+    const dy = event.changedTouches[0].clientY - start.y;
+    start = null;
+    if (Math.abs(dx) < 55 || Math.abs(dx) < Math.abs(dy) * 1.25) return;
+    event.preventDefault();
+    ignoreClickUntil = Date.now() + 400;
+    stepWatchDay(dx < 0 ? 1 : -1);
+  }, { passive: false });
+  els.watchDayViewport.addEventListener("touchcancel", () => { start = null; });
+  els.watchDayViewport.addEventListener("click", event => {
+    if (Date.now() < ignoreClickUntil) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }, true);
 }
 
 function renderActiveMode() {
@@ -5059,6 +5170,10 @@ window.addEventListener("resize", () => {
   window.clearTimeout(spotlightResizeTimer);
   spotlightResizeTimer = window.setTimeout(() => {
     window.requestAnimationFrame(syncSpotlightCardDimensions);
+    if (activeMatchMode === WATCH) {
+      const i = watchDaySlides().findIndex(slide => slide.dataset.watchDate === selectedCalendarDate);
+      syncWatchDaySlide(i < 0 ? 0 : i);
+    }
   }, 120);
 });
 
@@ -5093,10 +5208,7 @@ for (const name of Object.keys(watchServices)) {
     if (activeMatchMode === WATCH) renderActiveMode();
   });
 }
-els.watchShowMore?.addEventListener("click", () => {
-  watchVisibleDays = Math.min(366, watchVisibleDays + 14);
-  renderWatchDayList();
-});
+installWatchDayNavigation();
 els.closeWatchMatch?.addEventListener("click", () => els.watchMatchDialog.close());
 els.watchMatchDialog?.addEventListener("click", event => {
   if (event.target === els.watchMatchDialog) els.watchMatchDialog.close();
