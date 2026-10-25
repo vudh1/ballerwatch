@@ -5501,12 +5501,15 @@ renderNotificationPreferences();
 restorePublicStandings();
 const restoredPublicCalendar = restorePublicCalendar();
 setSystemState(restoredPublicCalendar ? "ready" : "checking");
+// Set up first-device profile choice without waiting for the initial 3.8s
+// calendar verification. The intro itself still determines when the modal
+// may open, while roster options fill asynchronously when available.
+beginFirstRunSetup();
 // Start both independent HTTP requests together; never hold standings behind
 // the calendar's 3.8-second verification deadline on a first-time visit.
 void loadStandings({ initial: true }).catch(() => false);
 const calendarOk = await loadCalendar({ initial: true }).catch(() => false);
 setCalendarConnectionResult(calendarOk);
-beginFirstRunSetup();
 if (watchedTeams.length) void loadWatchIndex();
 if (!calendarOk && !currentCalendar && navigator.onLine !== false) {
   // First-ever launch can retry in a short interval without blocking cards.
