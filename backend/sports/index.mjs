@@ -101,6 +101,7 @@ export function parsedFixtures(payload, comp, teamIdNames = new Map()) {
       location: norm(event?.competitions?.[0]?.venue?.fullName),
       broadcasts,
       drogonChannels: matchDrogonChannels(broadcasts),
+      drogonBroadcastKey: JSON.stringify(broadcasts),
       url: /^https:\/\//.test(event?.links?.[0]?.href || "") ? String(event.links[0].href).slice(0, 400) : "",
     });
   }
@@ -221,6 +222,7 @@ export async function indexSports(fetcher = fetch, today = new Date(), previous 
   const games = [...fixtureMap.values()].sort((a, b) => a.startUtc.localeCompare(b.startUtc))
     .slice(0, 6000).map(game => ({ ...game,
       drogonChannels: matchDrogonChannels(game.broadcasts),
+      drogonBroadcastKey: JSON.stringify(game.broadcasts || []),
     }));
   const result = {
     updatedAt: today.toISOString(),
