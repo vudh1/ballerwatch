@@ -1,9 +1,11 @@
-# BallerWatch Copyright
+# BallerWatch copyright and licensing
 
-Copyright © 2026 BallerWatch. All rights reserved.
+Copyright © 2026 Duong Vu and contributors.
 
-This copyright notice applies to the BallerWatch source code, web application, user interface, visual design, documentation, workflows, and other original project materials in this repository unless a file or component states otherwise.
+Original BallerWatch source code, workflows, documentation and original project materials for which the respective contributors have licensing authority are made available under the [Apache License, Version 2.0](LICENSE) (`Apache-2.0`). Preserve the license and applicable copyright notices when redistributing covered material.
 
-Publication of the source code in a public repository does not by itself grant a license to copy, modify, distribute, sublicense, or create derivative works.
+This does **not** grant rights to third-party software, team or league names/logos, sports data feeds, photographs, fonts, imagery, music, trademarks or other third-party assets. Their owners and source-specific licenses/terms continue to apply. BallerWatch's name, logo and branding are not granted for trademark use or endorsement by Apache-2.0. Private account data, encrypted runtime state and credentials are not covered by any public repository license.
 
-Third-party software, APIs, data sources, trademarks, and other materials remain subject to their respective owners' rights and license terms.
+Earlier repository snapshots displayed an “All rights reserved” notice. The Apache-2.0 grant applies to covered materials offered under this revised notice when this change is merged, without purporting to rewrite notices on historical snapshots.
+
+See [FRIDAY's licensing policy](https://github.com/vudh1/friday/blob/main/docs/LICENSING.md) for ecosystem guidance. The repositories remain separately owned and released.
