@@ -184,7 +184,7 @@ async function activateSpotlightControl(page, id) {
 async function ready(page, route = "") {
   await page.goto(`${origin}/ballerwatch/${route}`);
   try {
-    await page.waitForFunction(() => document.querySelector("#next-game-title").textContent.includes("October 15"), null, { timeout: 10000 });
+    await page.waitForFunction(() => document.querySelector("#next-game-title")?.textContent.includes("October 15"), null, { timeout: 10000 });
   } catch (error) {
     await shot(page, "failure");
     console.error(await page.locator("#next-game-title").textContent());
@@ -1210,7 +1210,7 @@ try {
         await alignSyntheticCalendarCacheToToday(instance.page);
         instance.controls.offlineApi = true;
         await instance.page.reload();
-        await instance.page.waitForFunction(() => document.querySelector("#next-game-title").textContent.includes("October 15"));
+        await instance.page.waitForFunction(() => document.querySelector("#next-game-title")?.textContent.includes("October 15"));
         // One transient outage is not enough to label saved fixtures stale:
         // the last-good schedule stays visible with an honest neutral status.
         await instance.page.waitForFunction(() => document.querySelector("#system-status").textContent === "Ready");
