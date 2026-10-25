@@ -473,6 +473,12 @@ try {
         await shot(page, `${engine}-intro-dive`);
         const reverse = await atProgress(page, 0.44);
         assert.equal(reverse, forward);
+        const inside = await page.evaluate(() => {
+          const event = new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: -60 });
+          window.dispatchEvent(event);
+          return event.defaultPrevented;
+        });
+        assert.equal(inside, false, "Backward movement inside the animation remains native");
         await atProgress(page, 0.88);
         await shot(page, `${engine}-intro-goal`);
         await atProgress(page, 1);
@@ -574,6 +580,42 @@ try {
         await page.waitForFunction(() => Number(document.documentElement.dataset.sceneProgress) < 1);
         const timelineCopy = await page.locator("#scene-description").textContent();
         assert.match(timelineCopy, /Vela TV|NBA and world football/);
+        assert.deepEqual(errors, []);
+        await context.close();
+      });
+
+      await scenario(`${engine}: a short upward gesture visibly stretches dashboard before rewinding`, async () => {
+        const { context, page, errors } = await prepare(browser);
+        await ready(page);
+        await page.waitForFunction(() => !document.documentElement.classList.contains("v2-launching"));
+        await page.locator("#skip-intro").click();
+        await page.reload();
+        await page.waitForFunction(() => document.documentElement.dataset.timelineReady === "true");
+        const before = await page.locator("#matchday-app").boundingBox();
+        const state = await page.evaluate(() => {
+          const event = new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: -70 });
+          window.dispatchEvent(event);
+          const root = document.documentElement;
+          const indicator = document.querySelector("#rewind-affordance");
+          return {
+            prevented: event.defaultPrevented,
+            hint: indicator.textContent,
+            visible: getComputedStyle(indicator).visibility,
+            tension: Number.parseFloat(root.style.getPropertyValue("--rewind-tension")),
+            progress: Number(root.style.getPropertyValue("--rewind-progress")),
+            cinematic: root.classList.contains("v2-cinematic"),
+          };
+        });
+        assert.equal(state.prevented, true);
+        assert.equal(state.visible, "visible");
+        assert.match(state.hint, /Pull to rewind/);
+        assert.ok(state.tension >= 12);
+        assert.ok(state.progress > 0 && state.progress < 1);
+        assert.equal(state.cinematic, false);
+        await page.waitForTimeout(130);
+        const after = await page.locator("#matchday-app").boundingBox();
+        assert.ok(after.y - before.y >= 8, "The whole dashboard must resist, not only its title");
+        await page.waitForFunction(() => !document.documentElement.classList.contains("v2-rewind-resisting"));
         assert.deepEqual(errors, []);
         await context.close();
       });
