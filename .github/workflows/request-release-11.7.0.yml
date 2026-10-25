@@ -1,0 +1,57 @@
+name: Request BallerWatch 11.7.0 production promotion
+
+# One-time operator-authorized release request. Only the existing guarded
+# promotion workflow may publish release, advance production and deploy.
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/request-release-11.7.0.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  request:
+    if: "startsWith(github.event.head_commit.message, 'chore(release): request 11.7.0 production promotion')"
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Verify immutable versioned candidate and successful main validation
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$GH_TOKEN" || { echo "::error::Missing RELEASE_GITHUB_TOKEN"; exit 1; }
+          candidate="$(git log -1 --format=%H HEAD -- features/versions.json)"
+          test "$candidate" = "31bd96015433db68ef640bdb7a711616b47e814d" || {
+            echo "::error::Release candidate unexpectedly changed; refusing promotion."
+            exit 1
+          }
+          version="$(git show "$candidate:features/versions.json" | node -e 'let s="";process.stdin.on("data",x=>s+=x).on("end",()=>process.stdout.write(JSON.parse(s).currentVersion))')"
+          test "$version" = "11.7.0" || {
+            echo "::error::Candidate is not v11.7.0."
+            exit 1
+          }
+          successful="$(gh api -X GET "/repos/$GITHUB_REPOSITORY/actions/workflows/validate.yml/runs" \
+            -f head_sha="$candidate" -f status=completed -f per_page=40 \
+            --jq '[.workflow_runs[] | select(.conclusion == "success" and .event == "push")] | length')"
+          test "$successful" -ge 1 || {
+            echo "::error::No successful main validation for immutable release commit."
+            exit 1
+          }
+
+      - name: Request protected release workflow
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh workflow run promote-release.yml --repo "$GITHUB_REPOSITORY" --ref main
+          echo "Requested guarded BallerWatch v11.7.0 promotion; D1 provisioning remains optional and cardless-gated."
