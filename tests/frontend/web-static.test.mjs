@@ -626,7 +626,7 @@ test("Worker readiness uses a dedicated GitHub contents credential and probes li
 test("calendar refresh preserves an explicitly selected future game", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   assert.match(app, /let selectedCalendarGameId = ""/);
-  assert.match(app, /availableGames\.find\(\(game\) => game\.id === selectedCalendarGameId\)/);
+  assert.match(app, /games\.find\(game => game\.id === selectedCalendarGameId\)/);
   assert.match(app, /renderNextGame\(selectedGame, "SELECTED GAME"\)/);
 });
 
