@@ -105,9 +105,28 @@ async function readBody(request) {
   if (limit > 4096 || !/^application\/json(?:\s*;|$)/i.test(request.headers.get("content-type") || "")) {
     throw new RangeError("Invalid payload");
   }
-  const raw = await request.text();
-  if (raw.length > 4096) throw new RangeError("Payload too large");
-  try { return JSON.parse(raw); } catch { throw new RangeError("Invalid JSON"); }
+  if (!request.body) throw new RangeError("Invalid JSON");
+  const reader = request.body.getReader();
+  const chunks = [];
+  let size = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > 4096) {
+      await reader.cancel();
+      throw new RangeError("Payload too large");
+    }
+    chunks.push(value);
+  }
+  const data = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    data.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  try { return JSON.parse(decoder.decode(data)); }
+  catch { throw new RangeError("Invalid JSON"); }
 }
 function managerToken(request) {
   const header = request.headers.get("authorization") || "";
