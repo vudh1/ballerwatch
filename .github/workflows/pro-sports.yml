@@ -15,9 +15,11 @@ on:
     types: [completed]
 permissions:
   contents: write
-# All canonical runtime-state writers serialize through the same group.
+# Sports source indexing must not lose its weekly run to frequent league
+# dispatches. Runtime-state snapshot writes are optimistic/lease-guarded and
+# merge canonical files atomically with bounded retries.
 concurrency:
-  group: ballerwatch-league
+  group: ballerwatch-sports
   cancel-in-progress: false
 jobs:
   sports:
