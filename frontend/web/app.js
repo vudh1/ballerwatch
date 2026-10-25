@@ -1440,6 +1440,10 @@ function syncPersonalCardVisibility() {
   els.modeWatch?.classList.toggle("is-active", !play);
   els.modePlay?.setAttribute("aria-pressed", String(play));
   els.modeWatch?.setAttribute("aria-pressed", String(!play));
+  const heroLabel = document.querySelector(".hero .eyebrow");
+  const subtitle = document.querySelector(".hero .subtitle");
+  if (heroLabel) heroLabel.textContent = play ? "SOCCER AT A GLANCE" : "SPORTS AT A GLANCE";
+  if (subtitle) subtitle.textContent = play ? "Pickup + RATS monitor" : "Professional match schedule";
   // Watch always has its own match/schedule cards, even when no team is selected.
   els.spotlightCarousel.hidden = play && !(guestProfile.name || guestProfile.teams.length);
   const standings = document.querySelector("#league-standings");
