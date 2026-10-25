@@ -1,0 +1,42 @@
+name: Diagnose large sports snapshot transport
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/diagnose-sports-large-file.yml"
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Compare GitHub contents and raw responses safely
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          BASE="https://api.github.com/repos/vudh1/ballerwatch"
+          URL="$BASE/contents/sports/state/fixtures.json?ref=runtime-state"
+          for MEDIA in "application/vnd.github+json" "application/vnd.github.raw+json" "application/vnd.github.raw"; do
+            curl -fsSL --max-time 30 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: $MEDIA" \
+              -H "X-GitHub-Api-Version: 2022-11-28" -o /tmp/large.json "$URL"
+            node -e '
+              const fs=require("fs"), x=JSON.parse(fs.readFileSync("/tmp/large.json","utf8"));
+              console.log("media="+process.argv[1],"bytes="+fs.statSync("/tmp/large.json").size,
+                "isEnvelope="+(x.v===1&&x.kdf==="hmac-sha256-v1"),
+                "keys="+Object.keys(x).filter(k=>!["data","content","iv","tag"].includes(k)).join(","),
+                "hasContent="+Boolean(x.content));
+            ' "$MEDIA"
+          done
+          curl -fsSL --max-time 30 -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" -o /tmp/meta.json "$URL"
+          SHA="$(node -p 'JSON.parse(require("fs").readFileSync("/tmp/meta.json","utf8")).sha')"
+          curl -fsSL --max-time 30 -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" -o /tmp/blob.json "$BASE/git/blobs/$SHA"
+          node -e '
+            const fs=require("fs"), x=JSON.parse(fs.readFileSync("/tmp/blob.json","utf8"));
+            console.log("blob-bytes="+fs.statSync("/tmp/blob.json").size,
+              "encoding="+x.encoding,"rawLength="+x.size,"hasContent="+Boolean(x.content));
+          '
