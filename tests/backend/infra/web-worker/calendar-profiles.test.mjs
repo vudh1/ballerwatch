@@ -173,6 +173,17 @@ test("rotation revokes old ICS and full deletion revokes all capabilities", asyn
     { recoveryCode: created.recoveryCode })).code, 404);
 });
 
+test("expired management credentials cannot update another person's selections", async () => {
+  const { call, db } = harness();
+  const created = (await call("/web/v1/calendar-profiles", "POST",
+    { optIn: true, selection: aSelection })).json;
+  db.sqlite.prepare("UPDATE calendar_managers SET expires_ms = 1").run();
+  assert.equal((await call("/web/v1/calendar-profiles/" + created.id + "/selection",
+    "PUT", { revision: 1, selection: bSelection }, created.manager)).code, 404);
+  // Management expires; previously shared Vela's read-only link stays live.
+  assert.equal((await call(created.url)).code, 200);
+});
+
 test("pairing expiry, malformed requests and disabled Cloudflare fail closed", async () => {
   const { call, db, env } = harness();
   assert.equal((await call("/web/v1/calendar-profiles", "POST",
