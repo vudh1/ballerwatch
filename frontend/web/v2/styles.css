@@ -65,6 +65,9 @@
 .v2-shell { padding-left: max(clamp(.9rem, 3vw, 1.35rem), var(--v2-safe-left)); padding-right: max(clamp(.9rem, 3vw, 1.35rem), var(--v2-safe-right)); }
 .v2-cinematic .v2-shell { margin-top: calc(-1 * var(--scene-height)); min-height: var(--scene-height); opacity: var(--app-reveal, 0); }
 .v2-shell[inert] { pointer-events: none; }
+/* A restrained 0–7px elastic response before the deliberate upward rewind. */
+.v2-rewind-resisting .v2-shell > .hero { transform: translateY(var(--rewind-tension, 0px)); transition: transform 150ms ease-out; }
+.v2:not(.v2-rewind-resisting) .v2-shell > .hero { transform: translateY(0); transition: transform 180ms ease-out; }
 .v2-cinematic:not(.v2-app-ready) .chat-launcher { opacity: 0; pointer-events: none; visibility: hidden; }
 .v2-static-welcome { font-size: var(--type-small); color: var(--muted); padding-top: max(1rem, env(safe-area-inset-top)); margin-bottom: 0; }
 

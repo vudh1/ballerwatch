@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.6.3",
+  "currentVersion": "11.6.4",
   "releases": [
+    {
+      "version": "11.6.4",
+      "date": "2026-10-25",
+      "type": "patch",
+      "source": "user-feedback",
+      "title": "Make deliberate rewind work after repeat visits; clarify Vela TV ICS refresh",
+      "webAnnouncement": "You can deliberately pull down from the top of BallerWatch to rewind the soccer intro, even after it was seen or skipped. A light pull meets subtle resistance on desktop and iPhone. Changing followed teams now clearly reminds you to replace the BallerWatch calendar URL saved in Vela TV.",
+      "changes": [
+        "Repair the intro rewind gate on repeated visits when the session-loaded dashboard no longer has the cinematic canvas mounted; restore it only after a deliberate pull, without replaying the launch splash.",
+        "Protect iOS touch inertia at the dashboard boundary, rearm after returning from the scene, and add small elastic visual feedback to resisted upward gestures.",
+        "Keep the ordinary scrolling, nested lists, dialogs, Skip Intro, reduced-motion access, and offline fallback unchanged.",
+        "Explain that the ICS link embeds device selections: after changing watched teams, copy and replace Vela TV's BallerWatch source; Vela currently shows only the next seven days.",
+        "Add browser regression checks for repeat visits and touch and document cross-app limitations without exposing device selections."
+      ]
+    },
     {
       "version": "11.6.3",
       "date": "2026-10-25",

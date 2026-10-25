@@ -539,6 +539,86 @@ try {
         await context.close();
       });
 
+      await scenario(`${engine}: repeat-visit dashboard resists weak rewind and reopens on a firm pull`, async () => {
+        const { context, page, errors } = await prepare(browser);
+        await ready(page);
+        await page.waitForFunction(() => !document.documentElement.classList.contains("v2-launching"));
+        await page.locator("#skip-intro").click();
+        await page.reload();
+        await page.waitForFunction(() => document.documentElement.dataset.timelineReady === "true");
+        assert.equal(await page.locator("#soccer-intro").isVisible(), false);
+        const result = await page.evaluate(() => {
+          const gesture = (deltaY) => {
+            const event = new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY });
+            window.dispatchEvent(event);
+            return {
+              canceled: event.defaultPrevented,
+              cinematic: document.documentElement.classList.contains("v2-cinematic"),
+              y: scrollY,
+              resisted: document.documentElement.classList.contains("v2-rewind-resisting"),
+            };
+          };
+          const first = gesture(-45);
+          const second = gesture(-65);
+          const third = gesture(-60);
+          const stage = document.querySelector("#soccer-stage");
+          const distance = document.querySelector("#soccer-intro").offsetHeight - stage.clientHeight;
+          return { first, second, third, distance };
+        });
+        assert.equal(result.first.canceled, true);
+        assert.equal(result.first.cinematic, false);
+        assert.equal(result.first.resisted, true);
+        assert.equal(result.second.cinematic, false);
+        assert.equal(result.third.cinematic, true);
+        assert.ok(result.third.y < result.distance);
+        await page.waitForFunction(() => Number(document.documentElement.dataset.sceneProgress) < 1);
+        const timelineCopy = await page.locator("#scene-description").textContent();
+        assert.match(timelineCopy, /Vela TV|NBA and world football/);
+        assert.deepEqual(errors, []);
+        await context.close();
+      });
+
+      await scenario(`${engine}: touch pull must overcome a fresh threshold from an already-open dashboard`, async () => {
+        const { context, page, errors } = await prepare(browser, {
+          viewport: { width: 390, height: 844 }, hasTouch: true,
+          ...(engine === "firefox" ? {} : { isMobile: true }),
+        });
+        await ready(page);
+        await page.waitForFunction(() => !document.documentElement.classList.contains("v2-launching"));
+        await page.locator("#skip-intro").click();
+        await page.reload();
+        await page.waitForFunction(() => document.documentElement.dataset.timelineReady === "true");
+        const result = await page.evaluate(() => {
+          const target = document.querySelector("#matchday-app");
+          // WebKit desktop prohibits Touch/TouchEvent constructors even with
+          // a touch-enabled context. DOM dispatch still exercises the actual
+          // listener and its cancelable touch payload on every engine.
+          const touch = y => ({ identifier: 1, target, clientX: 120, clientY: y });
+          function send(type, y) {
+            const event = new Event(type, { bubbles: true, cancelable: true });
+            Object.defineProperties(event, {
+              touches: { value: type === "touchend" ? [] : [touch(y)] },
+              targetTouches: { value: type === "touchend" ? [] : [touch(y)] },
+              changedTouches: { value: [touch(y)] },
+            });
+            target.dispatchEvent(event);
+            return { prevented: event.defaultPrevented,
+              cinematic: document.documentElement.classList.contains("v2-cinematic") };
+          }
+          const first = send("touchstart", 80);
+          const short = send("touchmove", 130);
+          const firm = send("touchmove", 200);
+          send("touchend", 200);
+          return { first, short, firm };
+        });
+        assert.equal(result.short.prevented, true);
+        assert.equal(result.short.cinematic, false);
+        assert.equal(result.firm.prevented, true);
+        assert.equal(result.firm.cinematic, true);
+        assert.deepEqual(errors, []);
+        await context.close();
+      });
+
       await scenario(`${engine}: feature tour keeps Settings and Inbox tappable during the reveal`, async () => {
         const { context, page, errors } = await prepare(browser);
         await ready(page);
