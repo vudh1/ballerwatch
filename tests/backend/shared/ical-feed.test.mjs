@@ -24,7 +24,7 @@ test("daylight savings applies to November and all-day when kickoff is unknown",
 test("escape injection and keep watch events separate", () => {
   const text = calendarToIcs([{ id:"watch:nba:42", kind:"watch", sport:"basketball",
     title:"A,B;C\\D\nX", startUtc:"2026-10-26T00:00:00Z"}]);
-  assert.match(text, /Watching \\, professional sports/);
+  assert.match(text, /DESCRIPTION:Watching · professional sports/);
   assert.match(text, /A\\,B\\;C\\\\D\\nX/);
   assert.match(text, /DTEND:20261026T030000Z/);
 });
