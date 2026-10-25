@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.8.2",
+  "currentVersion": "11.9.0",
   "releases": [
+    {
+      "version": "11.9.0",
+      "date": "2026-10-25",
+      "type": "minor",
+      "source": "user-feedback",
+      "title": "Quieter Watching, Prime Video and reliable pickup preferences",
+      "changes": [
+        "Display plain matching channel names on Watching cards without the DrogonTV guide prompt; show uncertainty in match details.",
+        "Preindex specific 2026–27 NBA Prime Video matches published by the NBA when ESPN leaves broadcast details blank. Never infer coverage from weekdays or fetch providers during page load.",
+        "Fix the anonymous RSVP name selector's ISO date filter and retry next published pickup roster when initial calendar load completes; preserve private rosters and manual entry.",
+        "Default Watching day cards to two months with persistent device-local 2-week/1-/2-/3-/6-month and maximum options, without truncating indexed fixtures or subscriptions.",
+        "Preserve iPhone's single-card WebKit carousel fix and restore intro rewind resistance after scrolling down then back up, including noncancelable Safari touch and wheel events."
+      ]
+    },
     {
       "version": "11.8.2",
       "date": "2026-10-25",
