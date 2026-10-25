@@ -29,6 +29,8 @@ const rewindGate = createRewindGate();
 let touchLastY = null;
 let touchStartX = null;
 let touchStartY = null;
+let touchStartScroll = 0;
+let touchOvershoot = 0;
 let touchHorizontal = false;
 let touchUnlocked = false;
 let rewindUnlocked = false;
@@ -60,6 +62,8 @@ export function finishIntro({ focus = false } = {}) {
   touchLastY = null;
   touchStartX = null;
   touchStartY = null;
+  touchStartScroll = 0;
+  touchOvershoot = 0;
   touchHorizontal = false;
   touchUnlocked = false;
   rewindUnlocked = false;
@@ -217,8 +221,10 @@ function rewindWheel(event) {
   // Scroll through the main feed normally. Only its final upward boundary
   // consumes pull distance; these events remain cancelable on iOS/desktop.
   const overshoot = boundary - position - delta;
-  if (overshoot <= 0 || !event.cancelable) return;
-  event.preventDefault();
+  if (overshoot <= 0) return;
+  // Safari and trackpads sometimes deliver an uncancelable momentum event.
+  // Still charge the gate and clamp the protected boundary on scroll.
+  if (event.cancelable) event.preventDefault();
   window.scrollTo({ top: boundary, behavior: "instant" });
   rewindLockUntil = performance.now() + 650;
   const result = rewindGate.pull("wheel", overshoot, performance.now());
@@ -231,6 +237,8 @@ function rewindTouchStart(event) {
   touchLastY = touch?.clientY ?? null;
   touchStartY = touchLastY;
   touchStartX = touch?.clientX ?? null;
+  touchStartScroll = Math.max(0, window.scrollY - rewindBoundary());
+  touchOvershoot = 0;
   touchHorizontal = false;
   touchUnlocked = false;
   rewindGate.reset("touch");
@@ -252,17 +260,30 @@ function rewindTouchMove(event) {
   }
   if (touchHorizontal || touchUnlocked || rewindUnlocked || !guardReady(event) ||
       !startedOnDashboard) return;
-  if (pull <= 0) {
-    rewindGate.reset("touch");
-    clearRewindTension();
-    return;
-  }
   const boundary = rewindBoundary();
   const position = Math.max(0, window.scrollY);
-  // Let a swipe from below the top scroll the feed normally, charging only
-  // the portion that would cross into the cinematic section.
-  const overshoot = pull - Math.max(0, position - boundary);
+  if (pull <= 0) {
+    // A changed direction starts a new gesture budget. Do not allow small
+    // downward movements in the feed to inherit an old partial pull.
+    if (pull < -2) {
+      touchStartY = y;
+      touchStartScroll = Math.max(0, position - boundary);
+      touchOvershoot = 0;
+      rewindGate.reset("touch");
+      clearRewindTension();
+    }
+    return;
+  }
+  // A drag may BEGIN deep inside the dashboard. Count the whole movement
+  // against its original distance to the top, rather than subtracting the
+  // remaining distance anew on every touchmove (which lost the resistance).
+  // The per-frame bound also tolerates Safari toolbar and momentum shifts.
+  const fromStart = Math.max(0, y - touchStartY - touchStartScroll);
+  const acrossEdge = Math.max(0, pull - Math.max(0, position - boundary));
+  const cumulative = Math.max(fromStart, touchOvershoot + acrossEdge);
+  const overshoot = Math.max(0, cumulative - touchOvershoot);
   if (overshoot <= 0) return;
+  touchOvershoot = cumulative;
   rewindLockUntil = performance.now() + 1600;
   // Mobile Safari sometimes marks a touchmove non-cancelable after initiating
   // a native scroll. Still account for its physical pull; the scroll listener
@@ -285,6 +306,8 @@ function rewindTouchEnd() {
   touchLastY = null;
   touchStartX = null;
   touchStartY = null;
+  touchStartScroll = 0;
+  touchOvershoot = 0;
   touchHorizontal = false;
   touchUnlocked = false;
   startedOnDashboard = false;

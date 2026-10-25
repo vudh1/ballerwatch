@@ -11,12 +11,12 @@
   <meta name="apple-mobile-web-app-title" content="BallerWatch">
   <meta name="description" content="A moment of football. Then everything you need for your next match.">
   <title>BallerWatch — Your matchday</title>
-  <link rel="manifest" href="./manifest.webmanifest?v=11.8.2">
-  <link rel="icon" href="./icon.svg?v=11.8.2" type="image/svg+xml">
-  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=11.8.2">
-  <script src="./v2/prepaint.js?v=11.8.2"></script>
-  <link rel="stylesheet" href="./styles.css?v=11.8.2">
-  <link rel="stylesheet" href="./v2/styles.css?v=11.8.2">
+  <link rel="manifest" href="./manifest.webmanifest?v=11.9.0">
+  <link rel="icon" href="./icon.svg?v=11.9.0" type="image/svg+xml">
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=11.9.0">
+  <script src="./v2/prepaint.js?v=11.9.0"></script>
+  <link rel="stylesheet" href="./styles.css?v=11.9.0">
+  <link rel="stylesheet" href="./v2/styles.css?v=11.9.0">
 </head>
 <body>
   <div class="status-bar-glass" aria-hidden="true"></div>
@@ -75,7 +75,7 @@
     <p class="v2-static-welcome" hidden>Matchday, at your pace. Motion is reduced on this device.</p>
     <header class="hero">
       <div class="brand-lockup">
-        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=11.8.2" alt=""></div>
+        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=11.9.0" alt=""></div>
         <div>
           <p class="eyebrow">SOCCER AT A GLANCE</p>
           <h1 id="matchday-heading" tabindex="-1">BallerWatch</h1>
@@ -246,7 +246,7 @@
         <div><dt>Venue</dt><dd id="watch-match-venue"></dd></div>
         <div id="watch-match-channel-row" hidden><dt>Where to watch · U.S.</dt><dd id="watch-match-channel"></dd></div>
       </dl>
-      <p id="watch-match-guide-note" class="hint" hidden>DrogonTV listings require confirmation in the channel guide.</p>
+      <p id="watch-match-guide-note" class="hint" hidden>Channel listing only; actual program availability can vary.</p>
       <a class="watch-match-source" id="watch-match-source" target="_blank"
         rel="noopener noreferrer" hidden>Official match information</a>
     </div>
@@ -638,6 +638,16 @@
               <label><input type="checkbox" id="watch-service-drogon" checked> DrogonTV</label>
               <p class="hint">Only published U.S. channels. DrogonTV channels need confirmation in your TV guide.</p>
             </fieldset>
+            <label for="watch-day-range">Match days shown</label>
+            <select id="watch-day-range" aria-label="How far ahead to show Watching day cards">
+              <option value="2w">2 weeks</option>
+              <option value="1m">1 month</option>
+              <option value="2m" selected>2 months</option>
+              <option value="3m">3 months</option>
+              <option value="6m">6 months</option>
+              <option value="max">Maximum available</option>
+            </select>
+            <p class="hint">This only limits the Watching day cards. Full future fixtures and calendar subscriptions remain indexed.</p>
             <p class="hint" id="watch-teams-status" role="status">Professional fixtures are indexed weekly. TV and third-party calendar apps refresh on their own schedule.</p>
           </div>
           <section class="calendar-subscribe-settings" aria-label="Share my sports calendar">
@@ -809,7 +819,7 @@
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=11.8.2"></script>
-  <script type="module" src="./v2/app.js?v=11.8.2"></script>
+  <script type="module" src="./app.js?v=11.9.0"></script>
+  <script type="module" src="./v2/app.js?v=11.9.0"></script>
 </body>
 </html>

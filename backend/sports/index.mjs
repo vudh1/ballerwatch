@@ -8,6 +8,7 @@ import fs from "node:fs";
 import { pathToFileURL } from "node:url";
 import { encryptState, decryptState } from "../shared/state-crypto.mjs";
 import { publishedUsBroadcasts } from "./broadcasts.mjs";
+import { withPublishedPrimeVideo } from "./prime-video.mjs";
 import { DROGON_LINEUP_CAPTURED_AT, matchDrogonChannels } from "./drogon-lineup.mjs";
 export const SPORTS_INDEX_PATH = "sports/state/fixtures.json";
 export const COMPETITIONS = Object.freeze([
@@ -91,7 +92,7 @@ export function parsedFixtures(payload, comp, teamIdNames = new Map()) {
     const part = key => parts.find(p => p.type === key)?.value || "";
     const date = [part("year"), part("month"), part("day")].join("-");
     const broadcasts = publishedUsBroadcasts(event, comp);
-    games.push({
+    const fixture = {
       id: `watch:${comp.code}:${String(event.id).slice(0, 60)}`,
       kind: "watch", sport: comp.sport, competition: comp.label,
       title: `${first} vs ${second}`,
@@ -103,7 +104,11 @@ export function parsedFixtures(payload, comp, teamIdNames = new Map()) {
       drogonChannels: matchDrogonChannels(broadcasts),
       drogonBroadcastKey: JSON.stringify(broadcasts),
       url: /^https:\/\//.test(event?.links?.[0]?.href || "") ? String(event.links[0].href).slice(0, 400) : "",
-    });
+    };
+    const confirmed = withPublishedPrimeVideo(fixture);
+    confirmed.drogonChannels = matchDrogonChannels(confirmed.broadcasts);
+    confirmed.drogonBroadcastKey = JSON.stringify(confirmed.broadcasts);
+    games.push(confirmed);
   }
   return games;
 }
@@ -220,10 +225,11 @@ export async function indexSports(fetcher = fetch, today = new Date(), previous 
   // The match-to-lineup join is prepared in Actions, including older fixtures
   // retained after upstream failures. API reads and mobile renders do no join.
   const games = [...fixtureMap.values()].sort((a, b) => a.startUtc.localeCompare(b.startUtc))
-    .slice(0, 6000).map(game => ({ ...game,
-      drogonChannels: matchDrogonChannels(game.broadcasts),
-      drogonBroadcastKey: JSON.stringify(game.broadcasts || []),
-    }));
+    .slice(0, 6000).map(game => {
+      const confirmed = withPublishedPrimeVideo(game);
+      return { ...confirmed, drogonChannels: matchDrogonChannels(confirmed.broadcasts),
+        drogonBroadcastKey: JSON.stringify(confirmed.broadcasts || []) };
+    });
   const result = {
     updatedAt: today.toISOString(),
     broadcastUpdatedAt: today.toISOString(),
@@ -282,9 +288,11 @@ export async function refreshUpcomingBroadcasts(fetcher = fetch, today = new Dat
   if (!successfulMonths) throw new Error("Unable to refresh any sports broadcasts");
   // Daily broadcasts can change without changing fixture IDs. Refresh all
   // precomputed joins even when ESPN reports no new assignment.
-  const games = previous.games.map(game => ({ ...game,
-    drogonChannels: matchDrogonChannels(game.broadcasts),
-  }));
+  const games = previous.games.map(game => {
+    const confirmed = withPublishedPrimeVideo(game);
+    return { ...confirmed, drogonChannels: matchDrogonChannels(confirmed.broadcasts),
+      drogonBroadcastKey: JSON.stringify(confirmed.broadcasts || []) };
+  });
   return { ...previous, games, broadcastUpdatedAt: today.toISOString(),
     drogonLineupCapturedAt: DROGON_LINEUP_CAPTURED_AT,
     broadcastCoverage: { successfulMonths, changed } };

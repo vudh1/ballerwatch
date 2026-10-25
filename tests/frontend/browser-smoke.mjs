@@ -304,7 +304,7 @@ try {
         await page.locator("#watch-day-list .watch-day-card[aria-hidden='false'] .watch-match-row").nth(1).click();
         assert.equal(await page.locator("#watch-match-title").textContent(),
           "Fixture Lakers vs Fixture Warriors");
-        assert.match(await page.locator("#watch-match-channel").textContent(), /DrogonTV guide/);
+        assert.equal(await page.locator("#watch-match-channel").textContent(), "NBA TV");
         await page.locator("#close-watch-match").click();
         await openHubTab(page, "settings");
         await page.locator("#watch-service-drogon").evaluate(element => {
@@ -323,7 +323,7 @@ try {
         });
         await page.locator("#close-settings").click();
         await page.locator("#watch-day-list .watch-day-card[aria-hidden='false'] .watch-match-row").nth(1).click();
-        assert.match(await page.locator("#watch-match-channel").textContent(), /DrogonTV guide/);
+        assert.equal(await page.locator("#watch-match-channel").textContent(), "NBA TV");
         await page.locator("#close-watch-match").click();
         await page.locator("#watch-next").click();
         assert.equal(await page.locator("#watch-day-position").textContent(), "2 / 2 days");
@@ -405,6 +405,10 @@ try {
           await page.locator("#watch-teams-trigger").click();
           await page.locator("#watch-teams-search").fill("Fixture Lakers");
           await page.locator('#watch-teams-options [role="option"]').first().click();
+          // Ordinary visitors see two months; the complete indexed horizon
+          // is available as an explicit device-local setting.
+          assert.equal(await page.locator("#watch-day-range").inputValue(), "2m");
+          await page.locator("#watch-day-range").selectOption("max");
           await page.locator("#close-settings").click();
           await page.locator("#mode-watch").click();
           await page.waitForFunction(() =>
@@ -810,6 +814,85 @@ try {
         assert.equal(state.resisted, true, "Safari still gets tactile boundary feedback");
         assert.equal(state.strong.cinematic, true, "Safari firm pull must rewind");
         assert.deepEqual(errors, []);
+        await context.close();
+      });
+
+      await scenario(`${engine}: a small downward scroll followed by upward wheels still resists the intro`, async () => {
+        const { context, page, errors } = await prepare(browser);
+        await ready(page);
+        await page.waitForFunction(() => !document.documentElement.classList.contains("v2-launching"));
+        await page.locator("#skip-intro").click();
+        const state = await page.evaluate(async () => {
+          const intro = document.querySelector("#soccer-intro");
+          const stage = document.querySelector("#soccer-stage");
+          const boundary = intro.offsetHeight - stage.clientHeight;
+          const tick = () => new Promise(resolve => requestAnimationFrame(resolve));
+          window.scrollTo({top:boundary+110,behavior:"instant"});
+          await tick();
+          const wheel = dy => {
+            const event = new WheelEvent("wheel", {bubbles:true,cancelable:true,deltaY:dy});
+            window.dispatchEvent(event);
+            return {canceled:event.defaultPrevented,scroll:window.scrollY,
+              resisted:document.documentElement.classList.contains("v2-rewind-resisting")};
+          };
+          const free = wheel(-60);
+          // The browser normally scrolls the feed before reaching its edge.
+          window.scrollTo({top:boundary+12,behavior:"instant"});
+          await tick();
+          const edge = wheel(-65);
+          const firm = wheel(-200);
+          return {free,edge,firm,boundary,
+            cinematic:document.documentElement.classList.contains("v2-cinematic")};
+        });
+        assert.equal(state.free.canceled, false, "Down-page movement remains native");
+        assert.equal(state.edge.canceled, true, "Crossing the dashboard edge must be intercepted");
+        assert.equal(state.edge.resisted, true, "Crossing edge must visibly resist");
+        assert.equal(state.firm.canceled, true);
+        assert.equal(state.cinematic, true);
+        assert.ok(state.firm.scroll < state.boundary);
+        assert.deepEqual(errors, []);
+        await context.close();
+      });
+
+      await scenario(`${engine}: a long upward touch starting below the edge still resists`, async () => {
+        const {context,page,errors} = await prepare(browser, {
+          viewport:{width:390,height:844},hasTouch:true,
+          ...(engine === "firefox" ? {} : {isMobile:true}),
+        });
+        await ready(page);
+        await page.waitForFunction(() => !document.documentElement.classList.contains("v2-launching"));
+        await page.locator("#skip-intro").click();
+        const state = await page.evaluate(() => {
+          const target=document.querySelector("#matchday-app");
+          const stage=document.querySelector("#soccer-stage");
+          const boundary=document.querySelector("#soccer-intro").offsetHeight-stage.clientHeight;
+          window.scrollTo({top:boundary+130,behavior:"instant"});
+          const send=(type,y,cancelable=true)=>{
+            const touch={identifier:2,target,clientX:100,clientY:y};
+            const event=new Event(type,{bubbles:true,cancelable});
+            Object.defineProperties(event,{
+              touches:{value:type==="touchend"?[]:[touch]},
+              changedTouches:{value:[touch]},
+            });
+            target.dispatchEvent(event);
+            return {canceled:event.defaultPrevented,
+              resisting:document.documentElement.classList.contains("v2-rewind-resisting"),
+              cinematic:document.documentElement.classList.contains("v2-cinematic")};
+          };
+          send("touchstart",100);
+          const inside=send("touchmove",155);
+          window.scrollTo({top:boundary+8,behavior:"instant"});
+          const crossed=send("touchmove",235,false);
+          const firm=send("touchmove",390,false);
+          send("touchend",390);
+          return {inside,crossed,firm,boundary,position:window.scrollY};
+        });
+        assert.equal(state.inside.canceled,false);
+        assert.equal(state.crossed.canceled,false,"Safari can mark mid-swipe touch uncancelable");
+        assert.equal(state.crossed.resisting,true,"The partial drag still shows resistance");
+        assert.equal(state.firm.cinematic,true,"Continuing the same swipe reopens intro");
+        assert.ok(state.position < state.boundary);
+        assert.deepEqual(errors,[]);
         await context.close();
       });
 

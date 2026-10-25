@@ -28,13 +28,10 @@ export function watchCoverage(game, services = DEFAULT_WATCH_SERVICES) {
     ? [...new Set(game.drogonChannels.filter(name =>
       typeof name === "string" && name.length <= 50))] : [];
   if (services.drogon !== false && lineupMatches.length && available.length < 2) {
+    // Quiet match cards show the channel name only. A separately labeled
+    // detail note retains uncertainty about actual programme availability.
     const alternative = lineupMatches.find(name => !available.includes(name));
-    if (alternative) available.push(`${alternative} · check DrogonTV guide`);
-    else if (available.length === 1 && lineupMatches.includes(available[0])) {
-      // Explain how to find the same published ESPN broadcast in the user's
-      // Drogon channel inventory without presenting it as a confirmed airing.
-      available[0] += " · check DrogonTV guide";
-    }
+    if (alternative) available.push(alternative);
   }
   // No unverified program guesses for UK/NZ feeds or ESPN+/Peacock/Paramount+.
   return available.slice(0, 2).join(" · ");

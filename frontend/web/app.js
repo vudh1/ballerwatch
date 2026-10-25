@@ -35,6 +35,8 @@ import { createFirstRunWizard, isFirstRunDevice } from "./lib/first-run.js";
 import { PLAY, WATCH, modeGames, watchMatchDetails } from "./lib/match-modes.mjs";
 import { DEFAULT_WATCH_SERVICES } from "./lib/watch-coverage.mjs";
 import { watchedDayGroups, watchedDaySportIcons } from "./lib/watch-day-groups.mjs";
+import { DEFAULT_WATCH_DAY_WINDOW, validWatchDayWindow, watchWindowDays } from "./lib/watch-horizon.mjs";
+import { nextPublishedPickupDate } from "./lib/rsvp-choice-source.mjs";
 import { readGuestProfile, saveGuestProfile, MAX_GUEST_TEAMS,
   DEVICE_GUEST_PROFILE_KEY } from "./lib/guest-profile.js";
 import {
@@ -255,11 +257,16 @@ let guestTeamSelector = null;
 let guestNameSelector = null;
 let watchTeamSelector = null;
 let firstRunWizard = null;
+let rsvpNameOptionsAwaitCalendar = false;
 let calendarSync = null;
 let watchedGames = [];
 let watchedTeams = [];
 let watchedUpdatedAt = "";
-const WATCH_DAY_HORIZON = 366; // Precompute published fixture days for a stable carousel total.
+// Only the rendered day cards are windowed: the full indexed year stays intact.
+const WATCH_DAY_WINDOW_KEY = experienceKey("ballerwatch-watch-day-window-v1", "watch-day-window");
+let watchDayWindow = DEFAULT_WATCH_DAY_WINDOW;
+try { watchDayWindow = validWatchDayWindow(localStorage.getItem(WATCH_DAY_WINDOW_KEY)); }
+catch { /* Use default when device-local storage is disabled. */ }
 let activeMatchMode = PLAY;
 const modeSelections = {
   play: { id: "", date: "" },
@@ -1748,12 +1755,8 @@ async function loadRsvpNameOptions() {
   firstRunWizard?.setNameOptions(guestProfile.name ? [guestProfile.name] : []);
   // Public roster access is explicitly scoped to one published pickup date.
   // Never index identities across dates or persist names from the roster.
-  const upcoming = (currentCalendar?.games || [])
-    .filter(game => game?.kind === "pickup" && game.reserved != null &&
-      /^\\d{4}-\\d{2}-\\d{2}$/.test(game.sourceDate || game.date || "") &&
-      (game.sourceDate || game.date) >= todaySeattleKey())
-    .sort((a, b) => String(a.sourceDate || a.date).localeCompare(String(b.sourceDate || b.date)));
-  const date = upcoming[0]?.sourceDate || upcoming[0]?.date;
+  const date = nextPublishedPickupDate(currentCalendar?.games || [], todaySeattleKey());
+  rsvpNameOptionsAwaitCalendar = !date;
   if (!date) {
     if (status) status.textContent = "No upcoming published pickup roster. Search and add your own name.";
     return;
@@ -2059,7 +2062,7 @@ async function registerServiceWorker() {
     void syncServiceWorkerRsvpState();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=11.8.2", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=11.9.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -2930,7 +2933,9 @@ function calendarVisibleDates() {
   if (calendarExpanded) {
     const latest = latestCalendarGameDate();
     const span = Math.max(14, isoDayDistance(base, latest) + 1);
-    const days = Math.ceil(span / 7) * 7;
+    const visibleSpan = activeMatchMode === WATCH
+      ? Math.min(span, watchWindowDays(base, watchDayWindow)) : span;
+    const days = Math.ceil(visibleSpan / 7) * 7;
     return Array.from({ length: days }, (_, index) => addIsoDays(base, index));
   }
 
@@ -3410,7 +3415,8 @@ function showWatchDetails(game) {
   els.watchMatchVenue.textContent = details.location;
   els.watchMatchChannel.textContent = details.whereToWatch;
   els.watchMatchChannelRow.hidden = !details.whereToWatch;
-  els.watchMatchGuideNote.hidden = !details.whereToWatch.includes("DrogonTV guide");
+  els.watchMatchGuideNote.hidden = watchServices.drogon === false ||
+    !Array.isArray(game.drogonChannels) || !game.drogonChannels.length;
   els.watchMatchSource.hidden = true;
   els.watchMatchSource.removeAttribute("href");
   try {
@@ -3519,7 +3525,8 @@ function stepWatchDay(direction) {
 function renderWatchDayList() {
   if (!els.watchDayList) return;
   const start = activeCalendarStartDate();
-  watchDayGroupsCache = start ? watchedDayGroups(watchedGames, start, WATCH_DAY_HORIZON) : [];
+  watchDayGroupsCache = start ? watchedDayGroups(watchedGames, start,
+    watchWindowDays(start, watchDayWindow)) : [];
   if (start && !watchDayGroupsCache.length) {
     watchDayGroupsCache = [{ date: start, matches: [] }];
   }
@@ -4498,6 +4505,12 @@ async function loadCalendar({ initial = false } = {}) {
     } else {
       els.calendarUpdated.textContent = matchUpdatedText(next.updatedAt) || "Updated pending";
     }
+    // First-run can open while initial fixtures are still loading. Retry the
+    // one published-date RSVP dropdown then, never with a global name index.
+    if (rsvpNameOptionsAwaitCalendar &&
+        (els.settingsDialog?.open || document.querySelector("#first-run-dialog")?.open)) {
+      void loadRsvpNameOptions();
+    }
     return true;
   } catch {
     // Preserve the real source timestamp instead of writing a transient
@@ -5438,6 +5451,15 @@ document.addEventListener("visibilitychange", () => {
 });
 
 document.documentElement.classList.toggle("is-standalone", standalone());
+const watchDayWindowSelect = document.querySelector("#watch-day-range");
+if (watchDayWindowSelect) {
+  watchDayWindowSelect.value = watchDayWindow;
+  watchDayWindowSelect.addEventListener("change", () => {
+    watchDayWindow = validWatchDayWindow(watchDayWindowSelect.value);
+    try { localStorage.setItem(WATCH_DAY_WINDOW_KEY, watchDayWindow); } catch {}
+    if (activeMatchMode === WATCH) renderActiveMode();
+  });
+}
 for (const name of Object.keys(watchServices)) {
   const control = document.querySelector("#watch-service-" + name);
   if (!control) continue;
