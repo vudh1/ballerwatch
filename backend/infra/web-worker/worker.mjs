@@ -3051,7 +3051,9 @@ export function webCalendarDetails(
 
 async function loadSportsIndex(env) {
   return publicReadCache.get("sports-fixture-index-v1", 300_000, async () => {
-    const encrypted = await githubFile(env, "sports/state/fixtures.json", "runtime-state");
+    // This encrypted annual catalogue can exceed GitHub Contents API's 1 MB
+    // JSON/base64 file limit. The raw media type supports files up to 100 MB.
+    const encrypted = await githubRawJsonFile(env, "sports/state/fixtures.json", "runtime-state");
     const snapshot = await decryptState(encrypted, env);
     if (!snapshot || !Array.isArray(snapshot.teams) || !Array.isArray(snapshot.games)) {
       throw new Error("Professional fixture index unavailable.");
