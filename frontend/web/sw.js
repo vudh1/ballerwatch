@@ -17,6 +17,7 @@ const ROOT_SHELL = [
   "./v2/app.js?v=11.6.3",
   "./v2/timeline.js",
   "./v2/scene-config.mjs",
+  "./v2/rewind-gate.mjs",
   "./v2/assets/stadium.svg",
   "./manifest.webmanifest?v=11.6.3",
   "./icon.svg?v=11.6.3",
