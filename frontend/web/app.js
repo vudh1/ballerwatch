@@ -32,7 +32,7 @@ import {
 import { createSettingsChoice } from "./lib/settings-choice.js";
 import { PLAY, WATCH, modeGames, watchMatchDetails } from "./lib/match-modes.mjs";
 import { DEFAULT_WATCH_SERVICES } from "./lib/watch-coverage.mjs";
-import { watchedDayGroups } from "./lib/watch-day-groups.mjs";
+import { watchedDayGroups, watchedDaySportIcons } from "./lib/watch-day-groups.mjs";
 import { readGuestProfile, saveGuestProfile, MAX_GUEST_TEAMS } from "./lib/guest-profile.js";
 import {
   applyLocalMatchEdits, readLocalMatchEdits, setLocalMatchOverride,
@@ -253,7 +253,7 @@ let watchTeamSelector = null;
 let watchedGames = [];
 let watchedTeams = [];
 let watchedUpdatedAt = "";
-let watchVisibleDays = 14;
+const WATCH_DAY_HORIZON = 366; // Precompute published fixture days for a stable carousel total.
 let activeMatchMode = PLAY;
 const modeSelections = {
   play: { id: "", date: "" },
@@ -2757,9 +2757,21 @@ function renderCalendarGrid() {
       const weatherGame = [...games].sort((a, b) => gameWeatherRank(b) - gameWeatherRank(a))[0];
       const weather = document.createElement("span");
       weather.className = "calendar-mini-weather";
-      weather.textContent = weatherGame.weather
-        ? `${weatherGlyph(weatherGame.weather.weatherCode)} ${weatherGame.weather.rainProbability ?? "—"}%`
-        : activeMatchMode === WATCH && games.some(game => game.sport === "basketball") ? "🏀" : "⚽";
+      if (activeMatchMode === WATCH) {
+        // Display both icons when a date includes soccer and basketball; never
+        // obscure sport types with match counts or weather from a different mode.
+        weather.classList.add("calendar-watch-sports");
+        const icons = watchedDaySportIcons(games);
+        weather.textContent = icons.join(" ");
+        weather.setAttribute("aria-hidden", "true");
+        if (icons.length) button.setAttribute("aria-label",
+          button.getAttribute("aria-label") + ": " +
+          icons.map(icon => icon === "⚽" ? "soccer" : "basketball").join(" and "));
+      } else {
+        weather.textContent = weatherGame.weather
+          ? `${weatherGlyph(weatherGame.weather.weatherCode)} ${weatherGame.weather.rainProbability ?? "—"}%`
+          : "⚽";
+      }
       button.append(weather);
     }
 
@@ -2816,9 +2828,6 @@ function selectCalendarDate(date, { scrollToSpotlight = false, gameId = "" } = {
 
   selectedCalendarDate = date;
   if (activeMatchMode === WATCH) {
-    const start = activeCalendarStartDate();
-    const distance = isoDayDistance(start, date);
-    if (distance >= watchVisibleDays) watchVisibleDays = Math.min(366, distance + 1);
     renderWatchDayList();
     for (const button of els.calendarGrid.querySelectorAll(".calendar-day")) {
       button.setAttribute("aria-selected", String(button.dataset.date === date));
@@ -3201,10 +3210,8 @@ function syncWatchDaySlide(index = 0) {
   }
   const height = slides[target].offsetHeight;
   if (height > 0) els.watchDayViewport.style.height = height + "px";
-  const more = watchVisibleDays < 366 && watchedGames.some(game =>
-    game.date > addIsoDays(activeCalendarStartDate(), watchVisibleDays - 1));
   els.watchPrevious.disabled = target === 0;
-  els.watchNext.disabled = target === slides.length - 1 && !more;
+  els.watchNext.disabled = target === slides.length - 1;
   els.watchDayPosition.textContent = `${target + 1} / ${slides.length} days`;
   for (const day of els.calendarGrid.querySelectorAll(".calendar-day")) {
     day.setAttribute("aria-selected", String(day.dataset.date === date));
@@ -3213,22 +3220,11 @@ function syncWatchDaySlide(index = 0) {
 
 function stepWatchDay(direction) {
   if (activeMatchMode !== WATCH || !direction) return;
-  let slides = watchDaySlides();
+  const slides = watchDaySlides();
   const index = slides.findIndex(slide => slide.dataset.watchDate === selectedCalendarDate);
-  if (direction > 0 && index >= slides.length - 1 && watchVisibleDays < 366) {
-    const priorDate = selectedCalendarDate;
-    const lastGameDate = watchedGames.map(game => game.date).filter(Boolean).sort().at(-1);
-    while (watchVisibleDays < 366 && lastGameDate &&
-        lastGameDate > addIsoDays(activeCalendarStartDate(), watchVisibleDays - 1)) {
-      watchVisibleDays = Math.min(366, watchVisibleDays + 14);
-      const groups = watchedDayGroups(watchedGames, activeCalendarStartDate(), watchVisibleDays);
-      if (groups.some(group => group.date > priorDate)) break;
-    }
-    renderWatchDayList();
-    slides = watchDaySlides();
-  }
-  const current = slides.findIndex(slide => slide.dataset.watchDate === selectedCalendarDate);
-  syncWatchDaySlide(current + Math.sign(direction));
+  // Do not expand the list during navigation: the footer denominator is the
+  // count of ALL currently indexed, upcoming match dates, not a loaded batch.
+  syncWatchDaySlide(index + Math.sign(direction));
 }
 
 function renderWatchDayList() {
@@ -3236,7 +3232,7 @@ function renderWatchDayList() {
   els.watchDayList.replaceChildren();
   const start = activeCalendarStartDate();
   if (!start) return;
-  const groups = watchedDayGroups(watchedGames, start, watchVisibleDays);
+  const groups = watchedDayGroups(watchedGames, start, WATCH_DAY_HORIZON);
   if (!groups.length) {
     const empty = document.createElement("section");
     empty.className = "card watch-day-card bw-card-frame";
