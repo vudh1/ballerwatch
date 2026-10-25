@@ -9,6 +9,7 @@ const decoder = new TextDecoder();
 const CODE = /^[A-Za-z0-9_-]{43}$/;
 const ID = /^[A-Za-z0-9_-]{22}$/;
 const PAIR_LIFETIME_MS = 5 * 60_000;
+const MANAGER_LIFETIME_MS = 2 * 365 * 86_400_000;
 
 function bytesToToken(bytes) {
   let value = "";
@@ -139,7 +140,8 @@ async function ownerProfile(db, request, id) {
   return db.prepare(`SELECT p.id, p.revision, p.read_hash, p.selection_cipher, p.read_cipher,
       m.manager_hash FROM calendar_profiles p
       JOIN calendar_managers m ON m.profile_id = p.id
-      WHERE p.id = ? AND m.manager_hash = ?`).bind(id, hash).first();
+      WHERE p.id = ? AND m.manager_hash = ? AND m.expires_ms > ?`)
+    .bind(id, hash, Date.now()).first();
 }
 async function throttle(db, request, env) {
   // Coarse accountless abuse budget; WAF rate limits are also required for rollout.
@@ -155,8 +157,8 @@ async function throttle(db, request, env) {
 async function issueManager(db, profileId, now) {
   const credential = randomToken();
   const hash = await sha256("manager:" + credential);
-  await db.prepare("INSERT INTO calendar_managers (manager_hash, profile_id, created_ms) VALUES (?, ?, ?)")
-    .bind(hash, profileId, now).run();
+  await db.prepare("INSERT INTO calendar_managers (manager_hash, profile_id, created_ms, expires_ms) VALUES (?, ?, ?, ?)")
+    .bind(hash, profileId, now, now + MANAGER_LIFETIME_MS).run();
   return credential;
 }
 function urlForToken(request, token) {
