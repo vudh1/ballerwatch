@@ -304,7 +304,7 @@ try {
         await page.locator("#watch-day-list .watch-day-card[aria-hidden='false'] .watch-match-row").nth(1).click();
         assert.equal(await page.locator("#watch-match-title").textContent(),
           "Fixture Lakers vs Fixture Warriors");
-        assert.match(await page.locator("#watch-match-channel").textContent(), /DrogonTV guide/);
+        assert.equal(await page.locator("#watch-match-channel").textContent(), "NBA TV");
         await page.locator("#close-watch-match").click();
         await openHubTab(page, "settings");
         await page.locator("#watch-service-drogon").evaluate(element => {
