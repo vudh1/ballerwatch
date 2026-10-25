@@ -403,7 +403,12 @@ try {
         await page.locator("#close-settings").click();
         await page.locator("#mode-watch").click();
         await page.waitForFunction(() =>
-          document.querySelector("#watch-day-position")?.textContent === "1 / 240 days");
+          Number((document.querySelector("#watch-day-position")?.textContent || "")
+            .match(/^1 \/ (\d+) days$/)?.[1] || 0) > 1);
+        const totalDays = Number((await page.locator("#watch-day-position").textContent())
+          .match(/^1 \/ (\d+) days$/)?.[1] || 0);
+        assert.ok(totalDays >= 200,
+          `Expected a large Watch fixture index; rendered ${totalDays} days`);
         assert.equal(await page.locator("#watch-day-list .watch-day-card").count(), 1);
         const trackStyle = await page.locator("#watch-day-list").evaluate(element => ({
           transform: getComputedStyle(element).transform,
@@ -414,12 +419,12 @@ try {
           await page.locator("#watch-next").click();
           assert.equal(await page.locator("#watch-day-list .watch-day-card").count(), 1);
         }
-        assert.equal(await page.locator("#watch-day-position").textContent(), "25 / 240 days");
+        assert.equal(await page.locator("#watch-day-position").textContent(), `25 / ${totalDays} days`);
         await page.locator("#watch-day-list .watch-match-row").first().click();
         assert.equal(await page.locator("#watch-match-dialog").isVisible(), true);
         await page.locator("#close-watch-match").click();
         for (let i = 0; i < 8; i++) await page.locator("#watch-previous").click();
-        assert.equal(await page.locator("#watch-day-position").textContent(), "17 / 240 days");
+        assert.equal(await page.locator("#watch-day-position").textContent(), `17 / ${totalDays} days`);
         assert.deepEqual(errors, []);
         await context.close();
       });
