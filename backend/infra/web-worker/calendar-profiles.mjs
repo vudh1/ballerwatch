@@ -50,15 +50,15 @@ export function normalizeCalendarSelection(body) {
   if (typeof body.pickup !== "boolean") throw new RangeError("Invalid pickup");
   return { teams: teams(body.teams, 8), watch: teams(body.watch, 20), pickup: body.pickup };
 }
-async function encryptSelection(selection, env, id) {
+async function encryptPrivate(value, env, id, purpose) {
   const nonce = crypto.getRandomValues(new Uint8Array(12));
   const key = await secretKey(env);
   const data = await crypto.subtle.encrypt({
-    name: "AES-GCM", iv: nonce, additionalData: encoder.encode("calendar-profile:v1:" + id),
-  }, key, encoder.encode(JSON.stringify(selection)));
+    name: "AES-GCM", iv: nonce, additionalData: encoder.encode("calendar-" + purpose + ":v1:" + id),
+  }, key, encoder.encode(JSON.stringify(value)));
   return bytesToToken(nonce) + "." + bytesToToken(new Uint8Array(data));
 }
-async function decryptSelection(value, env, id) {
+async function decryptPrivate(value, env, id, purpose) {
   const [nonceRaw, ciphertextRaw] = String(value || "").split(".");
   const decode = (v) => {
     if (!v || !/^[\w-]+$/.test(v)) throw new Error("Invalid profile envelope");
@@ -69,10 +69,14 @@ async function decryptSelection(value, env, id) {
   if (nonce.length !== 12) throw new Error("Invalid profile nonce");
   const key = await secretKey(env);
   const clear = await crypto.subtle.decrypt({
-    name: "AES-GCM", iv: nonce, additionalData: encoder.encode("calendar-profile:v1:" + id),
+    name: "AES-GCM", iv: nonce, additionalData: encoder.encode("calendar-" + purpose + ":v1:" + id),
   }, key, data);
-  return normalizeCalendarSelection(JSON.parse(decoder.decode(clear)));
+  return JSON.parse(decoder.decode(clear));
 }
+const encryptSelection = (selection, env, id) => encryptPrivate(selection, env, id, "selection");
+const decryptSelection = async (value, env, id) =>
+  normalizeCalendarSelection(await decryptPrivate(value, env, id, "selection"));
+
 function enabled(env) { return Boolean(env.CALENDAR_PROFILES && env.CALENDAR_SYNC_KEY); }
 function response(request, value, status = 200, extras = {}) {
   const origin = request.headers.get("Origin");
@@ -108,7 +112,7 @@ async function ownerProfile(db, request, id) {
   const token = managerToken(request);
   if (!token || !ID.test(id)) return null;
   const hash = await sha256("manager:" + token);
-  return db.prepare(`SELECT p.id, p.revision, p.read_hash, p.selection_cipher,
+  return db.prepare(`SELECT p.id, p.revision, p.read_hash, p.selection_cipher, p.read_cipher,
       m.manager_hash FROM calendar_profiles p
       JOIN calendar_managers m ON m.profile_id = p.id
       WHERE p.id = ? AND m.manager_hash = ?`).bind(id, hash).first();
@@ -153,10 +157,14 @@ export async function handleCalendarProfileRequest(request, env, renderIcs) {
   const db = env.CALENDAR_PROFILES;
   const active = enabled(env);
   if (request.method === "OPTIONS") {
-    const headers = { "access-control-allow-methods": "GET,POST,PUT,DELETE,OPTIONS",
+    const origin = request.headers.get("Origin");
+    return new Response(null, { status: 204, headers: {
+      "access-control-allow-methods": "GET,POST,PUT,DELETE,OPTIONS",
       "access-control-allow-headers": "content-type,authorization",
-      "access-control-max-age": "600" };
-    return response(request, { ok: true }, 204, headers);
+      "access-control-max-age": "600",
+      ...(requiresPwaOrigin(request) ? { "access-control-allow-origin": origin } : {}),
+      vary: "Origin",
+    } });
   }
   if (path === "/web/v1/calendar-profiles/status" && request.method === "GET") {
     return response(request, { ok: true, available: active });
@@ -190,9 +198,10 @@ export async function handleCalendarProfileRequest(request, env, renderIcs) {
       const recoveryHash = await sha256("recovery:" + recoveryToken);
       const now = Date.now();
       const cipher = await encryptSelection(selection, env, id);
+      const readCipher = await encryptPrivate(readToken, env, id, "read");
       await db.prepare(`INSERT INTO calendar_profiles
-        (id, read_hash, recovery_hash, selection_cipher, revision, created_ms, updated_ms)
-        VALUES (?, ?, ?, ?, 1, ?, ?)`).bind(id, readHash, recoveryHash, cipher, now, now).run();
+        (id, read_hash, recovery_hash, selection_cipher, read_cipher, revision, created_ms, updated_ms)
+        VALUES (?, ?, ?, ?, ?, 1, ?, ?)`).bind(id, readHash, recoveryHash, cipher, readCipher, now, now).run();
       const manager = await issueManager(db, id, now);
       return response(request, { ok: true, id, manager, recoveryCode: recoveryToken,
         url: urlForToken(request, readToken), revision: 1 }, 201);
@@ -232,7 +241,8 @@ export async function handleCalendarProfileRequest(request, env, renderIcs) {
     if (!row) return response(request, { ok: false, error: "Not found." }, 404);
     if (request.method === "GET" && !action) {
       return response(request, { ok: true, id, revision: row.revision,
-        selection: await decryptSelection(row.selection_cipher, env, id) });
+        selection: await decryptSelection(row.selection_cipher, env, id),
+        url: urlForToken(request, await decryptPrivate(row.read_cipher, env, id, "read")) });
     }
     if (request.method === "PUT" && action === "selection") {
       const data = await readBody(request);
@@ -244,8 +254,9 @@ export async function handleCalendarProfileRequest(request, env, renderIcs) {
     if (request.method === "POST" && action === "rotate") {
       const readToken = randomToken();
       const hash = await sha256("read:" + readToken);
-      await db.prepare("UPDATE calendar_profiles SET read_hash = ?, updated_ms = ? WHERE id = ?")
-        .bind(hash, Date.now(), id).run();
+      const cipher = await encryptPrivate(readToken, env, id, "read");
+      await db.prepare("UPDATE calendar_profiles SET read_hash = ?, read_cipher = ?, updated_ms = ? WHERE id = ?")
+        .bind(hash, cipher, Date.now(), id).run();
       return response(request, { ok: true, url: urlForToken(request, readToken) });
     }
     if (request.method === "POST" && action === "pairings") {
