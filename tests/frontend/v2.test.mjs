@@ -79,8 +79,8 @@ test("rewind gate requires an intentional pull, resets between gestures and hand
   assert.deepEqual(gate.pull("wheel", 35, 150), { released: true, overflow: 10 });
   assert.deepEqual(gate.pull("wheel", 35, 1000), { released: false, overflow: 0 });
   assert.deepEqual(gate.pull("wheel", 55, 2000), { released: false, overflow: 0 });
-  assert.deepEqual(gate.pull("wheel", 100, 2100), { released: false, overflow: 0 });
-  assert.deepEqual(gate.pull("wheel", 15, 2200), { released: true, overflow: 25 });
+  assert.deepEqual(gate.pull("wheel", 80, 2100), { released: false, overflow: 0 });
+  assert.deepEqual(gate.pull("wheel", 15, 2200), { released: true, overflow: 5 });
   assert.deepEqual(gate.pull("touch", 55), { released: false, overflow: 0 });
   assert.deepEqual(gate.pull("touch", 70), { released: true, overflow: 20 });
   assert.deepEqual(gate.pull("touch", 50), { released: false, overflow: 0 });
