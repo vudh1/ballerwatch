@@ -405,6 +405,10 @@ try {
           await page.locator("#watch-teams-trigger").click();
           await page.locator("#watch-teams-search").fill("Fixture Lakers");
           await page.locator('#watch-teams-options [role="option"]').first().click();
+          // Ordinary visitors see two months; the complete indexed horizon
+          // is available as an explicit device-local setting.
+          assert.equal(await page.locator("#watch-day-range").inputValue(), "2m");
+          await page.locator("#watch-day-range").selectOption("max");
           await page.locator("#close-settings").click();
           await page.locator("#mode-watch").click();
           await page.waitForFunction(() =>
