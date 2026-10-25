@@ -4,6 +4,8 @@
 
 **[Open Production](https://vudh1.github.io/ballerwatch/)** · **[Open Beta](https://vudh1.github.io/ballerwatch/beta/)** · **[Project documentation](docs/wiki/Home.md)**
 
+**v11.4.0:** Follow NBA teams, major European football clubs and UEFA/CONMEBOL national teams in a calendar-only watchlist, backed by a weekly encrypted fixture index. Export public pickup, selected RATS and watched matches as a read-only `.ics` subscription URL for Vela TV and other calendar apps. No Google Calendar login is needed; links embed the selected team names and must be copied again after changing them. Fixture coverage comes from an unofficial, best-effort source and may be incomplete when upstream listings are unavailable.
+
 **v11.3.0:** Published pickup RSVP lists now identify confirmed or waitlisted participants who have requested to withdraw. Their pending requests stay visible in original RSVP order and do not change reserved-space totals until the external RSVP source removes the signup.
 
 **v11.2.5:** Cross-division RATS games now count toward both teams’ own division standings, including season played/won/drawn/lost and points. Scouting uses the same results in its last-ten sample and adjusts for opponent division strength. Forecast labels and uncapped RSVP display remain as updated in v11.2.4.
@@ -16,6 +18,8 @@
 - **Check pickup spots and RSVPs.** See capacity and the published event's RSVP roster or waitlist in signup order, without signing in. Withdrawal requests are marked beside affected names, but do not cancel a signup inside BallerWatch. Only that selected, published event's display names, guest counts and pending withdrawal status are shown.
 - **Get there.** Open directions, share a venue map link, and check available game-window weather.
 - **Follow teams.** Choose up to eight RATS teams on your device; inspect individual standings cards, historical scores, and prepared scouting reports.
+- **Watch professional sports.** Follow up to twenty NBA, top-five European league or national teams; their fixtures appear in the calendar only, never as playable match cards or standings. The separate schedule index refreshes weekly.
+- **Share your calendar.** Copy the public, read-only `.ics` subscription URL in Settings. It includes your selected RATS and watched teams plus pickup when an RSVP name is configured. Vela TV and other iCalendar clients can subscribe; recopy after changing selections.
 - **Stay informed.** Use the in-app notification center and optional Web Push for real schedule changes and reminders.
 - **Ask BallerWatch AI.** Look up indexed match facts, opponents, jersey colors and historical results. Answers are constrained by the available data.
 
@@ -48,7 +52,7 @@ The existing scouting evaluator replays matches in chronological order, compares
 
 ## Privacy and installation
 
-BallerWatch does not require a visitor account or Google Calendar access. Your RSVP name, followed teams and local match edits remain on your device until you change them or clear site data. In-app notification messages and read/deleted state expire after 24 hours. Optional push subscriptions persist until you disable them or the provider invalidates them. Published single-event pickup RSVP rosters are available on demand; there is no public searchable participant directory. Administrator software maintenance stays protected.
+BallerWatch does not require a visitor account or Google Calendar access. A shared calendar feed contains public fixture details only; the URL does not include private RSVP rosters, notification state, or user credentials. The feed address is not an authenticated, revocable private link. Your RSVP name, followed teams and local match edits remain on your device until you change them or clear site data. In-app notification messages and read/deleted state expire after 24 hours. Optional push subscriptions persist until you disable them or the provider invalidates them. Published single-event pickup RSVP rosters are available on demand; there is no public searchable participant directory. Administrator software maintenance stays protected.
 
 To install on **Android**, open BallerWatch in Chrome or a supported browser, tap **How to install** in the app, and use the native **Install app** option when offered. You can also choose **Install app** or **Add to Home screen** from the browser menu. On **iPhone/iPad**, use Safari's **Share → Add to Home Screen**, then open the installed app before enabling Web Push. On **Windows, macOS or Linux**, use the browser's install action if available, or keep using the website without installation.
 
