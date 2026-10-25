@@ -58,7 +58,7 @@ export function parsedTeamRecords(payload, comp) {
   return items.map(item => ({
     name: teamLabel(comp, item?.team?.displayName || item?.displayName),
     id: String(item?.team?.id || item?.id || "").slice(0, 30),
-  })).filter(team => team.name && /^[A-Za-z0-9_.-]{1,30}$/.test(team.id));
+  })).filter(team => team.name && (!team.id || /^[A-Za-z0-9_.-]{1,30}$/.test(team.id)));
 }
 export function parsedTeams(payload, comp) {
   return [...new Set(parsedTeamRecords(payload, comp).map(team => team.name))];
@@ -144,7 +144,7 @@ export async function indexSports(fetcher = fetch, today = new Date(), previous 
     if (!matchesFound && teamRecords.length) {
       const visited = new Set();
       for (const team of teamRecords) {
-        if (visited.has(team.id)) continue;
+        if (!team.id || visited.has(team.id)) continue;
         visited.add(team.id);
         try {
           const response = await getJson(fetcher, apiUrl(comp,
