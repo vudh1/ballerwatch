@@ -14,7 +14,8 @@
         "Provide professional sports with the same swipeable match-card treatment as personal fixtures: matchup, competition, Pacific kickoff and venue, plus separate calendar dots for same-day fixtures.",
         "Never show RATS standings, personal RSVP, match editing, player registration, weather or scouting odds in Teams to watch; preserve all existing Play behavior and hide play cards when unconfigured.",
         "Keep the encrypted weekly sports fixture index and public .ics subscription unchanged; the app-only mode switch does not change subscribed team selections.",
-        "Remove obsolete watch list UI and add browser regression coverage for mode switching, same-day professional fixtures, accessibility and historical V1 compatibility."
+        "Remove obsolete watch list UI and add browser regression coverage for mode switching, same-day professional fixtures, accessibility and historical V1 compatibility.",
+        "Version the installed PWA, root and beta static assets together at 11.5.0 so the final validated Play/Watch code is the exact immutable production release candidate."
       ]
     },
     {
