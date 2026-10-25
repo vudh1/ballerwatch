@@ -6433,31 +6433,65 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
 .app-channel-select:focus-visible { outline: 2px solid #86efac; outline-offset: 3px; }
 
 
-/* Professional-sports fixtures belong to the calendar, never the match carousel. */
+/* Shared hidden state and public calendar subscription controls. */
 [hidden] { display: none !important; }
-.watch-calendar-list {
-  padding: 0 1.25rem 1rem;
-  display: grid;
-  gap: .6rem;
-}
-.watch-calendar-heading {
-  font-size: .7rem;
-  font-weight: 600;
-  letter-spacing: .12em;
-  opacity: .66;
-}
-.watch-calendar-event {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: baseline;
-  column-gap: .75rem;
-  row-gap: .15rem;
-  padding: .5rem 0;
-  border-bottom: 1px solid rgba(255,255,255,.055);
-}
-.watch-calendar-event:last-child { border-bottom: 0; }
-.watch-calendar-event strong { font-size: .85rem; font-weight: 600; }
-.watch-calendar-event span { font-size: .75rem; opacity: .7; }
 .calendar-subscribe-settings { display: grid; gap: .55rem; margin-top: .9rem; }
 .calendar-subscribe-settings .secondary { justify-self: start; }
+
+/* Play / Watch is a single compact mode switch. Fixtures never mix modes. */
+.match-mode-switch {
+  display: flex;
+  justify-content: center;
+  margin: 0.4rem 0 1.15rem;
+  position: relative;
+  z-index: 3;
+}
+.match-mode-track {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: min(100%, 370px);
+  padding: 4px;
+  border: 1px solid rgba(185, 232, 218, .13);
+  border-radius: 999px;
+  background: rgba(13, 41, 42, .66);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+.match-mode-track::before {
+  content: "";
+  position: absolute;
+  inset: 4px auto 4px 4px;
+  width: calc(50% - 4px);
+  border-radius: 999px;
+  background: linear-gradient(140deg, rgba(101, 189, 167, .33), rgba(61, 116, 108, .34));
+  box-shadow: 0 1px 8px rgba(0, 0, 0, .13), inset 0 1px 0 rgba(255, 255, 255, .18);
+  transform: translateX(0);
+  transition: transform .24s cubic-bezier(.2, .7, .2, 1);
+  pointer-events: none;
+}
+.match-mode-switch[data-mode="watch"] .match-mode-track::before {
+  transform: translateX(100%);
+}
+.match-mode-option {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  padding: .65rem .45rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(231, 248, 245, .67);
+  font: inherit;
+  font-size: var(--type-small);
+  font-weight: 600;
+  cursor: pointer;
+  transition: color .16s ease;
+}
+.match-mode-option.is-active { color: #f4fffb; }
+.match-mode-option:focus-visible { outline: 2px solid #d2fff0; outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+  .match-mode-track::before, .match-mode-option { transition: none; }
+}

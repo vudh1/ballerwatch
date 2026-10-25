@@ -4,6 +4,8 @@
 
 **[Open Production](https://vudh1.github.io/ballerwatch/)** · **[Open Beta](https://vudh1.github.io/ballerwatch/beta/)** · **[Project documentation](docs/wiki/Home.md)**
 
+**v11.5.0:** A compact Play / Watch slider switches between separate dashboards: **Teams to play** (default) shows your own match, schedule and RATS standings cards; **Teams to watch** shows professional match cards and a separate schedule, with no RATS standings, RSVP, scouting, player editing or unrelated play actions. Swipe watch match cards just like personal fixtures. The precomputed sports index and read-only calendar subscriptions are unchanged.
+
 **v11.4.2:** Initial sports backfill verified: 2,670 fixtures, 326 team options and zero provider failures. The Cloudflare Worker uses GitHub’s raw Contents media type to read the encrypted annual index, which exceeds the standard 1 MB Contents API response limit. iCalendar feeds are generated on each subscribed-client refresh; no `.ics` object is stored or overwritten.
 
 **v11.4.1:** Fixed the first professional-sports index by using supported ESPN monthly scoreboard queries (with an explicit record limit), indexing up to 366 days of published fixtures. An initial index is built on integration into main; weekly indexes continue after deployment. Existing iCalendar subscription URLs are dynamically regenerated from the latest public fixtures whenever a TV/calendar client refreshes. A change to the followed-team list changes the URL, so a new link must be copied to the TV.
@@ -22,7 +24,7 @@
 - **Check pickup spots and RSVPs.** See capacity and the published event's RSVP roster or waitlist in signup order, without signing in. Withdrawal requests are marked beside affected names, but do not cancel a signup inside BallerWatch. Only that selected, published event's display names, guest counts and pending withdrawal status are shown.
 - **Get there.** Open directions, share a venue map link, and check available game-window weather.
 - **Follow teams.** Choose up to eight RATS teams on your device; inspect individual standings cards, historical scores, and prepared scouting reports.
-- **Watch professional sports.** Follow up to twenty NBA, top-five European league or national teams; their fixtures appear in the calendar only, never as playable match cards or standings. The separate schedule index refreshes weekly.
+- **Watch professional sports.** Follow up to twenty NBA, top-five European league or national teams; their fixtures appear in Teams to watch as swipeable professional match cards and a separate calendar. The separate schedule index refreshes weekly; Watch never contains RSVP or RATS standings.
 - **Share your calendar.** Copy the public, read-only `.ics` subscription URL in Settings. It includes your selected RATS and watched teams plus pickup when an RSVP name is configured. Vela TV and other iCalendar clients can subscribe; recopy after changing selections.
 - **Stay informed.** Use the in-app notification center and optional Web Push for real schedule changes and reminders.
 - **Ask BallerWatch AI.** Look up indexed match facts, opponents, jersey colors and historical results. Answers are constrained by the available data.

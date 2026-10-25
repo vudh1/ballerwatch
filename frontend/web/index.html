@@ -11,12 +11,12 @@
   <meta name="apple-mobile-web-app-title" content="BallerWatch">
   <meta name="description" content="A moment of football. Then everything you need for your next match.">
   <title>BallerWatch — Your matchday</title>
-  <link rel="manifest" href="./manifest.webmanifest?v=11.4.2">
-  <link rel="icon" href="./icon.svg?v=11.4.2" type="image/svg+xml">
-  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=11.4.2">
-  <script src="./v2/prepaint.js?v=11.4.2"></script>
-  <link rel="stylesheet" href="./styles.css?v=11.4.2">
-  <link rel="stylesheet" href="./v2/styles.css?v=11.4.2">
+  <link rel="manifest" href="./manifest.webmanifest?v=11.5.0">
+  <link rel="icon" href="./icon.svg?v=11.5.0" type="image/svg+xml">
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=11.5.0">
+  <script src="./v2/prepaint.js?v=11.5.0"></script>
+  <link rel="stylesheet" href="./styles.css?v=11.5.0">
+  <link rel="stylesheet" href="./v2/styles.css?v=11.5.0">
 </head>
 <body>
   <div class="status-bar-glass" aria-hidden="true"></div>
@@ -74,7 +74,7 @@
     <p class="v2-static-welcome" hidden>Matchday, at your pace. Motion is reduced on this device.</p>
     <header class="hero">
       <div class="brand-lockup">
-        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=11.4.2" alt=""></div>
+        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=11.5.0" alt=""></div>
         <div>
           <p class="eyebrow">SOCCER AT A GLANCE</p>
           <h1 id="matchday-heading" tabindex="-1">BallerWatch</h1>
@@ -87,6 +87,15 @@
       <span class="system-dot" aria-hidden="true"></span>
       <span id="system-status">Connecting…</span>
     </div>
+
+    <nav class="match-mode-switch" aria-label="Choose match calendar" data-mode="play">
+      <div class="match-mode-track" role="group" aria-label="Matches to play or watch">
+        <button type="button" id="mode-play" class="match-mode-option is-active"
+          aria-pressed="true">Teams to play</button>
+        <button type="button" id="mode-watch" class="match-mode-option"
+          aria-pressed="false">Teams to watch</button>
+      </div>
+    </nav>
 
     <div class="spotlight-carousel" id="spotlight-carousel">
       <button class="spotlight-edge-control carousel-waterfall-edge spotlight-edge-previous" id="spotlight-previous"
@@ -159,7 +168,6 @@
         </div>
         <div class="calendar-grid" id="calendar-grid" aria-label="Two-week game calendar"></div>
         <div class="calendar-game-picker" id="calendar-game-picker" hidden></div>
-        <div class="watch-calendar-list" id="watch-calendar-list" hidden aria-live="polite"></div>
         <div class="calendar-card-footer bw-card-footer">
           <p class="calendar-updated calendar-update-credit" id="calendar-updated">Updated pending</p>
         </div>
@@ -488,7 +496,7 @@
                 <input type="search" id="watch-teams-search" placeholder="Search NBA, Premier League, UEFA, Copa América…" autocomplete="off">
                 <div class="settings-choice-options" id="watch-teams-options" role="listbox"
                   aria-label="Professional sports teams" aria-multiselectable="true"></div>
-                <p class="hint choice-hint">Choose up to 20 teams. Matches appear only in the shared calendar, never as your own games.</p>
+                <p class="hint choice-hint">Choose up to 20 teams. Watch mode shows their upcoming match and schedule cards without RATS standings, RSVP or scouting.</p>
               </div>
             </div>
             <textarea id="watch-teams" hidden></textarea>
@@ -626,7 +634,7 @@
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=11.4.2"></script>
-  <script type="module" src="./v2/app.js?v=11.4.2"></script>
+  <script type="module" src="./app.js?v=11.5.0"></script>
+  <script type="module" src="./v2/app.js?v=11.5.0"></script>
 </body>
 </html>

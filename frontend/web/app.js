@@ -30,6 +30,7 @@ import {
   saveLocalNotificationChannels,
 } from "./lib/notification-state.js";
 import { createSettingsChoice } from "./lib/settings-choice.js";
+import { PLAY, WATCH, modeGames, watchMatchDetails } from "./lib/match-modes.mjs";
 import { readGuestProfile, saveGuestProfile, MAX_GUEST_TEAMS } from "./lib/guest-profile.js";
 import {
   applyLocalMatchEdits, readLocalMatchEdits, setLocalMatchOverride,
@@ -120,6 +121,9 @@ const els = {
   installHelp: document.querySelector("#install-help"),
   installDialog: document.querySelector("#install-dialog"),
   spotlightCarousel: document.querySelector("#spotlight-carousel"),
+  matchModeSwitch: document.querySelector(".match-mode-switch"),
+  modePlay: document.querySelector("#mode-play"),
+  modeWatch: document.querySelector("#mode-watch"),
   spotlightPrevious: document.querySelector("#spotlight-previous"),
   spotlightNext: document.querySelector("#spotlight-next"),
   nextGameCard: document.querySelector("#next-game-card"),
@@ -228,8 +232,13 @@ let guestProfile = readGuestProfile(localStorage);
 let guestTeamSelector = null;
 let watchTeamSelector = null;
 let watchedGames = [];
-let watchedDate = "";
 let watchedTeams = [];
+let watchedUpdatedAt = "";
+let activeMatchMode = PLAY;
+const modeSelections = {
+  play: { id: "", date: "" },
+  watch: { id: "", date: "" },
+};
 const WATCH_TEAM_KEY = experienceKey("ballerwatch-watched-teams-v1", "watched-teams");
 try {
   const saved = JSON.parse(localStorage.getItem(WATCH_TEAM_KEY) || "[]");
@@ -1416,12 +1425,47 @@ function watchSelector() {
   });
   return watchTeamSelector;
 }
-function syncPersonalCardVisibility() {
-  const spotlight = document.querySelector("#spotlight-carousel");
-  const standings = document.querySelector("#league-standings");
-  if (spotlight) spotlight.hidden = !(guestProfile.name || guestProfile.teams.length);
-  if (standings) standings.hidden = !guestProfile.teams.length;
+function activeModeGames() {
+  return modeGames(activeMatchMode, currentCalendar?.games || [], watchedGames);
 }
+
+function activeCalendarStartDate() {
+  return activeMatchMode === WATCH ? todaySeattleKey() : currentCalendar?.startDate || "";
+}
+
+function syncPersonalCardVisibility() {
+  const play = activeMatchMode === PLAY;
+  els.matchModeSwitch?.setAttribute("data-mode", activeMatchMode);
+  els.modePlay?.classList.toggle("is-active", play);
+  els.modeWatch?.classList.toggle("is-active", !play);
+  els.modePlay?.setAttribute("aria-pressed", String(play));
+  els.modeWatch?.setAttribute("aria-pressed", String(!play));
+  const heroLabel = document.querySelector(".hero .eyebrow");
+  const subtitle = document.querySelector(".hero .subtitle");
+  if (heroLabel) heroLabel.textContent = play ? "SOCCER AT A GLANCE" : "SPORTS AT A GLANCE";
+  if (subtitle) subtitle.textContent = play ? "Pickup + RATS monitor" : "Professional match schedule";
+  // Watch always has its own match/schedule cards, even when no team is selected.
+  els.spotlightCarousel.hidden = play && !(guestProfile.name || guestProfile.teams.length);
+  const standings = document.querySelector("#league-standings");
+  if (standings) standings.hidden = !play || !guestProfile.teams.length;
+}
+
+function switchMatchMode(next) {
+  if (![PLAY, WATCH].includes(next) || next === activeMatchMode) return;
+  modeSelections[activeMatchMode] = {
+    id: selectedCalendarGameId, date: selectedCalendarDate,
+  };
+  activeMatchMode = next;
+  const selection = modeSelections[next];
+  selectedCalendarGameId = selection.id;
+  selectedCalendarDate = selection.date;
+  closeMatchCardMenu();
+  cancelSpotlightIdleReset();
+  syncPersonalCardVisibility();
+  renderActiveMode();
+  if (next === WATCH) void loadWatchIndex();
+}
+
 function calendarSubscriptionUrl() {
   const query = new URLSearchParams();
   if (guestProfile.teams.length) query.set("teams", guestProfile.teams.join(","));
@@ -1450,7 +1494,8 @@ function saveWatchSettings() {
     return;
   }
   watchedGames = [];
-  renderCalendarGrid();
+  watchedUpdatedAt = "";
+  if (activeMatchMode === WATCH) renderActiveMode();
   void loadWatchIndex();
 }
 async function loadWatchIndex() {
@@ -1461,13 +1506,14 @@ async function loadWatchIndex() {
     if (selection !== JSON.stringify(watchedTeams)) return;
     if (!payload?.ok || !Array.isArray(payload.teams)) throw new Error("Unavailable");
     watchSelector().setOptions([...new Set([...watchedTeams, ...payload.teams])]);
-    watchedGames = Array.isArray(payload.games) ? payload.games.filter(g=>g.kind==="watch") : [];
+    watchedGames = Array.isArray(payload.games) ? payload.games.filter(g => g.kind === WATCH) : [];
+    watchedUpdatedAt = payload.updatedAt || "";
     const status = document.querySelector("#watch-teams-status");
     if (status) status.textContent = payload.updatedAt
       ? "Sports schedule indexed " + new Date(payload.updatedAt).toLocaleDateString() +
-        ". Your selected fixtures appear in the calendar."
+        ". Your selected fixtures appear in Teams to watch."
       : "Professional fixtures have not been indexed yet.";
-    if (currentCalendar) renderCalendarGrid();
+    if (activeMatchMode === WATCH) renderActiveMode();
   } catch {
     const status = document.querySelector("#watch-teams-status");
     if (status) status.textContent = "Sports index unavailable. Your saved watchlist is preserved.";
@@ -1733,7 +1779,7 @@ async function registerServiceWorker() {
     void syncServiceWorkerRsvpState();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=11.4.2", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=11.5.0", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -2254,12 +2300,37 @@ function pickupDisplayCapacity(game) {
 }
 
 function spotlightModel(game, label = "NEXT GAME") {
+  if (game?.kind === WATCH) {
+    const details = watchMatchDetails(game);
+    return {
+      label: label === "SELECTED GAME" ? "SELECTED MATCH" : "NEXT TO WATCH",
+      title: details.title,
+      type: details.competition,
+      meta: details.time,
+      form: "",
+      location: details.location,
+      capacityText: "",
+      capacityPercent: 0,
+      capacityKnown: false,
+      spotsText: "",
+      weather: "",
+      updated: matchUpdatedText(watchedUpdatedAt),
+      rsvp: "",
+      rsvpConfirmed: false,
+      rsvpWaitlisted: false,
+      directions: "",
+      actionsHidden: true,
+    };
+  }
   if (!game) {
     return {
       label,
-      title: "No upcoming game",
+      title: activeMatchMode === WATCH ? "No upcoming matches to watch" : "No upcoming game",
       type: "None",
-      meta: "No pickup or RATS game is currently published.",
+      meta: activeMatchMode === WATCH
+        ? watchedTeams.length ? "No published fixtures for your watched teams yet."
+          : "Choose professional teams in Settings to follow their fixtures."
+        : "No pickup or RATS game is currently published.",
       form: "",
       location: "",
       capacityText: "",
@@ -2387,7 +2458,7 @@ function applySpotlightModel(targets, game, label = "NEXT GAME") {
   targets.updated.textContent = model.updated;
   targets.updated.hidden = !model.updated;
   targets.actions.hidden = model.actionsHidden;
-  if (targets.menuTrigger) targets.menuTrigger.hidden = !game?.id;
+  if (targets.menuTrigger) targets.menuTrigger.hidden = !game?.id || game.kind === WATCH;
   targets.hint.textContent = "";
 
   if (model.directions) {
@@ -2421,6 +2492,7 @@ function currentSpotlightTargets() {
 }
 
 function renderNextGame(game, label = "NEXT GAME") {
+  if (activeMatchMode === WATCH && game && game.kind !== WATCH) return;
   closeMatchCardMenu();
   currentNextGame = game
     ? {
@@ -2558,7 +2630,7 @@ function isoDayDistance(startDate, endDate) {
 }
 
 function latestCalendarGameDate() {
-  const dates = [...(currentCalendar?.games || []), ...watchedGames]
+  const dates = activeModeGames()
     .map((game) => String(game?.date || ""))
     .filter(Boolean)
     .sort();
@@ -2566,8 +2638,8 @@ function latestCalendarGameDate() {
 }
 
 function calendarVisibleDates() {
-  if (!currentCalendar?.startDate) return [];
-  const base = currentCalendar.startDate;
+  const base = activeCalendarStartDate();
+  if (!base) return [];
 
   if (calendarExpanded) {
     const latest = latestCalendarGameDate();
@@ -2583,16 +2655,18 @@ function syncCalendarExpansionUi() {
   els.calendarCard?.classList.toggle("is-expanded", calendarExpanded);
   els.calendarCard?.setAttribute("aria-expanded", String(calendarExpanded));
   if (els.calendarTitle) {
-    els.calendarTitle.textContent = calendarExpanded ? "Full Schedule" : "14-Day Calendar";
+    els.calendarTitle.textContent = activeMatchMode === WATCH
+      ? (calendarExpanded ? "Full Watch Schedule" : "14-Day Watch Schedule")
+      : (calendarExpanded ? "Full Schedule" : "14-Day Calendar");
   }
 }
 
 function renderCalendarGrid() {
-  if (!currentCalendar?.startDate) return;
+  if (!activeCalendarStartDate()) return;
   els.calendarGrid.replaceChildren();
 
   const gamesByDate = new Map();
-  for (const game of [...(currentCalendar.games || []), ...watchedGames]) {
+  for (const game of activeModeGames()) {
     const list = gamesByDate.get(game.date) || [];
     list.push(game);
     gamesByDate.set(game.date, list);
@@ -2626,7 +2700,7 @@ function renderCalendarGrid() {
     }
     if (games.length) {
       button.setAttribute("aria-label",
-        `${dateDisplay(date, { weekday: "long", month: "short", day: "numeric" })}: ${games.length} match${games.length === 1 ? "" : "es"}`);
+        `${dateDisplay(date, { weekday: "long", month: "short", day: "numeric" })}: ${games.length} ${activeMatchMode === WATCH ? "to watch" : "to play"}`);
     }
 
     button.append(weekday, day, signal);
@@ -2637,55 +2711,14 @@ function renderCalendarGrid() {
       weather.className = "calendar-mini-weather";
       weather.textContent = weatherGame.weather
         ? `${weatherGlyph(weatherGame.weather.weatherCode)} ${weatherGame.weather.rainProbability ?? "—"}%`
-        : "⚽";
+        : activeMatchMode === WATCH && games.some(game => game.sport === "basketball") ? "🏀" : "⚽";
       button.append(weather);
     }
 
     button.addEventListener("click", () => {
-      if (games.length) {
-        watchedDate = date;
-        renderWatchCalendarList();
-        if (games.some(game => game.kind !== "watch")) {
-          selectCalendarDate(date, { scrollToSpotlight: true });
-        } else {
-          selectedCalendarDate = date;
-          els.calendarGrid.querySelectorAll(".calendar-day").forEach(cell => {
-            cell.setAttribute("aria-selected", String(cell.dataset.date === date));
-          });
-        }
-      }
+      if (games.length) selectCalendarDate(date, { scrollToSpotlight: true });
     });
     els.calendarGrid.append(button);
-  }
-  renderWatchCalendarList();
-}
-
-function renderWatchCalendarList() {
-  const host = document.querySelector("#watch-calendar-list");
-  if (!host) return;
-  host.replaceChildren();
-  const entries = watchedGames.filter(game => !watchedDate || game.date === watchedDate)
-    .slice(0, watchedDate ? 20 : 6);
-  host.hidden = entries.length === 0;
-  if (!entries.length) return;
-  const title = document.createElement("div");
-  title.className = "watch-calendar-heading";
-  title.textContent = watchedDate ? "WATCHING · " + watchedDate : "UPCOMING TO WATCH";
-  host.append(title);
-  for (const game of entries) {
-    const item = document.createElement("div");
-    item.className = "watch-calendar-event";
-    const name = document.createElement("strong");
-    name.textContent = game.title;
-    const details = document.createElement("span");
-    const at = Date.parse(game.startUtc);
-    details.textContent = String(game.competition || "Professional sport") + " · " +
-      (Number.isFinite(at) ? new Date(at).toLocaleString(undefined, {
-        weekday: "short", month: "short", day: "numeric",
-        hour: "numeric", minute: "2-digit",
-      }) : game.date);
-    item.append(name, details);
-    host.append(item);
   }
 }
 
@@ -2698,7 +2731,7 @@ function cancelSpotlightIdleReset() {
 
 function resetSpotlightToNextGame() {
   cancelSpotlightIdleReset();
-  const games = currentCalendar?.games || [];
+  const games = activeModeGames();
   const nextGame = games[0] || null;
   if (!nextGame) return false;
 
@@ -2717,7 +2750,7 @@ function resetSpotlightToNextGame() {
 
 function scheduleSpotlightIdleReset() {
   cancelSpotlightIdleReset();
-  if (!selectedCalendarGameId || !currentCalendar?.games?.length) return;
+  if (!selectedCalendarGameId || !activeModeGames().length) return;
 
   spotlightIdleResetTimer = window.setTimeout(() => {
     spotlightIdleResetTimer = null;
@@ -2730,8 +2763,7 @@ function scheduleSpotlightIdleReset() {
 }
 
 function selectCalendarDate(date, { scrollToSpotlight = false, gameId = "" } = {}) {
-  if (!currentCalendar) return;
-  const games = (currentCalendar.games || []).filter((game) => game.date === date);
+  const games = activeModeGames().filter((game) => game.date === date);
   if (!games.length) return;
 
   selectedCalendarDate = date;
@@ -2753,17 +2785,17 @@ function selectCalendarDate(date, { scrollToSpotlight = false, gameId = "" } = {
 }
 
 function calendarGameDates() {
-  if (!currentCalendar?.startDate) return [];
-  const firstDate = currentCalendar.startDate;
+  const firstDate = activeCalendarStartDate();
+  if (!firstDate) return [];
   return [...new Set(
-    [...(currentCalendar.games || []), ...watchedGames]
+    activeModeGames()
       .map((game) => game.date)
       .filter((date) => date >= firstDate),
   )].sort();
 }
 
 function adjacentCalendarSelection(direction) {
-  const games = currentCalendar?.games || [];
+  const games = activeModeGames();
   if (!games.length || !direction) return null;
   const activeId = selectedCalendarGameId || currentNextGame?.id;
   const currentIndex = games.findIndex((game) => game.id === activeId);
@@ -3061,34 +3093,30 @@ function setCalendarExpanded(expanded) {
   renderCalendarGrid();
 }
 
-function renderCalendar(calendar) {
-  currentCalendar = calendar || null;
-  updatePersonalPickupAlertState();
+function renderActiveMode() {
+  const games = activeModeGames();
+  const startDate = activeCalendarStartDate();
   els.calendarGrid.replaceChildren();
-
-  if (!calendar?.startDate) {
-      els.calendarGamePicker.hidden = true;
+  if (!startDate) {
+    els.calendarGamePicker.hidden = true;
     els.calendarUpdated.textContent = "Updated unavailable";
     return;
   }
 
-  const updated = new Date(calendar.updatedAt || "");
+  const updatedAt = activeMatchMode === WATCH ? watchedUpdatedAt : currentCalendar?.updatedAt;
+  const updated = new Date(updatedAt || "");
   els.calendarUpdated.textContent = Number.isNaN(updated.getTime())
-    ? "Updated pending"
+    ? (activeMatchMode === WATCH && watchedTeams.length ? "Checking watched fixtures…" : "Updated pending")
     : `Updated ${new Intl.DateTimeFormat(undefined, {
-        hour: "numeric",
-        minute: "2-digit",
+        hour: "numeric", minute: "2-digit",
       }).format(updated)}`;
 
-  const availableGames = calendar.games || [];
   const selectedGame = selectedCalendarGameId
-    ? availableGames.find((game) => game.id === selectedCalendarGameId)
-    : null;
-  const firstGame = availableGames[0] || null;
+    ? games.find(game => game.id === selectedCalendarGameId) : null;
+  const firstGame = games[0] || null;
 
-  if (selectedGame) {
-    selectedCalendarDate = selectedGame.date;
-  } else if (firstGame) {
+  if (selectedGame) selectedCalendarDate = selectedGame.date;
+  else if (firstGame) {
     selectedCalendarGameId = "";
     selectedCalendarDate = firstGame.date;
   } else {
@@ -3100,27 +3128,31 @@ function renderCalendar(calendar) {
   renderCalendarGrid();
 
   if (selectedGame) {
-    const sameDay = availableGames.filter((game) => game.date === selectedGame.date);
-    renderCalendarGamePicker(sameDay, selectedGame.id || "");
+    renderCalendarGamePicker(games.filter(game => game.date === selectedGame.date),
+      selectedGame.id || "");
     renderNextGame(selectedGame, "SELECTED GAME");
     els.nextGameCard.classList.add("spotlight-selected");
     scheduleSpotlightIdleReset();
   } else if (firstGame) {
-    renderCalendarGamePicker(
-      availableGames.filter((game) => game.date === firstGame.date),
-      firstGame.id || "",
-    );
+    renderCalendarGamePicker(games.filter(game => game.date === firstGame.date),
+      firstGame.id || "");
     renderNextGame(firstGame, "NEXT GAME");
     els.nextGameCard.classList.remove("spotlight-selected");
     cancelSpotlightIdleReset();
   } else {
     els.calendarGamePicker.hidden = true;
     renderNextGame(null, "NEXT GAME");
+    els.nextGameCard.classList.remove("spotlight-selected");
     cancelSpotlightIdleReset();
   }
-
   syncSpotlightEdgeControls();
   window.requestAnimationFrame(syncSpotlightCardDimensions);
+}
+
+function renderCalendar(calendar) {
+  currentCalendar = calendar || null;
+  updatePersonalPickupAlertState();
+  renderActiveMode();
 }
 
 function standingsNumber(value) {
@@ -4917,6 +4949,8 @@ document.addEventListener("visibilitychange", () => {
 });
 
 document.documentElement.classList.toggle("is-standalone", standalone());
+els.modePlay?.addEventListener("click", () => switchMatchMode(PLAY));
+els.modeWatch?.addEventListener("click", () => switchMatchMode(WATCH));
 syncPersonalCardVisibility();
 document.querySelector("#copy-calendar-link")?.addEventListener("click", copyCalendarSubscription);
 playLaunchIntro();
@@ -4972,7 +5006,10 @@ window.setInterval(() => {
     const latest = JSON.parse(localStorage.getItem(WATCH_TEAM_KEY) || "[]");
     if (Array.isArray(latest) && JSON.stringify(latest) !== JSON.stringify(watchedTeams)) {
       watchedTeams = latest.slice(0, 20);
+      watchedGames = [];
+      watchedUpdatedAt = "";
       if (els.settingsDialog.open) watchSelector().setValue(watchedTeams);
+      if (activeMatchMode === WATCH) renderActiveMode();
       void loadWatchIndex();
     }
   } catch {}
