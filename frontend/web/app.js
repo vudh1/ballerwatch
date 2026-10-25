@@ -1733,7 +1733,7 @@ async function registerServiceWorker() {
     void syncServiceWorkerRsvpState();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=11.2.3", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=11.4.0", {
     scope: "./",
     updateViaCache: "none",
   });
