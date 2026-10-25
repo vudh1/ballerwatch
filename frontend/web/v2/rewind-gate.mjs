@@ -4,9 +4,9 @@
  * programmatic scene navigation and reduced-motion paths do not use this gate.
  */
 export const REWIND = Object.freeze({
-  wheelThreshold: 145,
-  touchThreshold: 105,
-  wheelIdleMs: 450,
+  wheelThreshold: 210,
+  touchThreshold: 155,
+  wheelIdleMs: 500,
 });
 
 export function createRewindGate() {
