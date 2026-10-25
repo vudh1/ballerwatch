@@ -139,7 +139,7 @@ async function prepare(browser, options = {}, { freshDevice = false } = {}) {
         if (controls.largeWatchHorizon) {
           // Hundreds of future fixtures must not create a year-wide GPU layer.
           for (let i = 2; i < 240; i++) {
-            const nextDay = new Date(Date.parse(day + "T12:00:00Z") + i * 86400000)
+            const nextDay = new Date(Date.parse(fixture.games[0].date + "T12:00:00Z") + i * 86400000)
               .toISOString().slice(0, 10);
             fixture.games.push({
               id: "watch:nba:stress-" + i, kind: "watch", sport: "basketball",
