@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS calendar_profiles (
   read_hash TEXT NOT NULL UNIQUE,
   recovery_hash TEXT NOT NULL UNIQUE,
   selection_cipher TEXT NOT NULL,
+  read_cipher TEXT NOT NULL,
   revision INTEGER NOT NULL DEFAULT 1 CHECK (revision >= 1),
   created_ms INTEGER NOT NULL,
   updated_ms INTEGER NOT NULL
