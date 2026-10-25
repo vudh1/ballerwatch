@@ -161,6 +161,7 @@ export function createCalendarSync({ storage, request, getSelection, applySelect
     try {
       const result = await call("/web/v1/calendar-profiles/" + profile.id + endpoint, method);
       if (endpoint === "/pairings") pairingCode = result.code;
+      if (endpoint === "/recovery") recoveryCode = result.recoveryCode;
       if (endpoint === "/rotate") { profile.url = result.url; persist(storage, key, profile); }
       if (endpoint === "/device" || endpoint === "") {
         profile = null; persist(storage, key, null); recoveryCode = ""; pairingCode = "";
@@ -171,6 +172,11 @@ export function createCalendarSync({ storage, request, getSelection, applySelect
   async function generatePairing() {
     if (!confirm("Allow another device to manage the same followed-team preferences using a one-time code valid for five minutes?")) return;
     await manage("/pairings", "POST", "Use this code on the other device within five minutes.");
+  }
+  async function renewRecovery() {
+    if (confirm("Replace the existing recovery code? The previous code will stop working immediately.")) {
+      await manage("/recovery", "POST", "Save your new recovery code somewhere private.");
+    }
   }
   async function rotate() {
     if (confirm("Rotate the read-only calendar URL? Old subscriptions, including Vela, will stop working until their saved link is replaced.")) {
@@ -200,7 +206,7 @@ export function createCalendarSync({ storage, request, getSelection, applySelect
   }
   return {
     status, enable, refresh, queueUpdate, update, link, recover, generatePairing,
-    rotate, disconnect, revokeOthers, remove, copy, state: () => profile,
+    rotate, renewRecovery, disconnect, revokeOthers, remove, copy, state: () => profile,
     dismissSensitive() { recoveryCode = ""; pairingCode = ""; show(); },
   };
 }
