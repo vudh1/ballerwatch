@@ -7,6 +7,7 @@
 import fs from "node:fs";
 import { pathToFileURL } from "node:url";
 import { encryptState, decryptState } from "../shared/state-crypto.mjs";
+import { publishedUsBroadcasts } from "./broadcasts.mjs";
 export const SPORTS_INDEX_PATH = "sports/state/fixtures.json";
 export const COMPETITIONS = Object.freeze([
   { sport: "basketball", code: "nba", label: "NBA", group: "NBA" },
@@ -96,6 +97,7 @@ export function parsedFixtures(payload, comp, teamIdNames = new Map()) {
       endUtc: new Date(at + (comp.sport === "basketball" ? 3 : 2) * 3600000).toISOString(),
       teams: [homeLabel, awayLabel],
       location: norm(event?.competitions?.[0]?.venue?.fullName),
+      broadcasts: publishedUsBroadcasts(event),
       url: /^https:\/\//.test(event?.links?.[0]?.href || "") ? String(event.links[0].href).slice(0, 400) : "",
     });
   }
@@ -154,6 +156,12 @@ export async function indexSports(fetcher = fetch, today = new Date(), previous 
         for (const fixture of events) {
           const at = Date.parse(fixture.startUtc);
           if (at < from.getTime() - 86400000 || at >= until.getTime()) continue;
+          // ESPN does not always repeat an announced TV assignment in every
+          // scoreboard payload. Keep the last confirmed channel for that ID.
+          if (!fixture.broadcasts.length) {
+            const old = fixtureMap.get(fixture.id) || previous?.games?.find(g => g.id === fixture.id);
+            if (Array.isArray(old?.broadcasts)) fixture.broadcasts = old.broadcasts;
+          }
           fixtureMap.set(fixture.id, fixture);
           fixture.teams.forEach(team => catalogue.add(team));
           matchesFound++;
@@ -218,12 +226,61 @@ export async function indexSports(fetcher = fetch, today = new Date(), previous 
   console.log("Professional fixture failures:", failures.length);
   return result;
 }
+/**
+ * Daily lightweight update of published broadcasts for the next three weeks.
+ * Unlike the weekly annual backfill, this queries at most two calendar months
+ * per competition and never blocks /web/sports with provider requests.
+ */
+export async function refreshUpcomingBroadcasts(fetcher = fetch, today = new Date(), previous = null) {
+  if (!previous || !Array.isArray(previous.games) || !previous.games.length) {
+    throw new Error("Missing verified professional fixture catalogue");
+  }
+  const from = startOfDay(today);
+  const until = new Date(from.getTime() + 21 * 86400000);
+  const existing = new Map(previous.games.map(game => [game.id, game]));
+  let successfulMonths = 0;
+  let changed = 0;
+  const firstMonth = Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), 1);
+  const lastMonth = Date.UTC(until.getUTCFullYear(), until.getUTCMonth(), 1);
+  for (const comp of COMPETITIONS) {
+    for (let month = firstMonth; month <= lastMonth;) {
+      const date = new Date(month);
+      const yyyymm = `${date.getUTCFullYear()}${pad(date.getUTCMonth()+1)}`;
+      try {
+        const payload = await getJson(fetcher, apiUrl(comp, "scoreboard",
+          `?dates=${yyyymm}&limit=1000`));
+        successfulMonths++;
+        for (const fixture of parsedFixtures(payload, comp)) {
+          const original = existing.get(fixture.id);
+          const at = Date.parse(fixture.startUtc);
+          if (!original || at < from.getTime() - 86400000 || at >= until.getTime()) continue;
+          if (fixture.broadcasts.length && JSON.stringify(fixture.broadcasts) !==
+              JSON.stringify(original.broadcasts || [])) {
+            original.broadcasts = fixture.broadcasts;
+            changed++;
+          }
+        }
+      } catch {
+        // A partial ESPN outage must not erase a verified fixture or its
+        // previously published channel assignment.
+      }
+      month = Date.UTC(date.getUTCFullYear(), date.getUTCMonth()+1, 1);
+      await delay(70);
+    }
+  }
+  if (!successfulMonths) throw new Error("Unable to refresh any sports broadcasts");
+  return { ...previous, broadcastUpdatedAt: today.toISOString(),
+    broadcastCoverage: { successfulMonths, changed } };
+}
 export async function run() {
   let previous = null;
   try { previous = decryptState(JSON.parse(fs.readFileSync(SPORTS_INDEX_PATH,"utf8"))); } catch {}
-  const index = await indexSports(fetch, new Date(), previous);
+  const broadcastOnly = process.argv.includes("--broadcasts");
+  const index = broadcastOnly
+    ? await refreshUpcomingBroadcasts(fetch, new Date(), previous)
+    : await indexSports(fetch, new Date(), previous);
   fs.mkdirSync("sports/state",{recursive:true});
   fs.writeFileSync(SPORTS_INDEX_PATH,JSON.stringify(encryptState(index))+"\n");
-  console.log(`Indexed ${index.games.length} professional fixtures and ${index.teams.length} team options; ${index.failures.length} partial sources.`);
+  console.log(`Published ${index.games.length} professional fixtures, ${index.teams.length} team options and verified broadcast updates.`);
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await run();
