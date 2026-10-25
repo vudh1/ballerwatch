@@ -52,10 +52,16 @@ export function teamLabel(comp, name) {
 function apiUrl(comp, route, query = "") {
   return `https://site.api.espn.com/apis/site/v2/sports/${comp.sport}/${comp.code}/${route}${query}`;
 }
-export function parsedTeams(payload, comp) {
+export function parsedTeamRecords(payload, comp) {
   const leagues = (payload?.sports || []).flatMap(s => s?.leagues || []);
   const items = leagues.flatMap(l => l?.teams || []);
-  return [...new Set(items.map(t => teamLabel(comp, t?.team?.displayName || t?.displayName)).filter(Boolean))];
+  return items.map(item => ({
+    name: teamLabel(comp, item?.team?.displayName || item?.displayName),
+    id: String(item?.team?.id || item?.id || "").slice(0, 30),
+  })).filter(team => team.name && /^[A-Za-z0-9_.-]{1,30}$/.test(team.id));
+}
+export function parsedTeams(payload, comp) {
+  return [...new Set(parsedTeamRecords(payload, comp).map(team => team.name))];
 }
 export function parsedFixtures(payload, comp) {
   const games = [];
@@ -107,10 +113,13 @@ export async function indexSports(fetcher = fetch, today = new Date(), previous 
   const catalogue = new Set(NATIONAL_OPTIONS), fixtureMap = new Map();
   const failures = [];
   for (const comp of COMPETITIONS) {
+    let teamRecords = [];
     try {
       const response = await getJson(fetcher, apiUrl(comp, "teams", "?limit=500"));
-      for (const option of parsedTeams(response, comp)) catalogue.add(option);
+      teamRecords = parsedTeamRecords(response, comp);
+      for (const team of teamRecords) catalogue.add(team.name);
     } catch { failures.push(comp.code + ":teams"); }
+    let matchesFound = 0;
     // Small, bounded 6-week chunks avoid provider pagination truncation.
     let successfulWindows = 0;
     for (let start = from; start < until; start = new Date(start.getTime() + 42*86400000)) {
@@ -122,15 +131,38 @@ export async function indexSports(fetcher = fetch, today = new Date(), previous 
         for (const fixture of parsedFixtures(response, comp)) {
           if (Date.parse(fixture.startUtc) >= from.getTime() - 86400000) {
             fixtureMap.set(fixture.id, fixture);
+            matchesFound++;
             fixture.teams.forEach(t => catalogue.add(t));
           }
         }
       } catch { failures.push(comp.code + ":scoreboard"); }
       await delay(180);
     }
-    // Keep the previous verified fixtures for a competition if ESPN fails
-    // all its windows, rather than silently erasing the calendar.
-    if (!successfulWindows && Array.isArray(previous?.games)) {
+    // Some site scoreboards reject date ranges (notably NBA). Rebuild that
+    // competition from its team schedules once a week, never on a user GET.
+    // Even if a range returned HTTP 200 with no games, attempt this fallback.
+    if (!matchesFound && teamRecords.length) {
+      const visited = new Set();
+      for (const team of teamRecords) {
+        if (visited.has(team.id)) continue;
+        visited.add(team.id);
+        try {
+          const response = await getJson(fetcher, apiUrl(comp,
+            "teams/" + encodeURIComponent(team.id) + "/schedule", "?limit=200"));
+          for (const fixture of parsedFixtures(response, comp)) {
+            const at = Date.parse(fixture.startUtc);
+            if (at < from.getTime() - 86400000 || at >= until.getTime()) continue;
+            fixtureMap.set(fixture.id, fixture);
+            matchesFound++;
+            fixture.teams.forEach(t => catalogue.add(t));
+          }
+        } catch { failures.push(comp.code + ":schedule"); }
+        await delay(100);
+      }
+    }
+    // Keep the previous verified fixtures when all sources fail, rather than
+    // silently deleting existing subscriptions or removing known fixtures.
+    if (!matchesFound && Array.isArray(previous?.games)) {
       for (const old of previous.games.filter(g => String(g.id).startsWith("watch:"+comp.code+":")
           && Date.parse(g.startUtc) >= from.getTime()-86400000)) {
         if (!fixtureMap.has(old.id)) fixtureMap.set(old.id, old);
