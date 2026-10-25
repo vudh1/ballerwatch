@@ -5,7 +5,7 @@
 export function watchedDayGroups(games, fromDate, days = 14) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fromDate || "")) return [];
   const from = Date.parse(fromDate + "T12:00:00Z");
-  const toDate = new Date(from + (Math.max(1, Math.min(366, days)) - 1) * 86400000)
+  const toDate = new Date(from + (Math.max(1, Math.min(400, days)) - 1) * 86400000)
     .toISOString().slice(0, 10);
   const dates = new Map();
   const seen = new Set();

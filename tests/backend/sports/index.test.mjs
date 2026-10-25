@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { publishedUsBroadcasts } from "../../../backend/sports/broadcasts.mjs";
+import { confirmedPrimeVideoNba, withPublishedPrimeVideo } from "../../../backend/sports/prime-video.mjs";
 import { DROGON_CHANNELS, DROGON_TEST_CHANNELS, matchDrogonChannels } from "../../../backend/sports/drogon-lineup.mjs";
 import { COMPETITIONS, teamLabel, parsedFixtures, parsedTeams, refreshUpcomingBroadcasts } from "../../../backend/sports/index.mjs";
 test("NBA, top five European football leagues, UEFA and CONMEBOL represented", () => {
@@ -138,4 +139,39 @@ test("daily refresh replaces outdated lineup matches when broadcaster changes", 
   assert.deepEqual(result.games[0].drogonChannels, []);
   assert.equal(result.drogonLineupCapturedAt, "2026-10-25");
   assert.equal(result.broadcastCoverage.changed, 1);
+});
+
+test("official NBA Prime Video schedule supplements absent ESPN channel listings", () => {
+  const nba = COMPETITIONS[0];
+  const make = (date, away, home) => ({events:[{
+    id: "prime-official-1", date, competitions:[{competitors:[
+      {homeAway:"away",team:{displayName:away}},
+      {homeAway:"home",team:{displayName:home}},
+    ]}],
+  }]});
+  // Oct 30 official NBA Cup fixture is Knicks @ 76ers on Prime Video.
+  const [prime] = parsedFixtures(
+    make("2026-10-30T23:30:00Z","New York Knicks","Philadelphia 76ers"), nba);
+  assert.equal(confirmedPrimeVideoNba(prime), true);
+  assert.deepEqual(prime.broadcasts, ["Prime Video"]);
+  assert.deepEqual(prime.drogonChannels, []);
+  assert.equal(prime.drogonBroadcastKey, JSON.stringify(prime.broadcasts));
+  // A separate Friday NBA match must never be guessed from Prime rights.
+  const [ordinary] = parsedFixtures(
+    make("2026-10-30T23:30:00Z","Boston Celtics","Philadelphia 76ers"), nba);
+  assert.deepEqual(ordinary.broadcasts, []);
+  assert.equal(confirmedPrimeVideoNba(ordinary), false);
+  // Published right exists only for NBA: not a similarly named soccer match.
+  assert.deepEqual(withPublishedPrimeVideo({...prime,sport:"soccer"}).broadcasts,["Prime Video"]);
+});
+
+test("NBA Prime match matching uses U.S. Eastern fixture date, not Pacific date", () => {
+  // A published Jan 7, 2027 Thursday Prime game can be Jan 8 in UTC.
+  const official = {kind:"watch",sport:"basketball",competition:"NBA",
+    teams:["NBA · Boston Celtics","NBA · Los Angeles Lakers"],
+    startUtc:"2027-01-08T03:00:00Z",broadcasts:[]};
+  assert.equal(confirmedPrimeVideoNba(official), true);
+  assert.deepEqual(withPublishedPrimeVideo(official).broadcasts,["Prime Video"]);
+  assert.deepEqual(withPublishedPrimeVideo(withPublishedPrimeVideo(official)).broadcasts,
+    ["Prime Video"]);
 });
