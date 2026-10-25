@@ -2625,7 +2625,7 @@ function isoDayDistance(startDate, endDate) {
 }
 
 function latestCalendarGameDate() {
-  const dates = [...(currentCalendar?.games || []), ...watchedGames]
+  const dates = activeModeGames()
     .map((game) => String(game?.date || ""))
     .filter(Boolean)
     .sort();
@@ -2633,8 +2633,8 @@ function latestCalendarGameDate() {
 }
 
 function calendarVisibleDates() {
-  if (!currentCalendar?.startDate) return [];
-  const base = currentCalendar.startDate;
+  const base = activeCalendarStartDate();
+  if (!base) return [];
 
   if (calendarExpanded) {
     const latest = latestCalendarGameDate();
@@ -2650,16 +2650,18 @@ function syncCalendarExpansionUi() {
   els.calendarCard?.classList.toggle("is-expanded", calendarExpanded);
   els.calendarCard?.setAttribute("aria-expanded", String(calendarExpanded));
   if (els.calendarTitle) {
-    els.calendarTitle.textContent = calendarExpanded ? "Full Schedule" : "14-Day Calendar";
+    els.calendarTitle.textContent = activeMatchMode === WATCH
+      ? (calendarExpanded ? "Full Watch Schedule" : "14-Day Watch Schedule")
+      : (calendarExpanded ? "Full Schedule" : "14-Day Calendar");
   }
 }
 
 function renderCalendarGrid() {
-  if (!currentCalendar?.startDate) return;
+  if (!activeCalendarStartDate()) return;
   els.calendarGrid.replaceChildren();
 
   const gamesByDate = new Map();
-  for (const game of [...(currentCalendar.games || []), ...watchedGames]) {
+  for (const game of activeModeGames()) {
     const list = gamesByDate.get(game.date) || [];
     list.push(game);
     gamesByDate.set(game.date, list);
@@ -2693,7 +2695,7 @@ function renderCalendarGrid() {
     }
     if (games.length) {
       button.setAttribute("aria-label",
-        `${dateDisplay(date, { weekday: "long", month: "short", day: "numeric" })}: ${games.length} match${games.length === 1 ? "" : "es"}`);
+        `${dateDisplay(date, { weekday: "long", month: "short", day: "numeric" })}: ${games.length} ${activeMatchMode === WATCH ? "to watch" : "to play"}`);
     }
 
     button.append(weekday, day, signal);
@@ -2704,55 +2706,14 @@ function renderCalendarGrid() {
       weather.className = "calendar-mini-weather";
       weather.textContent = weatherGame.weather
         ? `${weatherGlyph(weatherGame.weather.weatherCode)} ${weatherGame.weather.rainProbability ?? "—"}%`
-        : "⚽";
+        : activeMatchMode === WATCH && games.some(game => game.sport === "basketball") ? "🏀" : "⚽";
       button.append(weather);
     }
 
     button.addEventListener("click", () => {
-      if (games.length) {
-        watchedDate = date;
-        renderWatchCalendarList();
-        if (games.some(game => game.kind !== "watch")) {
-          selectCalendarDate(date, { scrollToSpotlight: true });
-        } else {
-          selectedCalendarDate = date;
-          els.calendarGrid.querySelectorAll(".calendar-day").forEach(cell => {
-            cell.setAttribute("aria-selected", String(cell.dataset.date === date));
-          });
-        }
-      }
+      if (games.length) selectCalendarDate(date, { scrollToSpotlight: true });
     });
     els.calendarGrid.append(button);
-  }
-  renderWatchCalendarList();
-}
-
-function renderWatchCalendarList() {
-  const host = document.querySelector("#watch-calendar-list");
-  if (!host) return;
-  host.replaceChildren();
-  const entries = watchedGames.filter(game => !watchedDate || game.date === watchedDate)
-    .slice(0, watchedDate ? 20 : 6);
-  host.hidden = entries.length === 0;
-  if (!entries.length) return;
-  const title = document.createElement("div");
-  title.className = "watch-calendar-heading";
-  title.textContent = watchedDate ? "WATCHING · " + watchedDate : "UPCOMING TO WATCH";
-  host.append(title);
-  for (const game of entries) {
-    const item = document.createElement("div");
-    item.className = "watch-calendar-event";
-    const name = document.createElement("strong");
-    name.textContent = game.title;
-    const details = document.createElement("span");
-    const at = Date.parse(game.startUtc);
-    details.textContent = String(game.competition || "Professional sport") + " · " +
-      (Number.isFinite(at) ? new Date(at).toLocaleString(undefined, {
-        weekday: "short", month: "short", day: "numeric",
-        hour: "numeric", minute: "2-digit",
-      }) : game.date);
-    item.append(name, details);
-    host.append(item);
   }
 }
 
@@ -2765,7 +2726,7 @@ function cancelSpotlightIdleReset() {
 
 function resetSpotlightToNextGame() {
   cancelSpotlightIdleReset();
-  const games = currentCalendar?.games || [];
+  const games = activeModeGames();
   const nextGame = games[0] || null;
   if (!nextGame) return false;
 
@@ -2784,7 +2745,7 @@ function resetSpotlightToNextGame() {
 
 function scheduleSpotlightIdleReset() {
   cancelSpotlightIdleReset();
-  if (!selectedCalendarGameId || !currentCalendar?.games?.length) return;
+  if (!selectedCalendarGameId || !activeModeGames().length) return;
 
   spotlightIdleResetTimer = window.setTimeout(() => {
     spotlightIdleResetTimer = null;
@@ -2797,8 +2758,7 @@ function scheduleSpotlightIdleReset() {
 }
 
 function selectCalendarDate(date, { scrollToSpotlight = false, gameId = "" } = {}) {
-  if (!currentCalendar) return;
-  const games = (currentCalendar.games || []).filter((game) => game.date === date);
+  const games = activeModeGames().filter((game) => game.date === date);
   if (!games.length) return;
 
   selectedCalendarDate = date;
@@ -2820,17 +2780,17 @@ function selectCalendarDate(date, { scrollToSpotlight = false, gameId = "" } = {
 }
 
 function calendarGameDates() {
-  if (!currentCalendar?.startDate) return [];
-  const firstDate = currentCalendar.startDate;
+  const firstDate = activeCalendarStartDate();
+  if (!firstDate) return [];
   return [...new Set(
-    [...(currentCalendar.games || []), ...watchedGames]
+    activeModeGames()
       .map((game) => game.date)
       .filter((date) => date >= firstDate),
   )].sort();
 }
 
 function adjacentCalendarSelection(direction) {
-  const games = currentCalendar?.games || [];
+  const games = activeModeGames();
   if (!games.length || !direction) return null;
   const activeId = selectedCalendarGameId || currentNextGame?.id;
   const currentIndex = games.findIndex((game) => game.id === activeId);
