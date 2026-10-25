@@ -4,6 +4,8 @@
 
 **[Open Production](https://vudh1.github.io/ballerwatch/)** · **[Open Beta](https://vudh1.github.io/ballerwatch/beta/)** · **[Project documentation](docs/wiki/Home.md)**
 
+**FRIDAY:** [Integration ownership and agent guidance](FRIDAY.md).
+
 **v11.6.3:** Refreshed all six cinematic feature descriptions to the latest Play/Watch, RATS scouting, RSVP, AI, inbox, device settings and Vela TV calendar capabilities. Added a deliberate upward-scroll resistance at the main-to-soccer-intro boundary: light upward gestures stop at the dashboard; a stronger continuous wheel/trackpad or touch pull rewinds the animated stadium. Regular card scrolling, Skip Intro, offline data and reduced-motion behavior are unaffected. See [current animation documentation](docs/wiki/V2.md#animation--current-production-experience-1163).
 
 **v11.6.2:** Watch calendar dates now display both ⚽ and 🏀 when tracked soccer and basketball games share a day. The Watch carousel indexes all known match days over the existing one-year schedule horizon in advance, so its `current / total days` footer stays stable while swiping rather than growing at every 14-day boundary. Personal match tracking remains unchanged.

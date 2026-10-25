@@ -21,6 +21,19 @@ Always read the current `README.md`, this file, and `features/versions.json` fro
 - Every external `uses:` dependency in workflows must be pinned to a reviewed 40-character SHA.
 - To recover or verify `UPSTREAM_ENDPOINT`, follow `skills/find-upstream-endpoint/SKILL.md`. Never commit the live endpoint.
 
+## FRIDAY ecosystem compatibility
+
+Read [FRIDAY.md](FRIDAY.md) when a feature may be useful across apps. BallerWatch is independent and authoritative for sports/matchday data; the [FRIDAY repo](https://github.com/vudh1/friday) coordinates contracts, design and cross-repo issues, not releases.
+
+1. For every new feature, ask whether another FRIDAY app has a concrete use. If not, record **No FRIDAY impact**; avoid unnecessary shared abstractions.
+2. Keep the owning app's data and operations authoritative. No other app may directly read its encrypted state branch.
+3. For useful cross-app behavior, identify producer, consumer, minimal data, privacy classification, opt-in consent, revocation, narrow scopes, failure fallback and cost.
+4. Propose a **versioned, backward-compatible contract** in [FRIDAY](https://github.com/vudh1/friday), with stable source-qualified IDs, timezone/DST, update/delete, retries, staleness and safe-error rules. Cross-app writes need explicit authorization.
+5. Preserve offline/standalone function if FRIDAY or a provider is down; keep design semantically consistent without forcing one UI library.
+6. Follow the owning repo's review and release gates; test authorization, revocation, duplicates and failure paths. Report proposed, implemented, tested, deployed and device-verified separately.
+
+**Existing boundaries:** Vela consumes BallerWatch calendar/ICS, which must keep working. [nhcuong95/rsvp](https://github.com/nhcuong95/rsvp) is the external Play RSVP source-code repo; BallerWatch monitoring does not grant access to its admin backend. Never expose unpublished RSVP rosters or device-local preferences in a FRIDAY projection.
+
 ## Release workflow
 
 Every repository change starts on a dedicated branch from latest `main`. Never do normal work directly on `main`.
