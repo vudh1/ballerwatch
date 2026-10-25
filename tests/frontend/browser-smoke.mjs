@@ -392,7 +392,7 @@ try {
 
       await scenario(`${engine}: iPhone-sized Watch carousel keeps 240 dates without GPU-sized track`, async () => {
         const { context, page, errors, controls } = await prepare(browser, {
-          viewport: { width: 390, height: 844 }, hasTouch: true,
+          viewport: { width: 390, height: 844 }, hasTouch: true, reducedMotion: "reduce",
         });
         controls.largeWatchHorizon = true;
         await ready(page);
