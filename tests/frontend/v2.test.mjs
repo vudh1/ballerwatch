@@ -55,7 +55,8 @@ test("V2 separates a brief launch and scroll hero from unchanged V1 cards", () =
   // standings markup must otherwise remain unchanged.
   const withoutWatchlist = cardFeed(html, '    <footer>')
     .replace(/^.*<div class="watch-calendar-list"[^>]*><\/div>\n/m, "")
-    .replace(/^.*<p class="next-game-watch"[^>]*><\/p>\n/m, "");
+    .replace(/^.*<p class="next-game-watch"[^>]*><\/p>\n/m, "")
+    .replace(/    <section id="watch-days"[\s\S]*?    <\/section>\n\n/m, "");
   assert.equal(withoutWatchlist, cardFeed(v1, '    <footer>'));
   assert.match(read("v2/prepaint.js"), /ballerwatch:v2:intro-seen/);
   assert.match(read("v2/prepaint.js"), /ballerwatch:v2:launch-seen/);
