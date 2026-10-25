@@ -21,3 +21,11 @@ test("horizon pagination extends by date, without duplicating shared team fixtur
   assert.equal(watchedDayGroups(duplicate,"2026-10-25",4).length,2);
   assert.deepEqual(watchedDayGroups(duplicate,"invalid",14),[]);
 });
+
+test("a selected match day remains a single card with every tracked matchup", () => {
+  const extras = [...games,
+    {id:"watch:nba:99",kind:"watch",date:"2026-10-26",startUtc:"2026-10-27T04:00:00Z"}];
+  const output = watchedDayGroups(extras, "2026-10-25", 14);
+  assert.equal(output.filter(x => x.date === "2026-10-26").length, 1);
+  assert.equal(output[0].matches.length, 3);
+});
