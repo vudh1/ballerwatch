@@ -45,7 +45,12 @@ export function normalizeCalendarSelection(body) {
       }
       return name;
     });
-    return [...new Map(items.map(name => [name.toLocaleLowerCase("en"), name])).values()];
+    const firstNameByKey = new Map();
+    for (const name of items) {
+      const key = name.toLocaleLowerCase("en");
+      if (!firstNameByKey.has(key)) firstNameByKey.set(key, name);
+    }
+    return [...firstNameByKey.values()];
   };
   if (typeof body.pickup !== "boolean") throw new RangeError("Invalid pickup");
   return { teams: teams(body.teams, 8), watch: teams(body.watch, 20), pickup: body.pickup };
