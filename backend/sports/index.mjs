@@ -217,6 +217,7 @@ export async function indexSports(fetcher = fetch, today = new Date(), previous 
     .slice(0, 6000);
   const result = {
     updatedAt: today.toISOString(),
+    broadcastUpdatedAt: today.toISOString(),
     provider: "ESPN public site feeds (unofficial)",
     refreshHours: 168,
     teams: [...catalogue].sort((a, b) => a.localeCompare(b)).slice(0, 700),
