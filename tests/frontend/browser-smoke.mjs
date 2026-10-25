@@ -109,13 +109,14 @@ async function prepare(browser, options = {}) {
         const day = typeof isoDate === "string" ? isoDate
           : [isoDate.year,isoDate.month,isoDate.day].join("-");
         fixture.games = ["Fixture Lakers vs Fixture Celtics",
-          "Fixture Lakers vs Fixture Warriors"].map((title,i) => ({
+          "Fixture Lakers vs Fixture Warriors",
+          "Fixture Lakers vs Fixture Suns"].map((title,i) => ({
           id: "watch:nba:" + (i + 1), kind: "watch", sport: "basketball",
           competition: "NBA", title, date: day,
-          startUtc: new Date(at.getTime() + i * 3600000).toISOString(),
-          endUtc: new Date(at.getTime() + (i + 3) * 3600000).toISOString(),
+          startUtc: new Date(at.getTime() + (i === 2 ? 86400000 : i * 3600000)).toISOString(),
+          endUtc: new Date(at.getTime() + (i === 2 ? 86400000 + 10800000 : (i + 3) * 3600000)).toISOString(),
           location: "Synthetic Arena",
-          broadcasts: i === 0 ? ["Prime Video", "Peacock"] : ["NBA TV"],
+          broadcasts: i === 0 ? ["Prime Video", "Peacock"] : i === 1 ? ["NBA TV"] : [],
         }));
       }
       if (controls.noPickupCap && url.pathname === "/web/next-game") {
@@ -239,7 +240,7 @@ try {
         await context.close();
       });
 
-      await scenario(`${engine}: Play carousel and Watch day-grouped match list remain isolated`, async () => {
+      await scenario(`${engine}: Play carousel and Watch daily carousel isolate matches and jump from schedule`, async () => {
         const { context, page, errors } = await prepare(browser, { reducedMotion: "reduce" });
         await ready(page);
         assert.equal(await page.locator("#mode-play").getAttribute("aria-pressed"), "true");
@@ -254,11 +255,13 @@ try {
         assert.equal(await page.locator("#mode-watch").getAttribute("aria-pressed"), "true");
         assert.equal(await page.locator("#league-standings").isVisible(), false);
         assert.equal(await page.locator("#spotlight-carousel").isVisible(), false);
-        assert.equal(await page.locator("#watch-day-list .watch-day-card").count(), 1);
-        assert.equal(await page.locator("#watch-day-list .watch-match-row").count(), 2);
+        assert.equal(await page.locator("#watch-day-list .watch-day-card").count(), 2);
+        assert.equal(await page.locator("#watch-day-list .watch-match-row").count(), 3);
+        assert.equal(await page.locator("#watch-day-list .watch-day-card[aria-hidden='false']").count(), 1);
+        assert.equal(await page.locator("#watch-day-position").textContent(), "1 / 2 days");
         assert.match(await page.locator("#calendar-title").textContent(), /Watch Schedule/);
-        assert.equal(await page.locator("#calendar-grid .calendar-signal-dot").count(), 2);
-        await page.locator("#watch-day-list .watch-match-row").first().click();
+        assert.equal(await page.locator("#calendar-grid .calendar-signal-dot").count(), 3);
+        await page.locator("#watch-day-list .watch-day-card[aria-hidden='false'] .watch-match-row").first().click();
         assert.equal(await page.locator("#watch-match-dialog").isVisible(), true);
         assert.equal(await page.locator("#watch-match-title").textContent(),
           "Fixture Lakers vs Fixture Celtics");
@@ -266,7 +269,7 @@ try {
         assert.match(await page.locator("#watch-match-channel").textContent(), /Prime Video/);
         assert.doesNotMatch(await page.locator("#watch-match-channel").textContent(), /Peacock/);
         await page.locator("#close-watch-match").click();
-        await page.locator("#watch-day-list .watch-match-row").nth(1).click();
+        await page.locator("#watch-day-list .watch-day-card[aria-hidden='false'] .watch-match-row").nth(1).click();
         assert.equal(await page.locator("#watch-match-title").textContent(),
           "Fixture Lakers vs Fixture Warriors");
         assert.match(await page.locator("#watch-match-channel").textContent(), /DrogonTV guide/);
@@ -277,8 +280,9 @@ try {
           element.dispatchEvent(new Event("change", { bubbles: true }));
         });
         await page.locator("#close-settings").click();
-        await page.locator("#watch-day-list .watch-match-row").nth(1).click();
-        assert.match(await page.locator("#watch-match-channel").textContent(), /No confirmed channel/);
+        await page.locator("#watch-day-list .watch-day-card[aria-hidden='false'] .watch-match-row").nth(1).click();
+        assert.equal(await page.locator("#watch-match-channel").textContent(), "");
+        assert.equal(await page.locator("#watch-match-channel-row").isVisible(), false);
         await page.locator("#close-watch-match").click();
         await openHubTab(page, "settings");
         await page.locator("#watch-service-drogon").evaluate(element => {
@@ -286,11 +290,26 @@ try {
           element.dispatchEvent(new Event("change", { bubbles: true }));
         });
         await page.locator("#close-settings").click();
-        await page.locator("#watch-day-list .watch-match-row").nth(1).click();
+        await page.locator("#watch-day-list .watch-day-card[aria-hidden='false'] .watch-match-row").nth(1).click();
         assert.match(await page.locator("#watch-match-channel").textContent(), /DrogonTV guide/);
         await page.locator("#close-watch-match").click();
+        await page.locator("#watch-next").click();
+        assert.equal(await page.locator("#watch-day-position").textContent(), "2 / 2 days");
+        assert.equal(await page.locator("#watch-next").isDisabled(), true);
+        assert.equal(await page.locator("#watch-day-list .watch-day-card[aria-hidden='false'] .watch-match-row").count(), 1);
+        await page.locator("#watch-day-list .watch-day-card[aria-hidden='false'] .watch-match-row").click();
+        assert.equal(await page.locator("#watch-match-title").textContent(),
+          "Fixture Lakers vs Fixture Suns");
+        assert.equal(await page.locator("#watch-match-channel").textContent(), "");
+        assert.equal(await page.locator("#watch-match-channel-row").isVisible(), false);
+        assert.match(await page.locator("#watch-match-time").textContent(), /[AP]M/);
+        await page.locator("#close-watch-match").click();
         await page.locator('#calendar-grid .calendar-day[aria-disabled="false"]').first().click();
-        assert.equal(await page.locator("#watch-day-list .watch-day-card").count(), 1);
+        assert.equal(await page.locator("#watch-day-position").textContent(), "1 / 2 days");
+        await page.locator("#watch-next").click();
+        assert.equal(await page.locator("#watch-day-position").textContent(), "2 / 2 days");
+        await page.locator("#watch-previous").click();
+        assert.equal(await page.locator("#watch-day-position").textContent(), "1 / 2 days");
         await page.locator("#mode-play").click();
         await page.waitForFunction(() =>
           document.querySelector("#next-game-title")?.textContent.includes("October 15"));
