@@ -6495,3 +6495,14 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .match-mode-track::before, .match-mode-option { transition: none; }
 }
+
+/* Watch mode: an understated broadcaster line, not another action bar. */
+.next-game-watch {
+  margin: 0.65rem 0 0;
+  color: #c4e8f5;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.next-game-watch[hidden] { display: none; }
