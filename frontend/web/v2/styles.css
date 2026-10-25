@@ -10,6 +10,8 @@
   --scene-travel: calc(100vh * var(--scroll-screens, 3.2));
   background: var(--v2-night);
   scroll-behavior: auto;
+  /* Keep iOS/Android native overscroll from bypassing the dashboard rewind gate. */
+  overscroll-behavior-y: none;
 }
 .v2 body { overflow-x: clip; }
 .v2.v2-cinematic .status-bar-glass { opacity: var(--app-reveal, 0); }
