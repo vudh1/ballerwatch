@@ -6545,7 +6545,7 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
 .watch-day-card { padding: 0; overflow: hidden; border-radius: 19px; }
 .watch-day-header { display: flex; align-items: baseline; justify-content: space-between;
   gap: 0.5rem; padding: 0.85rem 1.1rem 0.75rem; }
-.watch-day-header h3 { margin: 0; font-size: 0.98rem; font-weight: 750; }
+.watch-day-header h3 { margin: 0; font-size: 0.98rem; font-weight: 700; }
 .watch-day-count { color: var(--muted, #98a7bc); font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
 .watch-day-matches { display: grid; gap: 0.25rem; padding: 0 0.5rem 0.5rem; }
 .watch-match-row { width: 100%; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto;
@@ -6554,7 +6554,7 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
 .watch-match-row:hover, .watch-match-row:focus-visible { background: rgba(125,211,252,.10); }
 .watch-match-row:focus-visible { outline: 2px solid #88ddec; outline-offset: -2px; }
 .watch-match-title { min-width: 0; font-size: 0.88rem; font-weight: 700; line-height: 1.4; }
-.watch-match-kickoff { color: #add9e2; font-size: 0.75rem; font-weight: 750; white-space: nowrap; }
+.watch-match-kickoff { color: #add9e2; font-size: 0.75rem; font-weight: 700; white-space: nowrap; }
 .watch-match-meta { grid-column: 1 / -1; font-size: 0.72rem; color: var(--muted, #a6b2c3); }
 .watch-show-more { justify-self: stretch; margin-top: 0.1rem; }
 .watch-match-dialog { width: min(92vw, 510px); max-height: 86dvh; padding: 0;
