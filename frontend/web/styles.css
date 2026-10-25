@@ -6550,7 +6550,9 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
 .watch-day-header h3 { margin: 0; font-size: 0.98rem; font-weight: 700; }
 .watch-day-count { color: var(--muted, #98a7bc); font-size: 0.72rem;
   font-weight: 700; white-space: nowrap; }
-.watch-day-matches { display: grid; gap: 0.25rem; padding: 0 0.5rem 0.65rem; }
+.watch-day-matches { display: grid; gap: 0.25rem; padding: 0 0.5rem 0.65rem;
+  max-height: min(60dvh, 670px); overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: thin; }
 .watch-match-row { width: 100%; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto;
   align-items: center; gap: 0.3rem 0.6rem; text-align: left; border: 0; border-radius: 11px;
   padding: 0.7rem 0.6rem; background: transparent; color: inherit; cursor: pointer; }
@@ -6563,6 +6565,8 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
   color: var(--muted, #a6b2c3); }
 .watch-day-controls { display: flex; justify-content: center; align-items: center;
   gap: 1.15rem; margin: 0.5rem auto 0.1rem; }
+.watch-day-controls .standings-step { display: grid; min-width: 2.4rem; cursor: pointer; }
+.watch-day-controls .standings-step:disabled { cursor: default; }
 .watch-day-position { color: var(--muted, #a6b2c3);
   font-size: 0.74rem; font-weight: 600; text-align: center; min-width: 6.5rem; }
 .watch-day-viewport:focus-visible { outline: 2px solid #88ddec; outline-offset: 3px; }
