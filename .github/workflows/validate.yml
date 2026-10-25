@@ -55,12 +55,6 @@ jobs:
             node --test "$file"
           done < <(find tests -name '*.test.mjs' -print0 | sort -z)
 
-      # One-off privacy-safe upstream connectivity check. Remove before merge.
-      - name: Probe public RSVP name-only roster source without storing contact fields
-        if: github.event_name == 'pull_request' && github.head_ref == 'release/11.10.0-encrypted-rsvp-roster-catalog'
-        run: |
-          node --input-type=module -e 'import { fetchPublicRosterNames } from "./backend/pickup/roster-catalog.mjs"; const names = await fetchPublicRosterNames(); if (!names.length) throw Error("Empty public RSVP roster"); console.log("Source roster reachable; valid names:", names.length);'
-
       - name: Bundle Cloudflare Worker
         working-directory: backend/infra/web-worker
         run: npx --yes wrangler@4.145.0 deploy --dry-run --outdir /tmp/ballerwatch-worker
