@@ -9,7 +9,7 @@ const DIRECT = new Map([
   ["ESPN", "ESPN"],
 ]);
 const DROGON_GUIDE = new Set([
-  "ESPN", "FOX Sports", "NBC Sports", "beIN SPORTS", "NBA TV", "TNT",
+  "ESPN", "FOX Sports", "NBC Sports", "beIN SPORTS", "NBA TV",
 ]);
 export const DEFAULT_WATCH_SERVICES = Object.freeze({ prime: true, espn: true, drogon: true });
 export function watchCoverage(game, services = DEFAULT_WATCH_SERVICES) {
