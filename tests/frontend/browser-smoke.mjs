@@ -136,7 +136,7 @@ async function prepare(browser, options = {}, { freshDevice = false } = {}) {
           });
         }
       }
-        if (controls.largeWatchHorizon) {
+        if (controls.largeWatchHorizon && url.pathname === "/web/sports" && fixture.games?.length) {
           // Hundreds of future fixtures must not create a year-wide GPU layer.
           for (let i = 2; i < 240; i++) {
             const nextDay = new Date(Date.parse(fixture.games[0].date + "T12:00:00Z") + i * 86400000)
