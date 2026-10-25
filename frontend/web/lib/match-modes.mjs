@@ -7,12 +7,15 @@ export const WATCH = "watch";
 
 export function modeGames(mode, personalGames = [], watchedGames = []) {
   const source = mode === WATCH ? watchedGames : personalGames;
-  return (Array.isArray(source) ? source : [])
-    .filter(game => game && typeof game.id === "string" &&
-      (mode === WATCH ? game.kind === "watch" : game.kind !== "watch"))
-    .slice()
-    .sort((a, b) => String(a.startUtc || a.date || "").localeCompare(
-      String(b.startUtc || b.date || "")) || String(a.id).localeCompare(String(b.id)));
+  const games = (Array.isArray(source) ? source : []).filter(game =>
+    game && typeof game.id === "string" &&
+    (mode === WATCH ? game.kind === "watch" : game.kind !== "watch"));
+  // Preserve verified personal fixture order; provider watch schedules sort by
+  // exact UTC kickoff, not an approximate day key or team selection order.
+  return mode === WATCH ? games.slice().sort((a, b) =>
+    String(a.startUtc || a.date || "").localeCompare(
+      String(b.startUtc || b.date || "")) || String(a.id).localeCompare(String(b.id)))
+    : games;
 }
 
 export function watchMatchDetails(game) {
