@@ -26,10 +26,11 @@ test("watch presentation uses device-local kickoff and no unknown TV label", () 
 });
 
 test("show only actual listed channels on the user's chosen services", () => {
-  assert.equal(watchCoverage({broadcasts:["Prime Video","NBC"]}), "Prime Video");
-  assert.equal(watchCoverage({broadcasts:["ESPN","NBA TV","Peacock"]}),
+  assert.equal(watchCoverage({broadcasts:["Prime Video","NBC"],drogonChannels:["NBC"]}),
+    "Prime Video · NBC · check DrogonTV guide");
+  assert.equal(watchCoverage({broadcasts:["ESPN","NBA TV","Peacock"],drogonChannels:["ESPN","NBA TV"]}),
     "ESPN · NBA TV · check DrogonTV guide");
-  assert.equal(watchCoverage({broadcasts:["NBA TV"]}), "NBA TV · check DrogonTV guide");
+  assert.equal(watchCoverage({broadcasts:["NBA TV"],drogonChannels:["NBA TV"]}), "NBA TV · check DrogonTV guide");
   assert.equal(watchCoverage({broadcasts:["Peacock","Paramount+"]}),
     "");
   assert.equal(watchCoverage({broadcasts:[]}), "");
@@ -53,4 +54,17 @@ test("Playing and Watching labels are consistent in navigation and first-run set
   assert.match(html, /aria-label="Playing or Watching"/);
   assert.match(html, /<label for="watch-teams-trigger">Watching · NBA/);
   assert.doesNotMatch(html, /Teams to (?:play|watch)/i);
+});
+
+test("lineup suggestions use only precomputed exact matches without client lookup", () => {
+  assert.equal(watchCoverage({broadcasts:["NBA TV"]}), "");
+  assert.equal(watchCoverage({broadcasts:["ESPN"],drogonChannels:["ESPN"]}),
+    "ESPN · check DrogonTV guide");
+  assert.equal(watchCoverage({broadcasts:["FS1"],drogonChannels:["Fox Sports 1"]}),
+    "Fox Sports 1 · check DrogonTV guide");
+  assert.equal(watchCoverage({broadcasts:["ESPN2"],drogonChannels:["ESPN 2"]},
+    {prime:false,espn:false,drogon:true}), "ESPN 2 · check DrogonTV guide");
+  assert.equal(watchCoverage({broadcasts:["FS1"],drogonChannels:["Fox Sports 1"]},
+    {prime:true,espn:true,drogon:false}), "");
+  assert.equal(watchCoverage({broadcasts:[],drogonChannels:["NBA TV"]}), "");
 });

@@ -8,6 +8,7 @@ import fs from "node:fs";
 import { pathToFileURL } from "node:url";
 import { encryptState, decryptState } from "../shared/state-crypto.mjs";
 import { publishedUsBroadcasts } from "./broadcasts.mjs";
+import { DROGON_LINEUP_CAPTURED_AT, matchDrogonChannels } from "./drogon-lineup.mjs";
 export const SPORTS_INDEX_PATH = "sports/state/fixtures.json";
 export const COMPETITIONS = Object.freeze([
   { sport: "basketball", code: "nba", label: "NBA", group: "NBA" },
@@ -89,6 +90,7 @@ export function parsedFixtures(payload, comp, teamIdNames = new Map()) {
     }).formatToParts(new Date(at));
     const part = key => parts.find(p => p.type === key)?.value || "";
     const date = [part("year"), part("month"), part("day")].join("-");
+    const broadcasts = publishedUsBroadcasts(event, comp);
     games.push({
       id: `watch:${comp.code}:${String(event.id).slice(0, 60)}`,
       kind: "watch", sport: comp.sport, competition: comp.label,
@@ -97,7 +99,9 @@ export function parsedFixtures(payload, comp, teamIdNames = new Map()) {
       endUtc: new Date(at + (comp.sport === "basketball" ? 3 : 2) * 3600000).toISOString(),
       teams: [homeLabel, awayLabel],
       location: norm(event?.competitions?.[0]?.venue?.fullName),
-      broadcasts: publishedUsBroadcasts(event, comp),
+      broadcasts,
+      drogonChannels: matchDrogonChannels(broadcasts),
+      drogonBroadcastKey: JSON.stringify(broadcasts),
       url: /^https:\/\//.test(event?.links?.[0]?.href || "") ? String(event.links[0].href).slice(0, 400) : "",
     });
   }
@@ -213,11 +217,17 @@ export async function indexSports(fetcher = fetch, today = new Date(), previous 
   const required = COMPETITIONS.filter(c => c.code === "nba" || c.group === "club");
   const missing = required.filter(c => !coverage[c.code]).map(c => c.code);
   if (missing.length) throw new Error("Missing essential scheduled leagues: " + missing.join(", "));
+  // The match-to-lineup join is prepared in Actions, including older fixtures
+  // retained after upstream failures. API reads and mobile renders do no join.
   const games = [...fixtureMap.values()].sort((a, b) => a.startUtc.localeCompare(b.startUtc))
-    .slice(0, 6000);
+    .slice(0, 6000).map(game => ({ ...game,
+      drogonChannels: matchDrogonChannels(game.broadcasts),
+      drogonBroadcastKey: JSON.stringify(game.broadcasts || []),
+    }));
   const result = {
     updatedAt: today.toISOString(),
     broadcastUpdatedAt: today.toISOString(),
+    drogonLineupCapturedAt: DROGON_LINEUP_CAPTURED_AT,
     provider: "ESPN public site feeds (unofficial)",
     refreshHours: 168,
     teams: [...catalogue].sort((a, b) => a.localeCompare(b)).slice(0, 700),
@@ -270,7 +280,13 @@ export async function refreshUpcomingBroadcasts(fetcher = fetch, today = new Dat
     }
   }
   if (!successfulMonths) throw new Error("Unable to refresh any sports broadcasts");
-  return { ...previous, broadcastUpdatedAt: today.toISOString(),
+  // Daily broadcasts can change without changing fixture IDs. Refresh all
+  // precomputed joins even when ESPN reports no new assignment.
+  const games = previous.games.map(game => ({ ...game,
+    drogonChannels: matchDrogonChannels(game.broadcasts),
+  }));
+  return { ...previous, games, broadcastUpdatedAt: today.toISOString(),
+    drogonLineupCapturedAt: DROGON_LINEUP_CAPTURED_AT,
     broadcastCoverage: { successfulMonths, changed } };
 }
 export async function run() {

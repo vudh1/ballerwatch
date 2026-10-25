@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.7.1",
+  "currentVersion": "11.8.0",
   "releases": [
+    {
+      "version": "11.8.0",
+      "date": "2026-10-25",
+      "type": "minor",
+      "source": "user-feedback",
+      "title": "Precomputed Drogon TV channel guide matches",
+      "changes": [
+        "Save a sanitized, public channel-name catalogue of 146 Drogon TV listings from a user-supplied snapshot, with eight TEST channels excluded from suggestions.",
+        "Precompute only exact, explicitly published broadcast-to-lineup channel matches in existing weekly fixtures and daily near-term broadcast refreshes; store derived fields in encrypted canonical sports fixture state.",
+        "Display matched channels as guide-check suggestions from the cached fixture response without live channel requests, page-load scraping, private account information or invented program availability.",
+        "Preserve separate Prime Video/ESPN preferences, historic calendar subscriptions, versioned PWA offline resources and regression coverage for 146 entries and false-positive cases."
+      ]
+    },
     {
       "version": "11.7.1",
       "date": "2026-10-25",

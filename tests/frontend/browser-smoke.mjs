@@ -118,6 +118,7 @@ async function prepare(browser, options = {}, { freshDevice = false } = {}) {
           endUtc: new Date(at.getTime() + (i === 2 ? 86400000 + 10800000 : (i + 3) * 3600000)).toISOString(),
           location: "Synthetic Arena",
           broadcasts: i === 0 ? ["Prime Video", "Peacock"] : i === 1 ? ["NBA TV"] : [],
+          drogonChannels: i === 1 ? ["NBA TV"] : [],
         }));
         if (controls.mixedWatchSports) {
           fixture.games.push({
@@ -183,7 +184,7 @@ async function activateSpotlightControl(page, id) {
 async function ready(page, route = "") {
   await page.goto(`${origin}/ballerwatch/${route}`);
   try {
-    await page.waitForFunction(() => document.querySelector("#next-game-title").textContent.includes("October 15"), null, { timeout: 10000 });
+    await page.waitForFunction(() => document.querySelector("#next-game-title")?.textContent.includes("October 15"), null, { timeout: 10000 });
   } catch (error) {
     await shot(page, "failure");
     console.error(await page.locator("#next-game-title").textContent());
@@ -1209,7 +1210,7 @@ try {
         await alignSyntheticCalendarCacheToToday(instance.page);
         instance.controls.offlineApi = true;
         await instance.page.reload();
-        await instance.page.waitForFunction(() => document.querySelector("#next-game-title").textContent.includes("October 15"));
+        await instance.page.waitForFunction(() => document.querySelector("#next-game-title")?.textContent.includes("October 15"));
         // One transient outage is not enough to label saved fixtures stale:
         // the last-good schedule stays visible with an honest neutral status.
         await instance.page.waitForFunction(() => document.querySelector("#system-status").textContent === "Ready");
