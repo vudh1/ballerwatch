@@ -33,6 +33,7 @@ const ROOT_SHELL = [
   "./lib/guest-profile.js",
   "./lib/local-match-edits.js",
   "./lib/settings-choice.js",
+  "./lib/match-modes.mjs",
   "./lib/notification-state.js"
 ];
 const SHELL = IS_V2 ? ["./", "./index.html", "./redirect.js", "./manifest.webmanifest"] : ROOT_SHELL;
