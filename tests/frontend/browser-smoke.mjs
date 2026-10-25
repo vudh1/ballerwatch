@@ -268,6 +268,14 @@ try {
         await page.waitForFunction(() =>
           document.querySelector("#next-game-title")?.textContent.includes("Fixture Warriors"));
         assert.match(await page.locator("#next-game-watch").textContent(), /DrogonTV guide/);
+        await openHubTab(page, "settings");
+        await page.locator("#watch-service-drogon").uncheck();
+        await page.locator("#close-settings").click();
+        assert.match(await page.locator("#next-game-watch").textContent(), /No confirmed channel/);
+        await openHubTab(page, "settings");
+        await page.locator("#watch-service-drogon").check();
+        await page.locator("#close-settings").click();
+        assert.match(await page.locator("#next-game-watch").textContent(), /DrogonTV guide/);
         await page.locator("#mode-play").click();
         await page.waitForFunction(() =>
           document.querySelector("#next-game-title")?.textContent.includes("October 15"));
