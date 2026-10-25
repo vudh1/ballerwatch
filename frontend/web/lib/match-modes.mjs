@@ -25,9 +25,9 @@ export function watchMatchDetails(game, services) {
   const kickoff = Date.parse(game.startUtc);
   const time = Number.isFinite(kickoff)
     ? new Intl.DateTimeFormat("en-US", {
-      timeZone: "America/Los_Angeles", weekday: "short", month: "short",
+      weekday: "short", month: "short",
       day: "numeric", hour: "numeric", minute: "2-digit",
-    }).format(new Date(kickoff)) + " PT"
+    }).format(new Date(kickoff))
     : String(game.date || "Date pending");
   return {
     title: String(game.title || "Professional match"),
