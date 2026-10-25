@@ -97,6 +97,10 @@
           aria-pressed="false">Teams to watch</button>
       </div>
     </nav>
+    <div id="setup-missing-note" class="setup-missing-note" hidden>
+      <span id="setup-missing-text"></span>
+      <button id="setup-open-settings" type="button">Choose in Settings</button>
+    </div>
 
     <div class="spotlight-carousel" id="spotlight-carousel">
       <button class="spotlight-edge-control carousel-waterfall-edge spotlight-edge-previous" id="spotlight-previous"
@@ -451,6 +455,76 @@
     </div>
   </dialog>
 
+  <dialog id="first-run-dialog" class="first-run-dialog" aria-labelledby="first-run-title">
+    <div class="dialog-shell first-run-shell">
+      <p id="setup-progress" class="eyebrow">STEP 1 OF 3</p>
+      <h2 id="first-run-title">Make BallerWatch yours</h2>
+      <p class="muted">Three quick choices. Each is optional, and you can change them in Settings.</p>
+      <section data-setup-step >
+          <p class="eyebrow">PICKUP</p>
+          <h3>Who should we follow for pickup?</h3>
+          <p class="hint">Choose your name from the next published RSVP list. If missing, search and add it manually.</p>
+          <div class="settings-choice" id="setup-name-choice">
+            <button class="settings-choice-trigger" id="setup-name-trigger" type="button"
+              aria-haspopup="listbox" aria-expanded="false" aria-controls="setup-name-options">
+              <span id="setup-name-display">Choose RSVP name</span><span class="choice-chevron" aria-hidden="true">⌄</span>
+            </button>
+            
+            <div class="settings-choice-popover" id="setup-name-popover" hidden>
+              <label class="choice-search-label" for="setup-name-search">Find RSVP name</label>
+              <input id="setup-name-search" type="search" autocomplete="off" placeholder="Search…">
+              <div class="settings-choice-options" id="setup-name-options" role="listbox"
+                ></div>
+            </div>
+          </div>
+          <input type="hidden" id="setup-name-input">
+        </section>
+      <section data-setup-step hidden>
+          <p class="eyebrow">TEAMS TO PLAY</p>
+          <h3>Which RATS teams do you play for?</h3>
+          <p class="hint">Choose up to 8 teams for your match cards and standings.</p>
+          <div class="settings-choice" id="setup-teams-choice">
+            <button class="settings-choice-trigger" id="setup-teams-trigger" type="button"
+              aria-haspopup="listbox" aria-expanded="false" aria-controls="setup-teams-options">
+              <span id="setup-teams-display">Choose RATS teams</span><span class="choice-chevron" aria-hidden="true">⌄</span>
+            </button>
+            <div class="settings-choice-chips" id="setup-teams-chips"></div>
+            <div class="settings-choice-popover" id="setup-teams-popover" hidden>
+              <label class="choice-search-label" for="setup-teams-search">Find RATS team</label>
+              <input id="setup-teams-search" type="search" autocomplete="off" placeholder="Search…">
+              <div class="settings-choice-options" id="setup-teams-options" role="listbox"
+                aria-multiselectable="true"></div>
+            </div>
+          </div>
+          <input type="hidden" id="setup-teams-input">
+        </section>
+      <section data-setup-step hidden>
+          <p class="eyebrow">TEAMS TO WATCH</p>
+          <h3>Which teams do you like to watch?</h3>
+          <p class="hint">Choose up to 20 NBA, European football or international teams.</p>
+          <div class="settings-choice" id="setup-watch-choice">
+            <button class="settings-choice-trigger" id="setup-watch-trigger" type="button"
+              aria-haspopup="listbox" aria-expanded="false" aria-controls="setup-watch-options">
+              <span id="setup-watch-display">Choose professional teams</span><span class="choice-chevron" aria-hidden="true">⌄</span>
+            </button>
+            <div class="settings-choice-chips" id="setup-watch-chips"></div>
+            <div class="settings-choice-popover" id="setup-watch-popover" hidden>
+              <label class="choice-search-label" for="setup-watch-search">Find professional team</label>
+              <input id="setup-watch-search" type="search" autocomplete="off" placeholder="Search…">
+              <div class="settings-choice-options" id="setup-watch-options" role="listbox"
+                aria-multiselectable="true"></div>
+            </div>
+          </div>
+          <input type="hidden" id="setup-watch-input">
+        </section>
+      <div class="first-run-actions">
+        <button id="setup-back" type="button" class="secondary" hidden>Back</button>
+        <button id="setup-skip" type="button" class="secondary">Skip for now</button>
+        <button id="setup-next" type="button">Continue</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="settings-dialog" class="settings-dialog">
     <div class="dialog-shell">
       <div class="app-hub-header">
@@ -499,8 +573,26 @@
       <section id="guest-settings-view" aria-label="Personal preferences on this device">
         <p class="muted">No account needed. Your RSVP name and followed teams stay saved on this device until you change them; only notifications expire after 24 hours.</p>
         <div id="guest-settings-form" class="settings-form">
-          <label for="guest-name">Pickup RSVP name (optional)</label>
-          <input id="guest-name" type="text" maxlength="120" autocomplete="nickname" placeholder="Enter your own RSVP name">
+          <div class="settings-choice-field">
+            <label for="guest-name-trigger">Pickup RSVP name (optional)</label>
+            <div class="settings-choice" id="guest-name-choice">
+              <button type="button" class="settings-choice-trigger" id="guest-name-trigger"
+                aria-haspopup="listbox" aria-expanded="false" aria-controls="guest-name-options">
+                <span id="guest-name-display">Choose RSVP name</span>
+                <span class="choice-chevron" aria-hidden="true">⌄</span>
+              </button>
+              <div class="settings-choice-popover" id="guest-name-popover" hidden>
+                <label for="guest-name-search" class="choice-search-label">Search published RSVP names</label>
+                <input type="search" id="guest-name-search" placeholder="Find your name…" autocomplete="off">
+                <div class="settings-choice-options" id="guest-name-options" role="listbox"
+                  aria-label="Names from next published pickup"></div>
+                <p class="hint choice-hint">If your name is missing, type it in the search and choose +. Only the next published pickup roster is consulted.</p>
+              </div>
+            </div>
+            <input id="guest-name" type="hidden">
+            <button id="guest-name-clear" type="button" class="settings-clear-choice">Clear RSVP name</button>
+            <p class="hint" id="guest-name-options-status" role="status"></p>
+          </div>
           <div class="settings-choice-field">
             <label for="guest-teams-trigger">Follow RATS teams</label>
             <div class="settings-choice" id="guest-teams-choice">
