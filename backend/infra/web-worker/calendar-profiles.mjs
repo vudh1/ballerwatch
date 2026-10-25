@@ -261,7 +261,7 @@ export async function handleCalendarProfileRequest(request, env, renderIcs) {
       const manager = await issueManager(db, row.id, Date.now());
       return response(request, { ok: true, id: row.id, manager, recoveryCode: nextCode });
     }
-    const match = path.match(/^\/web\/v1\/calendar-profiles\/([\w-]{22})(?:\/(selection|rotate|pairings|device|other-devices))?$/);
+    const match = path.match(/^\/web\/v1\/calendar-profiles\/([\w-]{22})(?:\/(selection|rotate|recovery|pairings|device|other-devices))?$/);
     if (!match) return response(request, { ok: false, error: "Not found." }, 404);
     const [, id, action = ""] = match;
     const row = await ownerProfile(db, request, id);
@@ -285,6 +285,13 @@ export async function handleCalendarProfileRequest(request, env, renderIcs) {
       await db.prepare("UPDATE calendar_profiles SET read_hash = ?, read_cipher = ?, updated_ms = ? WHERE id = ?")
         .bind(hash, cipher, Date.now(), id).run();
       return response(request, { ok: true, url: urlForToken(request, readToken) });
+    }
+    if (request.method === "POST" && action === "recovery") {
+      const recoveryCode = randomToken();
+      const hash = await sha256("recovery:" + recoveryCode);
+      await db.prepare("UPDATE calendar_profiles SET recovery_hash = ?, updated_ms = ? WHERE id = ?")
+        .bind(hash, Date.now(), id).run();
+      return response(request, { ok: true, recoveryCode });
     }
     if (request.method === "POST" && action === "pairings") {
       const code = randomToken(), hash = await sha256("pair:" + code);
