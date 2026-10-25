@@ -2295,12 +2295,37 @@ function pickupDisplayCapacity(game) {
 }
 
 function spotlightModel(game, label = "NEXT GAME") {
+  if (game?.kind === WATCH) {
+    const details = watchMatchDetails(game);
+    return {
+      label: label === "SELECTED GAME" ? "SELECTED MATCH" : "NEXT TO WATCH",
+      title: details.title,
+      type: details.competition,
+      meta: details.time,
+      form: "",
+      location: details.location,
+      capacityText: "",
+      capacityPercent: 0,
+      capacityKnown: false,
+      spotsText: "",
+      weather: "",
+      updated: matchUpdatedText(watchedUpdatedAt),
+      rsvp: "",
+      rsvpConfirmed: false,
+      rsvpWaitlisted: false,
+      directions: "",
+      actionsHidden: true,
+    };
+  }
   if (!game) {
     return {
       label,
-      title: "No upcoming game",
+      title: activeMatchMode === WATCH ? "No upcoming matches to watch" : "No upcoming game",
       type: "None",
-      meta: "No pickup or RATS game is currently published.",
+      meta: activeMatchMode === WATCH
+        ? watchedTeams.length ? "No published fixtures for your watched teams yet."
+          : "Choose professional teams in Settings to follow their fixtures."
+        : "No pickup or RATS game is currently published.",
       form: "",
       location: "",
       capacityText: "",
@@ -2428,7 +2453,7 @@ function applySpotlightModel(targets, game, label = "NEXT GAME") {
   targets.updated.textContent = model.updated;
   targets.updated.hidden = !model.updated;
   targets.actions.hidden = model.actionsHidden;
-  if (targets.menuTrigger) targets.menuTrigger.hidden = !game?.id;
+  if (targets.menuTrigger) targets.menuTrigger.hidden = !game?.id || game.kind === WATCH;
   targets.hint.textContent = "";
 
   if (model.directions) {
@@ -2462,6 +2487,7 @@ function currentSpotlightTargets() {
 }
 
 function renderNextGame(game, label = "NEXT GAME") {
+  if (activeMatchMode === WATCH && game && game.kind !== WATCH) return;
   closeMatchCardMenu();
   currentNextGame = game
     ? {
