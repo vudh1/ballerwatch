@@ -1,7 +1,19 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.8.0",
+  "currentVersion": "11.8.1",
   "releases": [
+    {
+      "version": "11.8.1",
+      "date": "2026-10-25",
+      "type": "patch",
+      "source": "user-feedback",
+      "title": "Reliable swipe-to-rewind resistance",
+      "changes": [
+        "Consistently intercept upward dashboard-to-intro gestures with touch-boundary tolerance through browser toolbar resizing and swipes starting below the boundary.",
+        "Show elastic resistance on non-cancelable iOS Safari touch events while guarding native momentum; preserve horizontal match-card swipes and normal downward scrolling.",
+        "Refresh the PWA shell/versioned assets and add Chromium, Firefox and WebKit regression coverage for cross-boundary touch and uncancelable events."
+      ]
+    },
     {
       "version": "11.8.0",
       "date": "2026-10-25",
