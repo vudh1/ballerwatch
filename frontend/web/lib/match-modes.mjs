@@ -1,8 +1,9 @@
-import { watchCoverage } from "./watch-coverage.mjs";
 /**
  * Presentation-only partition between personal matches and professional fixtures.
  * Never carry RSVP, scouting, standings or local match-edit behavior into Watch.
  */
+import { watchCoverage } from "./watch-coverage.mjs";
+
 export const PLAY = "play";
 export const WATCH = "watch";
 
