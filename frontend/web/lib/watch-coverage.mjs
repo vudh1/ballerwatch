@@ -1,15 +1,12 @@
 /**
- * User's three watch sources: Prime Video, ESPN and DrogonTV.
- * ESPN publishes the actual U.S. broadcasters. DrogonTV's public page lists
- * channel names but has no verified per-event EPG: always say "check guide".
- * Never infer a channel from day-of-week league broadcast patterns.
+ * Display-only coverage from ESPN-published U.S. channels and precomputed
+ * DrogonTV channel-lineup intersections. No client-side catalogue, provider
+ * search, EPG inference or extra requests during startup. Baseline: v11.8.0.
+ * A matched channel is NOT verified program availability: check the TV guide.
  */
 const DIRECT = new Map([
   ["Prime Video", "Prime Video"],
   ["ESPN", "ESPN"],
-]);
-const DROGON_GUIDE = new Set([
-  "ESPN", "FOX Sports", "NBC Sports", "beIN SPORTS", "NBA TV",
 ]);
 export const DEFAULT_WATCH_SERVICES = Object.freeze({ prime: true, espn: true, drogon: true });
 export function watchCoverage(game, services = DEFAULT_WATCH_SERVICES) {
@@ -23,15 +20,18 @@ export function watchCoverage(game, services = DEFAULT_WATCH_SERVICES) {
       available.push(DIRECT.get(channel));
     }
   }
-  // Channel presence on an advertised IPTV lineup does not verify the IPTV
-  // platform has this particular program, or that it is licensed in the U.S.
-  if (services.drogon !== false && available.length < 2) {
-    const guideChannel = sources.find(name => DROGON_GUIDE.has(name) &&
-      !DIRECT.has(name));
-    if (guideChannel) available.push(`${guideChannel} · check DrogonTV guide`);
+  const lineupMatches = Array.isArray(game?.drogonChannels)
+    ? [...new Set(game.drogonChannels.filter(name =>
+      typeof name === "string" && name.length <= 50))] : [];
+  if (services.drogon !== false && lineupMatches.length && available.length < 2) {
+    const alternative = lineupMatches.find(name => !available.includes(name));
+    if (alternative) available.push(`${alternative} · check DrogonTV guide`);
+    else if (available.length === 1 && lineupMatches.includes(available[0])) {
+      // Explain how to find the same published ESPN broadcast in the user's
+      // Drogon channel inventory without presenting it as a confirmed airing.
+      available[0] += " · check DrogonTV guide";
+    }
   }
-  if (available.length) return available.slice(0, 2).join(" · ");
-  // NBC/Peacock, CBS/Paramount+, Apple TV, etc. are omitted because the user
-  // did not say they have those subscriptions. Do not promise IPTV access.
-  return "";
+  // No unverified program guesses for UK/NZ feeds or ESPN+/Peacock/Paramount+.
+  return available.slice(0, 2).join(" · ");
 }
