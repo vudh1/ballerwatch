@@ -65,9 +65,15 @@
 .v2-shell { padding-left: max(clamp(.9rem, 3vw, 1.35rem), var(--v2-safe-left)); padding-right: max(clamp(.9rem, 3vw, 1.35rem), var(--v2-safe-right)); }
 .v2-cinematic .v2-shell { margin-top: calc(-1 * var(--scene-height)); min-height: var(--scene-height); opacity: var(--app-reveal, 0); }
 .v2-shell[inert] { pointer-events: none; }
-/* A restrained 0–7px elastic response before the deliberate upward rewind. */
-.v2-rewind-resisting .v2-shell > .hero { transform: translateY(var(--rewind-tension, 0px)); transition: transform 150ms ease-out; }
-.v2:not(.v2-rewind-resisting) .v2-shell > .hero { transform: translateY(0); transition: transform 180ms ease-out; }
+/* A tactile 0–28px elastic response moves the dashboard, not just its title.
+ * The cue exists only during an active resisted pull; avoid permanent clutter. */
+.v2 .v2-shell { transform: translate3d(0, 0, 0); transition: transform 220ms cubic-bezier(.2, .8, .2, 1); }
+.v2.v2-rewind-resisting .v2-shell { transform: translate3d(0, var(--rewind-tension, 0px), 0); transition: transform 75ms ease-out; }
+.v2 .rewind-affordance { position: fixed; z-index: 900; top: max(1rem, calc(env(safe-area-inset-top) + .6rem)); left: 50%; min-width: 152px; padding: .55rem .75rem .6rem; border-radius: 18px; transform: translate(-50%, -12px); opacity: 0; visibility: hidden; pointer-events: none; background: #092823e8; box-shadow: 0 12px 24px #0005, inset 0 1px 0 #ffffff25; color: #defbf2; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); transition: opacity 140ms ease, transform 140ms ease, visibility 140ms; }
+.v2.v2-rewind-resisting .rewind-affordance { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+.rewind-affordance-label { display: block; font-size: var(--type-small); font-weight: 500; text-align: center; white-space: nowrap; }
+.rewind-affordance-track { display: block; height: 2px; background: #c2fff029; margin-top: .5rem; border-radius: 99px; overflow: hidden; }
+.rewind-affordance-track > span { display: block; height: 100%; width: 100%; transform: scaleX(var(--rewind-progress, 0)); transform-origin: left; background: #7dd3fc; }
 .v2-cinematic:not(.v2-app-ready) .chat-launcher { opacity: 0; pointer-events: none; visibility: hidden; }
 .v2-static-welcome { font-size: var(--type-small); color: var(--muted); padding-top: max(1rem, env(safe-area-inset-top)); margin-bottom: 0; }
 
@@ -93,5 +99,6 @@
   .v2 .soccer-intro, .v2 .v2-launch { display: none; }
   .v2 .v2-shell { margin-top: 0; opacity: 1; }
   .v2 .chat-launcher { opacity: 1; visibility: visible; pointer-events: auto; }
+  .v2 .rewind-affordance { display: none; }
   .v2 *, .v2 *::before, .v2 *::after { scroll-behavior: auto !important; animation-duration: .001ms !important; transition-duration: .001ms !important; }
 }
