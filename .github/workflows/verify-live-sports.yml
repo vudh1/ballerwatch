@@ -1,0 +1,62 @@
+name: Verify live sports calendar feed
+on:
+  # Initial one-time smoke check when this verified workflow is merged.
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/verify-live-sports.yml"
+  workflow_run:
+    workflows: ["Deploy BallerWatch Worker"]
+    types: [completed]
+permissions:
+  contents: read
+jobs:
+  verify:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Validate public sports catalogue and subscribed .ics
+        shell: bash
+        env:
+          BASE: https://ballerwatch-web.vudhone.workers.dev
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 25 --retry 2 --retry-delay 2 \
+            "$BASE/web/sports" -o /tmp/catalogue.json
+          TEAM="$(node - <<'NODE'
+          const fs = require("fs");
+          const data = JSON.parse(fs.readFileSync("/tmp/catalogue.json","utf8"));
+          if(data.ok !== true || !Array.isArray(data.teams) || data.teams.length < 150 ||
+             !Number.isFinite(Date.parse(data.updatedAt))) process.exit(1);
+          const name = data.teams.find(x => x.startsWith("NBA · "));
+          if(!name) process.exit(1);
+          process.stdout.write(name);
+          NODE
+          )"
+          curl -fsS --max-time 25 --retry 2 --retry-delay 2 \
+            --get --data-urlencode "teams=$TEAM" "$BASE/web/sports" \
+            -o /tmp/team-fixtures.json
+          node - <<'NODE'
+          const fs = require("fs");
+          const data = JSON.parse(fs.readFileSync("/tmp/team-fixtures.json","utf8"));
+          const games = data.games || [];
+          if(data.ok !== true || !games.length || games.some(g => g.kind !== "watch" ||
+             !g.id || !g.startUtc || !g.title)) process.exit(1);
+          console.log("Verified production watch fixtures:", games.length);
+          NODE
+          curl -fsS --max-time 25 --retry 2 --retry-delay 2 \
+            --get --data-urlencode "watch=$TEAM" "$BASE/web/calendar.ics" \
+            -o /tmp/sports-calendar.ics
+          node - <<'NODE'
+          const fs = require("fs");
+          const ics = fs.readFileSync("/tmp/sports-calendar.ics", "utf8");
+          if(!ics.startsWith("BEGIN:VCALENDAR\r\n") ||
+             !ics.includes("BEGIN:VEVENT\r\n") ||
+             !ics.includes("DTSTART:") || !ics.includes("DTEND:") ||
+             !ics.includes("END:VCALENDAR\r\n") ||
+             /rsvp-roster|voteOrder|TRACKER_STATE_KEY|GITHUB_CONTENTS_TOKEN/.test(ics))
+             process.exit(1);
+          console.log("Verified production iCalendar subscription.");
+          NODE
+          rm -f /tmp/catalogue.json /tmp/team-fixtures.json /tmp/sports-calendar.ics
