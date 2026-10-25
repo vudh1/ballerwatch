@@ -20,6 +20,7 @@ export const RUNTIME_SCOPES = Object.freeze({
     "requests/unknown.json",
     "state/web-push.json",
   ]),
+  roster: Object.freeze(["pickup/state/roster-catalog.json"]),
   pickup: Object.freeze([
     "state/user.json",
     "pickup/state/feed.json",
