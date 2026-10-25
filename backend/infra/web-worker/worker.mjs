@@ -1,5 +1,6 @@
 /**
- * Copyright © 2026 BallerWatch. All rights reserved.
+ * Copyright © 2026 Duong Vu and contributors.
+ * SPDX-License-Identifier: Apache-2.0
  *
  * Serves BallerWatch web/PWA APIs, user authentication, runtime-state access, health checks, and scheduled edge work.
  *

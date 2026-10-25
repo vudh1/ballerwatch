@@ -97,3 +97,7 @@ The [Card design system](docs/CARD-DESIGN-SYSTEM.md) describes the shared stylin
 The code is grouped under `frontend/web/` (GitHub Pages PWA), `backend/` (Cloudflare API, RATS/pickup watchers and encrypted runtime integrations), `tests/` (Node/browser regressions), and `scripts/` (validation and Pages composition). The source version and release history are in [features/versions.json](features/versions.json); live releases appear on [GitHub Releases](https://github.com/vudh1/ballerwatch/releases).
 
 A normal change begins from the latest `main` on a feature/release branch, passes **Validate code**, and merges through review. Validated `main` is packaged into `/beta/`; the root always comes from the separate `production` ref. Production promotion is a separate explicit administrator action. Never put plaintext private runtime data into this public repository.
+
+## License and attribution
+
+Original BallerWatch source and documentation are offered under the [Apache License 2.0](LICENSE) (`Apache-2.0`), subject to the ownership and third-party boundaries in [COPYRIGHT.md](COPYRIGHT.md). Copyright © 2026 Duong Vu and contributors. Sports feeds, team/league logos, trademarks, media and private data are **not** relicensed by the project. BallerWatch is independently maintained within the [FRIDAY ecosystem](FRIDAY.md).

@@ -126,3 +126,7 @@ PURGE removes generated encrypted runtime files, user settings, monitored-team o
 - Runtime branch unavailable: supported workflows may use encrypted last-known cache backup.
 - Release/content credential invalid: promotion/Worker readiness fails closed.
 - Web Push delivery is independent from Cloudflare once a subscription is stored; GitHub Actions sends directly to validated browser push providers.
+
+## Licensing and provenance
+
+Read [LICENSE](LICENSE) and [COPYRIGHT.md](COPYRIGHT.md) before incorporating code or assets. Apache-2.0 covers original materials contributors have authority to license; preserve third-party license/copyright terms and do not imply rights to sports data, marks or confidential runtime state. The transition from the prior “All rights reserved” notice is a material rights change and requires an explicit owner-reviewed PR. No product-version bump or production promotion for this documentation-only change.
