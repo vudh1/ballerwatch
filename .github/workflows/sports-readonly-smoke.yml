@@ -1,0 +1,57 @@
+name: Smoke-test indexed professional sports safely
+on:
+  workflow_run:
+    workflows: ["Refresh professional sports fixtures"]
+    types: [completed]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ballerwatch-sports-readonly-smoke
+  cancel-in-progress: false
+jobs:
+  smoke:
+    # Run only after the main-branch FULL annual index, never after daily or
+    # production scheduled refreshes. Dispatch remains an explicit manual check.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || 'main' }}
+          fetch-depth: 1
+      - name: Read only the hardened encrypted sports, pickup and league snapshots
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$TRACKER_STATE_KEY"
+          node backend/shared/runtime-state.mjs pull sports
+          node backend/shared/runtime-state.mjs pull pickup
+          node backend/shared/runtime-state.mjs pull league
+      - name: Verify full annual fixture coverage and precomputed channel matches
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: node scripts/verify-drogon-sports-index.mjs
+      - name: Verify pickup and league without push or calendar mutations
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: node tests/backend/smoke/manual-smoke.mjs
+      - name: Audit canonical runtime-state branch encryption
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: node backend/shared/runtime-state.mjs audit
+      - name: Remove all local state even on failure
+        if: always()
+        shell: bash
+        run: |
+          for scope in sports pickup league; do
+            node backend/shared/runtime-state.mjs clean "$scope"
+          done
+          rm -rf .runtime
