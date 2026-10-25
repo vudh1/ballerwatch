@@ -1,3 +1,4 @@
+import { watchCoverage } from "./watch-coverage.mjs";
 /**
  * Presentation-only partition between personal matches and professional fixtures.
  * Never carry RSVP, scouting, standings or local match-edit behavior into Watch.
@@ -32,5 +33,6 @@ export function watchMatchDetails(game) {
     competition: String(game.competition || (game.sport === "basketball" ? "NBA" : "Football")),
     time,
     location: String(game.location || "Venue not announced"),
+    whereToWatch: watchCoverage(game),
   };
 }
