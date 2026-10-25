@@ -40,7 +40,6 @@ jobs:
       - name: Update public professional fixture index
         env:
           TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
-        env:
           SCHEDULE_EXPRESSION: ${{ github.event.schedule }}
         run: |
           if [ "$SCHEDULE_EXPRESSION" = "17 11 * * *" ]; then
