@@ -139,6 +139,7 @@ const els = {
   nextGameMeta: document.querySelector("#next-game-meta"),
   nextGameForm: document.querySelector("#next-game-form"),
   nextGameLocation: document.querySelector("#next-game-location"),
+  nextGameWatch: document.querySelector("#next-game-watch"),
   nextGameCapacity: document.querySelector("#next-game-capacity"),
   nextGameCapacityLabel: document.querySelector("#next-game-capacity-label"),
   nextGameCapacitySpots: document.querySelector("#next-game-capacity-spots"),
@@ -2309,6 +2310,7 @@ function spotlightModel(game, label = "NEXT GAME") {
       meta: details.time,
       form: "",
       location: details.location,
+      whereToWatch: details.whereToWatch,
       capacityText: "",
       capacityPercent: 0,
       capacityKnown: false,
@@ -2441,6 +2443,9 @@ function applySpotlightModel(targets, game, label = "NEXT GAME") {
   targets.meta.textContent = model.meta;
   renderWinChanceBar(targets.form, game, monitoredWinForm(game));
   targets.location.textContent = model.location;
+  targets.watch.textContent = game?.kind === WATCH
+    ? "WHERE TO WATCH · " + (model.whereToWatch || "TV channel not announced") : "";
+  targets.watch.hidden = game?.kind !== WATCH;
   const estimate = monitoredWinForm(game);
   if (estimate) {
     targets.location.title =
@@ -2479,6 +2484,7 @@ function currentSpotlightTargets() {
     meta: els.nextGameMeta,
     form: els.nextGameForm,
     location: els.nextGameLocation,
+    watch: els.nextGameWatch,
     capacity: els.nextGameCapacity,
     capacityLabel: els.nextGameCapacityLabel,
     capacitySpots: els.nextGameCapacitySpots,
@@ -2538,6 +2544,7 @@ function buildSpotlightTrainCard(game) {
       meta: role("next-game-meta"),
       form: role("next-game-form"),
       location: role("next-game-location"),
+      watch: role("next-game-watch"),
       capacity: role("next-game-capacity"),
       capacityLabel: role("next-game-capacity-label"),
       capacitySpots: role("next-game-capacity-spots"),
