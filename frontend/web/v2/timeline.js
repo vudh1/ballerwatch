@@ -3,6 +3,7 @@
  * Baseline: v11.2.0. Transforms/opacity only; no API work or data polling.
  */
 import { SCENE, featureStory, scenePose, cameraFlash, clamp } from "./scene-config.mjs";
+import { createRewindGate } from "./rewind-gate.mjs";
 
 const root = document.documentElement;
 const intro = document.querySelector("#soccer-intro");
@@ -24,6 +25,9 @@ let lastStory = null;
 let lastProgress = -1;
 let active = root.classList.contains("v2-cinematic");
 let listening = false;
+const rewindGate = createRewindGate();
+let touchLastY = null;
+let touchUnlocked = false;
 const cameraFlashes = [...document.querySelectorAll("[data-camera-flash]")];
 const launcher = document.querySelector("#chat-launcher");
 
@@ -44,6 +48,9 @@ function revealApp(ready) {
 }
 export function finishIntro({ focus = false } = {}) {
   active = false;
+  rewindGate.reset();
+  touchLastY = null;
+  touchUnlocked = false;
   cancelAnimationFrame(frame);
   frame = 0;
   dismissLaunch();
@@ -117,6 +124,82 @@ function render() {
     }
   } catch { finishIntro(); }
 }
+// Only block an upward gesture trying to cross the top of the matchday page.
+// Internal scrollable lists, regular downward motion, scrolling within the
+// stadium, and programmatic scrollTo() stay under native browser control.
+function scrollableChildCanMoveUp(target) {
+  let node = target?.nodeType === 1 ? target : target?.parentElement;
+  while (node && node !== document.documentElement) {
+    if (node.scrollHeight > node.clientHeight + 2 && node.scrollTop > 2) {
+      const overflow = getComputedStyle(node).overflowY;
+      if (overflow === "scroll" || overflow === "auto") return true;
+    }
+    node = node.parentElement;
+  }
+  return false;
+}
+function guardReady(event) {
+  return active && !motion.matches && !root.classList.contains("v2-launching") &&
+    !document.querySelector("dialog[open]") && !scrollableChildCanMoveUp(event.target);
+}
+function rewindWheel(event) {
+  if (!guardReady(event) || event.ctrlKey) return;
+  const unit = event.deltaMode === 1 ? 16 :
+    event.deltaMode === 2 ? window.innerHeight : 1;
+  const delta = event.deltaY * unit;
+  if (delta >= 0) {
+    rewindGate.reset("wheel");
+    return;
+  }
+  const position = Math.max(0, window.scrollY);
+  if (position < distance - 2) {
+    rewindGate.reset("wheel");
+    return;
+  }
+  // Let the user scroll naturally to the top of the main feed first.
+  const crossing = position + delta < distance;
+  if (!crossing || !event.cancelable) return;
+  event.preventDefault();
+  window.scrollTo({ top: distance, behavior: "instant" });
+  const result = rewindGate.pull("wheel", distance - position - delta, performance.now());
+  if (result.released) {
+    // A firm continued pull crosses into the reversible cinematic timeline.
+    window.scrollTo({ top: Math.max(0, distance - Math.max(4, result.overflow)),
+      behavior: "instant" });
+  }
+}
+function rewindTouchStart(event) {
+  touchLastY = event.touches.length === 1 ? event.touches[0].clientY : null;
+  touchUnlocked = false;
+  rewindGate.reset("touch");
+}
+function rewindTouchMove(event) {
+  if (touchLastY === null || event.touches.length !== 1) return;
+  const y = event.touches[0].clientY;
+  const pull = y - touchLastY;
+  touchLastY = y;
+  if (touchUnlocked || !guardReady(event)) return;
+  if (pull <= 0) {
+    rewindGate.reset("touch");
+    return;
+  }
+  const position = Math.max(0, window.scrollY);
+  if (position < distance - 2) return; // Already rewinding the stadium.
+  if (position > distance + 8 || !event.cancelable) return;
+  event.preventDefault();
+  window.scrollTo({ top: distance, behavior: "instant" });
+  const result = rewindGate.pull("touch", pull);
+  if (result.released) {
+    touchUnlocked = true;
+    window.scrollTo({ top: Math.max(0, distance - Math.max(4, result.overflow)),
+      behavior: "instant" });
+  }
+}
+function rewindTouchEnd() {
+  touchLastY = null;
+  touchUnlocked = false;
+  rewindGate.reset("touch");
+}
 function requestRender() {
   if (active && !frame && !document.hidden) frame = requestAnimationFrame(render);
 }
@@ -142,6 +225,11 @@ function listen() {
   if (listening) return;
   listening = true;
   window.addEventListener("scroll", requestRender, { passive: true });
+  window.addEventListener("wheel", rewindWheel, { passive: false });
+  window.addEventListener("touchstart", rewindTouchStart, { passive: true });
+  window.addEventListener("touchmove", rewindTouchMove, { passive: false });
+  window.addEventListener("touchend", rewindTouchEnd, { passive: true });
+  window.addEventListener("touchcancel", rewindTouchEnd, { passive: true });
   window.addEventListener("resize", measure, { passive: true });
   document.addEventListener("visibilitychange", visibilityChanged);
 }
@@ -150,6 +238,7 @@ function startIntro() {
     return;
   }
   dismissLaunch();
+  rewindGate.reset();
   active = true;
   root.classList.add("v2-cinematic");
   root.classList.remove("v2-revealing");
@@ -183,6 +272,11 @@ try {
     frame = 0;
     listening = false;
     window.removeEventListener("scroll", requestRender);
+    window.removeEventListener("wheel", rewindWheel);
+    window.removeEventListener("touchstart", rewindTouchStart);
+    window.removeEventListener("touchmove", rewindTouchMove);
+    window.removeEventListener("touchend", rewindTouchEnd);
+    window.removeEventListener("touchcancel", rewindTouchEnd);
     window.removeEventListener("resize", measure);
     document.removeEventListener("visibilitychange", visibilityChanged);
   });
