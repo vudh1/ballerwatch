@@ -132,7 +132,7 @@ async function issueManager(db, profileId, now) {
   return credential;
 }
 function urlForToken(request, token) {
-  return new URL("/web/v1/calendar/" + token + ".ics", request.url).toString();
+  return new URL("/web/v1/calendar-ics/" + token + ".ics", request.url).toString();
 }
 async function changeSelection(db, env, row, value, expectedRevision) {
   const selection = normalizeCalendarSelection(value);
