@@ -11,12 +11,12 @@
   <meta name="apple-mobile-web-app-title" content="BallerWatch">
   <meta name="description" content="A moment of football. Then everything you need for your next match.">
   <title>BallerWatch — Your matchday</title>
-  <link rel="manifest" href="./manifest.webmanifest?v=11.5.0">
-  <link rel="icon" href="./icon.svg?v=11.5.0" type="image/svg+xml">
-  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=11.5.0">
-  <script src="./v2/prepaint.js?v=11.5.0"></script>
-  <link rel="stylesheet" href="./styles.css?v=11.5.0">
-  <link rel="stylesheet" href="./v2/styles.css?v=11.5.0">
+  <link rel="manifest" href="./manifest.webmanifest?v=11.6.0">
+  <link rel="icon" href="./icon.svg?v=11.6.0" type="image/svg+xml">
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=11.6.0">
+  <script src="./v2/prepaint.js?v=11.6.0"></script>
+  <link rel="stylesheet" href="./styles.css?v=11.6.0">
+  <link rel="stylesheet" href="./v2/styles.css?v=11.6.0">
 </head>
 <body>
   <div class="status-bar-glass" aria-hidden="true"></div>
@@ -74,7 +74,7 @@
     <p class="v2-static-welcome" hidden>Matchday, at your pace. Motion is reduced on this device.</p>
     <header class="hero">
       <div class="brand-lockup">
-        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=11.5.0" alt=""></div>
+        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=11.6.0" alt=""></div>
         <div>
           <p class="eyebrow">SOCCER AT A GLANCE</p>
           <h1 id="matchday-heading" tabindex="-1">BallerWatch</h1>
@@ -135,6 +135,7 @@
           </div>
           <p class="next-game-meta" id="next-game-meta"></p>
           <p class="next-game-location muted" id="next-game-location"></p>
+           <p class="next-game-watch" id="next-game-watch" aria-label="Where to watch" hidden></p>
           <div class="next-game-weather" id="next-game-weather" hidden></div>
           <p class="next-game-form" id="next-game-form" hidden></p>
           <div class="next-game-capacity" id="next-game-capacity" role="button" tabindex="0"
@@ -158,6 +159,20 @@
         </div>
       </section>
     </div>
+
+    <section id="watch-days" class="watch-days" aria-label="Matches to watch grouped by day" hidden>
+      <div class="watch-days-heading">
+        <div>
+          <p class="eyebrow">TEAMS TO WATCH</p>
+          <h2 class="bw-card-title">Upcoming match days</h2>
+        </div>
+        <p class="hint">Tap a match for details and TV channels</p>
+      </div>
+      <div id="watch-day-list" class="watch-day-list" aria-live="polite"></div>
+      <button id="watch-show-more" class="secondary watch-show-more" type="button" hidden>
+        Show next 14 days
+      </button>
+    </section>
 
     <section class="card calendar-card bw-card-frame" id="two-week-calendar" aria-expanded="false">
         <div class="section-heading calendar-heading bw-card-heading">
@@ -208,6 +223,27 @@
       </div>
     </footer>
   </main>
+
+  <dialog id="watch-match-dialog" class="watch-match-dialog" aria-labelledby="watch-match-title">
+    <div class="dialog-shell watch-match-shell">
+      <div class="watch-match-heading">
+        <div>
+          <p class="eyebrow" id="watch-match-competition">PROFESSIONAL MATCH</p>
+          <h2 id="watch-match-title"></h2>
+        </div>
+        <button id="close-watch-match" class="icon-button" type="button"
+          aria-label="Close match details">×</button>
+      </div>
+      <dl class="watch-match-details">
+        <div><dt>Kickoff · Pacific</dt><dd id="watch-match-time"></dd></div>
+        <div><dt>Venue</dt><dd id="watch-match-venue"></dd></div>
+        <div><dt>Where to watch · U.S.</dt><dd id="watch-match-channel"></dd></div>
+      </dl>
+      <p class="hint">DrogonTV listings require confirmation in the channel guide.</p>
+      <a class="watch-match-source" id="watch-match-source" target="_blank"
+        rel="noopener noreferrer" hidden>Official match information</a>
+    </div>
+  </dialog>
 
   <dialog id="team-history-dialog" class="team-history-dialog"
     aria-labelledby="team-history-title">
@@ -496,10 +532,17 @@
                 <input type="search" id="watch-teams-search" placeholder="Search NBA, Premier League, UEFA, Copa América…" autocomplete="off">
                 <div class="settings-choice-options" id="watch-teams-options" role="listbox"
                   aria-label="Professional sports teams" aria-multiselectable="true"></div>
-                <p class="hint choice-hint">Choose up to 20 teams. Watch mode shows their upcoming match and schedule cards without RATS standings, RSVP or scouting.</p>
+                <p class="hint choice-hint">Choose up to 20 teams. Watch mode groups all upcoming matches by day. Tap any match for its details and TV channel; no RSVP or standings.</p>
               </div>
             </div>
             <textarea id="watch-teams" hidden></textarea>
+            <fieldset class="watch-service-settings">
+              <legend>Where I watch · United States</legend>
+              <label><input type="checkbox" id="watch-service-prime" checked> Prime Video</label>
+              <label><input type="checkbox" id="watch-service-espn" checked> ESPN</label>
+              <label><input type="checkbox" id="watch-service-drogon" checked> DrogonTV</label>
+              <p class="hint">Only published U.S. channels. DrogonTV channels need confirmation in your TV guide.</p>
+            </fieldset>
             <p class="hint" id="watch-teams-status" role="status">Professional fixtures are indexed weekly. TV and third-party calendar apps refresh on their own schedule.</p>
           </div>
           <div class="calendar-subscribe-settings">
@@ -634,7 +677,7 @@
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=11.5.0"></script>
-  <script type="module" src="./v2/app.js?v=11.5.0"></script>
+  <script type="module" src="./app.js?v=11.6.0"></script>
+  <script type="module" src="./v2/app.js?v=11.6.0"></script>
 </body>
 </html>

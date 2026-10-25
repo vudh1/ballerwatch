@@ -3867,6 +3867,7 @@ export default {
         const selection = webTeamSelection(url.searchParams, "teams", 20);
         const index = await loadSportsIndex(env);
         return webJson(request, { ok: true, updatedAt: index.updatedAt,
+          broadcastUpdatedAt: index.broadcastUpdatedAt || index.updatedAt,
           provider: index.provider, teams: index.teams,
           games: watchedFixtures(index, selection) });
       } catch (error) {
@@ -3895,7 +3896,7 @@ export default {
         if (watches.length) {
           const indexed = await loadSportsIndex(env);
           published.push(...watchedFixtures(indexed, watches));
-          updatedAt = indexed.updatedAt || updatedAt;
+          updatedAt = indexed.broadcastUpdatedAt || indexed.updatedAt || updatedAt;
         }
         const body = calendarToIcs(published, {
           name: "BallerWatch · My sports", updatedAt,

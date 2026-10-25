@@ -93,6 +93,8 @@ export function calendarToIcs(games = [], { name = "BallerWatch", updatedAt = ""
     const description = [game.kind === "watch" ? "Watching · professional sports" : "Playing · BallerWatch",
       game.competition || "", game.jerseyColor ? "Jersey: " + game.jerseyColor : "",
       game.opponentJerseyColor ? "Opponent jersey: " + game.opponentJerseyColor : "",
+      game.kind === "watch" && Array.isArray(game.broadcasts) && game.broadcasts.length
+        ? "US TV: " + game.broadcasts.slice(0, 2).join(", ") : "",
       game.rsvpUrl || "", game.locationUrl || "", game.url || ""].filter(Boolean).join("\n");
     lines.push("BEGIN:VEVENT", "UID:" + uid, "DTSTAMP:" + generated,
       ...times, "SUMMARY:" + icalEscape(title),

@@ -115,6 +115,7 @@ async function prepare(browser, options = {}) {
           startUtc: new Date(at.getTime() + i * 3600000).toISOString(),
           endUtc: new Date(at.getTime() + (i + 3) * 3600000).toISOString(),
           location: "Synthetic Arena",
+          broadcasts: i === 0 ? ["Prime Video", "Peacock"] : ["NBA TV"],
         }));
       }
       if (controls.noPickupCap && url.pathname === "/web/next-game") {
@@ -238,7 +239,7 @@ try {
         await context.close();
       });
 
-      await scenario(`${engine}: Play/Watch slider isolates personal and professional match cards`, async () => {
+      await scenario(`${engine}: Play carousel and Watch day-grouped match list remain isolated`, async () => {
         const { context, page, errors } = await prepare(browser, { reducedMotion: "reduce" });
         await ready(page);
         assert.equal(await page.locator("#mode-play").getAttribute("aria-pressed"), "true");
@@ -249,21 +250,47 @@ try {
         await page.locator('#watch-teams-options [role="option"]').first().click();
         await page.locator("#close-settings").click();
         await page.locator("#mode-watch").click();
-        await page.waitForFunction(() =>
-          document.querySelector("#next-game-title")?.textContent.includes("Fixture Lakers"));
+        await page.locator("#watch-day-list .watch-day-card").first().waitFor();
         assert.equal(await page.locator("#mode-watch").getAttribute("aria-pressed"), "true");
         assert.equal(await page.locator("#league-standings").isVisible(), false);
-        assert.equal(await page.locator("#next-game-title").textContent(), "Fixture Lakers vs Fixture Celtics");
-        assert.equal(await page.locator("#next-game-type").textContent(), "NBA");
-        assert.equal(await page.locator("#next-game-menu-trigger").isVisible(), false);
-        assert.equal(await page.locator("#next-game-capacity").isVisible(), false);
-        assert.equal(await page.locator("#next-game-form").isVisible(), false);
-        assert.equal(await page.locator("#next-game-actions").isVisible(), false);
+        assert.equal(await page.locator("#spotlight-carousel").isVisible(), false);
+        assert.equal(await page.locator("#watch-day-list .watch-day-card").count(), 1);
+        assert.equal(await page.locator("#watch-day-list .watch-match-row").count(), 2);
         assert.match(await page.locator("#calendar-title").textContent(), /Watch Schedule/);
         assert.equal(await page.locator("#calendar-grid .calendar-signal-dot").count(), 2);
-        await activateSpotlightControl(page, "#spotlight-next");
-        await page.waitForFunction(() =>
-          document.querySelector("#next-game-title")?.textContent.includes("Fixture Warriors"));
+        await page.locator("#watch-day-list .watch-match-row").first().click();
+        assert.equal(await page.locator("#watch-match-dialog").isVisible(), true);
+        assert.equal(await page.locator("#watch-match-title").textContent(),
+          "Fixture Lakers vs Fixture Celtics");
+        assert.equal(await page.locator("#watch-match-competition").textContent(), "NBA");
+        assert.match(await page.locator("#watch-match-channel").textContent(), /Prime Video/);
+        assert.doesNotMatch(await page.locator("#watch-match-channel").textContent(), /Peacock/);
+        await page.locator("#close-watch-match").click();
+        await page.locator("#watch-day-list .watch-match-row").nth(1).click();
+        assert.equal(await page.locator("#watch-match-title").textContent(),
+          "Fixture Lakers vs Fixture Warriors");
+        assert.match(await page.locator("#watch-match-channel").textContent(), /DrogonTV guide/);
+        await page.locator("#close-watch-match").click();
+        await openHubTab(page, "settings");
+        await page.locator("#watch-service-drogon").evaluate(element => {
+          element.checked = false;
+          element.dispatchEvent(new Event("change", { bubbles: true }));
+        });
+        await page.locator("#close-settings").click();
+        await page.locator("#watch-day-list .watch-match-row").nth(1).click();
+        assert.match(await page.locator("#watch-match-channel").textContent(), /No confirmed channel/);
+        await page.locator("#close-watch-match").click();
+        await openHubTab(page, "settings");
+        await page.locator("#watch-service-drogon").evaluate(element => {
+          element.checked = true;
+          element.dispatchEvent(new Event("change", { bubbles: true }));
+        });
+        await page.locator("#close-settings").click();
+        await page.locator("#watch-day-list .watch-match-row").nth(1).click();
+        assert.match(await page.locator("#watch-match-channel").textContent(), /DrogonTV guide/);
+        await page.locator("#close-watch-match").click();
+        await page.locator('#calendar-grid .calendar-day[aria-disabled="false"]').first().click();
+        assert.equal(await page.locator("#watch-day-list .watch-day-card").count(), 1);
         await page.locator("#mode-play").click();
         await page.waitForFunction(() =>
           document.querySelector("#next-game-title")?.textContent.includes("October 15"));

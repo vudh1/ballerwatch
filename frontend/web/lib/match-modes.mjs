@@ -2,6 +2,8 @@
  * Presentation-only partition between personal matches and professional fixtures.
  * Never carry RSVP, scouting, standings or local match-edit behavior into Watch.
  */
+import { watchCoverage } from "./watch-coverage.mjs";
+
 export const PLAY = "play";
 export const WATCH = "watch";
 
@@ -18,7 +20,7 @@ export function modeGames(mode, personalGames = [], watchedGames = []) {
     : games;
 }
 
-export function watchMatchDetails(game) {
+export function watchMatchDetails(game, services) {
   if (!game || game.kind !== WATCH) return null;
   const kickoff = Date.parse(game.startUtc);
   const time = Number.isFinite(kickoff)
@@ -32,5 +34,6 @@ export function watchMatchDetails(game) {
     competition: String(game.competition || (game.sport === "basketball" ? "NBA" : "Football")),
     time,
     location: String(game.location || "Venue not announced"),
+    whereToWatch: watchCoverage(game, services),
   };
 }
