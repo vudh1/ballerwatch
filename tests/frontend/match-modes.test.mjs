@@ -26,7 +26,8 @@ test("watch presentation uses device-local kickoff and no unknown TV label", () 
 });
 
 test("show only actual listed channels on the user's chosen services", () => {
-  assert.equal(watchCoverage({broadcasts:["Prime Video","NBC"],drogonChannels:["NBC"]}), "Prime Video");
+  assert.equal(watchCoverage({broadcasts:["Prime Video","NBC"],drogonChannels:["NBC"]}),
+    "Prime Video · NBC · check DrogonTV guide");
   assert.equal(watchCoverage({broadcasts:["ESPN","NBA TV","Peacock"],drogonChannels:["ESPN","NBA TV"]}),
     "ESPN · NBA TV · check DrogonTV guide");
   assert.equal(watchCoverage({broadcasts:["NBA TV"],drogonChannels:["NBA TV"]}), "NBA TV · check DrogonTV guide");
