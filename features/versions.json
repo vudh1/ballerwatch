@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.6.2",
+  "currentVersion": "11.6.3",
   "releases": [
+    {
+      "version": "11.6.3",
+      "date": "2026-10-25",
+      "type": "patch",
+      "source": "user-feedback",
+      "title": "Current cinematic story and intentional pull-to-rewind",
+      "webAnnouncement": "The stadium intro now introduces the latest Teams to Play / Teams to Watch, RSVP, scouting, AI, inbox and Vela TV calendar features. A light upward swipe or scroll at the top of the main page stops there; pull farther to deliberately rewind the soccer scene.",
+      "changes": [
+        "Refresh the six cinematic captions and initial first-paint description for current Play/Watch, RATS scouting, RSVP withdrawal requests, AI, Web Push, Vela TV calendar and per-device features.",
+        "Protect the dashboard-to-stadium scroll boundary with an independent short-wheel or touch-pull threshold while allowing a stronger continuous pull to rewind normally.",
+        "Keep scrolling inside cards and dialogs, normal downward movement, Skip Intro, reduced motion, initial data loading, and session restoration independent of the optional cinematic guard.",
+        "Cover reversible and idle-reset thresholds with unit tests and browser scenarios for normal scroll versus strong backward gesture.",
+        "Document the current soccer visual choreography and UI feature narrative; version PWA cache and precache the new standalone gesture module."
+      ]
+    },
     {
       "version": "11.6.2",
       "date": "2026-10-25",
