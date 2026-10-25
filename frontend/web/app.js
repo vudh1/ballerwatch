@@ -2558,7 +2558,7 @@ function isoDayDistance(startDate, endDate) {
 }
 
 function latestCalendarGameDate() {
-  const dates = (currentCalendar?.games || [])
+  const dates = [...(currentCalendar?.games || []), ...watchedGames]
     .map((game) => String(game?.date || ""))
     .filter(Boolean)
     .sort();
@@ -2592,7 +2592,7 @@ function renderCalendarGrid() {
   els.calendarGrid.replaceChildren();
 
   const gamesByDate = new Map();
-  for (const game of currentCalendar.games || []) {
+  for (const game of [...(currentCalendar.games || []), ...watchedGames]) {
     const list = gamesByDate.get(game.date) || [];
     list.push(game);
     gamesByDate.set(game.date, list);
@@ -2715,7 +2715,7 @@ function calendarGameDates() {
   if (!currentCalendar?.startDate) return [];
   const firstDate = currentCalendar.startDate;
   return [...new Set(
-    (currentCalendar.games || [])
+    [...(currentCalendar.games || []), ...watchedGames]
       .map((game) => game.date)
       .filter((date) => date >= firstDate),
   )].sort();
