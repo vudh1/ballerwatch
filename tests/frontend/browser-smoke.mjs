@@ -663,6 +663,94 @@ try {
         await context.close();
       });
 
+      await scenario(`${engine}: a swipe reaching the dashboard edge resists and then rewinds`, async () => {
+        const { context, page, errors } = await prepare(browser, {
+          viewport: { width: 390, height: 844 }, hasTouch: true,
+          ...(engine === "firefox" ? {} : { isMobile: true }),
+        });
+        await ready(page);
+        await page.waitForFunction(() => !document.documentElement.classList.contains("v2-launching"));
+        await page.locator("#skip-intro").click();
+        const state = await page.evaluate(() => {
+          const target = document.querySelector("#matchday-app");
+          const intro = document.querySelector("#soccer-intro");
+          const stage = document.querySelector("#soccer-stage");
+          const boundary = intro.offsetHeight - stage.clientHeight;
+          window.scrollTo({ top: boundary + 125, behavior: "instant" });
+          const emit = (type, y, x = 110, cancelable = true) => {
+            const touch = { identifier: 3, target, clientX: x, clientY: y };
+            const event = new Event(type, { bubbles: true, cancelable });
+            Object.defineProperties(event, {
+              touches: { value: type === "touchend" ? [] : [touch] },
+              changedTouches: { value: [touch] },
+            });
+            target.dispatchEvent(event);
+            return { prevented: event.defaultPrevented,
+              tension: document.documentElement.classList.contains("v2-rewind-resisting"),
+              cinematic: document.documentElement.classList.contains("v2-cinematic") };
+          };
+          emit("touchstart", 90);
+          const below = emit("touchmove", 140);
+          window.scrollTo({ top: boundary + 4, behavior: "instant" });
+          const edge = emit("touchmove", 210);
+          const hard = emit("touchmove", 380);
+          emit("touchend", 380);
+          return { below, edge, hard, boundary, position: window.scrollY };
+        });
+        assert.equal(state.below.prevented, false, "Main feed should scroll naturally");
+        assert.equal(state.edge.prevented, true, "Crossing the top boundary should engage resistance");
+        assert.equal(state.edge.tension, true, "Resistance should be visible");
+        assert.equal(state.hard.cinematic, true, "A continuous firm pull opens the intro");
+        assert.ok(state.position < state.boundary);
+        assert.deepEqual(errors, []);
+        await context.close();
+      });
+
+      await scenario(`${engine}: horizontal swipes and uncancelable Safari touch events stay safe`, async () => {
+        const { context, page, errors } = await prepare(browser, {
+          viewport: { width: 390, height: 844 }, hasTouch: true,
+          ...(engine === "firefox" ? {} : { isMobile: true }),
+        });
+        await ready(page);
+        await page.waitForFunction(() => !document.documentElement.classList.contains("v2-launching"));
+        await page.locator("#skip-intro").click();
+        await page.reload();
+        await page.waitForFunction(() => document.documentElement.dataset.timelineReady === "true");
+        const state = await page.evaluate(() => {
+          const target = document.querySelector("#matchday-app");
+          const emit = (type, x, y, cancelable = true) => {
+            const touch = { identifier: 4, target, clientX: x, clientY: y };
+            const event = new Event(type, { bubbles: true, cancelable });
+            Object.defineProperties(event, {
+              touches: { value: type === "touchend" ? [] : [touch] },
+              changedTouches: { value: [touch] },
+            });
+            target.dispatchEvent(event);
+            return { prevented: event.defaultPrevented,
+              tension: document.documentElement.classList.contains("v2-rewind-resisting"),
+              cinematic: document.documentElement.classList.contains("v2-cinematic") };
+          };
+          emit("touchstart", 50, 100);
+          const horizontal = emit("touchmove", 200, 110);
+          const diagonal = emit("touchmove", 210, 340);
+          emit("touchend", 210, 340);
+          emit("touchstart", 100, 100);
+          const safari = emit("touchmove", 100, 160, false);
+          const resisted = document.documentElement.classList.contains("v2-rewind-resisting");
+          const strong = emit("touchmove", 100, 290, false);
+          emit("touchend", 100, 290);
+          return { horizontal, diagonal, safari, resisted, strong };
+        });
+        assert.equal(state.horizontal.prevented, false);
+        assert.equal(state.diagonal.prevented, false);
+        assert.equal(state.diagonal.cinematic, false);
+        assert.equal(state.safari.prevented, false, "Uncancelable Safari events cannot be prevented");
+        assert.equal(state.resisted, true, "Safari still gets tactile boundary feedback");
+        assert.equal(state.strong.cinematic, true, "Safari firm pull must rewind");
+        assert.deepEqual(errors, []);
+        await context.close();
+      });
+
       await scenario(`${engine}: feature tour keeps Settings and Inbox tappable during the reveal`, async () => {
         const { context, page, errors } = await prepare(browser);
         await ready(page);
