@@ -257,6 +257,7 @@ let guestTeamSelector = null;
 let guestNameSelector = null;
 let watchTeamSelector = null;
 let firstRunWizard = null;
+let rsvpNameOptionsAwaitCalendar = false;
 let calendarSync = null;
 let watchedGames = [];
 let watchedTeams = [];
@@ -1755,6 +1756,7 @@ async function loadRsvpNameOptions() {
   // Public roster access is explicitly scoped to one published pickup date.
   // Never index identities across dates or persist names from the roster.
   const date = nextPublishedPickupDate(currentCalendar?.games || [], todaySeattleKey());
+  rsvpNameOptionsAwaitCalendar = !date;
   if (!date) {
     if (status) status.textContent = "No upcoming published pickup roster. Search and add your own name.";
     return;
@@ -4502,6 +4504,12 @@ async function loadCalendar({ initial = false } = {}) {
       renderCalendar(personal);
     } else {
       els.calendarUpdated.textContent = matchUpdatedText(next.updatedAt) || "Updated pending";
+    }
+    // First-run can open while initial fixtures are still loading. Retry the
+    // one published-date RSVP dropdown then, never with a global name index.
+    if (rsvpNameOptionsAwaitCalendar &&
+        (els.settingsDialog?.open || document.querySelector("#first-run-dialog")?.open)) {
+      void loadRsvpNameOptions();
     }
     return true;
   } catch {
