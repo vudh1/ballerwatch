@@ -56,6 +56,12 @@ export function fixtureResponse(pathname, method = "GET") {
     "/web/user/settings": { ok: true, settings: { username: "admin", canManageMatches: true, canManageUsers:false, passwordConfigured:true, deletedMatches:[], teams:["Fixture FC"] } },
     "/web/rsvp-roster": { ok: true, roster: { players: [{ name: "Fixture Player", participantCount: 1 }], waitlist: [] } },
     "/web/teams": { ok: true, teams: ["Fixture FC", "Test United"] },
+    "/web/sports": {
+      ok: true, updatedAt: "2099-10-14T20:00:00Z",
+      provider: "synthetic test only",
+      teams: ["NBA · Fixture Lakers", "NBA · Fixture Celtics"],
+      games: [],
+    },
   };
   return responses[pathname] || { ok: true, reports: [], choices: { rsvpNames: ["Fixture Player"], teams: ["Fixture FC"] } };
 }
