@@ -3826,7 +3826,7 @@ async function calendarSelectionIcs(env, { teams = [], watch: watches = [], pick
     published.push(...watchedFixtures(indexed, watches));
     updatedAt = indexed.broadcastUpdatedAt || indexed.updatedAt || updatedAt;
   }
-  const body = calendarToIcs(published, {
+  return calendarToIcs(published, {
     name: "BallerWatch · My sports", updatedAt,
   });
 }
