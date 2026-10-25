@@ -94,6 +94,29 @@ async function prepare(browser, options = {}) {
         return;
       }
       const fixture = structuredClone(fixtureResponse(url.pathname, request.method()));
+      if (url.pathname === "/web/sports" && url.searchParams.has("teams")) {
+        const at = new Date(Date.now() + 30 * 60 * 60 * 1000);
+        const date = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "America/Los_Angeles", year: "numeric",
+          month: "2-digit", day: "2-digit",
+        }).format(at);
+        const isoDate = /^\\d{4}-\\d{2}-\\d{2}$/.test(date) ? date :
+          new Intl.DateTimeFormat("en-US", {
+            timeZone: "America/Los_Angeles", year: "numeric",
+            month: "2-digit", day: "2-digit",
+          }).formatToParts(at).filter(p=>["year","month","day"].includes(p.type))
+            .reduce((acc,p)=>({...acc,[p.type]:p.value}),{});
+        const day = typeof isoDate === "string" ? isoDate
+          : [isoDate.year,isoDate.month,isoDate.day].join("-");
+        fixture.games = ["Fixture Lakers vs Fixture Celtics",
+          "Fixture Lakers vs Fixture Warriors"].map((title,i) => ({
+          id: "watch:nba:" + (i + 1), kind: "watch", sport: "basketball",
+          competition: "NBA", title, date: day,
+          startUtc: new Date(at.getTime() + i * 3600000).toISOString(),
+          endUtc: new Date(at.getTime() + (i + 3) * 3600000).toISOString(),
+          location: "Synthetic Arena",
+        }));
+      }
       if (controls.noPickupCap && url.pathname === "/web/next-game") {
         fixture.game.capacity = null;
         fixture.game.publishedCapacity = null;
@@ -211,6 +234,43 @@ try {
           assert.deepEqual(widths, ["0px", "0px", "0px"],
             "Match, standings and calendar credits should not have divider lines");
         }
+        assert.deepEqual(errors, []);
+        await context.close();
+      });
+
+      await scenario(`${engine}: Play/Watch slider isolates personal and professional match cards`, async () => {
+        const { context, page, errors } = await prepare(browser, { reducedMotion: "reduce" });
+        await ready(page);
+        assert.equal(await page.locator("#mode-play").getAttribute("aria-pressed"), "true");
+        assert.equal(await page.locator("#league-standings").isVisible(), true);
+        await openHubTab(page, "settings");
+        await page.locator("#watch-teams-trigger").click();
+        await page.locator("#watch-teams-search").fill("Fixture Lakers");
+        await page.locator('#watch-teams-options [role="option"]').first().click();
+        await page.locator("#close-settings").click();
+        await page.locator("#mode-watch").click();
+        await page.waitForFunction(() =>
+          document.querySelector("#next-game-title")?.textContent.includes("Fixture Lakers"));
+        assert.equal(await page.locator("#mode-watch").getAttribute("aria-pressed"), "true");
+        assert.equal(await page.locator("#league-standings").isVisible(), false);
+        assert.equal(await page.locator("#next-game-title").textContent(), "Fixture Lakers vs Fixture Celtics");
+        assert.equal(await page.locator("#next-game-type").textContent(), "NBA");
+        assert.equal(await page.locator("#next-game-menu-trigger").isVisible(), false);
+        assert.equal(await page.locator("#next-game-capacity").isVisible(), false);
+        assert.equal(await page.locator("#next-game-form").isVisible(), false);
+        assert.equal(await page.locator("#next-game-actions").isVisible(), false);
+        assert.match(await page.locator("#calendar-title").textContent(), /Watch Schedule/);
+        assert.equal(await page.locator("#calendar-grid .calendar-signal-dot").count(), 2);
+        await activateSpotlightControl(page, "#spotlight-next");
+        await page.waitForFunction(() =>
+          document.querySelector("#next-game-title")?.textContent.includes("Fixture Warriors"));
+        await page.locator("#mode-play").click();
+        await page.waitForFunction(() =>
+          document.querySelector("#next-game-title")?.textContent.includes("October 15"));
+        assert.equal(await page.locator("#league-standings").isVisible(), true);
+        assert.equal(await page.locator("#mode-play").getAttribute("aria-pressed"), "true");
+        assert.equal(await page.locator("#next-game-menu-trigger").isVisible(), true);
+        assert.doesNotMatch(await page.locator("#next-game-title").textContent(), /Lakers/);
         assert.deepEqual(errors, []);
         await context.close();
       });
