@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { publishedUsBroadcasts } from "../../../backend/sports/broadcasts.mjs";
-import { COMPETITIONS, teamLabel, parsedFixtures, parsedTeams } from "../../../backend/sports/index.mjs";
+import { COMPETITIONS, teamLabel, parsedFixtures, parsedTeams, refreshUpcomingBroadcasts } from "../../../backend/sports/index.mjs";
 test("NBA, top five European football leagues, UEFA and CONMEBOL represented", () => {
  assert.equal(COMPETITIONS.filter(c=>c.group==="club").length,5);
  assert.equal(COMPETITIONS.some(c=>c.code==="nba"),true);
@@ -65,4 +65,31 @@ test("broadcast assignments accompany indexed match and absent broadcasts stay u
   assert.deepEqual(match.broadcasts, ["ESPN","Prime Video"]);
   delete event.competitions[0].broadcasts;
   assert.deepEqual(parsedFixtures({events:[event]},c)[0].broadcasts, []);
+});
+
+test("daily broadcasts update known near-term fixture without clearing original index", async () => {
+  const today = new Date("2026-10-25T12:00:00Z");
+  const old = {
+    updatedAt:"2026-10-20T12:00:00Z",teams:["NBA · Lakers"],
+    games:[{id:"watch:nba:daily1",kind:"watch",startUtc:"2026-10-29T01:00:00Z",
+      date:"2026-10-28",broadcasts:[],teams:["NBA · Lakers"]}],
+  };
+  const event = {id:"daily1",date:"2026-10-29T01:00:00Z",
+    competitions:[{competitors:[
+      {homeAway:"home",team:{displayName:"Lakers"}},
+      {homeAway:"away",team:{displayName:"Celtics"}},
+    ],broadcasts:[{names:["Prime Video"]}]}]};
+  const fetcher = async url => ({ok:true,text:async()=>JSON.stringify({
+    events:url.includes("/basketball/nba/") ? [event] : [],
+  })});
+  const result = await refreshUpcomingBroadcasts(fetcher,today,old);
+  assert.deepEqual(result.games[0].broadcasts, ["Prime Video"]);
+  assert.equal(result.updatedAt,old.updatedAt);
+  assert.equal(result.broadcastUpdatedAt,today.toISOString());
+  assert.equal(result.broadcastCoverage.changed,1);
+});
+test("do not treat soccer Prime listings outside the US as US Prime games", () => {
+  assert.deepEqual(publishedUsBroadcasts({competitions:[{
+    broadcasts:[{names:["Prime Video"]}],
+  }]}, COMPETITIONS[1]), []);
 });
