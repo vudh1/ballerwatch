@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.9.0",
+  "currentVersion": "11.10.0",
   "releases": [
+    {
+      "version": "11.10.0",
+      "date": "2026-10-25",
+      "type": "minor",
+      "source": "user-feedback",
+      "title": "Encrypted monthly RSVP membership index",
+      "changes": [
+        "Add a low-cost monthly GitHub Actions roster lookup against the public names returned by the nhcuong95/rsvp Google Apps Script; the names are managed in its live Google Sheet rather than hardcoded in its source.",
+        "Normalize and encrypt only membership names in a dedicated canonical runtime-state file; reject contact, payment, Messenger, Zelle and note fields, and never publish an unrestricted participant catalog in the PWA or API.",
+        "Fail closed on provider errors, malformed JSONP, missing encryption keys or unexpected empty rosters without overwriting previous encrypted state; do not send notifications.",
+        "Keep the monthly job gated on the separately promoted production commit; preserve existing RSVP date-specific roster view, device-local name choice, notifications, ICS and FRIDAY privacy boundaries."
+      ]
+    },
     {
       "version": "11.9.0",
       "date": "2026-10-25",
