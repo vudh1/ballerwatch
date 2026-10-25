@@ -27,6 +27,9 @@ let active = root.classList.contains("v2-cinematic");
 let listening = false;
 const rewindGate = createRewindGate();
 let touchLastY = null;
+let touchStartX = null;
+let touchStartY = null;
+let touchHorizontal = false;
 let touchUnlocked = false;
 let rewindUnlocked = false;
 let rewindLockUntil = 0;
@@ -55,6 +58,9 @@ export function finishIntro({ focus = false } = {}) {
   active = false;
   rewindGate.reset();
   touchLastY = null;
+  touchStartX = null;
+  touchStartY = null;
+  touchHorizontal = false;
   touchUnlocked = false;
   rewindUnlocked = false;
   startedOnDashboard = false;
@@ -148,7 +154,10 @@ function showRewindTension(kind) {
   root.style.setProperty("--rewind-progress", String(progress));
   root.classList.add("v2-rewind-resisting");
   clearTimeout(tensionTimer);
-  if (kind === "wheel") tensionTimer = setTimeout(clearRewindTension, 420);
+  if (kind === "wheel") tensionTimer = setTimeout(() => {
+    rewindGate.reset("wheel");
+    clearRewindTension();
+  }, 500);
 }
 function rewindBoundary() {
   return active ? distance : 0;
@@ -218,32 +227,51 @@ function rewindWheel(event) {
 }
 function rewindTouchStart(event) {
   clearRewindTension();
-  touchLastY = event.touches.length === 1 ? event.touches[0].clientY : null;
+  const touch = event.touches.length === 1 ? event.touches[0] : null;
+  touchLastY = touch?.clientY ?? null;
+  touchStartY = touchLastY;
+  touchStartX = touch?.clientX ?? null;
+  touchHorizontal = false;
   touchUnlocked = false;
   rewindGate.reset("touch");
-  startedOnDashboard = active ? window.scrollY >= distance - 2 : true;
+  // Browser toolbars can shift the measured boundary by a few pixels mid-drag.
+  // A gesture begun in the scene is not a request to re-enter from the app.
+  startedOnDashboard = !active || window.scrollY >= rewindBoundary() - 24;
   if (startedOnDashboard) rewindLockUntil = performance.now() + 1600;
 }
 function rewindTouchMove(event) {
   if (touchLastY === null || event.touches.length !== 1) return;
-  const y = event.touches[0].clientY;
+  const touch = event.touches[0];
+  const y = touch.clientY;
   const pull = y - touchLastY;
   touchLastY = y;
-  if (touchUnlocked || rewindUnlocked || !guardReady(event) || !startedOnDashboard) return;
-  const boundary = rewindBoundary();
-  const position = Math.max(0, window.scrollY);
+  if (touchStartX !== null && touchStartY !== null &&
+      Math.abs(touch.clientX - touchStartX) > 14 &&
+      Math.abs(touch.clientX - touchStartX) > Math.abs(y - touchStartY) * 1.2) {
+    touchHorizontal = true;
+  }
+  if (touchHorizontal || touchUnlocked || rewindUnlocked || !guardReady(event) ||
+      !startedOnDashboard) return;
   if (pull <= 0) {
     rewindGate.reset("touch");
     clearRewindTension();
     return;
   }
+  const boundary = rewindBoundary();
+  const position = Math.max(0, window.scrollY);
+  // Let a swipe from below the top scroll the feed normally, charging only
+  // the portion that would cross into the cinematic section.
+  const overshoot = pull - Math.max(0, position - boundary);
+  if (overshoot <= 0) return;
   rewindLockUntil = performance.now() + 1600;
-  if (position > boundary + 8 || !event.cancelable) return;
-  event.preventDefault();
-  window.scrollTo({ top: boundary, behavior: "instant" });
-  // Detect a deliberate continuing finger pull, not the system's inertial
-  // fling at touchend. The latter is also clamped by scrollGuardOnMotion().
-  const result = rewindGate.pull("touch", pull);
+  // Mobile Safari sometimes marks a touchmove non-cancelable after initiating
+  // a native scroll. Still account for its physical pull; the scroll listener
+  // clamps any momentum crossing the boundary until this gate releases.
+  if (event.cancelable) event.preventDefault();
+  if (active && position < boundary + 24) {
+    window.scrollTo({ top: boundary, behavior: "instant" });
+  }
+  const result = rewindGate.pull("touch", overshoot);
   if (result.released) {
     touchUnlocked = true;
     rewindToScene(result.overflow);
@@ -255,6 +283,9 @@ function rewindTouchEnd() {
     rewindLockUntil = performance.now() + 900;
   }
   touchLastY = null;
+  touchStartX = null;
+  touchStartY = null;
+  touchHorizontal = false;
   touchUnlocked = false;
   startedOnDashboard = false;
   rewindGate.reset("touch");
@@ -266,8 +297,8 @@ function scrollGuardOnMotion() {
   if (rewindUnlocked && position >= distance - 1 &&
       position > lastScrollPosition) rewindUnlocked = false;
   lastScrollPosition = position;
-  // Catch touch momentum that bypasses cancelable touchmove events. Ordinary
-  // programmatic timeline navigation has no active gesture lock.
+  // Clamp Safari's uncancelable native momentum, but only during a gesture
+  // that began on the dashboard. Manual scene scrubbing stays unrestricted.
   if (!rewindUnlocked && rewindLockUntil > performance.now() &&
       position < distance - 2) {
     window.scrollTo({ top: distance, behavior: "instant" });
