@@ -4,6 +4,14 @@ The installable PWA is BallerWatch's sole user surface.
 
 The website works without a visitor account. RSVP rosters for an individual published pickup event are readable without sign-in; RSVP names, monitored teams, match edits and notification choices stay on each browser installation. Administrator software maintenance remains password-protected.
 
+## First-device setup (11.7.0 preview)
+
+New installations are offered three optional choices after the soccer introduction: pickup RSVP name, teams to play in RATS, and professional teams to watch. Every step can be skipped; the small Play/Watch empty-preference note points directly to Settings. Only installations without established local preferences or public cache receive this first-visit prompt, so current users are not unexpectedly interrupted. Beta and production retain separate setup markers. The wizard remains dismissible if a visitor does not want to configure anything.
+
+The RSVP name field in Settings is a searchable single-selection dropdown. Options come from **one next publicly published pickup roster**, requested on demand through the existing date-scoped endpoint. No cross-date directory or source roster is retained, and someone absent from the list can type and add their own name. An explicit clear button removes an earlier selection. Device preferences do not sync without separate, future consent and authorization.
+
+**Option A calendar profiles (v11.7.0 feature branch):** the Settings → Share my sports calendar section supports explicit opt-in for a stable opaque ICS subscription URL. Encrypted team choices and pickup inclusion live in a dedicated Cloudflare D1 profile; BallerWatch keeps working locally if the service is unavailable. Each linked device must redeem a short-lived, explicitly generated pairing code to receive its own management credential. Recovery codes are one-time and replaceable; authorized users can disconnect devices, revoke other devices, rotate the read-only URL or delete the profile. The legacy query-based ICS link is preserved. Vela TV stores only the read-only URL under its own encrypted display-profile calendar; it never has the management credential. This capability is **implemented on a draft branch, not deployed or provisioned**; without D1 and a separate encryption key, the feature remains unavailable. See [Calendar Profile Contract](Calendar-Profile-Contract.md) and [FRIDAY issue #12](https://github.com/vudh1/friday/issues/12).
+
 ## App hub
 
 The badged AI icon opens three connected sections: **AI / Settings / Notifications**. It fades in with the main app and remains available while reading cards, without detached header controls. Switching sections preserves the existing account/Q&A/Inbox controllers.

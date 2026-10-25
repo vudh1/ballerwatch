@@ -11,12 +11,12 @@
   <meta name="apple-mobile-web-app-title" content="BallerWatch">
   <meta name="description" content="A moment of football. Then everything you need for your next match.">
   <title>BallerWatch — Your matchday</title>
-  <link rel="manifest" href="./manifest.webmanifest?v=11.6.5">
-  <link rel="icon" href="./icon.svg?v=11.6.5" type="image/svg+xml">
-  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=11.6.5">
-  <script src="./v2/prepaint.js?v=11.6.5"></script>
-  <link rel="stylesheet" href="./styles.css?v=11.6.5">
-  <link rel="stylesheet" href="./v2/styles.css?v=11.6.5">
+  <link rel="manifest" href="./manifest.webmanifest?v=11.7.0">
+  <link rel="icon" href="./icon.svg?v=11.7.0" type="image/svg+xml">
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=11.7.0">
+  <script src="./v2/prepaint.js?v=11.7.0"></script>
+  <link rel="stylesheet" href="./styles.css?v=11.7.0">
+  <link rel="stylesheet" href="./v2/styles.css?v=11.7.0">
 </head>
 <body>
   <div class="status-bar-glass" aria-hidden="true"></div>
@@ -75,7 +75,7 @@
     <p class="v2-static-welcome" hidden>Matchday, at your pace. Motion is reduced on this device.</p>
     <header class="hero">
       <div class="brand-lockup">
-        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=11.6.5" alt=""></div>
+        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=11.7.0" alt=""></div>
         <div>
           <p class="eyebrow">SOCCER AT A GLANCE</p>
           <h1 id="matchday-heading" tabindex="-1">BallerWatch</h1>
@@ -97,6 +97,10 @@
           aria-pressed="false">Teams to watch</button>
       </div>
     </nav>
+    <div id="setup-missing-note" class="setup-missing-note" hidden>
+      <span id="setup-missing-text"></span>
+      <button id="setup-open-settings" type="button">Choose in Settings</button>
+    </div>
 
     <div class="spotlight-carousel" id="spotlight-carousel">
       <button class="spotlight-edge-control carousel-waterfall-edge spotlight-edge-previous" id="spotlight-previous"
@@ -451,6 +455,76 @@
     </div>
   </dialog>
 
+  <dialog id="first-run-dialog" class="first-run-dialog" aria-labelledby="first-run-title">
+    <div class="dialog-shell first-run-shell">
+      <p id="setup-progress" class="eyebrow">STEP 1 OF 3</p>
+      <h2 id="first-run-title">Make BallerWatch yours</h2>
+      <p class="muted">Three quick choices. Each is optional, and you can change them in Settings.</p>
+      <section data-setup-step >
+          <p class="eyebrow">PICKUP</p>
+          <h3>Who should we follow for pickup?</h3>
+          <p class="hint">Choose your name from the next published RSVP list. If missing, search and add it manually.</p>
+          <div class="settings-choice" id="setup-name-choice">
+            <button class="settings-choice-trigger" id="setup-name-trigger" type="button"
+              aria-haspopup="listbox" aria-expanded="false" aria-controls="setup-name-options">
+              <span id="setup-name-display">Choose RSVP name</span><span class="choice-chevron" aria-hidden="true">⌄</span>
+            </button>
+
+            <div class="settings-choice-popover" id="setup-name-popover" hidden>
+              <label class="choice-search-label" for="setup-name-search">Find RSVP name</label>
+              <input id="setup-name-search" type="search" autocomplete="off" placeholder="Search…">
+              <div class="settings-choice-options" id="setup-name-options" role="listbox"
+                ></div>
+            </div>
+          </div>
+          <input type="hidden" id="setup-name-input">
+        </section>
+      <section data-setup-step hidden>
+          <p class="eyebrow">TEAMS TO PLAY</p>
+          <h3>Which RATS teams do you play for?</h3>
+          <p class="hint">Choose up to 8 teams for your match cards and standings.</p>
+          <div class="settings-choice" id="setup-teams-choice">
+            <button class="settings-choice-trigger" id="setup-teams-trigger" type="button"
+              aria-haspopup="listbox" aria-expanded="false" aria-controls="setup-teams-options">
+              <span id="setup-teams-display">Choose RATS teams</span><span class="choice-chevron" aria-hidden="true">⌄</span>
+            </button>
+            <div class="settings-choice-chips" id="setup-teams-chips"></div>
+            <div class="settings-choice-popover" id="setup-teams-popover" hidden>
+              <label class="choice-search-label" for="setup-teams-search">Find RATS team</label>
+              <input id="setup-teams-search" type="search" autocomplete="off" placeholder="Search…">
+              <div class="settings-choice-options" id="setup-teams-options" role="listbox"
+                aria-multiselectable="true"></div>
+            </div>
+          </div>
+          <input type="hidden" id="setup-teams-input">
+        </section>
+      <section data-setup-step hidden>
+          <p class="eyebrow">TEAMS TO WATCH</p>
+          <h3>Which teams do you like to watch?</h3>
+          <p class="hint">Choose up to 20 NBA, European football or international teams.</p>
+          <div class="settings-choice" id="setup-watch-choice">
+            <button class="settings-choice-trigger" id="setup-watch-trigger" type="button"
+              aria-haspopup="listbox" aria-expanded="false" aria-controls="setup-watch-options">
+              <span id="setup-watch-display">Choose professional teams</span><span class="choice-chevron" aria-hidden="true">⌄</span>
+            </button>
+            <div class="settings-choice-chips" id="setup-watch-chips"></div>
+            <div class="settings-choice-popover" id="setup-watch-popover" hidden>
+              <label class="choice-search-label" for="setup-watch-search">Find professional team</label>
+              <input id="setup-watch-search" type="search" autocomplete="off" placeholder="Search…">
+              <div class="settings-choice-options" id="setup-watch-options" role="listbox"
+                aria-multiselectable="true"></div>
+            </div>
+          </div>
+          <input type="hidden" id="setup-watch-input">
+        </section>
+      <div class="first-run-actions">
+        <button id="setup-back" type="button" class="secondary" hidden>Back</button>
+        <button id="setup-skip" type="button" class="secondary">Skip for now</button>
+        <button id="setup-next" type="button">Continue</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="settings-dialog" class="settings-dialog">
     <div class="dialog-shell">
       <div class="app-hub-header">
@@ -499,8 +573,26 @@
       <section id="guest-settings-view" aria-label="Personal preferences on this device">
         <p class="muted">No account needed. Your RSVP name and followed teams stay saved on this device until you change them; only notifications expire after 24 hours.</p>
         <div id="guest-settings-form" class="settings-form">
-          <label for="guest-name">Pickup RSVP name (optional)</label>
-          <input id="guest-name" type="text" maxlength="120" autocomplete="nickname" placeholder="Enter your own RSVP name">
+          <div class="settings-choice-field">
+            <label for="guest-name-trigger">Pickup RSVP name (optional)</label>
+            <div class="settings-choice" id="guest-name-choice">
+              <button type="button" class="settings-choice-trigger" id="guest-name-trigger"
+                aria-haspopup="listbox" aria-expanded="false" aria-controls="guest-name-options">
+                <span id="guest-name-display">Choose RSVP name</span>
+                <span class="choice-chevron" aria-hidden="true">⌄</span>
+              </button>
+              <div class="settings-choice-popover" id="guest-name-popover" hidden>
+                <label for="guest-name-search" class="choice-search-label">Search published RSVP names</label>
+                <input type="search" id="guest-name-search" placeholder="Find your name…" autocomplete="off">
+                <div class="settings-choice-options" id="guest-name-options" role="listbox"
+                  aria-label="Names from next published pickup"></div>
+                <p class="hint choice-hint">If your name is missing, type it in the search and choose +. Only the next published pickup roster is consulted.</p>
+              </div>
+            </div>
+            <input id="guest-name" type="hidden">
+            <button id="guest-name-clear" type="button" class="settings-clear-choice">Clear RSVP name</button>
+            <p class="hint" id="guest-name-options-status" role="status"></p>
+          </div>
           <div class="settings-choice-field">
             <label for="guest-teams-trigger">Follow RATS teams</label>
             <div class="settings-choice" id="guest-teams-choice">
@@ -548,11 +640,48 @@
             </fieldset>
             <p class="hint" id="watch-teams-status" role="status">Professional fixtures are indexed weekly. TV and third-party calendar apps refresh on their own schedule.</p>
           </div>
-          <div class="calendar-subscribe-settings">
-            <label>Share my calendar</label>
-            <button type="button" class="secondary" id="copy-calendar-link">Copy calendar subscription link (.ics)</button>
-            <p class="hint" id="calendar-subscription-status" role="status">Vela TV keeps the teams encoded in the saved link. After changing followed teams, copy this link again and replace Vela TV → Gear → Daily life → Calendar → BallerWatch. Vela shows the next 7 days.</p>
-          </div>
+          <section class="calendar-subscribe-settings" aria-label="Share my sports calendar">
+            <h3 class="settings-subheading">Share my sports calendar</h3>
+            <p class="hint">Calendar sharing is optional. Each independent BallerWatch profile has its own read-only Vela TV link.</p>
+            <label class="calendar-pickup-choice">
+              <input type="checkbox" id="calendar-include-pickup">
+              Include published pickup sessions in my shared calendar
+            </label>
+            <div class="calendar-sync-actions">
+              <button type="button" id="calendar-sync-enable" class="secondary" hidden>Enable permanent link</button>
+              <button type="button" class="secondary" id="copy-calendar-link">Copy calendar subscription link (.ics)</button>
+            </div>
+            <p class="hint" id="calendar-subscription-status" role="status">Without cloud sync, this link contains your current teams. Changing teams requires replacing the link in Vela TV. Vela shows the next 7 days.</p>
+            <p class="hint" id="calendar-sync-status" role="status"></p>
+            <div id="calendar-recovery-once" hidden class="calendar-sensitive">
+              <p class="hint">One-time recovery code. Keep this somewhere safe; it will not be shown again:</p>
+              <code id="calendar-recovery-code"></code>
+              <button type="button" id="calendar-recovery-dismiss" class="secondary">I've saved this</button>
+            </div>
+            <details class="calendar-manage-options" id="calendar-manage-options">
+              <summary>Manage calendar sharing and devices</summary>
+              <div class="calendar-manage-stack">
+                <button type="button" class="secondary" id="calendar-sync-refresh">Refresh shared preferences</button>
+                <div id="calendar-sync-connected" hidden>
+                  <button type="button" class="secondary" id="calendar-pair-generate">Link another device</button>
+                  <p id="calendar-pair-display" class="hint" hidden></p>
+                  <button type="button" class="secondary" id="calendar-recovery-renew">Replace recovery code</button>
+                  <button type="button" class="secondary" id="calendar-sync-rotate">Rotate calendar URL</button>
+                  <button type="button" class="secondary" id="calendar-sync-revoke-others">Revoke other devices</button>
+                  <button type="button" class="secondary" id="calendar-sync-disconnect">Disconnect this device</button>
+                  <button type="button" class="secondary" id="calendar-sync-delete">Delete calendar profile</button>
+                </div>
+                <div id="calendar-sync-unconnected">
+                  <label for="calendar-pair-input">Pairing code from another authorized device</label>
+                  <input type="text" id="calendar-pair-input" maxlength="43" autocomplete="off" spellcheck="false" placeholder="Paste one-time pairing code">
+                  <button type="button" class="secondary" id="calendar-pair-redeem">Link this device</button>
+                  <label for="calendar-recover-input">Recovery code</label>
+                  <input type="text" id="calendar-recover-input" maxlength="43" autocomplete="off" spellcheck="false" placeholder="Paste private recovery code">
+                  <button type="button" class="secondary" id="calendar-recover">Recover my profile</button>
+                </div>
+              </div>
+            </details>
+          </section>
           <p class="hint">Saved instantly on this device until you change it. Other players’ RSVP names are never published.</p>
           <p class="hint" id="guest-settings-status" role="status"></p>
         </div>
@@ -680,7 +809,7 @@
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=11.6.5"></script>
-  <script type="module" src="./v2/app.js?v=11.6.5"></script>
+  <script type="module" src="./app.js?v=11.7.0"></script>
+  <script type="module" src="./v2/app.js?v=11.7.0"></script>
 </body>
 </html>

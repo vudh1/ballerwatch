@@ -62,14 +62,15 @@ async function openHubTab(page, target) {
   await page.locator(`#chat-dialog [data-hub-target="${target}"]`).click();
 }
 
-async function prepare(browser, options = {}) {
+async function prepare(browser, options = {}, { freshDevice = false } = {}) {
   // Keep API fixtures under Playwright's routing control. WebKit service-worker
   // networking can bypass those routes; exercise real workers separately below.
   const context = await browser.newContext({ serviceWorkers: "block", ignoreHTTPSErrors: true,
     viewport: { width: 1440, height: 1000 }, ...options });
   // Existing dashboard scenarios use a synthetic monitored player so the
   // new genuinely-empty guest state doesn't hide their expected match cards.
-  await context.addInitScript(() => {
+  await context.addInitScript(({ freshDevice }) => {
+    if (freshDevice) return;
     const key = window.location.pathname.startsWith("/ballerwatch/beta/")
       ? "ballerwatch-beta-visitor-profile-v2" : "ballerwatch-visitor-profile-v2";
     if (!localStorage.getItem(key)) {
@@ -77,7 +78,7 @@ async function prepare(browser, options = {}) {
         schema: 2, data: { name: "Fixture Player", teams: ["Fixture FC"] },
       }));
     }
-  });
+  }, { freshDevice });
   const calls = [];
   const errors = [];
   const controls = { offlineApi: false, optionalFailure: false, animationFailure: false, scriptFailure: false, noPickupCap: false, camelCaseTeam: false, mixedWatchSports: false };
@@ -838,6 +839,60 @@ try {
         await context.close();
       });
 
+      await scenario(`${engine}: first-device wizard chooses personal settings without an account`, async () => {
+        const { context, page, errors } = await prepare(browser,
+          { reducedMotion: "reduce" }, { freshDevice: true });
+        await page.goto(`${origin}/ballerwatch/`);
+        await page.locator("#first-run-dialog[open]").waitFor();
+        assert.equal(await page.locator("#setup-progress").textContent(), "STEP 1 OF 3");
+        await page.locator("#setup-name-trigger").click();
+        await page.locator("#setup-name-search").fill("Fixture Player");
+        await page.locator('#setup-name-options [role="option"]').filter({ hasText: "Fixture Player" }).first().click();
+        await page.locator("#setup-next").click();
+        assert.equal(await page.locator("#setup-progress").textContent(), "STEP 2 OF 3");
+        await page.locator("#setup-teams-trigger").click();
+        await page.locator("#setup-teams-search").fill("Fixture FC");
+        await page.locator('#setup-teams-options [role="option"]').filter({ hasText: "Fixture FC" }).first().click();
+        await page.locator("#setup-next").click();
+        assert.equal(await page.locator("#setup-progress").textContent(), "STEP 3 OF 3");
+        await page.locator("#setup-watch-trigger").click();
+        await page.locator("#setup-watch-search").fill("Fixture Lakers");
+        await page.locator('#setup-watch-options [role="option"]').filter({ hasText: "NBA · Fixture Lakers" }).waitFor();
+        await page.locator('#setup-watch-options [role="option"]').filter({ hasText: "NBA · Fixture Lakers" }).click();
+        await page.locator("#setup-next").click();
+        assert.equal(await page.locator("#first-run-dialog").evaluate(el => el.open), false);
+        const saved = await page.evaluate(() => ({
+          profile: JSON.parse(localStorage.getItem("ballerwatch-visitor-profile-v2")).data,
+          watch: JSON.parse(localStorage.getItem("ballerwatch-watched-teams-v1")),
+          done: localStorage.getItem("ballerwatch-first-run-v1"),
+        }));
+        assert.equal(saved.profile.name, "Fixture Player");
+        assert.deepEqual(saved.profile.teams, ["Fixture FC"]);
+        assert.deepEqual(saved.watch, ["NBA · Fixture Lakers"]);
+        assert.equal(saved.done, "complete");
+        await page.reload();
+        assert.equal(await page.locator("#first-run-dialog").evaluate(el => el.open), false);
+        assert.deepEqual(errors, []);
+        await context.close();
+      });
+
+      await scenario(`${engine}: first-device setup is skippable and explains missing preferences`, async () => {
+        const { context, page, errors } = await prepare(browser,
+          { reducedMotion: "reduce" }, { freshDevice: true });
+        await page.goto(`${origin}/ballerwatch/`);
+        await page.locator("#first-run-dialog[open]").waitFor();
+        await page.locator("#setup-skip").click();
+        await page.locator("#setup-skip").click();
+        await page.locator("#setup-skip").click();
+        assert.equal(await page.locator("#first-run-dialog").evaluate(el => el.open), false);
+        assert.equal(await page.locator("#setup-missing-note").isVisible(), true);
+        assert.match(await page.locator("#setup-missing-text").textContent(), /No Play preferences yet/);
+        await page.locator("#setup-open-settings").click();
+        assert.equal(await page.locator("#settings-dialog").evaluate(el => el.open), true);
+        assert.deepEqual(errors, []);
+        await context.close();
+      });
+
       await scenario(`${engine}: guest settings, local notifications and favorite teams need no sign-in`, async () => {
         const { context, page, errors, calls } = await prepare(browser, { reducedMotion: "reduce" });
         await ready(page);
@@ -845,7 +900,9 @@ try {
         await openHubTab(page, "settings");
         assert.equal(await page.locator("#guest-settings-view").isVisible(), true);
         assert.equal(await page.locator("#settings-login-view").evaluate((el) => el.open), false);
-        await page.locator("#guest-name").fill("Visitor");
+        await page.locator("#guest-name-trigger").click();
+        await page.locator("#guest-name-search").fill("Visitor");
+        await page.locator('#guest-name-options [role="option"]').filter({ hasText: "Visitor" }).first().click();
         await page.locator("#guest-teams-trigger").click();
         assert.match(await page.locator("#guest-teams-display").textContent(), /1 team selected/);
         await page.locator("#guest-teams-search").fill("Test United");

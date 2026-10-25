@@ -6,6 +6,8 @@
 
 **FRIDAY:** [Integration ownership and agent guidance](FRIDAY.md).
 
+**v11.7.0:** On a fresh device, an optional three-step setup helps select a pickup RSVP name, followed RATS teams and professional teams to watch; every step can be skipped and later configured in Settings. RSVP names now use a searchable list from one upcoming published pickup roster with a manual option when absent. Missing preferences get a quiet Settings link. Returning devices retain their existing selections. Option A adds opt-in accountless, independently managed stable calendar links: selected Play/Watch teams can sync encrypted to a dedicated Cloudflare D1 profile without changing the saved Vela link. Each paired device gets its own management credential; recovery, revocation and deletion are supported. **This code is on a draft branch, not merged or deployed, and requires separately approved D1/key provisioning.** Existing parameter-based ICS links keep working. See [FRIDAY issue #12](https://github.com/vudh1/friday/issues/12).
+
 **v11.6.5:** The upward rewind now has a clearly perceptible elastic boundary: a light pull stretches the entire matchday page by up to 28 px and briefly displays a compact "Pull to rewind" progress hint. A firmer continuous swipe/scroll rewinds into the soccer intro; normal card scrolling and backward movement inside the animation stay native. Rewind thresholds are higher to avoid accidental transitions. Reduced motion, Skip Intro, and offline behavior remain unchanged.
 
 **v11.6.4:** Fix the reversible intro on repeat visits: even when the dashboard opens directly after the initial animation, a deliberate upward pull now reinstates the stadium. Light pulls show subtle elastic resistance; touch momentum is guarded on iOS. Updated calendar help explains why adding monitored teams does not modify a previously saved Vela TV `.ics` link: copy the new URL and replace Vela’s BallerWatch source; Vela currently shows only seven days of fixtures. PWA caches and regression tests updated.
@@ -39,7 +41,7 @@
 - **Get there.** Open directions, share a venue map link, and check available game-window weather.
 - **Follow teams.** Choose up to eight RATS teams on your device; inspect individual standings cards, historical scores, and prepared scouting reports.
 - **Watch professional sports.** Follow up to twenty NBA, top-five European league or national teams; their fixtures appear in Teams to watch as swipeable professional match cards and a separate calendar. The separate schedule index refreshes weekly; Watch never contains RSVP or RATS standings.
-- **Share your calendar.** Copy the public, read-only `.ics` subscription URL in Settings. It includes your selected RATS and watched teams plus pickup when an RSVP name is configured. Vela TV and other iCalendar clients can subscribe; recopy after changing selections.
+- **Share your calendar.** The existing read-only `.ics` link still works without an account, but its query parameters require replacing it after team changes. The optional private calendar profile (once deployed and explicitly enabled) stores encrypted selections and uses one stable Vela TV link until deliberately rotated or revoked. Only the read-only link goes to Vela; a separate device credential authorizes changes.
 - **Stay informed.** Use the in-app notification center and optional Web Push for real schedule changes and reminders.
 - **Ask BallerWatch AI.** Look up indexed match facts, opponents, jersey colors and historical results. Answers are constrained by the available data.
 
