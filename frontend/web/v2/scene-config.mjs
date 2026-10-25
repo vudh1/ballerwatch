@@ -4,18 +4,18 @@
  * Coordinates refer to the 1440 × 900 scene; edit these controls to retime play.
  */
 export const FEATURE_STORIES = Object.freeze([
-  { start: 0, label: "YOUR MATCHDAY", title: ["Every kickoff.", "One place."],
-    description: "Pickup and league matches, your next game and a calendar built around the teams you follow." },
+  { start: 0, label: "PLAY OR WATCH", title: ["Every kickoff.", "One place."],
+    description: "Play pickup and RATS league games, or follow NBA and world football. Separate matchday cards and schedules for both." },
   { start: 0.16, label: "BE MATCH-READY", title: ["Know before", "you go."],
-    description: "RSVP capacity and rosters, match weather, venues, directions and quick field sharing." },
+    description: "Pickup RSVPs, waitlists, withdrawal requests, rain forecasts, field directions and easy match sharing." },
   { start: 0.32, label: "KNOW YOUR CLUB", title: ["The bigger", "picture."],
-    description: "League standings, opponent scouting, match history, recent form and win forecasts." },
+    description: "RATS standings, cross-division results, ten-game scouting, opponent form and matchup win probabilities." },
   { start: 0.48, label: "BALLERWATCH AI", title: ["Your game,", "explained."],
-    description: "Ask about fixtures, opponents, jersey colors, fields and results, with follow-up questions." },
+    description: "Ask about upcoming fixtures, opponents, tactics, jersey colors and results—with contextual follow-ups." },
   { start: 0.64, label: "STAY IN THE LOOP", title: ["The updates", "that matter."],
-    description: "Inbox filters, Web Push reminders, unread badges and personal notification preferences. RATS schedule changes appear in the BallerWatch inbox without connecting a Google account." },
+    description: "On-device inbox and Web Push updates for pickup availability, league schedule changes and releases." },
   { start: 0.80, label: "MAKE IT YOURS", title: ["Your teams.", "Your BallerWatch."],
-    description: "Your name and teams, optional music, Home Screen/offline access, device-only settings and protected maintenance." },
+    description: "Daily Watch match cards, local kickoff times, Vela TV calendar subscriptions, Home Screen access and device-only settings. No account needed." },
 ]);
 
 export const SCENE = Object.freeze({
