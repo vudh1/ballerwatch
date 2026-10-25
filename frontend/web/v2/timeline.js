@@ -28,6 +28,10 @@ let listening = false;
 const rewindGate = createRewindGate();
 let touchLastY = null;
 let touchUnlocked = false;
+let rewindUnlocked = false;
+let rewindLockUntil = 0;
+let startedOnDashboard = false;
+let tensionTimer = 0;
 const cameraFlashes = [...document.querySelectorAll("[data-camera-flash]")];
 const launcher = document.querySelector("#chat-launcher");
 
@@ -51,6 +55,9 @@ export function finishIntro({ focus = false } = {}) {
   rewindGate.reset();
   touchLastY = null;
   touchUnlocked = false;
+  rewindUnlocked = false;
+  startedOnDashboard = false;
+  clearRewindTension();
   cancelAnimationFrame(frame);
   frame = 0;
   dismissLaunch();
@@ -124,9 +131,25 @@ function render() {
     }
   } catch { finishIntro(); }
 }
-// Only block an upward gesture trying to cross the top of the matchday page.
-// Internal scrollable lists, regular downward motion, scrolling within the
-// stadium, and programmatic scrollTo() stay under native browser control.
+// Guard only upward entry into the stadium. The dashboard has two layouts:
+// initial visit: cinematic canvas above the app; later visits: dashboard-only.
+// Recreate that canvas lazily after a deliberate pull, never on app startup.
+function clearRewindTension() {
+  clearTimeout(tensionTimer);
+  tensionTimer = 0;
+  root.classList.remove("v2-rewind-resisting");
+  root.style.removeProperty("--rewind-tension");
+}
+function showRewindTension(kind) {
+  root.classList.add("v2-rewind-resisting");
+  root.style.setProperty("--rewind-tension",
+    `${Math.round(rewindGate.progress(kind) * 7)}px`);
+  clearTimeout(tensionTimer);
+  if (kind === "wheel") tensionTimer = setTimeout(clearRewindTension, 270);
+}
+function rewindBoundary() {
+  return active ? distance : 0;
+}
 function scrollableChildCanMoveUp(target) {
   let node = target?.nodeType === 1 ? target : target?.parentElement;
   while (node && node !== document.documentElement) {
@@ -139,8 +162,30 @@ function scrollableChildCanMoveUp(target) {
   return false;
 }
 function guardReady(event) {
-  return active && !motion.matches && !root.classList.contains("v2-launching") &&
+  return !motion.matches && !root.classList.contains("v2-launching") &&
     !document.querySelector("dialog[open]") && !scrollableChildCanMoveUp(event.target);
+}
+function rewindToScene(overflow) {
+  clearRewindTension();
+  if (!active) {
+    // Session startup legitimately skipped the intro. Restoring it here is
+    // opt-in, and the dashboard remains at exactly the same visual position.
+    active = true;
+    root.classList.add("v2-cinematic", "v2-revealing", "v2-app-ready");
+    root.style.setProperty("--app-reveal", "1");
+    revealApp(true);
+    measure();
+    window.scrollTo({ top: distance, behavior: "instant" });
+    lastProgress = -1;
+    render();
+  }
+  rewindUnlocked = true;
+  rewindLockUntil = 0;
+  window.scrollTo({
+    top: Math.max(0, distance - Math.max(12, overflow)),
+    behavior: "instant",
+  });
+  requestRender();
 }
 function rewindWheel(event) {
   if (!guardReady(event) || event.ctrlKey) return;
@@ -149,58 +194,79 @@ function rewindWheel(event) {
   const delta = event.deltaY * unit;
   if (delta >= 0) {
     rewindGate.reset("wheel");
+    clearRewindTension();
     return;
   }
   const position = Math.max(0, window.scrollY);
-  if (position < distance - 2) {
-    rewindGate.reset("wheel");
-    return;
-  }
-  // Let the user scroll naturally to the top of the main feed first.
-  const crossing = position + delta < distance;
-  if (!crossing || !event.cancelable) return;
+  const boundary = rewindBoundary();
+  if (rewindUnlocked || position < boundary - 2) return;
+  // Scroll through the main feed normally. Only its final upward boundary
+  // consumes pull distance; these events remain cancelable on iOS/desktop.
+  const overshoot = boundary - position - delta;
+  if (overshoot <= 0 || !event.cancelable) return;
   event.preventDefault();
-  window.scrollTo({ top: distance, behavior: "instant" });
-  const result = rewindGate.pull("wheel", distance - position - delta, performance.now());
-  if (result.released) {
-    // A firm continued pull crosses into the reversible cinematic timeline.
-    window.scrollTo({ top: Math.max(0, distance - Math.max(4, result.overflow)),
-      behavior: "instant" });
-  }
+  window.scrollTo({ top: boundary, behavior: "instant" });
+  rewindLockUntil = performance.now() + 650;
+  const result = rewindGate.pull("wheel", overshoot, performance.now());
+  if (result.released) rewindToScene(result.overflow);
+  else showRewindTension("wheel");
 }
 function rewindTouchStart(event) {
   touchLastY = event.touches.length === 1 ? event.touches[0].clientY : null;
   touchUnlocked = false;
   rewindGate.reset("touch");
+  startedOnDashboard = active ? window.scrollY >= distance - 2 : true;
+  if (startedOnDashboard) rewindLockUntil = performance.now() + 1600;
 }
 function rewindTouchMove(event) {
   if (touchLastY === null || event.touches.length !== 1) return;
   const y = event.touches[0].clientY;
   const pull = y - touchLastY;
   touchLastY = y;
-  if (touchUnlocked || !guardReady(event)) return;
+  if (touchUnlocked || rewindUnlocked || !guardReady(event) || !startedOnDashboard) return;
+  const boundary = rewindBoundary();
+  const position = Math.max(0, window.scrollY);
   if (pull <= 0) {
     rewindGate.reset("touch");
+    clearRewindTension();
     return;
   }
-  const position = Math.max(0, window.scrollY);
-  if (position < distance - 2) return; // Already rewinding the stadium.
-  if (position > distance + 8 || !event.cancelable) return;
+  rewindLockUntil = performance.now() + 1600;
+  if (position > boundary + 8 || !event.cancelable) return;
   event.preventDefault();
-  window.scrollTo({ top: distance, behavior: "instant" });
+  window.scrollTo({ top: boundary, behavior: "instant" });
+  // Detect a deliberate continuing finger pull, not the system's inertial
+  // fling at touchend. The latter is also clamped by scrollGuardOnMotion().
   const result = rewindGate.pull("touch", pull);
   if (result.released) {
     touchUnlocked = true;
-    window.scrollTo({ top: Math.max(0, distance - Math.max(4, result.overflow)),
-      behavior: "instant" });
-  }
+    rewindToScene(result.overflow);
+  } else showRewindTension("touch");
 }
 function rewindTouchEnd() {
+  if (startedOnDashboard && !rewindUnlocked) {
+    // UIKit/WebKit can continue scrolling after touchend without touchmove.
+    rewindLockUntil = performance.now() + 900;
+  }
   touchLastY = null;
   touchUnlocked = false;
+  startedOnDashboard = false;
   rewindGate.reset("touch");
+  clearRewindTension();
+}
+function scrollGuardOnMotion() {
+  if (!active || motion.matches) return;
+  const position = Math.max(0, window.scrollY);
+  if (rewindUnlocked && position > distance + 12) rewindUnlocked = false;
+  // Catch touch momentum that bypasses cancelable touchmove events. Ordinary
+  // programmatic timeline navigation has no active gesture lock.
+  if (!rewindUnlocked && rewindLockUntil > performance.now() &&
+      position < distance - 2) {
+    window.scrollTo({ top: distance, behavior: "instant" });
+  }
 }
 function requestRender() {
+  scrollGuardOnMotion();
   if (active && !frame && !document.hidden) frame = requestAnimationFrame(render);
 }
 function measure() {
@@ -239,6 +305,9 @@ function startIntro() {
   }
   dismissLaunch();
   rewindGate.reset();
+  rewindUnlocked = false;
+  rewindLockUntil = 0;
+  clearRewindTension();
   active = true;
   root.classList.add("v2-cinematic");
   root.classList.remove("v2-revealing");
@@ -268,6 +337,7 @@ try {
       catch { /* Native browser restoration remains available without storage. */ }
     }
     cancelAnimationFrame(frame);
+    clearRewindTension();
     clearTimeout(launchTimer);
     frame = 0;
     listening = false;
