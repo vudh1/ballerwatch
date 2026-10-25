@@ -3088,34 +3088,30 @@ function setCalendarExpanded(expanded) {
   renderCalendarGrid();
 }
 
-function renderCalendar(calendar) {
-  currentCalendar = calendar || null;
-  updatePersonalPickupAlertState();
+function renderActiveMode() {
+  const games = activeModeGames();
+  const startDate = activeCalendarStartDate();
   els.calendarGrid.replaceChildren();
-
-  if (!calendar?.startDate) {
-      els.calendarGamePicker.hidden = true;
+  if (!startDate) {
+    els.calendarGamePicker.hidden = true;
     els.calendarUpdated.textContent = "Updated unavailable";
     return;
   }
 
-  const updated = new Date(calendar.updatedAt || "");
+  const updatedAt = activeMatchMode === WATCH ? watchedUpdatedAt : currentCalendar?.updatedAt;
+  const updated = new Date(updatedAt || "");
   els.calendarUpdated.textContent = Number.isNaN(updated.getTime())
-    ? "Updated pending"
+    ? (activeMatchMode === WATCH && watchedTeams.length ? "Checking watched fixtures…" : "Updated pending")
     : `Updated ${new Intl.DateTimeFormat(undefined, {
-        hour: "numeric",
-        minute: "2-digit",
+        hour: "numeric", minute: "2-digit",
       }).format(updated)}`;
 
-  const availableGames = calendar.games || [];
   const selectedGame = selectedCalendarGameId
-    ? availableGames.find((game) => game.id === selectedCalendarGameId)
-    : null;
-  const firstGame = availableGames[0] || null;
+    ? games.find(game => game.id === selectedCalendarGameId) : null;
+  const firstGame = games[0] || null;
 
-  if (selectedGame) {
-    selectedCalendarDate = selectedGame.date;
-  } else if (firstGame) {
+  if (selectedGame) selectedCalendarDate = selectedGame.date;
+  else if (firstGame) {
     selectedCalendarGameId = "";
     selectedCalendarDate = firstGame.date;
   } else {
@@ -3127,27 +3123,31 @@ function renderCalendar(calendar) {
   renderCalendarGrid();
 
   if (selectedGame) {
-    const sameDay = availableGames.filter((game) => game.date === selectedGame.date);
-    renderCalendarGamePicker(sameDay, selectedGame.id || "");
+    renderCalendarGamePicker(games.filter(game => game.date === selectedGame.date),
+      selectedGame.id || "");
     renderNextGame(selectedGame, "SELECTED GAME");
     els.nextGameCard.classList.add("spotlight-selected");
     scheduleSpotlightIdleReset();
   } else if (firstGame) {
-    renderCalendarGamePicker(
-      availableGames.filter((game) => game.date === firstGame.date),
-      firstGame.id || "",
-    );
+    renderCalendarGamePicker(games.filter(game => game.date === firstGame.date),
+      firstGame.id || "");
     renderNextGame(firstGame, "NEXT GAME");
     els.nextGameCard.classList.remove("spotlight-selected");
     cancelSpotlightIdleReset();
   } else {
     els.calendarGamePicker.hidden = true;
     renderNextGame(null, "NEXT GAME");
+    els.nextGameCard.classList.remove("spotlight-selected");
     cancelSpotlightIdleReset();
   }
-
   syncSpotlightEdgeControls();
   window.requestAnimationFrame(syncSpotlightCardDimensions);
+}
+
+function renderCalendar(calendar) {
+  currentCalendar = calendar || null;
+  updatePersonalPickupAlertState();
+  renderActiveMode();
 }
 
 function standingsNumber(value) {
