@@ -7,15 +7,19 @@
       "date": "2026-10-25",
       "type": "minor",
       "source": "user-feedback",
-      "title": "Welcome setup and searchable RSVP identity",
-      "webAnnouncement": "New devices can choose a pickup RSVP name, teams to play and teams to watch in three optional steps. Saved devices keep their preferences, and quiet reminders in Play or Watch link directly to Settings. The RSVP name is now a searchable dropdown sourced only from the next published pickup roster.",
+      "title": "First-device setup and opt-in private calendar subscriptions",
+      "webAnnouncement": "New devices can choose pickup and Play/Watch teams in three optional steps, and RSVP names use a searchable published-roster dropdown. Opt-in permanent calendar profiles can keep the same Vela TV subscription URL as followed teams change, with independent encrypted preferences, explicit device pairing and revocation. Cloud sync requires separate secure Cloudflare provisioning; legacy links and local-only mode remain available.",
       "changes": [
         "Add a three-step first-device onboarding wizard with skip, back, offline-ready controls and no account requirement.",
         "Keep returning visitor preferences untouched; isolate the completion marker between beta and production installations.",
         "Replace the RSVP name text field with a searchable, accessible selector using names from one upcoming published pickup roster, with a manual-add fallback and an explicit Clear action.",
         "Explain missing Play and Watch preferences with an unobtrusive Settings action, retaining instant device-local persistence and card refreshes.",
         "Cover all steps, skips, returns, UI controls and negative storage cases with unit and Chromium, Firefox and WebKit synthetic browser regression tests.",
-        "Document the separate, not-yet-implemented multi-user stable calendar subscription and owner-identity decision for FRIDAY and Vela TV; preserve legacy ICS URLs."
+        "Implement independently managed, opt-in D1 calendar profiles using dedicated AES-256-GCM key, encrypted selections/read URL, hashed 256-bit scoped capabilities and a per-device management credential.",
+        "Reuse existing canonical ICS event serialization and source-qualified IDs; changing followed Play/Watch/pickup selections updates the same read-only Vela subscription URL.",
+        "Allow one-use five-minute device pairing, recover/replace one-time recovery codes, rotate/revoke subscriptions, revoke other devices, disconnect and delete profiles.",
+        "Gate Cloudflare D1 migrations, bindings and secrets to explicitly provisioned release credentials. Do not touch encrypted GitHub state, legacy calendar subscriptions, existing Cron Triggers or Vela settings.",
+        "Test multi-profile isolation, unauthorized/expired writes, revision conflicts, token replay, at-rest privacy, revocation, deletion and offline/disabled service via synthetic SQLite and frontend tests."
       ]
     },
     {
