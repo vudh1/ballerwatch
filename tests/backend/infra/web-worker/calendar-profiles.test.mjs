@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { webcrypto } from "node:crypto";
 import { handleCalendarProfileRequest, normalizeCalendarSelection } from
-  "../../../backend/infra/web-worker/calendar-profiles.mjs";
+  "../../../../backend/infra/web-worker/calendar-profiles.mjs";
 
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
 const origin = "https://vudh1.github.io";
@@ -18,7 +18,7 @@ const secret = Buffer.alloc(32, 73).toString("base64url");
 function makeDatabase() {
   const sqlite = new DatabaseSync(":memory:");
   sqlite.exec(readFileSync(new URL(
-    "../../../backend/infra/web-worker/migrations/0001_calendar_profiles.sql",
+    "../../../../backend/infra/web-worker/migrations/0001_calendar_profiles.sql",
     import.meta.url), "utf8"));
   return {
     sqlite,
