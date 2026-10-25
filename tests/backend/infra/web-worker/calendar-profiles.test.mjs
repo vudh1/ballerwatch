@@ -141,10 +141,15 @@ test("one-use pairing creates independent device credentials; recovery rotates o
   assert.equal((await call(path + "/device", "DELETE", undefined, linked.json.manager)).code, 200);
   assert.equal((await call(path, "GET", undefined, linked.json.manager)).code, 404);
   assert.equal((await call(path, "GET", undefined, created.manager)).code, 200);
+  const reset = (await call(path + "/recovery", "POST", undefined, created.manager)).json;
+  assert.equal(reset.recoveryCode.length, 43);
+  assert.notEqual(reset.recoveryCode, created.recoveryCode);
+  assert.equal((await call("/web/v1/calendar-profiles/recover", "POST",
+    { recoveryCode: created.recoveryCode })).code, 404);
   const recovery = await call("/web/v1/calendar-profiles/recover",
-    "POST", { recoveryCode: created.recoveryCode });
+    "POST", { recoveryCode: reset.recoveryCode });
   assert.equal(recovery.code, 200);
-  assert.notEqual(recovery.json.recoveryCode, created.recoveryCode);
+  assert.notEqual(recovery.json.recoveryCode, reset.recoveryCode);
   assert.equal((await call("/web/v1/calendar-profiles/recover", "POST",
     { recoveryCode: created.recoveryCode })).code, 404);
   assert.equal((await call(path, "GET", undefined, recovery.json.manager)).code, 200);
