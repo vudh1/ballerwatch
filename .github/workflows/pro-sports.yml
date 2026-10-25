@@ -1,5 +1,12 @@
 name: Refresh professional sports fixtures
 on:
+  # The first backfill is built from the validated integration branch.
+  # Ordinary scheduled refreshes and post-release runs use production code.
+  push:
+    branches: [main]
+    paths:
+      - "backend/sports/index.mjs"
+      - ".github/workflows/pro-sports.yml"
   schedule:
     - cron: '37 9 * * 1'
   workflow_dispatch:
@@ -14,13 +21,13 @@ concurrency:
   cancel-in-progress: false
 jobs:
   sports:
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'workflow_dispatch')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          ref: production
+          ref: ${{ github.event_name == 'push' && 'main' || 'production' }}
           fetch-depth: 1
       - name: Pull last verified encrypted sport snapshot
         env:
