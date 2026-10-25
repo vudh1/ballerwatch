@@ -1,113 +1,163 @@
-# Proposed calendar subscription identity and authorization (11.7 planning)
+# BallerWatch × FRIDAY calendar subscription v1
 
-Status: **design only — not merged, enabled, or deployed**. FRIDAY coordination: [vudh1/friday#12](https://github.com/vudh1/friday/issues/12).
+**Code status:** Implemented in draft branch `release/11.7.0-first-run-setup` and
+[PR #196](https://github.com/vudh1/ballerwatch/pull/196). **Not merged or deployed.**
+The optional Cloudflare D1 service is **not provisioned by source changes**;
+until its database and separate encryption secret are configured, the new APIs
+respond unavailable and the original parameter-based ICS links remain usable.
+Owner authorization decision: **Option A, independently managed anonymous profiles**
+(approved 2026-10-25). Cross-app register:
+[FRIDAY issue #12](https://github.com/vudh1/friday/issues/12).
 
-## Existing behavior to preserve
+## Owner and consumer boundaries
 
-`GET /web/calendar.ics?teams=...&watch=...&pickup=...` is anonymous, stateless and
-read-only. It builds playing/pickup and professional watching VEVENTs using the
-published fixture indexes. Existing URLs must remain functional; changing a
-device's selections cannot update an old parameter-based URL.
+- **BallerWatch** owns immutable published sports source data, game IDs, and
+  the server-side calendar view and encrypted profile selections.
+- **Vela TV** holds only the read-only ICS URL per independently selected Vela
+  display profile in its existing encrypted calendar storage. It cannot write
+  preferences and does not access BallerWatch's encrypted GitHub state.
+- **FRIDAY** tracks the versioned contract; no central FRIDAY identity or
+  runtime is required. A Vela display profile is never a BallerWatch identity.
+- **RSVP upstream** independently owns signups; no participant names,
+  waitlists or unpublished roster details are included in profile storage
+  or ICS. Pickup inclusion is a boolean, independent of selecting an RSVP name.
 
-BallerWatch currently stores personal RSVP names and monitored teams per
-browser, not in a visitor account. The sole authenticated web login is for
-administrator maintenance and **must not become shared visitor identity**.
-Encrypted canonical `runtime-state` must remain untouched by calendar-profile
-writes. Cloudflare KV and Cron Triggers remain out of the production architecture.
+## Accountless capabilities
 
-## Proposed v1 owner-side contract
+Every opt-in BallerWatch calendar profile receives:
 
-- `POST /web/v1/calendar-profiles`: **after explicit opt-in**, create a
-  private calendar profile with a server-minted, cryptographically random
-  identifier, and separate read token and write/revoke credential.
-- `PUT /web/v1/calendar-profiles/{id}/selection`: authenticated management
-  capability, version/ETag compare-and-set, narrow validated selections.
-- `POST /web/v1/calendar-profiles/{id}/rotate`: management capability; revoke
-  old read token and show a new subscription URL. Rotation necessarily requires
-  updating Vela once.
-- `DELETE /web/v1/calendar-profiles/{id}`: management capability, immediately
-  revoke subscription and delete preferences; no background migration.
-- `GET /web/v1/calendar/{opaque-token}.ics`: opaque read-only calendar feed;
-  the URL remains unchanged when authorized selections update, and uses the
-  same published fixture sources and calendar serialization as legacy ICS.
-- Deletion/revocation response must be non-cacheable; never share management
-  credentials with Vela. Fail closed on missing/expired/revoked capabilities.
-- Minimal profile record: independent profile ID, encrypted arrays of RATS
-  and professional team identifiers plus pickup flag, revision, created/updated
-  and revoke markers. Do not persist RSVP names, rosters, private match edits,
-  push subscriptions or player identities in calendar profiles.
+1. An opaque 128-bit random profile identifier (not an email or username).
+2. A distinct 256-bit random **read-only** URL token used exclusively for
+   `GET /web/v1/calendar-ics/{token}.ics`.
+3. A **device-specific** 256-bit management capability; only this credential
+   can read selections, change them, rotate the feed, pair other devices,
+   revoke other management credentials and delete the profile.
+4. A 256-bit **one-time recovery code** displayed once in Settings. The
+   code may be replaced by an authorized device; successful recovery rotates
+   the code and grants that device its own management credential.
 
-## Identity decision before security-sensitive implementation
+No profile is created or migrated unless the user explicitly clicks
+**Enable permanent link** and agrees to the consent dialog. Other browsers
+remain isolated. An existing authorized device must explicitly generate a
+one-use pairing code, valid for 5 minutes. The receiving browser confirms
+linking and redeems the code for **its own management capability**, not a
+copy of the sending browser's credential. Pairing codes are consumed
+atomically and cannot be replayed. Two-year-expiring manager credentials
+are independent of permanent subscription URLs; losing all authorized
+devices requires the current recovery code. Read URLs do not expire except
+on rotation/deletion, as intended for long-lived Vela subscriptions.
 
-1. **Anonymous owner-profile capability (recommended for accountless v1).**
-   An explicit user opt-in provisions a scoped private management secret on
-   that installation, separate from a 256-bit randomly generated ICS read token.
-   No email/account provider required. Linking a second device requires the
-   current authorized device to approve a short-lived one-time pairing request;
-   new device must prove possession of its own fresh challenge. One profile
-   never implies a link to another browser or Vela profile. **Tradeoff:**
-   clearing all authorized devices loses management/recovery without a separate
-   recovery method. A recovery code can be optionally generated once, scoped
-   for restoration, with explicit storage guidance.
-2. **Standards-based OIDC/OAuth + PKCE.** More familiar sign-in, multi-device
-   access and account recovery. **Tradeoff:** a provider integration, consent
-   UX, vendor quotas and more data processing; needs provider selection and
-   production secrets.
-3. **WebAuthn passkeys.** Strong phishing-resistant credential assertion
-   without a shared static password. **Tradeoff:** secure account bootstrap,
-   synced-passkey portability and recovery still require an identity policy.
+Browser preferences continue to save immediately, with local fallback when
+Cloudflare is offline. Linked device changes use compare-and-set revisions
+to reject overwriting a concurrent update. On explicit linking, a browser
+may import the authorized profile's teams; otherwise it keeps its device
+preferences. Only verified authorization can update another device's
+selected teams.
 
-Do not authorize linking through IP, browser fingerprint, Vela display
-profile, local PWA cache, household PIN, RSVP display name or the existing
-maintenance credential.
+## API v1
 
-## Storage and cost evaluation
+| Method | Endpoint | Permission |
+| --- | --- | --- |
+| GET | `/web/v1/calendar-profiles/status` | Public readiness only |
+| POST | `/web/v1/calendar-profiles` | Explicit opt-in, create independent profile |
+| GET | `/web/v1/calendar-profiles/{id}` | Manage capability, read current selection and stable URL |
+| PUT | `/web/v1/calendar-profiles/{id}/selection` | Manage capability, revision CAS |
+| POST | `/web/v1/calendar-profiles/{id}/pairings` | Manage capability, generate short-lived code |
+| POST | `/web/v1/calendar-pairings/redeem` | Single-use pairing code, grants fresh device credential |
+| POST | `/web/v1/calendar-profiles/recover` | One-time recovery code, rotates recovery |
+| POST | `/web/v1/calendar-profiles/{id}/recovery` | Manage capability, replace recovery code |
+| POST | `/web/v1/calendar-profiles/{id}/rotate` | Manage capability, rotate read URL and revoke prior URL |
+| POST | `/web/v1/calendar-profiles/{id}/other-devices` | Manage capability, revoke all other devices and outstanding pairings |
+| DELETE | `/web/v1/calendar-profiles/{id}/device` | Manage capability, disconnect current device |
+| DELETE | `/web/v1/calendar-profiles/{id}` | Manage capability, delete profile and all grants |
+| GET | `/web/v1/calendar-ics/{token}.ics` | Read token only; no writes |
 
-Prefer **Cloudflare D1** (one database, logically separate per-profile rows)
-rather than a single global watchlist or Workers KV. D1 provides durable
-atomic conditional updates suitable for profile revisions and revocation.
-Store encrypted sensitive selection blobs using a dedicated Worker secret
-and AEAD with per-record nonce, key rotation, authenticated profile ID
-associated data and no fallback key. Hash read and write capabilities for
-lookup/verification; keep raw credentials only on authorized clients.
-Keep Worker encryption material separate from GitHub `TRACKER_STATE_KEY`
-and administrator tokens. The exact D1 free-tier limits, per-day billing,
-migration, binding and delete behavior must be confirmed before rollout.
-Rate-limit writes and reads; do not rely on a global shared token.
+Mutations require an allowed PWA `Origin`, JSON content type, a bounded body,
+and a scoped `Authorization: Bearer` capability for privileged operations.
+No cookies, login accounts, general maintenance/admin tokens, RSVP name,
+shared household PIN or Vela display profile are accepted as authorization.
+Unknown profile IDs, wrong credentials, expired capabilities and revoked
+tokens fail closed. API responses are `no-store`; ICS subscriptions
+are revalidated by their clients. Rate budgets are enforced server-side
+for reads and changes, and deployment should also configure a Cloudflare
+WAF/rate-limit rule; never log raw request paths, ICS tokens or capabilities.
 
-## FRIDAY calendar contract v1
+The original public `GET /web/calendar.ics?teams=...&watch=...&pickup=...`
+continues without modifications. Its query-based link still requires
+replacement after the encoded choices change.
 
-Calendar projection is producer-owned and **read-only**. UIDs are stable
-source-qualified IDs (not URL or credential derived). Keep `VEVENT`
-start/end instants and existing Seattle/local timezone rendering, including
-DST behavior and RFC 5545 CRLF folding/escaping. Keep categories playing,
-watching, pickup, retain verified location and U.S. broadcast metadata where
-available, and do not invent channels or results. Bounded client refresh
-and `ETag`/revision invalidation must respect rapid revocation. Vela holds the
-ICS URL under its own per-profile encryption and must not receive a write
-credential. Existing Google Calendar and legacy ICS sources are unaffected.
+## Durable storage, key management, free tier
 
-## Threats, tests and safe failure
+New `CALENDAR_PROFILES` D1 binding only, with migration:
+`backend/infra/web-worker/migrations/0001_calendar_profiles.sql`.
+All sensitive selections and retrievable read URLs are AES-256-GCM envelopes
+using a **dedicated** Worker/GitHub Actions secret `CALENDAR_SYNC_KEY`
+(32 random bytes encoded base64url, never a fallback from
+`TRACKER_STATE_KEY`). Each envelope authenticates its profile identifier
+and purpose as additional data. D1 stores only SHA-256 capability hashes
+for lookup, ciphertext, revision numbers and minimal operational timestamps.
+No device IP, plaintext identity, team selection or secret is stored.
+Abuse-rate keys are time-bucketed salted digests, not plaintext IP addresses.
 
-- Two unrelated owners, separate capability pairs: no cross-profile reads or
-  writes; team changes preserve read URL and update event content.
-- Unauthorized/replayed mutations, stale revision, token brute force,
-  expired pairing/management, rotated/revoked read capabilities all fail closed.
-- Limit HTTP request bodies, team counts, URLs and fetch frequency; scrub
-  Authorization and path tokens from logs/analytics and browser referrers.
-- Duplicate-event prevention, event moved/cancelled, ongoing event, UTC/DST
-  boundaries, weak/empty sports index, and independent fixture updates.
-- Cloudflare/D1 unavailable: device-local choices continue; Vela displays
-  bounded last-good calendar (not an invented successful sync).
-- Disable v1 endpoint or rollback Worker/DB migration without changing
-  legacy ICS or GitHub encrypted runtime-state; leave stale feeds revoked.
-- No automatic bulk opt-in, enrollment, account merging, GitHub secrets
-  creation, branch promotion or Cloudflare deployment from this document.
+Before an authorized production rollout:
 
-## Release gates
+1. Create the Cloudflare D1 database `ballerwatch-calendar-profiles`
+   using a Cloudflare token with appropriate D1 permissions and keep its
+   database identifier private.
+2. Configure two distinct repository Actions secrets:
+   `CALENDAR_D1_DATABASE_ID` and `CALENDAR_SYNC_KEY`. Never commit
+   values to Git, logs, workflow arguments or FRIDAY.
+3. The existing release Worker workflow fails closed if only one is set,
+   generates an optional binding, applies migrations before Worker deploy,
+   installs the separate encryption key, and checks the read-only
+   `/web/v1/calendar-profiles/status` readiness response.
+4. Verify free-tier D1 database size and daily read/write allowances and
+   Cloudflare Worker quotas before production, set Cloudflare edge rate
+   limits, and verify restore/key-rotation and backup procedures.
+5. Separately authorize feature-branch integration to `main`/beta and
+   later a reviewed production release; neither is implicit.
 
-Architecture decision and scope approval → isolated implementation branch
-→ encryption/authz integration tests and negative tests → browser tests
-(Chromium, Firefox, WebKit and device follow-up) → privacy audit / Worker
-dry-run / read-only live smoke → PR review → separately authorized release,
-runtime audit, Worker health, Pages deployment, and Vela profile refresh.
+Do not destroy or change the dedicated AES-GCM key without a reviewed
+re-encryption/key-rotation migration. Otherwise current ciphertext will
+be unreadable. D1 and GitHub encrypted `runtime-state` have independent
+operational and recovery domains. No Workers KV or Cloudflare Cron Trigger
+is required or enabled for this service.
+
+## Event contract v1: BallerWatch → Vela TV
+
+Both feed types use the **same** BallerWatch
+`backend/shared/ical-feed.mjs` formatter and authoritative fixture index.
+They serialize `VCALENDAR`/`VEVENT` RFC 5545 with stable
+`{encoded source-game-id}@ballerwatch` UIDs, timezone-aware UTC
+`DTSTART`/`DTEND`, `X-WR-TIMEZONE: America/Los_Angeles`,
+`LAST-MODIFIED` when published, `STATUS:CANCELLED` where appropriate,
+`SUMMARY`, `LOCATION`, and relevant `DESCRIPTION` fields. Repeated
+multi-team matches are de-duplicated by game ID; unknown TV channels
+are not invented. Categories are conveyed as **Playing**/**Watching**
+in existing descriptions (pickup belongs to Playing). Vela may map them
+to FRIDAY's All / Playing / Watching / Life categories. This v1 adds no
+cross-app write permission and does not change Vela's existing Google
+Calendar support or per-display-profile encrypted settings.
+
+Consumers should refresh periodically, honor no-store and revocation,
+retain bounded last-good results only for temporary offline read
+failures, and never resurrect an intentionally revoked link. A profile's
+team changes and published fixture updates both appear when Vela next
+fetches its **unchanged** link. Rotation is an intentional exception:
+the link changes, and the owner must replace it in Vela.
+
+## Negative tests and rollback
+
+Synthetic D1 tests cover independently managed profiles, cross-user
+authorization denial, CAS/replay, hashed/encrypted storage, stale pairing,
+recovery rotation, token rotation/revocation, deletion, credential expiry,
+bounded requests, and disabled-worker fallback. Existing iCalendar tests
+cover stable UID, duplicate elimination, events in progress, timezones and
+DST. New PWA tests cover explicit opt-in, URL stability, no automatic
+pairing and persistent device storage. CI is notification-silent.
+
+If the new storage/binding fails, leave the service disabled and keep
+legacy ICS and local Play/Watch unaffected. Roll back a reviewed release
+rather than exposing D1 directly or copying encrypted GitHub state.
+A GitHub PR merge is not a GitHub Release and never constitutes
+production deployment or device verification.
