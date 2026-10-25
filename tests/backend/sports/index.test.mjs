@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { publishedUsBroadcasts } from "../../../backend/sports/broadcasts.mjs";
 import { COMPETITIONS, teamLabel, parsedFixtures, parsedTeams } from "../../../backend/sports/index.mjs";
 test("NBA, top five European football leagues, UEFA and CONMEBOL represented", () => {
  assert.equal(COMPETITIONS.filter(c=>c.group==="club").length,5);
@@ -39,4 +40,29 @@ test("published monthly fixtures map event team IDs to selectable canonical name
   assert.deepEqual(match.teams, ["NBA · Los Angeles Lakers", "NBA · Boston Celtics"]);
   // 03:00 UTC falls on the previous Pacific calendar date.
   assert.equal(match.date, "2026-11-09");
+});
+
+test("only published US broadcasters survive geo and unrelated overseas sources", () => {
+  const event = {
+    competitions: [{
+      broadcasts: [{market:{type:"National"},names:["Prime Video","ESPN","Sky Sports"]}],
+      geoBroadcasts: [
+        {country:{code:"GB"}, media:{shortName:"TNT"}},
+        {country:{code:"US"}, media:{shortName:"NBA TV"}},
+      ],
+    }],
+  };
+  assert.deepEqual(publishedUsBroadcasts(event), ["Prime Video","ESPN","NBA TV"]);
+});
+test("broadcast assignments accompany indexed match and absent broadcasts stay unknown", () => {
+  const c = COMPETITIONS[0];
+  const event = { id:"tv1",date:"2026-10-30T23:00:00Z",
+    competitions:[{ competitors:[
+      {homeAway:"home",team:{displayName:"Lakers"}},
+      {homeAway:"away",team:{displayName:"Celtics"}},
+    ], broadcasts:[{names:["ESPN","Prime Video"]}]}] };
+  const [match] = parsedFixtures({events:[event]}, c);
+  assert.deepEqual(match.broadcasts, ["ESPN","Prime Video"]);
+  delete event.competitions[0].broadcasts;
+  assert.deepEqual(parsedFixtures({events:[event]},c)[0].broadcasts, []);
 });
