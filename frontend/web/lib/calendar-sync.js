@@ -130,6 +130,9 @@ export function createCalendarSync({ storage, request, getSelection, applySelect
       const result = await call("/web/v1/calendar-pairings/redeem", "POST", { code: code.trim() }, "");
       profile = { id: result.id, manager: result.manager, revision: 0,
         url: "", lastSelection: null };
+      // Pairing is single-use. Persist the new device grant before a second
+      // network request can fail, or an intermittent outage would lose access.
+      persist(storage, key, profile);
       const remote = await call("/web/v1/calendar-profiles/" + profile.id);
       applySelection(remote.selection);
       profile.revision = remote.revision;
@@ -137,7 +140,10 @@ export function createCalendarSync({ storage, request, getSelection, applySelect
       profile.lastSelection = remote.selection;
       persist(storage, key, profile);
       show("Linked. This device now has its own management credential.");
-    } catch { profile = null; show("Pairing code expired or unavailable. Ask the linked device for a new code."); }
+    } catch {
+      show(profile ? "Device was authorized, but preference loading failed. Retry Refresh when online."
+        : "Pairing code expired or unavailable. Ask the linked device for a new code.");
+    }
   }
   async function recover(code) {
     if (profile) return show("Disconnect this device before recovering a different profile.");
@@ -147,6 +153,9 @@ export function createCalendarSync({ storage, request, getSelection, applySelect
         { recoveryCode: code.trim() }, "");
       profile = { id: result.id, manager: result.manager, revision: 0,
         url: "", lastSelection: null };
+      // Pairing is single-use. Persist the new device grant before a second
+      // network request can fail, or an intermittent outage would lose access.
+      persist(storage, key, profile);
       const remote = await call("/web/v1/calendar-profiles/" + profile.id);
       applySelection(remote.selection);
       profile.revision = remote.revision; profile.url = remote.url;
@@ -154,7 +163,10 @@ export function createCalendarSync({ storage, request, getSelection, applySelect
       persist(storage, key, profile);
       recoveryCode = result.recoveryCode;
       show("Recovered. Your previous recovery code is invalid. Save this new code.");
-    } catch { profile = null; show("Recovery unavailable. Your original local selections remain safe."); }
+    } catch {
+      show(profile ? "Recovery authorized, but loading failed. Keep this device; retry Refresh."
+        : "Recovery unavailable. Your original local selections remain safe.");
+    }
   }
   async function manage(endpoint, method, message) {
     if (!profile || !available) return;
