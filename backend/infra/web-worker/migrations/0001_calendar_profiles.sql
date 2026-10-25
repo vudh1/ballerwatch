@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS calendar_profiles (
 CREATE TABLE IF NOT EXISTS calendar_managers (
   manager_hash TEXT PRIMARY KEY,
   profile_id TEXT NOT NULL REFERENCES calendar_profiles(id) ON DELETE CASCADE,
-  created_ms INTEGER NOT NULL
+  created_ms INTEGER NOT NULL,
+  expires_ms INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS calendar_managers_profile ON calendar_managers (profile_id);
 CREATE TABLE IF NOT EXISTS calendar_pairings (
