@@ -53,6 +53,7 @@ import { visiblePickupCapacity } from "../../shared/pickup-capacity.mjs";
 import { ALL_RUNTIME_FILE_PATHS } from "../../shared/runtime-paths.mjs";
 import { DEFAULT_LEAGUE_TEAMS } from "../../shared/defaults.mjs";
 import { calendarToIcs } from "../../shared/ical-feed.mjs";
+import { handleCalendarProfileRequest } from "./calendar-profiles.mjs";
 import { KEY_CONTEXT } from "../../shared/security-contexts.mjs";
 import { validWebPushEndpoint } from "../../shared/web-push-endpoint.mjs";
 
@@ -3801,6 +3802,35 @@ async function runScheduled(cron,env) {
   }
 }
 
+/**
+ * Both legacy parameter subscriptions and stable per-profile URLs use the
+ * same canonical public fixture projection and UID/timezone serialization.
+ * No user names or device-private match edits are added to either feed.
+ */
+async function calendarSelectionIcs(env, { teams = [], watch: watches = [], pickup = false }) {
+  let published = [];
+  let updatedAt = "";
+  if (teams.length || pickup) {
+    const snapshot = await loadSnapshot(env);
+    const index = teams.length ? await loadScoutingIndex(env) : null;
+    if (teams.length && (!scoutingSeasonCurrent(index, snapshot) ||
+        !Array.isArray(index.availableMatches))) throw new Error("Team index pending");
+    const matches = webCalendarDetails(snapshot, {}, 14, localDate(), new Date(), {},
+      teams.length ? { teams, matches: index.availableMatches } : null);
+    published = matches.games.filter(game => game.kind === "league" ? teams.length > 0 :
+      pickup && (game.kind === "pickup" || game.kind === "free_pickup"));
+    updatedAt = matches.updatedAt;
+  }
+  if (watches.length) {
+    const indexed = await loadSportsIndex(env);
+    published.push(...watchedFixtures(indexed, watches));
+    updatedAt = indexed.broadcastUpdatedAt || indexed.updatedAt || updatedAt;
+  }
+  const body = calendarToIcs(published, {
+    name: "BallerWatch · My sports", updatedAt,
+  });
+}
+
 export default {
   async scheduled(controller, env, ctx) {
     ctx.waitUntil(runScheduled(controller.cron,env));
@@ -3808,6 +3838,10 @@ export default {
 
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    if (url.pathname.startsWith("/web/v1/calendar-")) {
+      return handleCalendarProfileRequest(request, env,
+        (selection) => calendarSelectionIcs(env, selection));
+    }
     if (request.method === "GET" && url.pathname === "/health") {
       try {
         const snapshot = await loadSnapshot(env);
@@ -3880,27 +3914,7 @@ export default {
         const teams = webTeamSelection(url.searchParams, "teams", 8);
         const watches = webTeamSelection(url.searchParams, "watch", 20);
         const pickup = url.searchParams.get("pickup") === "1";
-        let published = [];
-        let updatedAt = "";
-        if (teams.length || pickup) {
-          const snapshot = await loadSnapshot(env);
-          const index = teams.length ? await loadScoutingIndex(env) : null;
-          if (teams.length && (!scoutingSeasonCurrent(index, snapshot) ||
-              !Array.isArray(index.availableMatches))) throw new Error("Team index pending");
-          const matches = webCalendarDetails(snapshot, {}, 14, localDate(), new Date(), {},
-            teams.length ? { teams, matches: index.availableMatches } : null);
-          published = matches.games.filter(game => game.kind === "league" ? teams.length > 0 :
-            pickup && (game.kind === "pickup" || game.kind === "free_pickup"));
-          updatedAt = matches.updatedAt;
-        }
-        if (watches.length) {
-          const indexed = await loadSportsIndex(env);
-          published.push(...watchedFixtures(indexed, watches));
-          updatedAt = indexed.broadcastUpdatedAt || indexed.updatedAt || updatedAt;
-        }
-        const body = calendarToIcs(published, {
-          name: "BallerWatch · My sports", updatedAt,
-        });
+        const body = await calendarSelectionIcs(env, { teams, watch: watches, pickup });
         const headers = new Headers(webResponseHeaders(request));
         headers.set("content-type", "text/calendar; charset=utf-8");
         headers.set("cache-control", "public, max-age=300");
