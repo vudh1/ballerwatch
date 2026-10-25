@@ -69,7 +69,7 @@
  * The cue exists only during an active resisted pull; avoid permanent clutter. */
 .v2 .v2-shell { transform: translate3d(0, 0, 0); transition: transform 220ms cubic-bezier(.2, .8, .2, 1); }
 .v2.v2-rewind-resisting .v2-shell { transform: translate3d(0, var(--rewind-tension, 0px), 0); transition: transform 75ms ease-out; }
-.v2 .rewind-affordance { position: fixed; z-index: 900; top: max(1rem, calc(env(safe-area-inset-top) + .6rem)); left: 50%; min-width: 152px; padding: .55rem .75rem .6rem; border-radius: 18px; transform: translate(-50%, -12px); opacity: 0; visibility: hidden; pointer-events: none; background: #092823e8; box-shadow: 0 12px 24px #0005, inset 0 1px 0 #ffffff25; color: #defbf2; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); transition: opacity 140ms ease, transform 140ms ease, visibility 140ms; }
+.v2 .rewind-affordance { position: fixed; z-index: 900; top: max(1rem, calc(env(safe-area-inset-top) + .6rem)); left: 50%; min-width: 152px; padding: .55rem .75rem .6rem; border-radius: 18px; transform: translate(-50%, -12px); opacity: 0; visibility: hidden; pointer-events: none; background: #092823e8; box-shadow: 0 12px 24px #0005, inset 0 1px 0 #ffffff25; color: #defbf2; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); transition: opacity 140ms ease, transform 140ms ease; }
 .v2.v2-rewind-resisting .rewind-affordance { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
 .rewind-affordance-label { display: block; font-size: var(--type-small); font-weight: 500; text-align: center; white-space: nowrap; }
 .rewind-affordance-track { display: block; height: 2px; background: #c2fff029; margin-top: .5rem; border-radius: 99px; overflow: hidden; }
