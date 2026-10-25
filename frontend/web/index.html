@@ -159,6 +159,7 @@
         </div>
         <div class="calendar-grid" id="calendar-grid" aria-label="Two-week game calendar"></div>
         <div class="calendar-game-picker" id="calendar-game-picker" hidden></div>
+        <div class="watch-calendar-list" id="watch-calendar-list" hidden aria-live="polite"></div>
         <div class="calendar-card-footer bw-card-footer">
           <p class="calendar-updated calendar-update-credit" id="calendar-updated">Updated pending</p>
         </div>
@@ -458,7 +459,7 @@
             <div class="settings-choice" id="guest-teams-choice">
               <button class="settings-choice-trigger" id="guest-teams-trigger" type="button"
                 aria-haspopup="listbox" aria-expanded="false" aria-controls="guest-teams-options">
-                <span id="guest-teams-display">Default monitored teams</span>
+                <span id="guest-teams-display">Choose RATS teams</span>
                 <span class="choice-chevron" aria-hidden="true">⌄</span>
               </button>
               <div class="settings-choice-chips" id="guest-teams-chips" aria-label="Teams followed on this device"></div>
@@ -467,11 +468,36 @@
                 <input type="search" id="guest-teams-search" placeholder="Search teams…" autocomplete="off">
                 <div class="settings-choice-options" id="guest-teams-options" role="listbox"
                   aria-label="RATS teams" aria-multiselectable="true"></div>
-                <p class="hint choice-hint">Choose up to 8 teams. Leave empty for original defaults.</p>
+                <p class="hint choice-hint">Choose up to 8 teams. None selected hides RATS standings.</p>
               </div>
             </div>
             <textarea id="guest-teams" rows="1" hidden></textarea>
             <p class="hint">All current-season teams are indexed in advance. Team changes update your cards instantly, without changing other visitors’ settings.</p>
+          </div>
+          <div class="settings-choice-field">
+            <label for="watch-teams-trigger">Teams to watch · NBA, European football, national teams</label>
+            <div class="settings-choice" id="watch-teams-choice">
+              <button class="settings-choice-trigger" id="watch-teams-trigger" type="button"
+                aria-haspopup="listbox" aria-expanded="false" aria-controls="watch-teams-options">
+                <span id="watch-teams-display">Choose professional teams</span>
+                <span class="choice-chevron" aria-hidden="true">⌄</span>
+              </button>
+              <div class="settings-choice-chips" id="watch-teams-chips" aria-label="Professional teams followed on this device"></div>
+              <div class="settings-choice-popover" id="watch-teams-popover" hidden>
+                <label for="watch-teams-search" class="choice-search-label">Search leagues and teams</label>
+                <input type="search" id="watch-teams-search" placeholder="Search NBA, Premier League, UEFA, Copa América…" autocomplete="off">
+                <div class="settings-choice-options" id="watch-teams-options" role="listbox"
+                  aria-label="Professional sports teams" aria-multiselectable="true"></div>
+                <p class="hint choice-hint">Choose up to 20 teams. Matches appear only in the shared calendar, never as your own games.</p>
+              </div>
+            </div>
+            <textarea id="watch-teams" hidden></textarea>
+            <p class="hint" id="watch-teams-status" role="status">Professional fixtures are indexed weekly. TV and third-party calendar apps refresh on their own schedule.</p>
+          </div>
+          <div class="calendar-subscribe-settings">
+            <label>Share my calendar</label>
+            <button type="button" class="secondary" id="copy-calendar-link">Copy calendar subscription link (.ics)</button>
+            <p class="hint" id="calendar-subscription-status" role="status">Read-only public fixtures. Copy a new link after changing your team selections.</p>
           </div>
           <p class="hint">Saved instantly on this device until you change it. Other players’ RSVP names are never published.</p>
           <p class="hint" id="guest-settings-status" role="status"></p>
