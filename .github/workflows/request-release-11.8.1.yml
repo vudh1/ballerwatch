@@ -1,0 +1,54 @@
+name: Request BallerWatch 11.8.1 production promotion
+
+# One-time owner-authorized request. The existing guarded promotion workflow
+# alone owns release/tag, production pointer, Worker audit and Pages deployment.
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/request-release-11.8.1.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  request:
+    if: "startsWith(github.event.head_commit.message, 'chore(release): request 11.8.1 production promotion')"
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Verify immutable candidate and successful main-branch validation
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$GH_TOKEN" || { echo "::error::Missing RELEASE_GITHUB_TOKEN"; exit 1; }
+          candidate="$(git log -1 --format=%H HEAD -- features/versions.json)"
+          test "$candidate" = "b7f639fbb10fbec1f0bafe6d19350911d6b3b596" || {
+            echo "::error::v11.8.1 release candidate changed; refusing promotion."
+            exit 1
+          }
+          version="$(git show "$candidate:features/versions.json" |
+            node -e 'let s="";process.stdin.on("data",x=>s+=x).on("end",()=>process.stdout.write(JSON.parse(s).currentVersion))')"
+          test "$version" = "11.8.1" || { echo "::error::Wrong release version"; exit 1; }
+          passing="$(gh api -X GET "/repos/$GITHUB_REPOSITORY/actions/workflows/validate.yml/runs" \
+            -f head_sha="$candidate" -f status=completed -f per_page=50 \
+            --jq '[.workflow_runs[] | select(.conclusion == "success" and .event == "push")] | length')"
+          test "$passing" -ge 1 || {
+            echo "::error::No successful main Validate code run for $candidate"
+            exit 1
+          }
+      - name: Request protected production workflow
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh workflow run promote-release.yml --repo "$GITHUB_REPOSITORY" --ref main
+          echo "Requested guarded v11.8.1 production promotion (frontend rewind reliability fix)."
