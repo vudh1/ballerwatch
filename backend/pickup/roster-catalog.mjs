@@ -25,8 +25,10 @@ export function rosterNamesOnly(members) {
   const unique = new Map();
   for (const member of members) {
     if (typeof member?.name !== "string") continue;
+    // Reject control characters before whitespace normalization can hide them.
+    if (/[\x00-\x1f\x7f]/.test(member.name)) continue;
     const name = member.name.trim().replace(/\s+/g, " ");
-    if (name.length < 2 || name.length > 120 || /[\x00-\x1f\x7f]/.test(name)) continue;
+    if (name.length < 2 || name.length > 120) continue;
     unique.set(name.toLocaleLowerCase("en"), name);
   }
   const names = [...unique.values()].sort((a, b) => a.localeCompare(b));
