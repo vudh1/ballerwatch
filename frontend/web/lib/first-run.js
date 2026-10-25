@@ -10,6 +10,13 @@ export function needsFirstRun(storage, key) {
   catch { return false; } // A blocked browser store cannot persist a wizard.
 }
 
+/** Never prompt established installations just because the feature is new. */
+export function isFirstRunDevice(storage, key, establishedKeys = []) {
+  if (!needsFirstRun(storage, key)) return false;
+  try { return !establishedKeys.some(value => storage.getItem(value) !== null); }
+  catch { return false; }
+}
+
 export function completeFirstRun(storage, key) {
   try { storage.setItem(key, "complete"); return true; }
   catch { return false; }
