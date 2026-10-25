@@ -88,6 +88,15 @@
       <span id="system-status">Connecting…</span>
     </div>
 
+    <nav class="match-mode-switch" aria-label="Choose match calendar" data-mode="play">
+      <div class="match-mode-track" role="group" aria-label="Matches to play or watch">
+        <button type="button" id="mode-play" class="match-mode-option is-active"
+          aria-pressed="true">Teams to play</button>
+        <button type="button" id="mode-watch" class="match-mode-option"
+          aria-pressed="false">Teams to watch</button>
+      </div>
+    </nav>
+
     <div class="spotlight-carousel" id="spotlight-carousel">
       <button class="spotlight-edge-control carousel-waterfall-edge spotlight-edge-previous" id="spotlight-previous"
         type="button" aria-label="Previous game" disabled>
@@ -159,7 +168,6 @@
         </div>
         <div class="calendar-grid" id="calendar-grid" aria-label="Two-week game calendar"></div>
         <div class="calendar-game-picker" id="calendar-game-picker" hidden></div>
-        <div class="watch-calendar-list" id="watch-calendar-list" hidden aria-live="polite"></div>
         <div class="calendar-card-footer bw-card-footer">
           <p class="calendar-updated calendar-update-credit" id="calendar-updated">Updated pending</p>
         </div>
@@ -488,7 +496,7 @@
                 <input type="search" id="watch-teams-search" placeholder="Search NBA, Premier League, UEFA, Copa América…" autocomplete="off">
                 <div class="settings-choice-options" id="watch-teams-options" role="listbox"
                   aria-label="Professional sports teams" aria-multiselectable="true"></div>
-                <p class="hint choice-hint">Choose up to 20 teams. Matches appear only in the shared calendar, never as your own games.</p>
+                <p class="hint choice-hint">Choose up to 20 teams. Watch mode shows their upcoming match and schedule cards without RATS standings, RSVP or scouting.</p>
               </div>
             </div>
             <textarea id="watch-teams" hidden></textarea>
