@@ -23,6 +23,27 @@ export const COMPETITIONS = Object.freeze([
   { sport: "soccer", code: "fifa.world", label: "World Cup", group: "national" },
   { sport: "soccer", code: "fifa.friendly", label: "International Friendlies", group: "national" },
 ]);
+// Complete senior men's UEFA and CONMEBOL national-team choices, including
+// teams with no fixture in the current 126-day horizon.
+const UEFA_NATIONS = [
+  "Albania", "Andorra", "Armenia", "Austria", "Azerbaijan", "Belarus",
+  "Belgium", "Bosnia and Herzegovina", "Bulgaria", "Croatia", "Cyprus",
+  "Czechia", "Denmark", "England", "Estonia", "Faroe Islands", "Finland",
+  "France", "Georgia", "Germany", "Gibraltar", "Greece", "Hungary",
+  "Iceland", "Israel", "Italy", "Kazakhstan", "Kosovo", "Latvia",
+  "Liechtenstein", "Lithuania", "Luxembourg", "Malta", "Moldova",
+  "Montenegro", "Netherlands", "North Macedonia", "Northern Ireland",
+  "Norway", "Poland", "Portugal", "Republic of Ireland", "Romania",
+  "Russia", "San Marino", "Scotland", "Serbia", "Slovakia", "Slovenia",
+  "Spain", "Sweden", "Switzerland", "Türkiye", "Ukraine", "Wales",
+];
+const CONMEBOL_NATIONS = [
+  "Argentina", "Bolivia", "Brazil", "Chile", "Colombia", "Ecuador",
+  "Paraguay", "Peru", "Uruguay", "Venezuela",
+];
+export const NATIONAL_OPTIONS = Object.freeze([...new Set(
+  [...UEFA_NATIONS, ...CONMEBOL_NATIONS].map(name => "National · " + name),
+)]);
 const norm = value => String(value || "").trim().replace(/\s+/g, " ").slice(0, 100);
 export function teamLabel(comp, name) {
   const text = norm(name);
@@ -48,7 +69,13 @@ export function parsedFixtures(payload, comp) {
     const first = norm(home.team?.displayName || home.team?.name);
     const second = norm(away.team?.displayName || away.team?.name);
     if (!first || !second) continue;
-    const date = new Date(at).toISOString().slice(0, 10);
+    // Match days must use the same Pacific calendar date as BallerWatch.
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Los_Angeles", year: "numeric",
+      month: "2-digit", day: "2-digit",
+    }).formatToParts(new Date(at));
+    const part = key => parts.find(p => p.type === key)?.value || "";
+    const date = [part("year"), part("month"), part("day")].join("-");
     games.push({
       id: `watch:${comp.code}:${String(event.id).slice(0, 60)}`,
       kind: "watch", sport: comp.sport, competition: comp.label,
@@ -77,7 +104,7 @@ async function getJson(fetcher, url) {
 export async function indexSports(fetcher = fetch, today = new Date(), previous = null) {
   const from = startOfDay(today);
   const until = new Date(from.getTime() + 126 * 86400000);
-  const catalogue = new Set(), fixtureMap = new Map();
+  const catalogue = new Set(NATIONAL_OPTIONS), fixtureMap = new Map();
   const failures = [];
   for (const comp of COMPETITIONS) {
     try {
