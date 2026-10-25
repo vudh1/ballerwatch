@@ -97,7 +97,7 @@ export function parsedFixtures(payload, comp, teamIdNames = new Map()) {
       endUtc: new Date(at + (comp.sport === "basketball" ? 3 : 2) * 3600000).toISOString(),
       teams: [homeLabel, awayLabel],
       location: norm(event?.competitions?.[0]?.venue?.fullName),
-      broadcasts: publishedUsBroadcasts(event),
+      broadcasts: publishedUsBroadcasts(event, comp),
       url: /^https:\/\//.test(event?.links?.[0]?.href || "") ? String(event.links[0].href).slice(0, 400) : "",
     });
   }
