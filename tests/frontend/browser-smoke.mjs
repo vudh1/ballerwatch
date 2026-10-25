@@ -115,6 +115,7 @@ async function prepare(browser, options = {}) {
           startUtc: new Date(at.getTime() + i * 3600000).toISOString(),
           endUtc: new Date(at.getTime() + (i + 3) * 3600000).toISOString(),
           location: "Synthetic Arena",
+          broadcasts: i === 0 ? ["Prime Video", "Peacock"] : ["NBA TV"],
         }));
       }
       if (controls.noPickupCap && url.pathname === "/web/next-game") {
@@ -255,6 +256,8 @@ try {
         assert.equal(await page.locator("#league-standings").isVisible(), false);
         assert.equal(await page.locator("#next-game-title").textContent(), "Fixture Lakers vs Fixture Celtics");
         assert.equal(await page.locator("#next-game-type").textContent(), "NBA");
+        assert.match(await page.locator("#next-game-watch").textContent(), /Prime Video/);
+        assert.doesNotMatch(await page.locator("#next-game-watch").textContent(), /Peacock/);
         assert.equal(await page.locator("#next-game-menu-trigger").isVisible(), false);
         assert.equal(await page.locator("#next-game-capacity").isVisible(), false);
         assert.equal(await page.locator("#next-game-form").isVisible(), false);
@@ -264,6 +267,7 @@ try {
         await activateSpotlightControl(page, "#spotlight-next");
         await page.waitForFunction(() =>
           document.querySelector("#next-game-title")?.textContent.includes("Fixture Warriors"));
+        assert.match(await page.locator("#next-game-watch").textContent(), /DrogonTV guide/);
         await page.locator("#mode-play").click();
         await page.waitForFunction(() =>
           document.querySelector("#next-game-title")?.textContent.includes("October 15"));
