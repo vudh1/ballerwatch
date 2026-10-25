@@ -323,7 +323,7 @@ try {
         });
         await page.locator("#close-settings").click();
         await page.locator("#watch-day-list .watch-day-card[aria-hidden='false'] .watch-match-row").nth(1).click();
-        assert.match(await page.locator("#watch-match-channel").textContent(), /DrogonTV guide/);
+        assert.equal(await page.locator("#watch-match-channel").textContent(), "NBA TV");
         await page.locator("#close-watch-match").click();
         await page.locator("#watch-next").click();
         assert.equal(await page.locator("#watch-day-position").textContent(), "2 / 2 days");
