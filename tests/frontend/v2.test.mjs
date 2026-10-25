@@ -71,26 +71,38 @@ test("the scroll tour introduces actual capabilities independently of shot phase
   assert.equal(featureStory(.35), featureStory(.35));
 });
 
-test("rewind gate requires an intentional pull, resets between gestures and handles velocity", () => {
+test("rewind gate requires more than a light pull on desktop and touch", () => {
   const gate = createRewindGate();
+  assert.equal(REWIND.wheelThreshold, 210);
+  assert.equal(REWIND.touchThreshold, 155);
   assert.equal(gate.progress("wheel"), 0);
-  assert.ok(REWIND.touchThreshold < REWIND.wheelThreshold);
   assert.deepEqual(gate.pull("wheel", 45, 100), { released: false, overflow: 0 });
   assert.ok(gate.progress("wheel") > 0 && gate.progress("wheel") < 1);
-  assert.deepEqual(gate.pull("wheel", 75, 125), { released: false, overflow: 0 });
-  assert.deepEqual(gate.pull("wheel", 35, 150), { released: true, overflow: 10 });
+  assert.deepEqual(gate.pull("wheel", 100, 125), { released: false, overflow: 0 });
+  assert.deepEqual(gate.pull("wheel", 75, 150), { released: true, overflow: 10 });
   assert.deepEqual(gate.pull("wheel", 35, 1000), { released: false, overflow: 0 });
-  assert.deepEqual(gate.pull("wheel", 55, 2000), { released: false, overflow: 0 });
-  assert.deepEqual(gate.pull("wheel", 80, 2100), { released: false, overflow: 0 });
+  assert.deepEqual(gate.pull("wheel", 90, 2000), { released: false, overflow: 0 });
+  assert.deepEqual(gate.pull("wheel", 110, 2100), { released: false, overflow: 0 });
   assert.deepEqual(gate.pull("wheel", 15, 2200), { released: true, overflow: 5 });
-  assert.deepEqual(gate.pull("touch", 55), { released: false, overflow: 0 });
-  assert.deepEqual(gate.pull("touch", 70), { released: true, overflow: 20 });
+  assert.deepEqual(gate.pull("touch", 75), { released: false, overflow: 0 });
+  assert.deepEqual(gate.pull("touch", 95), { released: true, overflow: 15 });
   assert.deepEqual(gate.pull("touch", 50), { released: false, overflow: 0 });
   gate.reset("touch");
   assert.deepEqual(gate.pull("touch", 75), { released: false, overflow: 0 });
   assert.deepEqual(gate.pull("touch", -5), { released: false, overflow: 0 });
   assert.deepEqual(gate.pull("touch", 75), { released: false, overflow: 0 });
   gate.reset();
+});
+
+test("rewind resistance visibly affects the full dashboard with transient progress UI", () => {
+  const css = read("v2/styles.css");
+  const html = read("index.html");
+  const timeline = read("v2/timeline.js");
+  assert.match(css, /v2-rewind-resisting \\.v2-shell \\{ transform: translate3d/);
+  assert.match(css, /\.rewind-affordance-track > span/);
+  assert.match(html, /id="rewind-affordance"[^>]*aria-hidden="true"/);
+  assert.match(timeline, /28 \\* Math\\.sqrt\\(progress\\)/);
+  assert.match(timeline, /if \\(rewindUnlocked \\|\\| \\(active && position < boundary - 2\\)\\) return/);
 });
 
 test("replay scroll guard works after session bypass and during iOS momentum", () => {
