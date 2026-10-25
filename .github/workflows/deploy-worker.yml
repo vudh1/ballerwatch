@@ -89,7 +89,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ -n "$CALENDAR_D1_DATABASE_ID" ] != [ -n "$CALENDAR_SYNC_KEY" ]; then
+          if { [ -n "$CALENDAR_D1_DATABASE_ID" ] && [ -z "$CALENDAR_SYNC_KEY" ]; } ||
+             { [ -z "$CALENDAR_D1_DATABASE_ID" ] && [ -n "$CALENDAR_SYNC_KEY" ]; }; then
             echo "::error::Calendar D1 database and encryption key must be configured together."
             exit 1
           fi
@@ -184,6 +185,7 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CALENDAR_D1_DATABASE_ID: ${{ secrets.CALENDAR_D1_DATABASE_ID }}
         shell: bash
         run: |
           set -euo pipefail
@@ -240,7 +242,7 @@ jobs:
             --data '{"endpoint":"https://127.0.0.1/latest/meta-data/"}')"
           test "$PUSH_STATUS" = "400" || { cat "$PUSH_BODY"; exit 1; }
           rm -f "$PUSH_BODY"
-          if [ -n "${{ secrets.CALENDAR_D1_DATABASE_ID }}" ]; then
+          if [ -n "$CALENDAR_D1_DATABASE_ID" ]; then
             CALENDAR_STATUS="$(curl --max-time 15 --fail-with-body --silent --show-error "$BASE_URL/web/v1/calendar-profiles/status")"
             node -e 'const x=JSON.parse(process.argv[1]);if(x.available!==true)process.exit(1)' "$CALENDAR_STATUS"
           fi
