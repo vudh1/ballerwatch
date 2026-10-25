@@ -16,7 +16,7 @@ export function watchCoverage(game, services = DEFAULT_WATCH_SERVICES) {
   const sources = Array.isArray(game?.broadcasts)
     ? [...new Set(game.broadcasts.filter(name =>
       typeof name === "string" && name.length <= 40))] : [];
-  if (!sources.length) return "TV channel not announced";
+  if (!sources.length) return "";
   const available = [];
   for (const channel of sources) {
     if (DIRECT.has(channel) && (channel === "Prime Video" ? services.prime !== false : services.espn !== false)) {
@@ -31,10 +31,7 @@ export function watchCoverage(game, services = DEFAULT_WATCH_SERVICES) {
     if (guideChannel) available.push(`${guideChannel} · check DrogonTV guide`);
   }
   if (available.length) return available.slice(0, 2).join(" · ");
-  if (["prime", "espn", "drogon"].every(service => services[service] === false)) {
-    return "Choose TV services in Settings";
-  }
   // NBC/Peacock, CBS/Paramount+, Apple TV, etc. are omitted because the user
   // did not say they have those subscriptions. Do not promise IPTV access.
-  return "No confirmed channel on your services";
+  return "";
 }
