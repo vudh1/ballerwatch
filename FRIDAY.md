@@ -11,6 +11,10 @@ BallerWatch is the source of truth for sports schedules, pickup tracking, scouti
 | FRIDAY event/notification projections | **Proposed** | Minimize and authorize fields; no private roster or per-device settings by default. |
 | Cross-app editing or unified account | **Not implemented by this document** | Requires scoped authenticated API, explicit consent/confirmation and tests. |
 
+## Cost boundary
+
+BallerWatch remains on its existing release/monitoring paths. The [FRIDAY cardless rule](https://github.com/vudh1/friday/blob/main/docs/COST_POLICY.md) forbids new payment details or paid/billable provider activation for ecosystem integration without separate owner approval. Free quotas and AI/polling usage must be checked against current vendor terms; the repository cannot establish actual provider invoices. **No billing impact** from this documentation change.
+
 ## Design for future use
 
 - Keep encrypted `runtime-state` internal. No direct cross-repository reads, public plaintext snapshots or shared super-token.
