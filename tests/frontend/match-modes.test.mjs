@@ -32,3 +32,10 @@ test("show only actual listed channels on the user's chosen services", () => {
     "No confirmed channel on your services");
   assert.equal(watchCoverage({broadcasts:[]}), "TV channel not announced");
 });
+
+test("unselected services are not advertised to a device", () => {
+  assert.equal(watchCoverage({broadcasts:["Prime Video","ESPN"]},
+    {prime:false,espn:true,drogon:false}), "ESPN");
+  assert.equal(watchCoverage({broadcasts:["Prime Video"]},
+    {prime:false,espn:false,drogon:false}), "Choose TV services in Settings");
+});
