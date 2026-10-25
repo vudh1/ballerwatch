@@ -67,6 +67,17 @@ async function prepare(browser, options = {}) {
   // networking can bypass those routes; exercise real workers separately below.
   const context = await browser.newContext({ serviceWorkers: "block", ignoreHTTPSErrors: true,
     viewport: { width: 1440, height: 1000 }, ...options });
+  // Existing dashboard scenarios use a synthetic monitored player so the
+  // new genuinely-empty guest state doesn't hide their expected match cards.
+  await context.addInitScript(() => {
+    const key = window.location.pathname.startsWith("/ballerwatch/beta/")
+      ? "ballerwatch-beta-visitor-profile-v2" : "ballerwatch-visitor-profile-v2";
+    if (!localStorage.getItem(key)) {
+      localStorage.setItem(key, JSON.stringify({
+        schema: 2, data: { name: "Fixture Player", teams: ["Fixture FC"] },
+      }));
+    }
+  });
   const calls = [];
   const errors = [];
   const controls = { offlineApi: false, optionalFailure: false, animationFailure: false, scriptFailure: false, noPickupCap: false, camelCaseTeam: false };
