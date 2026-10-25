@@ -81,7 +81,7 @@ async function prepare(browser, options = {}, { freshDevice = false } = {}) {
   }, { freshDevice });
   const calls = [];
   const errors = [];
-  const controls = { offlineApi: false, optionalFailure: false, animationFailure: false, scriptFailure: false, noPickupCap: false, camelCaseTeam: false, mixedWatchSports: false };
+  const controls = { offlineApi: false, optionalFailure: false, animationFailure: false, scriptFailure: false, noPickupCap: false, camelCaseTeam: false, mixedWatchSports: false, largeWatchHorizon: false };
   await context.route("**/*", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -136,6 +136,20 @@ async function prepare(browser, options = {}, { freshDevice = false } = {}) {
           });
         }
       }
+        if (controls.largeWatchHorizon && url.pathname === "/web/sports" && fixture.games?.length) {
+          // Hundreds of future fixtures must not create a year-wide GPU layer.
+          for (let i = 2; i < 240; i++) {
+            const nextDay = new Date(Date.parse(fixture.games[0].date + "T12:00:00Z") + i * 86400000)
+              .toISOString().slice(0, 10);
+            fixture.games.push({
+              id: "watch:nba:stress-" + i, kind: "watch", sport: "basketball",
+              competition: "NBA", title: "Fixture Lakers vs Fixture Team " + i,
+              date: nextDay, startUtc: nextDay + "T19:00:00Z",
+              endUtc: nextDay + "T21:00:00Z", location: "Synthetic Arena",
+              broadcasts: [],
+            });
+          }
+        }
       if (controls.noPickupCap && url.pathname === "/web/next-game") {
         fixture.game.capacity = null;
         fixture.game.publishedCapacity = null;
@@ -233,10 +247,11 @@ async function scenario(name, run) {
 try {
   for (const engine of (process.env.BALLERWATCH_BROWSERS || "chromium,webkit").split(",")) {
     const shell = process.env.BALLERWATCH_CHROMIUM_SHELL === "1";
-    const browser = await playwright[engine].launch({ headless: true, ...(engine === "chromium" ? {
+    const launchOptions = { headless: true, ...(engine === "chromium" ? {
       ...(shell ? {} : { channel: "chromium" }),
       args: ["--no-sandbox", "--disable-gpu", "--allow-insecure-localhost", "--ignore-certificate-errors", ...(shell ? ["--disable-blink-features=Badging"] : [])],
-    } : {}) });
+    } : {}) };
+    const browser = await playwright[engine].launch(launchOptions);
     try {
       await scenario(`${engine}: all dashboard card footers have no divider line`, async () => {
         const { context, page, errors } = await prepare(browser, { reducedMotion: "reduce" });
@@ -272,8 +287,8 @@ try {
         assert.equal(await page.locator("#mode-watch").getAttribute("aria-pressed"), "true");
         assert.equal(await page.locator("#league-standings").isVisible(), false);
         assert.equal(await page.locator("#spotlight-carousel").isVisible(), false);
-        assert.equal(await page.locator("#watch-day-list .watch-day-card").count(), 2);
-        assert.equal(await page.locator("#watch-day-list .watch-match-row").count(), 3);
+        assert.equal(await page.locator("#watch-day-list .watch-day-card").count(), 1);
+        assert.equal(await page.locator("#watch-day-list .watch-match-row").count(), 2);
         assert.equal(await page.locator("#watch-day-list .watch-day-card[aria-hidden='false']").count(), 1);
         assert.equal(await page.locator("#watch-day-position").textContent(), "1 / 2 days");
         assert.match(await page.locator("#calendar-title").textContent(), /Watch Schedule/);
@@ -349,10 +364,10 @@ try {
         await page.locator("#close-settings").click();
         await page.locator("#mode-watch").click();
         await page.waitForFunction(() =>
-          document.querySelectorAll("#watch-day-list .watch-day-card").length === 3);
+          document.querySelector("#watch-day-position")?.textContent === "1 / 3 days" &&
+          document.querySelectorAll("#watch-day-list .watch-day-card").length === 1);
         assert.equal(await page.locator("#watch-day-position").textContent(), "1 / 3 days");
         const firstDate = await page.locator("#watch-day-list .watch-day-card").first().getAttribute("data-watch-date");
-        const lastDate = await page.locator("#watch-day-list .watch-day-card").last().getAttribute("data-watch-date");
         const icons = page.locator(`#calendar-grid .calendar-day[data-date="${firstDate}"] .calendar-watch-sports`);
         assert.equal(await icons.textContent(), "⚽ 🏀");
         assert.match(await page.locator(`#calendar-grid .calendar-day[data-date="${firstDate}"]`)
@@ -362,6 +377,7 @@ try {
         assert.equal(await page.locator("#watch-day-position").textContent(), "2 / 3 days");
         await page.locator("#watch-next").click();
         assert.equal(await page.locator("#watch-day-position").textContent(), "3 / 3 days");
+        const lastDate = await page.locator("#watch-day-list .watch-day-card").getAttribute("data-watch-date");
         assert.equal(await page.locator("#watch-next").isDisabled(), true);
         await page.locator("#watch-previous").click();
         assert.equal(await page.locator("#watch-day-position").textContent(), "2 / 3 days");
@@ -373,6 +389,52 @@ try {
         assert.equal(await page.locator("#watch-day-list .watch-day-card[aria-hidden='false'] .watch-match-row").count(), 1);
         assert.deepEqual(errors, []);
         await context.close();
+      });
+
+      await scenario(`${engine}: iPhone-sized Watch carousel keeps 240 dates without GPU-sized track`, async () => {
+        // Keep this deliberately large GPU/memory regression in a separate
+        // renderer, so it cannot destabilize unrelated later browser scenarios.
+        const stressBrowser = await playwright[engine].launch(launchOptions);
+        try {
+          const { context, page, errors, controls } = await prepare(stressBrowser, {
+            viewport: { width: 390, height: 844 }, hasTouch: true, reducedMotion: "reduce",
+          });
+          controls.largeWatchHorizon = true;
+          await ready(page);
+          await openHubTab(page, "settings");
+          await page.locator("#watch-teams-trigger").click();
+          await page.locator("#watch-teams-search").fill("Fixture Lakers");
+          await page.locator('#watch-teams-options [role="option"]').first().click();
+          await page.locator("#close-settings").click();
+          await page.locator("#mode-watch").click();
+          await page.waitForFunction(() =>
+            Number((document.querySelector("#watch-day-position")?.textContent || "")
+              .match(/^1 \/ (\d+) days$/)?.[1] || 0) > 1);
+          const totalDays = Number((await page.locator("#watch-day-position").textContent())
+            .match(/^1 \/ (\d+) days$/)?.[1] || 0);
+          assert.ok(totalDays >= 200,
+            `Expected a large Watch fixture index; rendered ${totalDays} days`);
+          assert.equal(await page.locator("#watch-day-list .watch-day-card").count(), 1);
+          const trackStyle = await page.locator("#watch-day-list").evaluate(element => ({
+            transform: getComputedStyle(element).transform,
+            willChange: getComputedStyle(element).willChange,
+          }));
+          assert.deepEqual(trackStyle, { transform: "none", willChange: "auto" });
+          for (let i = 0; i < 24; i++) {
+            await page.locator("#watch-next").click();
+            assert.equal(await page.locator("#watch-day-list .watch-day-card").count(), 1);
+          }
+          assert.equal(await page.locator("#watch-day-position").textContent(), `25 / ${totalDays} days`);
+          await page.locator("#watch-day-list .watch-match-row").first().click();
+          assert.equal(await page.locator("#watch-match-dialog").isVisible(), true);
+          await page.locator("#close-watch-match").click();
+          for (let i = 0; i < 8; i++) await page.locator("#watch-previous").click();
+          assert.equal(await page.locator("#watch-day-position").textContent(), `17 / ${totalDays} days`);
+          assert.deepEqual(errors, []);
+          await context.close();
+        } finally {
+          await stressBrowser.close();
+        }
       });
 
       await scenario(`${engine}: Android install guidance, native prompt and mobile layout`, async () => {

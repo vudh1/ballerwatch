@@ -2059,7 +2059,7 @@ async function registerServiceWorker() {
     void syncServiceWorkerRsvpState();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=11.8.1", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=11.8.2", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -3423,109 +3423,116 @@ function showWatchDetails(game) {
   if (!els.watchMatchDialog.open) els.watchMatchDialog.showModal();
 }
 
-function watchDaySlides() {
-  return [...(els.watchDayList?.querySelectorAll(".watch-day-card") || [])];
-}
+// Keep the full year of date metadata, but mount only one day card. A flex
+// track with hundreds of offscreen, GPU-transformed cards crashes mobile WebKit.
+let watchDayGroupsCache = [];
+let watchDayIndex = 0;
 
-function syncWatchDaySlide(index = 0) {
-  if (!els.watchDayViewport || !els.watchDayList) return;
-  const slides = watchDaySlides();
-  if (!slides.length) {
-    els.watchPrevious.disabled = true;
-    els.watchNext.disabled = true;
-    els.watchDayPosition.textContent = "";
-    els.watchDayViewport.style.removeProperty("height");
-    return;
-  }
-  const target = Math.min(Math.max(0, index), slides.length - 1);
-  const date = slides[target].dataset.watchDate;
-  selectedCalendarDate = date;
-  els.watchDayList.style.transform =
-    `translate3d(-${target * els.watchDayViewport.clientWidth}px, 0, 0)`;
-  for (const [i, slide] of slides.entries()) {
-    slide.setAttribute("aria-hidden", String(i !== target));
-    slide.inert = i !== target;
-  }
-  const height = slides[target].offsetHeight;
-  if (height > 0) els.watchDayViewport.style.height = height + "px";
-  els.watchPrevious.disabled = target === 0;
-  els.watchNext.disabled = target === slides.length - 1;
-  els.watchDayPosition.textContent = `${target + 1} / ${slides.length} days`;
-  for (const day of els.calendarGrid.querySelectorAll(".calendar-day")) {
-    day.setAttribute("aria-selected", String(day.dataset.date === date));
-  }
-}
-
-function stepWatchDay(direction) {
-  if (activeMatchMode !== WATCH || !direction) return;
-  const slides = watchDaySlides();
-  const index = slides.findIndex(slide => slide.dataset.watchDate === selectedCalendarDate);
-  // Do not expand the list during navigation: the footer denominator is the
-  // count of ALL currently indexed, upcoming match dates, not a loaded batch.
-  syncWatchDaySlide(index + Math.sign(direction));
-}
-
-function renderWatchDayList() {
-  if (!els.watchDayList) return;
-  els.watchDayList.replaceChildren();
-  const start = activeCalendarStartDate();
-  if (!start) return;
-  const groups = watchedDayGroups(watchedGames, start, WATCH_DAY_HORIZON);
-  if (!groups.length) {
-    const empty = document.createElement("section");
-    empty.className = "card watch-day-card bw-card-frame";
-    empty.dataset.watchDate = start;
+function buildWatchDayCard(group) {
+  const card = document.createElement("section");
+  card.className = "card watch-day-card bw-card-frame";
+  card.dataset.watchDate = group.date;
+  card.setAttribute("aria-hidden", "false");
+  if (!group.matches.length) {
     const note = document.createElement("p");
     note.className = "muted";
     note.style.padding = "1.1rem";
     note.textContent = watchedTeams.length
       ? "No published matches in this period. New matches appear automatically when announced."
       : "Choose teams in Settings to see their upcoming match days.";
-    empty.append(note);
-    els.watchDayList.append(empty);
+    card.append(note);
+    return card;
   }
-  for (const group of groups) {
-    const card = document.createElement("section");
-    card.className = "card watch-day-card bw-card-frame";
-    card.dataset.watchDate = group.date;
-    const header = document.createElement("header");
-    header.className = "watch-day-header";
-    const title = document.createElement("h3");
-    title.textContent = dateDisplay(group.date, {
-      weekday: "long", month: "short", day: "numeric",
-    });
-    const count = document.createElement("span");
-    count.className = "watch-day-count";
-    count.textContent = group.matches.length + (group.matches.length === 1 ? " match" : " matches");
-    header.append(title, count);
-    const matches = document.createElement("div");
-    matches.className = "watch-day-matches";
-    for (const game of group.matches) {
-      const details = watchMatchDetails(game, watchServices);
-      const row = document.createElement("button");
-      row.type = "button";
-      row.className = "watch-match-row";
-      row.dataset.matchId = game.id;
-      row.setAttribute("aria-label", details.title + ", " + details.time + ". Open match details");
-      const name = document.createElement("span");
-      name.className = "watch-match-title";
-      name.textContent = details.title;
-      const time = document.createElement("span");
-      time.className = "watch-match-kickoff";
-      time.textContent = details.time.split(", ").at(-1) || details.time;
-      const meta = document.createElement("span");
-      meta.className = "watch-match-meta";
-      meta.textContent = details.competition +
-        (details.whereToWatch ? " · " + details.whereToWatch : "");
-      row.append(name, time, meta);
-      row.addEventListener("click", () => showWatchDetails(game));
-      matches.append(row);
+
+  const header = document.createElement("header");
+  header.className = "watch-day-header";
+  const title = document.createElement("h3");
+  title.textContent = dateDisplay(group.date, {
+    weekday: "long", month: "short", day: "numeric",
+  });
+  const count = document.createElement("span");
+  count.className = "watch-day-count";
+  count.textContent = group.matches.length + (group.matches.length === 1 ? " match" : " matches");
+  header.append(title, count);
+  const matches = document.createElement("div");
+  matches.className = "watch-day-matches";
+  for (const game of group.matches) {
+    const details = watchMatchDetails(game, watchServices);
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "watch-match-row";
+    row.dataset.matchId = game.id;
+    row.setAttribute("aria-label", details.title + ", " + details.time + ". Open match details");
+    const name = document.createElement("span");
+    name.className = "watch-match-title";
+    name.textContent = details.title;
+    const time = document.createElement("span");
+    time.className = "watch-match-kickoff";
+    time.textContent = details.time.split(", ").at(-1) || details.time;
+    const meta = document.createElement("span");
+    meta.className = "watch-match-meta";
+    meta.textContent = details.competition +
+      (details.whereToWatch ? " · " + details.whereToWatch : "");
+    row.append(name, time, meta);
+    row.addEventListener("click", () => showWatchDetails(game));
+    matches.append(row);
+  }
+  card.append(header, matches);
+  return card;
+}
+
+function syncWatchDaySlide(index = 0, { animate = false } = {}) {
+  if (!els.watchDayViewport || !els.watchDayList || !watchDayGroupsCache.length) return;
+  const target = Math.min(Math.max(0, index), watchDayGroupsCache.length - 1);
+  const group = watchDayGroupsCache[target];
+  const existing = els.watchDayList.querySelector(".watch-day-card");
+  if (!existing || existing.dataset.watchDate !== group.date) {
+    const card = buildWatchDayCard(group);
+    if (animate && target !== watchDayIndex &&
+        !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      const className = target > watchDayIndex
+        ? "watch-day-enter-next" : "watch-day-enter-previous";
+      card.classList.add(className);
+      card.addEventListener("animationend", () => card.classList.remove(className),
+        { once: true });
     }
-    card.append(header, matches);
-    els.watchDayList.append(card);
+    els.watchDayList.replaceChildren(card);
   }
-  const selectedIndex = watchDaySlides().findIndex(slide =>
-    slide.dataset.watchDate === selectedCalendarDate);
+
+  watchDayIndex = target;
+  selectedCalendarDate = group.date;
+  const height = els.watchDayList.firstElementChild?.offsetHeight || 0;
+  if (height > 0) els.watchDayViewport.style.height = height + "px";
+  els.watchPrevious.disabled = target === 0;
+  els.watchNext.disabled = target === watchDayGroupsCache.length - 1;
+  els.watchDayPosition.textContent = `${target + 1} / ${watchDayGroupsCache.length} days`;
+  for (const day of els.calendarGrid.querySelectorAll(".calendar-day")) {
+    day.setAttribute("aria-selected", String(day.dataset.date === group.date));
+  }
+}
+
+function stepWatchDay(direction) {
+  if (activeMatchMode !== WATCH || !direction) return;
+  syncWatchDaySlide(watchDayIndex + Math.sign(direction), { animate: true });
+}
+
+function renderWatchDayList() {
+  if (!els.watchDayList) return;
+  const start = activeCalendarStartDate();
+  watchDayGroupsCache = start ? watchedDayGroups(watchedGames, start, WATCH_DAY_HORIZON) : [];
+  if (start && !watchDayGroupsCache.length) {
+    watchDayGroupsCache = [{ date: start, matches: [] }];
+  }
+  els.watchDayList.replaceChildren();
+  if (!watchDayGroupsCache.length) {
+    els.watchDayViewport.style.removeProperty("height");
+    els.watchPrevious.disabled = true;
+    els.watchNext.disabled = true;
+    els.watchDayPosition.textContent = "";
+    return;
+  }
+  const selectedIndex = watchDayGroupsCache.findIndex(group =>
+    group.date === selectedCalendarDate);
   syncWatchDaySlide(selectedIndex < 0 ? 0 : selectedIndex);
 }
 
@@ -5405,8 +5412,7 @@ window.addEventListener("resize", () => {
   spotlightResizeTimer = window.setTimeout(() => {
     window.requestAnimationFrame(syncSpotlightCardDimensions);
     if (activeMatchMode === WATCH) {
-      const i = watchDaySlides().findIndex(slide => slide.dataset.watchDate === selectedCalendarDate);
-      syncWatchDaySlide(i < 0 ? 0 : i);
+      syncWatchDaySlide(watchDayIndex);
     }
   }, 120);
 });
