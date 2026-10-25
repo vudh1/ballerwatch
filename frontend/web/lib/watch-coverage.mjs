@@ -20,7 +20,11 @@ export function watchCoverage(game, services = DEFAULT_WATCH_SERVICES) {
       available.push(DIRECT.get(channel));
     }
   }
-  const lineupMatches = Array.isArray(game?.drogonChannels)
+  // An older production refresh may update broadcasts without updating new
+  // precomputed fields. Fail closed rather than suggesting a stale channel.
+  const lineupCurrent = !game?.drogonBroadcastKey ||
+    game.drogonBroadcastKey === JSON.stringify(game.broadcasts);
+  const lineupMatches = lineupCurrent && Array.isArray(game?.drogonChannels)
     ? [...new Set(game.drogonChannels.filter(name =>
       typeof name === "string" && name.length <= 50))] : [];
   if (services.drogon !== false && lineupMatches.length && available.length < 2) {
