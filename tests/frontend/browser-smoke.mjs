@@ -272,6 +272,59 @@ try {
         await context.close();
       });
 
+      await scenario(`${engine}: profile chooser stays lightweight with a thousand indexed teams`, async () => {
+        const { context, page, errors } = await prepare(browser, {
+          reducedMotion: "reduce", viewport: { width: 390, height: 844 }, hasTouch: true,
+        });
+        await ready(page);
+        const result = await page.evaluate(async () => {
+          const { createSettingsChoice } = await import("./lib/settings-choice.js");
+          const root = document.createElement("div");
+          root.innerHTML = `<button id="test-trigger"></button>
+            <span id="test-display"></span><input id="test-value">
+            <div id="test-panel" hidden><input id="test-search">
+            <div id="test-options"></div></div>`;
+          document.body.append(root);
+          let saves = 0;
+          const input = root.querySelector("#test-value");
+          const panel = root.querySelector("#test-panel");
+          const search = root.querySelector("#test-search");
+          const options = root.querySelector("#test-options");
+          const trigger = root.querySelector("#test-trigger");
+          const select = createSettingsChoice({
+            root, trigger, panel, search, optionsList: options,
+            display: root.querySelector("#test-display"), input, multiple: false,
+            onChange: () => { saves += 1; },
+          });
+          const started = performance.now();
+          select.setOptions(Array.from({ length: 1200 }, (_, i) => "Synthetic Team " + i));
+          trigger.click();
+          const firstPaint = performance.now() - started;
+          const initialRows = options.children.length;
+          search.value = "Synthetic Team 1199";
+          search.dispatchEvent(new Event("input", { bubbles: true }));
+          const matches = [...options.querySelectorAll('[role="option"]')]
+            .map(option => option.textContent);
+          const selected = options.querySelector('[role="option"]');
+          selected.click();
+          const immediate = input.value;
+          await new Promise(resolve => setTimeout(resolve, 80));
+          const result = { initialRows, matches, immediate, saved: saves,
+            firstPaint, expanded: trigger.getAttribute("aria-expanded") };
+          root.remove();
+          return result;
+        });
+        assert.ok(result.initialRows <= 36, "Do not mount huge option lists on phones");
+        assert.ok(result.firstPaint < 1000, "Chooser should open without a multi-second task");
+        assert.ok(result.matches.some(text => text.includes("Synthetic Team 1199")),
+          "Search still reaches unloaded options");
+        assert.equal(result.immediate, "Synthetic Team 1199");
+        assert.equal(result.saved, 1, "Persist the selected value only once");
+        assert.equal(result.expanded, "false", "Single selection closes the popover");
+        assert.deepEqual(errors, []);
+        await context.close();
+      });
+
       await scenario(`${engine}: Play carousel and Watch daily carousel isolate matches and jump from schedule`, async () => {
         const { context, page, errors } = await prepare(browser, { reducedMotion: "reduce" });
         await ready(page);
