@@ -19,7 +19,7 @@ export function modeGames(mode, personalGames = [], watchedGames = []) {
     : games;
 }
 
-export function watchMatchDetails(game) {
+export function watchMatchDetails(game, services) {
   if (!game || game.kind !== WATCH) return null;
   const kickoff = Date.parse(game.startUtc);
   const time = Number.isFinite(kickoff)
@@ -33,6 +33,6 @@ export function watchMatchDetails(game) {
     competition: String(game.competition || (game.sport === "basketball" ? "NBA" : "Football")),
     time,
     location: String(game.location || "Venue not announced"),
-    whereToWatch: watchCoverage(game),
+    whereToWatch: watchCoverage(game, services),
   };
 }
