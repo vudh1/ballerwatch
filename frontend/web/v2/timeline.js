@@ -140,13 +140,15 @@ function clearRewindTension() {
   tensionTimer = 0;
   root.classList.remove("v2-rewind-resisting");
   root.style.removeProperty("--rewind-tension");
+  root.style.removeProperty("--rewind-progress");
 }
 function showRewindTension(kind) {
+  const progress = rewindGate.progress(kind);
+  root.style.setProperty("--rewind-tension", `${Math.round(28 * Math.sqrt(progress))}px`);
+  root.style.setProperty("--rewind-progress", String(progress));
   root.classList.add("v2-rewind-resisting");
-  root.style.setProperty("--rewind-tension",
-    `${Math.round(rewindGate.progress(kind) * 7)}px`);
   clearTimeout(tensionTimer);
-  if (kind === "wheel") tensionTimer = setTimeout(clearRewindTension, 270);
+  if (kind === "wheel") tensionTimer = setTimeout(clearRewindTension, 420);
 }
 function rewindBoundary() {
   return active ? distance : 0;
@@ -200,7 +202,9 @@ function rewindWheel(event) {
   }
   const position = Math.max(0, window.scrollY);
   const boundary = rewindBoundary();
-  if (rewindUnlocked || position < boundary - 2) return;
+  // The gate must never interrupt native reverse scrolling once the user is
+  // already inside the scene. It only protects crossing the dashboard edge.
+  if (rewindUnlocked || (active && position < boundary - 2)) return;
   // Scroll through the main feed normally. Only its final upward boundary
   // consumes pull distance; these events remain cancelable on iOS/desktop.
   const overshoot = boundary - position - delta;
@@ -213,6 +217,7 @@ function rewindWheel(event) {
   else showRewindTension("wheel");
 }
 function rewindTouchStart(event) {
+  clearRewindTension();
   touchLastY = event.touches.length === 1 ? event.touches[0].clientY : null;
   touchUnlocked = false;
   rewindGate.reset("touch");

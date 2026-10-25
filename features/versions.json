@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.6.4",
+  "currentVersion": "11.6.5",
   "releases": [
+    {
+      "version": "11.6.5",
+      "date": "2026-10-25",
+      "type": "patch",
+      "source": "user-feedback",
+      "title": "Make cinematic rewind resistance physically noticeable",
+      "webAnnouncement": "A gentle upward gesture now visibly stretches the entire matchday dashboard and briefly shows a quiet rewind indicator. Keep pulling to deliberately rewind the stadium animation. Regular dashboard scrolling, reduced motion and native reverse scrolling inside the scene remain unaffected.",
+      "changes": [
+        "Replace nearly invisible 0–7px header-only tension with proportional 0–28px elastic movement of the entire dashboard.",
+        "Show a transient, non-interactive glass rewind cue with progress only while the dashboard is resisting an upward pull.",
+        "Require a more deliberate wheel/trackpad or touch gesture before crossing into the optional animation; reset between gestures.",
+        "Fix accidental interception of upward scrolling already inside the cinematic scene.",
+        "Add browser-level assertions for actual dashboard movement and transient cue across Chromium, Firefox and WebKit; bump offline/PWA assets."
+      ]
+    },
     {
       "version": "11.6.4",
       "date": "2026-10-25",
