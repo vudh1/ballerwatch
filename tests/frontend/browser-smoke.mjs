@@ -81,7 +81,7 @@ async function prepare(browser, options = {}, { freshDevice = false } = {}) {
   }, { freshDevice });
   const calls = [];
   const errors = [];
-  const controls = { offlineApi: false, optionalFailure: false, animationFailure: false, scriptFailure: false, noPickupCap: false, camelCaseTeam: false, mixedWatchSports: false };
+  const controls = { offlineApi: false, optionalFailure: false, animationFailure: false, scriptFailure: false, noPickupCap: false, camelCaseTeam: false, mixedWatchSports: false, largeWatchHorizon: false };
   await context.route("**/*", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -136,6 +136,20 @@ async function prepare(browser, options = {}, { freshDevice = false } = {}) {
           });
         }
       }
+        if (controls.largeWatchHorizon && url.pathname === "/web/sports" && fixture.games?.length) {
+          // Hundreds of future fixtures must not create a year-wide GPU layer.
+          for (let i = 2; i < 240; i++) {
+            const nextDay = new Date(Date.parse(fixture.games[0].date + "T12:00:00Z") + i * 86400000)
+              .toISOString().slice(0, 10);
+            fixture.games.push({
+              id: "watch:nba:stress-" + i, kind: "watch", sport: "basketball",
+              competition: "NBA", title: "Fixture Lakers vs Fixture Team " + i,
+              date: nextDay, startUtc: nextDay + "T19:00:00Z",
+              endUtc: nextDay + "T21:00:00Z", location: "Synthetic Arena",
+              broadcasts: [],
+            });
+          }
+        }
       if (controls.noPickupCap && url.pathname === "/web/next-game") {
         fixture.game.capacity = null;
         fixture.game.publishedCapacity = null;
@@ -272,8 +286,8 @@ try {
         assert.equal(await page.locator("#mode-watch").getAttribute("aria-pressed"), "true");
         assert.equal(await page.locator("#league-standings").isVisible(), false);
         assert.equal(await page.locator("#spotlight-carousel").isVisible(), false);
-        assert.equal(await page.locator("#watch-day-list .watch-day-card").count(), 2);
-        assert.equal(await page.locator("#watch-day-list .watch-match-row").count(), 3);
+        assert.equal(await page.locator("#watch-day-list .watch-day-card").count(), 1);
+        assert.equal(await page.locator("#watch-day-list .watch-match-row").count(), 2);
         assert.equal(await page.locator("#watch-day-list .watch-day-card[aria-hidden='false']").count(), 1);
         assert.equal(await page.locator("#watch-day-position").textContent(), "1 / 2 days");
         assert.match(await page.locator("#calendar-title").textContent(), /Watch Schedule/);
@@ -349,10 +363,10 @@ try {
         await page.locator("#close-settings").click();
         await page.locator("#mode-watch").click();
         await page.waitForFunction(() =>
-          document.querySelectorAll("#watch-day-list .watch-day-card").length === 3);
+          document.querySelector("#watch-day-position")?.textContent === "1 / 3 days" &&
+          document.querySelectorAll("#watch-day-list .watch-day-card").length === 1);
         assert.equal(await page.locator("#watch-day-position").textContent(), "1 / 3 days");
         const firstDate = await page.locator("#watch-day-list .watch-day-card").first().getAttribute("data-watch-date");
-        const lastDate = await page.locator("#watch-day-list .watch-day-card").last().getAttribute("data-watch-date");
         const icons = page.locator(`#calendar-grid .calendar-day[data-date="${firstDate}"] .calendar-watch-sports`);
         assert.equal(await icons.textContent(), "⚽ 🏀");
         assert.match(await page.locator(`#calendar-grid .calendar-day[data-date="${firstDate}"]`)
@@ -362,6 +376,7 @@ try {
         assert.equal(await page.locator("#watch-day-position").textContent(), "2 / 3 days");
         await page.locator("#watch-next").click();
         assert.equal(await page.locator("#watch-day-position").textContent(), "3 / 3 days");
+        const lastDate = await page.locator("#watch-day-list .watch-day-card").getAttribute("data-watch-date");
         assert.equal(await page.locator("#watch-next").isDisabled(), true);
         await page.locator("#watch-previous").click();
         assert.equal(await page.locator("#watch-day-position").textContent(), "2 / 3 days");
@@ -371,6 +386,40 @@ try {
         await lastDay.click();
         assert.equal(await page.locator("#watch-day-position").textContent(), "3 / 3 days");
         assert.equal(await page.locator("#watch-day-list .watch-day-card[aria-hidden='false'] .watch-match-row").count(), 1);
+        assert.deepEqual(errors, []);
+        await context.close();
+      });
+
+      await scenario(`${engine}: iPhone-sized Watch carousel keeps 240 dates without GPU-sized track`, async () => {
+        const { context, page, errors, controls } = await prepare(browser, {
+          viewport: { width: 390, height: 844 }, hasTouch: true, reducedMotion: "reduce",
+        });
+        controls.largeWatchHorizon = true;
+        await ready(page);
+        await openHubTab(page, "settings");
+        await page.locator("#watch-teams-trigger").click();
+        await page.locator("#watch-teams-search").fill("Fixture Lakers");
+        await page.locator('#watch-teams-options [role="option"]').first().click();
+        await page.locator("#close-settings").click();
+        await page.locator("#mode-watch").click();
+        await page.waitForFunction(() =>
+          document.querySelector("#watch-day-position")?.textContent === "1 / 240 days");
+        assert.equal(await page.locator("#watch-day-list .watch-day-card").count(), 1);
+        const trackStyle = await page.locator("#watch-day-list").evaluate(element => ({
+          transform: getComputedStyle(element).transform,
+          willChange: getComputedStyle(element).willChange,
+        }));
+        assert.deepEqual(trackStyle, { transform: "none", willChange: "auto" });
+        for (let i = 0; i < 24; i++) {
+          await page.locator("#watch-next").click();
+          assert.equal(await page.locator("#watch-day-list .watch-day-card").count(), 1);
+        }
+        assert.equal(await page.locator("#watch-day-position").textContent(), "25 / 240 days");
+        await page.locator("#watch-day-list .watch-match-row").first().click();
+        assert.equal(await page.locator("#watch-match-dialog").isVisible(), true);
+        await page.locator("#close-watch-match").click();
+        for (let i = 0; i < 8; i++) await page.locator("#watch-previous").click();
+        assert.equal(await page.locator("#watch-day-position").textContent(), "17 / 240 days");
         assert.deepEqual(errors, []);
         await context.close();
       });
