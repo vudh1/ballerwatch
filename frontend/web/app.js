@@ -2642,9 +2642,50 @@ function renderCalendarGrid() {
     }
 
     button.addEventListener("click", () => {
-      if (games.length) selectCalendarDate(date, { scrollToSpotlight: true });
+      if (games.length) {
+        watchedDate = date;
+        renderWatchCalendarList();
+        if (games.some(game => game.kind !== "watch")) {
+          selectCalendarDate(date, { scrollToSpotlight: true });
+        } else {
+          selectedCalendarDate = date;
+          els.calendarGrid.querySelectorAll(".calendar-day").forEach(cell => {
+            cell.setAttribute("aria-selected", String(cell.dataset.date === date));
+          });
+        }
+      }
     });
     els.calendarGrid.append(button);
+  }
+  renderWatchCalendarList();
+}
+
+function renderWatchCalendarList() {
+  const host = document.querySelector("#watch-calendar-list");
+  if (!host) return;
+  host.replaceChildren();
+  const entries = watchedGames.filter(game => !watchedDate || game.date === watchedDate)
+    .slice(0, watchedDate ? 20 : 6);
+  host.hidden = entries.length === 0;
+  if (!entries.length) return;
+  const title = document.createElement("div");
+  title.className = "watch-calendar-heading";
+  title.textContent = watchedDate ? "WATCHING · " + watchedDate : "UPCOMING TO WATCH";
+  host.append(title);
+  for (const game of entries) {
+    const item = document.createElement("div");
+    item.className = "watch-calendar-event";
+    const name = document.createElement("strong");
+    name.textContent = game.title;
+    const details = document.createElement("span");
+    const at = Date.parse(game.startUtc);
+    details.textContent = String(game.competition || "Professional sport") + " · " +
+      (Number.isFinite(at) ? new Date(at).toLocaleString(undefined, {
+        weekday: "short", month: "short", day: "numeric",
+        hour: "numeric", minute: "2-digit",
+      }) : game.date);
+    item.append(name, details);
+    host.append(item);
   }
 }
 
