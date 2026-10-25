@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.4.1",
+  "currentVersion": "11.4.2",
   "releases": [
+    {
+      "version": "11.4.2",
+      "date": "2026-10-24",
+      "type": "patch",
+      "source": "verified-indexing-followup",
+      "title": "Load the encrypted annual sports index reliably",
+      "webAnnouncement": "The first professional sports index is ready, with 2,670 published fixtures. BallerWatch reads the larger encrypted catalogue through GitHub’s raw-file response so sport watchlists and calendar subscriptions can load reliably.",
+      "changes": [
+        "Use raw GitHub Content media type for encrypted sports snapshots larger than the API's standard one-megabyte JSON encoding limit.",
+        "Preserve encrypted runtime-only storage, existing RATS and pickup card behavior, and the dynamically served .ics endpoint.",
+        "Add transport regression coverage and upgrade all installed PWA assets to version 11.4.2."
+      ]
+    },
     {
       "version": "11.4.1",
       "date": "2026-10-24",
