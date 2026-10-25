@@ -4,6 +4,8 @@
 
 **[Open Production](https://vudh1.github.io/ballerwatch/)** · **[Open Beta](https://vudh1.github.io/ballerwatch/beta/)** · **[Project documentation](docs/wiki/Home.md)**
 
+**v11.4.1:** Fixed the first professional-sports index by using supported ESPN monthly scoreboard queries (with an explicit record limit), indexing up to 366 days of published fixtures. An initial index is built on integration into main; weekly indexes continue after deployment. Existing iCalendar subscription URLs are dynamically regenerated from the latest public fixtures whenever a TV/calendar client refreshes. A change to the followed-team list changes the URL, so a new link must be copied to the TV.
+
 **v11.4.0:** Follow NBA teams, major European football clubs and UEFA/CONMEBOL national teams in a calendar-only watchlist, backed by a weekly encrypted fixture index. Export public pickup, selected RATS and watched matches as a read-only `.ics` subscription URL for Vela TV and other calendar apps. No Google Calendar login is needed; links embed the selected team names and must be copied again after changing them. Fixture coverage comes from an unofficial, best-effort source and may be incomplete when upstream listings are unavailable.
 
 **v11.3.0:** Published pickup RSVP lists now identify confirmed or waitlisted participants who have requested to withdraw. Their pending requests stay visible in original RSVP order and do not change reserved-space totals until the external RSVP source removes the signup.
