@@ -514,7 +514,7 @@ try {
           // Weak upward wheel motion stops at the main page boundary.
           const first = emit(-45);
           const second = emit(-60);
-          const third = emit(-65);
+          const third = emit(-115);
           // Once rewinding, normal backward movement is not throttled.
           const withinIntro = emit(-40);
           window.scrollTo({ top: boundary + 180, behavior: "instant" });
@@ -560,7 +560,7 @@ try {
           };
           const first = gesture(-45);
           const second = gesture(-65);
-          const third = gesture(-60);
+          const third = gesture(-115);
           const stage = document.querySelector("#soccer-stage");
           const distance = document.querySelector("#soccer-intro").offsetHeight - stage.clientHeight;
           return { first, second, third, distance };
@@ -607,8 +607,8 @@ try {
           }
           const first = send("touchstart", 80);
           const short = send("touchmove", 130);
-          const firm = send("touchmove", 200);
-          send("touchend", 200);
+          const firm = send("touchmove", 260);
+          send("touchend", 260);
           return { first, short, firm };
         });
         assert.equal(result.short.prevented, true);
