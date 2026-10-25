@@ -247,10 +247,11 @@ async function scenario(name, run) {
 try {
   for (const engine of (process.env.BALLERWATCH_BROWSERS || "chromium,webkit").split(",")) {
     const shell = process.env.BALLERWATCH_CHROMIUM_SHELL === "1";
-    const browser = await playwright[engine].launch({ headless: true, ...(engine === "chromium" ? {
+    const launchOptions = { headless: true, ...(engine === "chromium" ? {
       ...(shell ? {} : { channel: "chromium" }),
       args: ["--no-sandbox", "--disable-gpu", "--allow-insecure-localhost", "--ignore-certificate-errors", ...(shell ? ["--disable-blink-features=Badging"] : [])],
-    } : {}) });
+    } : {}) };
+    const browser = await playwright[engine].launch(launchOptions);
     try {
       await scenario(`${engine}: all dashboard card footers have no divider line`, async () => {
         const { context, page, errors } = await prepare(browser, { reducedMotion: "reduce" });
@@ -391,7 +392,11 @@ try {
       });
 
       await scenario(`${engine}: iPhone-sized Watch carousel keeps 240 dates without GPU-sized track`, async () => {
-        const { context, page, errors, controls } = await prepare(browser, {
+        // Keep this deliberately large GPU/memory regression in a separate
+        // renderer, so it cannot destabilize unrelated later browser scenarios.
+        const stressBrowser = await playwright[engine].launch(launchOptions);
+        try {
+          const { context, page, errors, controls } = await prepare(stressBrowser, {
           viewport: { width: 390, height: 844 }, hasTouch: true, reducedMotion: "reduce",
         });
         controls.largeWatchHorizon = true;
@@ -427,6 +432,9 @@ try {
         assert.equal(await page.locator("#watch-day-position").textContent(), `17 / ${totalDays} days`);
         assert.deepEqual(errors, []);
         await context.close();
+        } finally {
+          await stressBrowser.close();
+        }
       });
 
       await scenario(`${engine}: Android install guidance, native prompt and mobile layout`, async () => {
