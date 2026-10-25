@@ -6506,3 +6506,29 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
   overflow-wrap: anywhere;
 }
 .next-game-watch[hidden] { display: none; }
+
+.watch-service-settings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.95rem;
+  margin: 0.7rem 0 0;
+  padding: 0;
+  border: 0;
+}
+.watch-service-settings legend {
+  color: var(--text, #e7eef9);
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-bottom: 0.45rem;
+}
+.watch-service-settings label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.81rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.watch-service-settings input { accent-color: #77d8e5; }
+.watch-service-settings .hint { flex-basis: 100%; margin: 0; }
