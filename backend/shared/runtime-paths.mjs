@@ -44,6 +44,9 @@ export const RUNTIME_SCOPES = Object.freeze({
     "state/web-push.json",
     "state/web-board-league.json",
   ]),
+  sports: Object.freeze([
+    "sports/state/fixtures.json",
+  ]),
   watchdog: Object.freeze([
     "state/watchdog.json",
     "state/web-push.json",

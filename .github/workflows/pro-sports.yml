@@ -1,0 +1,41 @@
+name: Refresh professional sports fixtures
+on:
+  schedule:
+    - cron: '37 9 * * 1'
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Promote production release"]
+    types: [completed]
+permissions:
+  contents: write
+# All canonical runtime-state writers serialize through the same group.
+concurrency:
+  group: ballerwatch-league
+  cancel-in-progress: false
+jobs:
+  sports:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: production
+          fetch-depth: 1
+      - name: Pull last verified encrypted sport snapshot
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: node backend/shared/runtime-state.mjs pull sports
+      - name: Update public professional fixture index
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: node backend/sports/index.mjs
+      - name: Publish encrypted professional fixture index
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: node backend/shared/runtime-state.mjs push sports
+      - name: Clean local encrypted state
+        if: always()
+        run: |
+          node backend/shared/runtime-state.mjs clean sports
+          rm -rf .runtime

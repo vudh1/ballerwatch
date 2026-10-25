@@ -67,6 +67,17 @@ async function prepare(browser, options = {}) {
   // networking can bypass those routes; exercise real workers separately below.
   const context = await browser.newContext({ serviceWorkers: "block", ignoreHTTPSErrors: true,
     viewport: { width: 1440, height: 1000 }, ...options });
+  // Existing dashboard scenarios use a synthetic monitored player so the
+  // new genuinely-empty guest state doesn't hide their expected match cards.
+  await context.addInitScript(() => {
+    const key = window.location.pathname.startsWith("/ballerwatch/beta/")
+      ? "ballerwatch-beta-visitor-profile-v2" : "ballerwatch-visitor-profile-v2";
+    if (!localStorage.getItem(key)) {
+      localStorage.setItem(key, JSON.stringify({
+        schema: 2, data: { name: "Fixture Player", teams: ["Fixture FC"] },
+      }));
+    }
+  });
   const calls = [];
   const errors = [];
   const controls = { offlineApi: false, optionalFailure: false, animationFailure: false, scriptFailure: false, noPickupCap: false, camelCaseTeam: false };
@@ -441,7 +452,9 @@ try {
         assert.equal(new URL(page.url()).search, "?from=legacy");
         assert.equal(new URL(page.url()).hash, "#matches");
         await openHubTab(page, "settings");
-        assert.equal(await page.locator("#guest-name").inputValue(), "");
+        // Explicit test fixture is seeded in Beta independently of the legacy
+        // production-only profile. The legacy data must remain untouched.
+        assert.equal(await page.locator("#guest-name").inputValue(), "Fixture Player");
         assert.ok(await page.evaluate(() => localStorage.getItem("ballerwatch-visitor-profile-v1-24h")),
           "legacy production identity must not be migrated or erased by beta");
         assert.equal(await page.locator("#replay-intro,#app-version-v1,#app-version-v2").count(), 0);

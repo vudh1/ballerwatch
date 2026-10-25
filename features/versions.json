@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.3.0",
+  "currentVersion": "11.4.0",
   "releases": [
+    {
+      "version": "11.4.0",
+      "date": "2026-10-24",
+      "type": "minor",
+      "source": "user-requested",
+      "title": "Read-only calendar subscriptions and professional sports watchlist",
+      "webAnnouncement": "Share pickup, monitored RATS, and watched professional fixtures with other apps using an iCalendar feed. Watch NBA, major European clubs, and UEFA/CONMEBOL nations directly in the calendar without adding match or standings cards.",
+      "changes": [
+        "Offer a read-only shareable calendar subscription URL for third-party apps, with stable event identifiers and Pacific-to-UTC daylight-saving handling, using public fixtures only.",
+        "Precompute a separate encrypted rolling professional-sports fixture index once per week: NBA, Europe's five major domestic leagues, UEFA/CONMEBOL international matches, qualifiers, and World Cup.",
+        "Follow up to twenty professional teams on each device and show their fixtures only on the existing calendar, not in RSVP, personal match, RATS standings, scouting or push notification controls.",
+        "Hide personal match cards when no RSVP name and no RATS teams are monitored, and hide RATS standings when no RATS team is selected; preserve local match edits when configured.",
+        "Add regressions for calendar escapes, deduplication, DST, team index parsing, beta compatibility and browser cards."
+      ]
+    },
     {
       "version": "11.3.0",
       "date": "2026-10-21",
