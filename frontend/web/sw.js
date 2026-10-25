@@ -35,6 +35,7 @@ const ROOT_SHELL = [
   "./lib/settings-choice.js",
   "./lib/match-modes.mjs",
   "./lib/watch-coverage.mjs",
+  "./lib/watch-day-groups.mjs",
   "./lib/notification-state.js"
 ];
 const SHELL = IS_V2 ? ["./", "./index.html", "./redirect.js", "./manifest.webmanifest"] : ROOT_SHELL;
