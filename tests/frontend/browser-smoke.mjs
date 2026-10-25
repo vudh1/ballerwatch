@@ -118,6 +118,7 @@ async function prepare(browser, options = {}, { freshDevice = false } = {}) {
           endUtc: new Date(at.getTime() + (i === 2 ? 86400000 + 10800000 : (i + 3) * 3600000)).toISOString(),
           location: "Synthetic Arena",
           broadcasts: i === 0 ? ["Prime Video", "Peacock"] : i === 1 ? ["NBA TV"] : [],
+          drogonChannels: i === 1 ? ["NBA TV"] : [],
         }));
         if (controls.mixedWatchSports) {
           fixture.games.push({
