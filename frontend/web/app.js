@@ -1,5 +1,6 @@
 /**
- * Copyright © 2026 BallerWatch. All rights reserved.
+ * Copyright © 2026 Duong Vu and contributors.
+ * SPDX-License-Identifier: Apache-2.0
  *
  * Shared V1/V2 PWA controller (v8.10.0 coexistence baseline). Network/session
  * and notification persistence are
