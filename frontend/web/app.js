@@ -4944,6 +4944,8 @@ document.addEventListener("visibilitychange", () => {
 });
 
 document.documentElement.classList.toggle("is-standalone", standalone());
+els.modePlay.addEventListener("click", () => switchMatchMode(PLAY));
+els.modeWatch.addEventListener("click", () => switchMatchMode(WATCH));
 syncPersonalCardVisibility();
 document.querySelector("#copy-calendar-link")?.addEventListener("click", copyCalendarSubscription);
 playLaunchIntro();
@@ -4999,7 +5001,10 @@ window.setInterval(() => {
     const latest = JSON.parse(localStorage.getItem(WATCH_TEAM_KEY) || "[]");
     if (Array.isArray(latest) && JSON.stringify(latest) !== JSON.stringify(watchedTeams)) {
       watchedTeams = latest.slice(0, 20);
+      watchedGames = [];
+      watchedUpdatedAt = "";
       if (els.settingsDialog.open) watchSelector().setValue(watchedTeams);
+      if (activeMatchMode === WATCH) renderActiveMode();
       void loadWatchIndex();
     }
   } catch {}
