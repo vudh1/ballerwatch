@@ -1,0 +1,71 @@
+name: Refresh encrypted RSVP roster catalog
+
+# Source: nhcuong95/rsvp public Apps Script action=listRoster.
+# Once a month is sufficient; this never sends notifications or imports contacts.
+on:
+  schedule:
+    - cron: '43 10 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ballerwatch-monthly-rsvp-roster
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: production
+          fetch-depth: 1
+
+      - name: Require promoted roster updater before changing canonical state
+        id: gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          if test -f backend/pickup/roster-catalog.mjs &&
+             grep -q 'roster: Object.freeze' backend/shared/runtime-paths.mjs; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Skipped: roster updater is not yet part of the protected production release."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Pull encrypted roster catalog only
+        if: steps.gate.outputs.run == 'true'
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$TRACKER_STATE_KEY"
+          node backend/shared/runtime-state.mjs pull roster
+
+      - name: Refresh only public roster names, encrypt immediately
+        if: steps.gate.outputs.run == 'true'
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: node backend/pickup/roster-catalog.mjs
+
+      - name: Push hardened canonical runtime state
+        if: steps.gate.outputs.run == 'true'
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: |
+          set -euo pipefail
+          node backend/shared/runtime-state.mjs push roster
+          node backend/shared/runtime-state.mjs audit
+
+      - name: Clean local decrypted source and runtime files
+        if: always()
+        shell: bash
+        run: |
+          if test -f backend/shared/runtime-state.mjs; then
+            node backend/shared/runtime-state.mjs clean roster || true
+          fi
+          rm -rf .runtime
