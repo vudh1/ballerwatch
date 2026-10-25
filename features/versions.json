@@ -1,7 +1,19 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.8.1",
+  "currentVersion": "11.8.2",
   "releases": [
+    {
+      "version": "11.8.2",
+      "date": "2026-10-25",
+      "type": "patch",
+      "source": "user-feedback",
+      "title": "Prevent iPhone Safari crashes in Watching day navigation",
+      "changes": [
+        "Mount only the selected professional match-day card instead of a year-wide GPU-transformed rail; preserve precomputed fixture dates and stable day counter.",
+        "Retain schedule date jumps, day arrows, swipe/keyboard navigation, published matchup detail rows, reduced-motion accessibility, and the Playing dashboard.",
+        "Add long-calendar mobile viewport regression coverage with 200+ indexed days across browsers, and refresh versioned PWA offline assets without changing any encrypted runtime state, push delivery or ICS subscriptions."
+      ]
+    },
     {
       "version": "11.8.1",
       "date": "2026-10-25",
