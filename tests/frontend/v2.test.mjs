@@ -98,11 +98,11 @@ test("rewind resistance visibly affects the full dashboard with transient progre
   const css = read("v2/styles.css");
   const html = read("index.html");
   const timeline = read("v2/timeline.js");
-  assert.match(css, /v2-rewind-resisting \\.v2-shell \\{ transform: translate3d/);
-  assert.match(css, /\.rewind-affordance-track > span/);
-  assert.match(html, /id="rewind-affordance"[^>]*aria-hidden="true"/);
-  assert.match(timeline, /28 \\* Math\\.sqrt\\(progress\\)/);
-  assert.match(timeline, /if \\(rewindUnlocked \\|\\| \\(active && position < boundary - 2\\)\\) return/);
+  assert.ok(css.includes(".v2.v2-rewind-resisting .v2-shell { transform: translate3d"));
+  assert.ok(css.includes(".rewind-affordance-track > span"));
+  assert.ok(html.includes('id="rewind-affordance" class="rewind-affordance" aria-hidden="true"'));
+  assert.ok(timeline.includes("28 * Math.sqrt(progress)"));
+  assert.ok(timeline.includes("if (rewindUnlocked || (active && position < boundary - 2)) return;"));
 });
 
 test("replay scroll guard works after session bypass and during iOS momentum", () => {
