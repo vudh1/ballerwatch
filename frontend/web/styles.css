@@ -6442,7 +6442,7 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
 }
 .watch-calendar-heading {
   font-size: .7rem;
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: .12em;
   opacity: .66;
 }
