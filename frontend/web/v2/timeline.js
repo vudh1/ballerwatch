@@ -32,6 +32,7 @@ let rewindUnlocked = false;
 let rewindLockUntil = 0;
 let startedOnDashboard = false;
 let tensionTimer = 0;
+let lastScrollPosition = window.scrollY;
 const cameraFlashes = [...document.querySelectorAll("[data-camera-flash]")];
 const launcher = document.querySelector("#chat-launcher");
 
@@ -257,7 +258,9 @@ function rewindTouchEnd() {
 function scrollGuardOnMotion() {
   if (!active || motion.matches) return;
   const position = Math.max(0, window.scrollY);
-  if (rewindUnlocked && position > distance + 12) rewindUnlocked = false;
+  if (rewindUnlocked && position >= distance - 1 &&
+      position > lastScrollPosition) rewindUnlocked = false;
+  lastScrollPosition = position;
   // Catch touch momentum that bypasses cancelable touchmove events. Ordinary
   // programmatic timeline navigation has no active gesture lock.
   if (!rewindUnlocked && rewindLockUntil > performance.now() &&
