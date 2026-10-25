@@ -4,6 +4,7 @@ import path from "node:path";
 import vm from "node:vm";
 import test from "node:test";
 import { SCENE, scenePose, featureStory, cameraFlash } from "../../frontend/web/v2/scene-config.mjs";
+import { createRewindGate, REWIND } from "../../frontend/web/v2/rewind-gate.mjs";
 
 const read = (name) => fs.readFileSync(`frontend/web/${name}`, "utf8");
 
@@ -63,11 +64,41 @@ test("V2 separates a brief launch and scroll hero from unchanged V1 cards", () =
 });
 
 test("the scroll tour introduces actual capabilities independently of shot phases", () => {
-  const examples = [[0, /Pickup and league/], [.2, /RSVP capacity/], [.35, /standings/],
-    [.5, /follow-up/], [.7, /Web Push/], [.85, /Home Screen/]];
+  const examples = [[0, /NBA and world football/], [.2, /waitlists/], [.35, /ten-game scouting/],
+    [.5, /contextual follow-ups/], [.7, /Web Push/], [.85, /Vela TV calendar subscriptions/]];
   for (const [progress, expected] of examples) assert.match(featureStory(progress).description, expected);
   assert.equal(featureStory(.85), featureStory(1));
   assert.equal(featureStory(.35), featureStory(.35));
+});
+
+test("rewind gate requires an intentional pull, resets between gestures and handles velocity", () => {
+  const gate = createRewindGate();
+  assert.ok(REWIND.touchThreshold < REWIND.wheelThreshold);
+  assert.deepEqual(gate.pull("wheel", 45, 100), { released: false, overflow: 0 });
+  assert.deepEqual(gate.pull("wheel", 75, 125), { released: false, overflow: 0 });
+  assert.deepEqual(gate.pull("wheel", 35, 150), { released: true, overflow: 10 });
+  assert.deepEqual(gate.pull("wheel", 35, 1000), { released: false, overflow: 0 });
+  assert.deepEqual(gate.pull("wheel", 55, 2000), { released: false, overflow: 0 });
+  assert.deepEqual(gate.pull("wheel", 80, 2100), { released: false, overflow: 0 });
+  assert.deepEqual(gate.pull("wheel", 15, 2200), { released: true, overflow: 5 });
+  assert.deepEqual(gate.pull("touch", 55), { released: false, overflow: 0 });
+  assert.deepEqual(gate.pull("touch", 70), { released: true, overflow: 20 });
+  assert.deepEqual(gate.pull("touch", 50), { released: false, overflow: 0 });
+  gate.reset("touch");
+  assert.deepEqual(gate.pull("touch", 75), { released: false, overflow: 0 });
+  assert.deepEqual(gate.pull("touch", -5), { released: false, overflow: 0 });
+  assert.deepEqual(gate.pull("touch", 75), { released: false, overflow: 0 });
+  gate.reset();
+});
+
+test("cinematic scroll guard only intercepts backward gesture at main boundary", () => {
+  const timeline = read("v2/timeline.js");
+  assert.match(timeline, /position \+ delta < distance/);
+  assert.match(timeline, /scrollableChildCanMoveUp\(event.target\)/);
+  assert.match(timeline, /event.cancelable/);
+  assert.match(timeline, /addEventListener\("wheel", rewindWheel, \{ passive: false \}\)/);
+  assert.match(timeline, /addEventListener\("touchmove", rewindTouchMove, \{ passive: false \}\)/);
+  assert.match(timeline, /motion.matches/);
 });
 
 test("hero covers dynamic viewport while keeping stable scroll travel and layered action", () => {
