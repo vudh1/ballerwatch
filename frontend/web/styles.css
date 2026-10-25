@@ -6594,3 +6594,58 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
 @media (max-width: 560px) {
   .calendar-watch-sports { gap: 0.02rem; font-size: 0.65rem; }
 }
+
+/* First-device preferences use the same quiet glass surface as existing settings. */
+.setup-missing-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin: 0.65rem 0 0.2rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 14px;
+  color: var(--muted);
+  background: rgba(148, 163, 184, 0.065);
+  font-size: 0.82rem;
+}
+.setup-missing-note button,
+.settings-clear-choice {
+  padding: 0.25rem 0.15rem;
+  flex-shrink: 0;
+  color: #a5e9fc;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: transparent;
+  border: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.setup-missing-note button:focus-visible,
+.settings-clear-choice:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.first-run-dialog {
+  width: min(94vw, 480px);
+  max-height: min(85dvh, 42rem);
+  padding: 0;
+  border: 1px solid rgba(148, 210, 196, 0.18);
+  border-radius: 24px;
+  background: rgba(15, 30, 41, 0.96);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+}
+.first-run-shell { display: grid; gap: 0.9rem; padding: 1.35rem; }
+.first-run-shell > h2 { font-size: 1.3rem; letter-spacing: -0.025em; }
+.first-run-shell > p { margin: 0; }
+.first-run-shell section[data-setup-step] { display: grid; gap: 0.7rem; min-height: 10rem; }
+.first-run-shell section[data-setup-step] h3 { margin: 0; font-size: 1rem; }
+.first-run-shell section[data-setup-step] h3:focus { outline: none; }
+.first-run-shell .settings-choice-popover { z-index: 50; }
+.first-run-actions { display: flex; justify-content: flex-end; gap: 0.5rem; flex-wrap: wrap; }
+.first-run-actions button { min-height: 2.8rem; }
+.first-run-actions button:last-child { flex: 1 1 auto; }
+@media (max-width: 390px) {
+  .setup-missing-note { align-items: flex-start; flex-direction: column; }
+  .first-run-actions button { flex: 1 1 40%; }
+}
