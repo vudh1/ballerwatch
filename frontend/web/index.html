@@ -160,18 +160,20 @@
       </section>
     </div>
 
-    <section id="watch-days" class="watch-days" aria-label="Matches to watch grouped by day" hidden>
-      <div class="watch-days-heading">
-        <div>
-          <p class="eyebrow">TEAMS TO WATCH</p>
-          <h2 class="bw-card-title">Upcoming match days</h2>
+    <section id="watch-days" class="watch-days" aria-label="Match days to watch" hidden>
+      <div class="watch-day-rail">
+        <div id="watch-day-viewport" class="watch-day-viewport" role="region"
+          aria-roledescription="carousel" aria-label="Watched matches by date" tabindex="0">
+          <div id="watch-day-list" class="watch-day-list" aria-live="polite"></div>
         </div>
-        <p class="hint">Tap a match for details and TV channels</p>
+        <div class="watch-day-controls" role="group" aria-label="Browse match days">
+          <button id="watch-previous" class="standings-step carousel-waterfall-edge" type="button"
+            aria-label="Previous match day" disabled><span aria-hidden="true">‹</span></button>
+          <span id="watch-day-position" class="watch-day-position" role="status" aria-live="polite"></span>
+          <button id="watch-next" class="standings-step carousel-waterfall-edge" type="button"
+            aria-label="Next match day" disabled><span aria-hidden="true">›</span></button>
+        </div>
       </div>
-      <div id="watch-day-list" class="watch-day-list" aria-live="polite"></div>
-      <button id="watch-show-more" class="secondary watch-show-more" type="button" hidden>
-        Show next 14 days
-      </button>
     </section>
 
     <section class="card calendar-card bw-card-frame" id="two-week-calendar" aria-expanded="false">
@@ -235,11 +237,11 @@
           aria-label="Close match details">×</button>
       </div>
       <dl class="watch-match-details">
-        <div><dt>Kickoff · Pacific</dt><dd id="watch-match-time"></dd></div>
+        <div><dt>Kickoff · local time</dt><dd id="watch-match-time"></dd></div>
         <div><dt>Venue</dt><dd id="watch-match-venue"></dd></div>
-        <div><dt>Where to watch · U.S.</dt><dd id="watch-match-channel"></dd></div>
+        <div id="watch-match-channel-row" hidden><dt>Where to watch · U.S.</dt><dd id="watch-match-channel"></dd></div>
       </dl>
-      <p class="hint">DrogonTV listings require confirmation in the channel guide.</p>
+      <p id="watch-match-guide-note" class="hint" hidden>DrogonTV listings require confirmation in the channel guide.</p>
       <a class="watch-match-source" id="watch-match-source" target="_blank"
         rel="noopener noreferrer" hidden>Official match information</a>
     </div>
@@ -532,7 +534,7 @@
                 <input type="search" id="watch-teams-search" placeholder="Search NBA, Premier League, UEFA, Copa América…" autocomplete="off">
                 <div class="settings-choice-options" id="watch-teams-options" role="listbox"
                   aria-label="Professional sports teams" aria-multiselectable="true"></div>
-                <p class="hint choice-hint">Choose up to 20 teams. Watch mode groups all upcoming matches by day. Tap any match for its details and TV channel; no RSVP or standings.</p>
+                <p class="hint choice-hint">Choose up to 20 teams. Watch mode shows a carousel of daily match lists. Choose a date on the schedule or swipe between match days; tap any match for details.</p>
               </div>
             </div>
             <textarea id="watch-teams" hidden></textarea>
