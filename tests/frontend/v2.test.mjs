@@ -73,8 +73,10 @@ test("the scroll tour introduces actual capabilities independently of shot phase
 
 test("rewind gate requires an intentional pull, resets between gestures and handles velocity", () => {
   const gate = createRewindGate();
+  assert.equal(gate.progress("wheel"), 0);
   assert.ok(REWIND.touchThreshold < REWIND.wheelThreshold);
   assert.deepEqual(gate.pull("wheel", 45, 100), { released: false, overflow: 0 });
+  assert.ok(gate.progress("wheel") > 0 && gate.progress("wheel") < 1);
   assert.deepEqual(gate.pull("wheel", 75, 125), { released: false, overflow: 0 });
   assert.deepEqual(gate.pull("wheel", 35, 150), { released: true, overflow: 10 });
   assert.deepEqual(gate.pull("wheel", 35, 1000), { released: false, overflow: 0 });
@@ -91,9 +93,19 @@ test("rewind gate requires an intentional pull, resets between gestures and hand
   gate.reset();
 });
 
+test("replay scroll guard works after session bypass and during iOS momentum", () => {
+  const timeline = read("v2/timeline.js");
+  const html = read("index.html");
+  assert.match(timeline, /if \(!active\) \{/);
+  assert.match(timeline, /root\.classList\.add\("v2-cinematic", "v2-revealing", "v2-app-ready"\)/);
+  assert.match(timeline, /function scrollGuardOnMotion\(\)/);
+  assert.match(timeline, /rewindLockUntil = performance\.now\(\) \+ 900/);
+  assert.match(html, /Vela shows the next 7 days/);
+});
+
 test("cinematic scroll guard only intercepts backward gesture at main boundary", () => {
   const timeline = read("v2/timeline.js");
-  assert.match(timeline, /position \+ delta < distance/);
+  assert.match(timeline, /const overshoot = boundary - position - delta/);
   assert.match(timeline, /scrollableChildCanMoveUp\(event.target\)/);
   assert.match(timeline, /event.cancelable/);
   assert.match(timeline, /addEventListener\("wheel", rewindWheel, \{ passive: false \}\)/);
