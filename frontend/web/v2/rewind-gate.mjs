@@ -38,5 +38,10 @@ export function createRewindGate() {
     reset(kind);
     return { released: true, overflow };
   }
-  return { pull, reset };
+  function progress(kind) {
+    if (kind !== "wheel" && kind !== "touch") return 0;
+    const threshold = kind === "wheel" ? REWIND.wheelThreshold : REWIND.touchThreshold;
+    return Math.max(0, Math.min(1, pulls[kind] / threshold));
+  }
+  return { pull, reset, progress };
 }
