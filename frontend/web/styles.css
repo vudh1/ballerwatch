@@ -6587,3 +6587,10 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
 .watch-match-details dd { margin: 0; font-size: 0.94rem; overflow-wrap: anywhere; }
 .watch-match-source { color: #9ae6f3; display: inline-block; margin-top: 0.65rem; }
 .watch-match-source[hidden] { display: none; }
+
+/* Both professional sports can share a Watch calendar date. */
+.calendar-watch-sports { display: inline-flex; justify-content: center;
+  align-items: center; gap: 0.1rem; font-size: 0.75rem; line-height: 1; }
+@media (max-width: 560px) {
+  .calendar-watch-sports { gap: 0.02rem; font-size: 0.65rem; }
+}

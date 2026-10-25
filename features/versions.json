@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.6.1",
+  "currentVersion": "11.6.2",
   "releases": [
+    {
+      "version": "11.6.2",
+      "date": "2026-10-25",
+      "type": "patch",
+      "source": "user-feedback",
+      "title": "Mixed-sport Watch calendar icons and stable carousel day total",
+      "webAnnouncement": "Watch schedule dates with soccer and basketball now display both ⚽ and 🏀. The daily match carousel preloads all published match days in the next year so its position stays stable while swiping, instead of expanding 5/5 to 6/6 and beyond.",
+      "changes": [
+        "Represent every sport scheduled on the same Watch calendar date with distinct soccer and basketball icons, retaining Play weather and dot styling.",
+        "Preindex the known upcoming Watch match dates across the existing 366-day horizon so the carousel denominator is fixed while navigating.",
+        "Keep calendar date jumps, previous/next/swipe/keyboard navigation and the existing Play carousel unchanged.",
+        "Add mixed-sport, 30-day-future and browser interaction regression coverage.",
+        "Bump PWA caches and app release versions to 11.6.2."
+      ]
+    },
     {
       "version": "11.6.1",
       "date": "2026-10-25",
