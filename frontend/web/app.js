@@ -1516,10 +1516,10 @@ async function copyCalendarSubscription() {
   try {
     if (!navigator.clipboard?.writeText) throw new Error("clipboard unavailable");
     await navigator.clipboard.writeText(url);
-    status.textContent = "Calendar link copied. Paste it into Vela TV or another calendar app. Copy again if you change followed teams.";
+    status.textContent = "Link copied for your current team selections. Replace the existing BallerWatch source in Vela TV → Gear → Daily life → Calendar. Vela displays only the next 7 days; changing teams does not update a previously saved link.";
   } catch {
     window.prompt("Copy your calendar subscription link:", url);
-    status.textContent = "This is a public read-only calendar URL. Recopy after changing teams.";
+    status.textContent = "Use the new link to replace the BallerWatch source on Vela TV. Old links cannot learn about newly followed teams.";
   }
 }
 function saveWatchSettings() {
@@ -1532,6 +1532,9 @@ function saveWatchSettings() {
   }
   watchedGames = [];
   watchedUpdatedAt = "";
+  const subscriptionStatus = document.querySelector("#calendar-subscription-status");
+  if (subscriptionStatus) subscriptionStatus.textContent =
+    "Your watched teams changed. Copy the updated calendar link and replace the BallerWatch source in Vela TV. Existing links keep the old team selection.";
   if (activeMatchMode === WATCH) renderActiveMode();
   void loadWatchIndex();
 }
