@@ -452,7 +452,9 @@ try {
         assert.equal(new URL(page.url()).search, "?from=legacy");
         assert.equal(new URL(page.url()).hash, "#matches");
         await openHubTab(page, "settings");
-        assert.equal(await page.locator("#guest-name").inputValue(), "");
+        // Explicit test fixture is seeded in Beta independently of the legacy
+        // production-only profile. The legacy data must remain untouched.
+        assert.equal(await page.locator("#guest-name").inputValue(), "Fixture Player");
         assert.ok(await page.evaluate(() => localStorage.getItem("ballerwatch-visitor-profile-v1-24h")),
           "legacy production identity must not be migrated or erased by beta");
         assert.equal(await page.locator("#replay-intro,#app-version-v1,#app-version-v2").count(), 0);
