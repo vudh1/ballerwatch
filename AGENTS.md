@@ -34,6 +34,10 @@ Read [FRIDAY.md](FRIDAY.md) when a feature may be useful across apps. BallerWatc
 
 **Existing boundaries:** Vela consumes BallerWatch calendar/ICS, which must keep working. [nhcuong95/rsvp](https://github.com/nhcuong95/rsvp) is the external Play RSVP source-code repo; BallerWatch monitoring does not grant access to its admin backend. Never expose unpublished RSVP rosters or device-local preferences in a FRIDAY projection.
 
+## FRIDAY billing safety
+
+Follow the [FRIDAY cardless cost policy](https://github.com/vudh1/friday/blob/main/docs/COST_POLICY.md). No new payment method, billed/free-converting trial, metered service or $0 plan requiring a card may be introduced for FRIDAY without a new, specific owner decision. Check current official pricing, quotas, polling/AI usage, overage handling, rollback and offline fallback for any provider change. Existing credentials do not imply cost approval. Code, tests and CI cannot verify actual provider charges; do not claim a $0 bill without billing evidence.
+
 ## Release workflow
 
 Every repository change starts on a dedicated branch from latest `main`. Never do normal work directly on `main`.
