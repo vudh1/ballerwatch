@@ -6532,3 +6532,41 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
 }
 .watch-service-settings input { accent-color: #77d8e5; }
 .watch-service-settings .hint { flex-basis: 100%; margin: 0; }
+
+
+/* Watch: one date card containing every match, not a long carousel. */
+.watch-days { min-width: 0; display: grid; gap: 0.8rem; }
+.watch-days[hidden] { display: none; }
+.watch-days-heading { display: flex; align-items: end; justify-content: space-between;
+  flex-wrap: wrap; gap: 0.4rem 1rem; }
+.watch-days-heading h2 { margin: 0; font-size: clamp(1.15rem, 3vw, 1.55rem); }
+.watch-days-heading .hint { margin: 0; }
+.watch-day-list { display: grid; gap: 0.75rem; }
+.watch-day-card { padding: 0; overflow: hidden; border-radius: 19px; }
+.watch-day-header { display: flex; align-items: baseline; justify-content: space-between;
+  gap: 0.5rem; padding: 0.85rem 1.1rem 0.75rem; }
+.watch-day-header h3 { margin: 0; font-size: 0.98rem; font-weight: 750; }
+.watch-day-count { color: var(--muted, #98a7bc); font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+.watch-day-matches { display: grid; gap: 0.25rem; padding: 0 0.5rem 0.5rem; }
+.watch-match-row { width: 100%; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center; gap: 0.3rem 0.6rem; text-align: left; border: 0; border-radius: 11px;
+  padding: 0.7rem 0.6rem; background: transparent; color: inherit; cursor: pointer; }
+.watch-match-row:hover, .watch-match-row:focus-visible { background: rgba(125,211,252,.10); }
+.watch-match-row:focus-visible { outline: 2px solid #88ddec; outline-offset: -2px; }
+.watch-match-title { min-width: 0; font-size: 0.88rem; font-weight: 700; line-height: 1.4; }
+.watch-match-kickoff { color: #add9e2; font-size: 0.75rem; font-weight: 750; white-space: nowrap; }
+.watch-match-meta { grid-column: 1 / -1; font-size: 0.72rem; color: var(--muted, #a6b2c3); }
+.watch-show-more { justify-self: stretch; margin-top: 0.1rem; }
+.watch-match-dialog { width: min(92vw, 510px); max-height: 86dvh; padding: 0;
+  border: 1px solid rgba(136,217,236,.24); border-radius: 20px; background: #0a1c2b;
+  color: #eef7ff; box-shadow: 0 24px 80px rgba(0,0,0,.5); }
+.watch-match-dialog::backdrop { background: rgba(3,10,20,.75); backdrop-filter: blur(6px); }
+.watch-match-shell { padding: clamp(1rem, 4vw, 1.5rem); }
+.watch-match-heading { display: flex; justify-content: space-between; align-items: start; gap: 1rem; }
+.watch-match-heading h2 { font-size: clamp(1.12rem, 4vw, 1.5rem); margin: 0.3rem 0 0; }
+.watch-match-details { display: grid; gap: 0.85rem; margin: 1.3rem 0; }
+.watch-match-details > div { display: grid; gap: 0.2rem; }
+.watch-match-details dt { color: #9aafc3; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; }
+.watch-match-details dd { margin: 0; font-size: 0.94rem; overflow-wrap: anywhere; }
+.watch-match-source { color: #9ae6f3; display: inline-block; margin-top: 0.65rem; }
+.watch-match-source[hidden] { display: none; }
