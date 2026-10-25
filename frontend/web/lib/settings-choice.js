@@ -1,7 +1,8 @@
 /**
  * Accessible search-and-select control for BallerWatch settings.
- * Uses existing authenticated name-only options; never stores rosters in
- * localStorage, and persists only the selected value through the form API.
+ * Uses scoped name/team options and never stores roster catalogs locally.
+ * v11.10.1: Preindex choices, bound DOM work and defer expensive save effects
+ * until the selection feedback has had a chance to paint on mobile.
  */
 export function createSettingsChoice({
   root, trigger, panel, search, optionsList, display, input,
@@ -12,10 +13,24 @@ export function createSettingsChoice({
   }
   let choices = [];
   let selected = [];
+  let changeSequence = 0;
+  const MAX_VISIBLE = 36; // Do not paint hundreds of teams into a phone-sized popover.
   const clean = (value) => String(value || "").trim().replace(/\s+/g, " ").slice(0, 120);
   const key = (value) => clean(value).toLocaleLowerCase("en");
   const unique = (values) => [...new Map(values.map(clean)
     .filter(Boolean).map((value) => [key(value), value])).values()];
+  let indexedChoices = [];
+
+  const notifyAfterPaint = () => {
+    // Persisting a team can rebuild fixtures/standings and kick off requests.
+    // Commit only the latest selection AFTER its checkmark and popover paint.
+    const sequence = ++changeSequence;
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        if (sequence === changeSequence) onChange?.([...selected]);
+      }, 0);
+    });
+  };
 
   const sync = () => {
     input.value = multiple ? selected.join("\n") : (selected[0] || "");
@@ -38,7 +53,7 @@ export function createSettingsChoice({
         event.stopPropagation();
         selected = selected.filter((entry) => key(entry) !== key(value));
         sync();
-        onChange?.([...selected]);
+        notifyAfterPaint();
         render();
       });
       chip.append(title, remove);
@@ -61,48 +76,63 @@ export function createSettingsChoice({
       } else if (selected.length < maxSelected) selected.push(name);
     } else selected = [name];
     sync();
-    onChange?.([...selected]);
     if (multiple) render();
     else close();
+    notifyAfterPaint();
   }
 
   function render() {
-    optionsList.replaceChildren();
     const query = key(search.value);
-    const matches = unique([...selected, ...choices])
-      .filter((name) => !query || key(name).includes(query))
-      .sort((left, right) =>
-        Number(selected.some((value) => key(value) === key(right))) -
-        Number(selected.some((value) => key(value) === key(left))) ||
-        left.localeCompare(right))
-      .slice(0, 70);
-    const exact = matches.some((value) => key(value) === query);
-    if (query.length >= 2 && !exact) matches.unshift(clean(search.value));
+    const selectedKeys = new Set(selected.map(key));
+    const matches = [];
+    // Selected options stay pinned without repeatedly sorting every item.
+    for (const value of selected) {
+      const normalized = key(value);
+      if (!query || normalized.includes(query)) {
+        matches.push({ value, normalized, isSelected: true });
+      }
+    }
+    // Team indices are normalized/sorted only on data refresh, never per key.
+    for (const option of indexedChoices) {
+      if (matches.length >= MAX_VISIBLE) break;
+      if (selectedKeys.has(option.normalized) ||
+          (query && !option.normalized.includes(query))) continue;
+      matches.push({ ...option, isSelected: false });
+    }
+    const exact = selectedKeys.has(query) ||
+      indexedChoices.some(option => option.normalized === query);
+    if (query.length >= 2 && !exact) {
+      matches.unshift({ value: clean(search.value), normalized: query, isSelected: false,
+        isNew: true });
+    }
+
+    const fragment = document.createDocumentFragment();
     if (!matches.length) {
       const empty = document.createElement("p");
       empty.className = "settings-choice-empty";
-      empty.textContent = query ? "No matching options. Search another name." : "No options yet. Start typing to add one.";
-      optionsList.append(empty);
-      return;
+      empty.textContent = query ? "No matching options. Search another name." :
+        "No options yet. Start typing to add one.";
+      fragment.append(empty);
+    } else {
+      for (const option of matches.slice(0, MAX_VISIBLE + 1)) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "settings-choice-option";
+        button.setAttribute("role", "option");
+        button.setAttribute("aria-selected", String(option.isSelected));
+        const title = document.createElement("span");
+        title.textContent = option.value;
+        const status = document.createElement("span");
+        status.className = "settings-choice-mark";
+        status.textContent = option.isSelected ? "✓" : option.isNew ? "+" : "";
+        status.setAttribute("aria-hidden", "true");
+        button.append(title, status);
+        button.addEventListener("click", () => choose(option.value));
+        fragment.append(button);
+      }
     }
-    for (const option of matches) {
-      const selectedOption = selected.some((value) => key(value) === key(option));
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "settings-choice-option";
-      button.setAttribute("role", "option");
-      button.setAttribute("aria-selected", String(selectedOption));
-      const title = document.createElement("span");
-      title.textContent = option;
-      const status = document.createElement("span");
-      status.className = "settings-choice-mark";
-      status.textContent = selectedOption ? "✓" : (query && key(option) === query && !choices.some(
-        (entry) => key(entry) === query) ? "+" : "");
-      status.setAttribute("aria-hidden", "true");
-      button.append(title, status);
-      button.addEventListener("click", () => choose(option));
-      optionsList.append(button);
-    }
+    // One DOM mutation avoids relaying out the entire modal per option.
+    optionsList.replaceChildren(fragment);
   }
 
   function open() {
@@ -151,6 +181,8 @@ export function createSettingsChoice({
   }
   function setOptions(values) {
     choices = unique(Array.isArray(values) ? values : []);
+    indexedChoices = choices.map(value => ({ value, normalized: key(value) }))
+      .sort((left, right) => left.value.localeCompare(right.value));
     if (!panel.hidden) render();
   }
   sync();
