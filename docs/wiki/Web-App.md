@@ -4,6 +4,14 @@ The installable PWA is BallerWatch's sole user surface.
 
 The website works without a visitor account. RSVP rosters for an individual published pickup event are readable without sign-in; RSVP names, monitored teams, match edits and notification choices stay on each browser installation. Administrator software maintenance remains password-protected.
 
+## First-device setup (11.7.0 preview)
+
+New installations are offered three optional choices after the soccer introduction: pickup RSVP name, teams to play in RATS, and professional teams to watch. Every step can be skipped; the small Play/Watch empty-preference note points directly to Settings. Only installations without established local preferences or public cache receive this first-visit prompt, so current users are not unexpectedly interrupted. Beta and production retain separate setup markers. The wizard remains dismissible if a visitor does not want to configure anything.
+
+The RSVP name field in Settings is a searchable single-selection dropdown. Options come from **one next publicly published pickup roster**, requested on demand through the existing date-scoped endpoint. No cross-date directory or source roster is retained, and someone absent from the list can type and add their own name. An explicit clear button removes an earlier selection. Device preferences do not sync without separate, future consent and authorization.
+
+The permanent per-user ICS subscription and secure device linking are not part of this UI release. The identity choices, encryption and read-only contract are in [Calendar Profile Contract](Calendar-Profile-Contract.md) and [FRIDAY issue #12](https://github.com/vudh1/friday/issues/12); no Cloudflare D1 service has been deployed.
+
 ## App hub
 
 The badged AI icon opens three connected sections: **AI / Settings / Notifications**. It fades in with the main app and remains available while reading cards, without detached header controls. Switching sections preserves the existing account/Q&A/Inbox controllers.

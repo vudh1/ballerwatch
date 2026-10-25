@@ -1,7 +1,23 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.6.5",
+  "currentVersion": "11.7.0",
   "releases": [
+    {
+      "version": "11.7.0",
+      "date": "2026-10-25",
+      "type": "minor",
+      "source": "user-feedback",
+      "title": "Welcome setup and searchable RSVP identity",
+      "webAnnouncement": "New devices can choose a pickup RSVP name, teams to play and teams to watch in three optional steps. Saved devices keep their preferences, and quiet reminders in Play or Watch link directly to Settings. The RSVP name is now a searchable dropdown sourced only from the next published pickup roster.",
+      "changes": [
+        "Add a three-step first-device onboarding wizard with skip, back, offline-ready controls and no account requirement.",
+        "Keep returning visitor preferences untouched; isolate the completion marker between beta and production installations.",
+        "Replace the RSVP name text field with a searchable, accessible selector using names from one upcoming published pickup roster, with a manual-add fallback and an explicit Clear action.",
+        "Explain missing Play and Watch preferences with an unobtrusive Settings action, retaining instant device-local persistence and card refreshes.",
+        "Cover all steps, skips, returns, UI controls and negative storage cases with unit and Chromium, Firefox and WebKit synthetic browser regression tests.",
+        "Document the separate, not-yet-implemented multi-user stable calendar subscription and owner-identity decision for FRIDAY and Vela TV; preserve legacy ICS URLs."
+      ]
+    },
     {
       "version": "11.6.5",
       "date": "2026-10-25",

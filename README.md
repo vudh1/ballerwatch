@@ -6,6 +6,8 @@
 
 **FRIDAY:** [Integration ownership and agent guidance](FRIDAY.md).
 
+**v11.7.0 (feature branch / not deployed):** On a fresh device, an optional three-step setup helps select a pickup RSVP name, followed RATS teams and professional teams to watch; every step can be skipped and later configured in Settings. RSVP names now use a searchable list from one upcoming published pickup roster with a manual option when absent. Missing preferences get a quiet Settings link. Returning devices retain their existing selections. A per-user stable calendar subscription architecture is proposed separately in [FRIDAY issue #12](https://github.com/vudh1/friday/issues/12), **not yet implemented**; the original query-based ICS links still work.
+
 **v11.6.5:** The upward rewind now has a clearly perceptible elastic boundary: a light pull stretches the entire matchday page by up to 28 px and briefly displays a compact "Pull to rewind" progress hint. A firmer continuous swipe/scroll rewinds into the soccer intro; normal card scrolling and backward movement inside the animation stay native. Rewind thresholds are higher to avoid accidental transitions. Reduced motion, Skip Intro, and offline behavior remain unchanged.
 
 **v11.6.4:** Fix the reversible intro on repeat visits: even when the dashboard opens directly after the initial animation, a deliberate upward pull now reinstates the stadium. Light pulls show subtle elastic resistance; touch momentum is guarded on iOS. Updated calendar help explains why adding monitored teams does not modify a previously saved Vela TV `.ics` link: copy the new URL and replace Vela’s BallerWatch source; Vela currently shows only seven days of fixtures. PWA caches and regression tests updated.
