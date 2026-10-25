@@ -24,3 +24,11 @@ export function watchedDayGroups(games, fromDate, days = 14) {
         a.id.localeCompare(b.id)),
     }));
 }
+
+/** One icon per sport present on a watched date, independent of match count. */
+export function watchedDaySportIcons(games) {
+  const sports = new Set((Array.isArray(games) ? games : [])
+    .filter(game => game?.kind === "watch").map(game => game.sport));
+  return [sports.has("soccer") || sports.has("football") ? "⚽" : "",
+    sports.has("basketball") ? "🏀" : ""].filter(Boolean);
+}
