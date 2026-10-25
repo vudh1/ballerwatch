@@ -179,6 +179,9 @@ export async function handleCalendarProfileRequest(request, env, renderIcs) {
     // Public subscription consumes only a read capability. No owner credential is accepted.
     const feed = path.match(/^\/web\/v1\/calendar-ics\/([\w-]{43})\.ics$/);
     if (feed && request.method === "GET") {
+      if (!await throttle(db, request, env)) {
+        return response(request, { ok: false, error: "Too many requests." }, 429);
+      }
       const hash = await sha256("read:" + feed[1]);
       const row = await db.prepare(`SELECT id, selection_cipher, revision
         FROM calendar_profiles WHERE read_hash = ?`).bind(hash).first();
