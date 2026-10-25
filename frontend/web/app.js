@@ -1469,7 +1469,7 @@ function syncPersonalCardVisibility() {
   if (subtitle) subtitle.textContent = play ? "Pickup + RATS monitor" : "Professional match schedule";
   // Play keeps its existing carousel. Watch replaces it with grouped day cards.
   els.spotlightCarousel.hidden = !play || !(guestProfile.name || guestProfile.teams.length);
-  els.watchDays.hidden = play;
+  if (els.watchDays) els.watchDays.hidden = play;
   const standings = document.querySelector("#league-standings");
   if (standings) standings.hidden = !play || !guestProfile.teams.length;
 }
