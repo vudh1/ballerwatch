@@ -63,7 +63,7 @@ export function parsedTeamRecords(payload, comp) {
 export function parsedTeams(payload, comp) {
   return [...new Set(parsedTeamRecords(payload, comp).map(team => team.name))];
 }
-export function parsedFixtures(payload, comp) {
+export function parsedFixtures(payload, comp, teamIdNames = new Map()) {
   const games = [];
   for (const event of payload?.events || []) {
     const sides = event?.competitions?.[0]?.competitors || [];
@@ -75,6 +75,12 @@ export function parsedFixtures(payload, comp) {
     const first = norm(home.team?.displayName || home.team?.name);
     const second = norm(away.team?.displayName || away.team?.name);
     if (!first || !second) continue;
+    // A provider may say "LA Lakers" in an event but "Los Angeles Lakers"
+    // in its published team list. Stable provider IDs keep selection working.
+    const homeId = String(home.team?.id || home.id || "");
+    const awayId = String(away.team?.id || away.id || "");
+    const homeLabel = teamIdNames.get(homeId) || teamLabel(comp, first);
+    const awayLabel = teamIdNames.get(awayId) || teamLabel(comp, second);
     // Match days must use the same Pacific calendar date as BallerWatch.
     const parts = new Intl.DateTimeFormat("en-US", {
       timeZone: "America/Los_Angeles", year: "numeric",
@@ -88,7 +94,7 @@ export function parsedFixtures(payload, comp) {
       title: `${first} vs ${second}`,
       date, startUtc: new Date(at).toISOString(),
       endUtc: new Date(at + (comp.sport === "basketball" ? 3 : 2) * 3600000).toISOString(),
-      teams: [teamLabel(comp, first), teamLabel(comp, second)],
+      teams: [homeLabel, awayLabel],
       location: norm(event?.competitions?.[0]?.venue?.fullName),
       url: /^https:\/\//.test(event?.links?.[0]?.href || "") ? String(event.links[0].href).slice(0, 400) : "",
     });
@@ -107,76 +113,110 @@ async function getJson(fetcher, url) {
   if (text.length > 4_000_000) throw new Error("Fixture response too large");
   return JSON.parse(text);
 }
+/**
+ * ESPN retired multi-day date ranges in 2026. Calendar months and years are
+ * still supported, but silently truncate to 100 games unless 'limit' is set.
+ * Query published monthly fixture pages across a rolling 13-month horizon.
+ * This is ~180 requests per week, with no user-request-time ESPN calls.
+ */
 export async function indexSports(fetcher = fetch, today = new Date(), previous = null) {
   const from = startOfDay(today);
-  const until = new Date(from.getTime() + 126 * 86400000);
-  const catalogue = new Set(NATIONAL_OPTIONS), fixtureMap = new Map();
+  const until = new Date(from.getTime() + 366 * 86400000);
+  const catalogue = new Set(NATIONAL_OPTIONS);
+  const fixtureMap = new Map();
   const failures = [];
+  const coverage = {};
   for (const comp of COMPETITIONS) {
     let teamRecords = [];
     try {
       const response = await getJson(fetcher, apiUrl(comp, "teams", "?limit=500"));
       teamRecords = parsedTeamRecords(response, comp);
       for (const team of teamRecords) catalogue.add(team.name);
-    } catch { failures.push(comp.code + ":teams"); }
+    } catch {
+      failures.push(comp.code + ":teams");
+    }
+    const idToTeam = new Map(teamRecords.filter(x => x.id).map(t => [t.id, t.name]));
     let matchesFound = 0;
-    // Small, bounded 6-week chunks avoid provider pagination truncation.
-    let successfulWindows = 0;
-    for (let start = from; start < until; start = new Date(start.getTime() + 42*86400000)) {
-      const end = new Date(Math.min(until.getTime(), start.getTime() + 41*86400000));
+    let successfulMonths = 0;
+    const firstMonth = Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), 1);
+    const lastMonth = Date.UTC(until.getUTCFullYear(), until.getUTCMonth(), 1);
+    for (let month = firstMonth; month <= lastMonth;) {
+      const date = new Date(month);
+      const yyyymm = `${date.getUTCFullYear()}${pad(date.getUTCMonth() + 1)}`;
       try {
         const response = await getJson(fetcher, apiUrl(comp, "scoreboard",
-          `?dates=${rangeDay(start)}-${rangeDay(end)}&limit=1000`));
-        successfulWindows++;
-        for (const fixture of parsedFixtures(response, comp)) {
-          if (Date.parse(fixture.startUtc) >= from.getTime() - 86400000) {
-            fixtureMap.set(fixture.id, fixture);
-            matchesFound++;
-            fixture.teams.forEach(t => catalogue.add(t));
-          }
+          `?dates=${yyyymm}&limit=1000`));
+        successfulMonths++;
+        const events = parsedFixtures(response, comp, idToTeam);
+        // A month of any tracked competition should fit in 1000, but fail
+        // rather than accept a silently truncated month.
+        if (events.length >= 1000) throw new Error("Fixture month hit provider cap");
+        for (const fixture of events) {
+          const at = Date.parse(fixture.startUtc);
+          if (at < from.getTime() - 86400000 || at >= until.getTime()) continue;
+          fixtureMap.set(fixture.id, fixture);
+          fixture.teams.forEach(team => catalogue.add(team));
+          matchesFound++;
         }
-      } catch { failures.push(comp.code + ":scoreboard"); }
-      await delay(180);
+      } catch {
+        failures.push(comp.code + ":month:" + yyyymm);
+      }
+      month = Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1);
+      await delay(110);
     }
-    // Some site scoreboards reject date ranges (notably NBA). Rebuild that
-    // competition from its team schedules once a week, never on a user GET.
-    // Even if a range returned HTTP 200 with no games, attempt this fallback.
-    if (!matchesFound && teamRecords.length) {
+    // If all monthly responses failed, one per-team schedule is an alternate
+    // route for planned fixtures. Do not turn routine empty international
+    // windows into hundreds of redundant requests.
+    if (!successfulMonths && teamRecords.length) {
       const visited = new Set();
       for (const team of teamRecords) {
         if (!team.id || visited.has(team.id)) continue;
         visited.add(team.id);
         try {
           const response = await getJson(fetcher, apiUrl(comp,
-            "teams/" + encodeURIComponent(team.id) + "/schedule", "?limit=200"));
-          for (const fixture of parsedFixtures(response, comp)) {
+            "teams/" + encodeURIComponent(team.id) + "/schedule", "?limit=500"));
+          for (const fixture of parsedFixtures(response, comp, idToTeam)) {
             const at = Date.parse(fixture.startUtc);
             if (at < from.getTime() - 86400000 || at >= until.getTime()) continue;
             fixtureMap.set(fixture.id, fixture);
-            matchesFound++;
             fixture.teams.forEach(t => catalogue.add(t));
+            matchesFound++;
           }
-        } catch { failures.push(comp.code + ":schedule"); }
-        await delay(100);
+        } catch {
+          failures.push(comp.code + ":schedule");
+        }
+        await delay(90);
       }
     }
-    // Keep the previous verified fixtures when all sources fail, rather than
-    // silently deleting existing subscriptions or removing known fixtures.
-    if (!matchesFound && Array.isArray(previous?.games)) {
-      for (const old of previous.games.filter(g => String(g.id).startsWith("watch:"+comp.code+":")
-          && Date.parse(g.startUtc) >= from.getTime()-86400000)) {
+    // Missing upstream updates preserve previously verified fixtures.
+    if ((!successfulMonths || !matchesFound) && Array.isArray(previous?.games)) {
+      for (const old of previous.games.filter(g =>
+        String(g.id).startsWith("watch:" + comp.code + ":") &&
+        Date.parse(g.startUtc) >= from.getTime() - 86400000)) {
         if (!fixtureMap.has(old.id)) fixtureMap.set(old.id, old);
       }
     }
+    coverage[comp.code] = [...fixtureMap.values()].filter(g =>
+      g.id.startsWith("watch:" + comp.code + ":")).length;
   }
   for (const option of previous?.teams || []) catalogue.add(option);
-  // Do not publish an all-empty index after total upstream failure.
-  if (!fixtureMap.size && !previous?.games?.length) throw new Error("No verified sport fixtures");
-  const games = [...fixtureMap.values()].sort((a,b)=>a.startUtc.localeCompare(b.startUtc))
+  // Confirm real coverage, not merely successful HTTP responses. The NBA and
+  // top five leagues each have already-published 2026-27 fixtures today.
+  const required = COMPETITIONS.filter(c => c.code === "nba" || c.group === "club");
+  const missing = required.filter(c => !coverage[c.code]).map(c => c.code);
+  if (missing.length) throw new Error("Missing essential scheduled leagues: " + missing.join(", "));
+  const games = [...fixtureMap.values()].sort((a, b) => a.startUtc.localeCompare(b.startUtc))
     .slice(0, 6000);
-  return { updatedAt: today.toISOString(), provider: "ESPN public site feeds (unofficial)",
-    refreshHours: 168, teams: [...catalogue].sort((a,b)=>a.localeCompare(b)).slice(0, 700),
-    games, failures };
+  const result = {
+    updatedAt: today.toISOString(),
+    provider: "ESPN public site feeds (unofficial)",
+    refreshHours: 168,
+    teams: [...catalogue].sort((a, b) => a.localeCompare(b)).slice(0, 700),
+    games, failures, coverage,
+  };
+  console.log("Professional fixture coverage:", JSON.stringify(coverage));
+  console.log("Professional fixture failures:", failures.length);
+  return result;
 }
 export async function run() {
   let previous = null;
