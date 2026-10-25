@@ -80,7 +80,7 @@ async function prepare(browser, options = {}) {
   });
   const calls = [];
   const errors = [];
-  const controls = { offlineApi: false, optionalFailure: false, animationFailure: false, scriptFailure: false, noPickupCap: false, camelCaseTeam: false };
+  const controls = { offlineApi: false, optionalFailure: false, animationFailure: false, scriptFailure: false, noPickupCap: false, camelCaseTeam: false, mixedWatchSports: false };
   await context.route("**/*", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -118,6 +118,21 @@ async function prepare(browser, options = {}) {
           location: "Synthetic Arena",
           broadcasts: i === 0 ? ["Prime Video", "Peacock"] : i === 1 ? ["NBA TV"] : [],
         }));
+        if (controls.mixedWatchSports) {
+          fixture.games.push({
+            id: "watch:eng.1:mixed", kind: "watch", sport: "soccer", date: day,
+            competition: "Premier League", title: "Fixture Arsenal vs Fixture Chelsea",
+            startUtc: new Date(at.getTime() + 1500000).toISOString(),
+            endUtc: new Date(at.getTime() + 7200000).toISOString(),
+            broadcasts: [],
+          }, {
+            id: "watch:nba:future", kind: "watch", sport: "basketball", date: day,
+            competition: "NBA", title: "Fixture Lakers vs Fixture Future",
+            startUtc: new Date(at.getTime() + 30 * 86400000).toISOString(),
+            endUtc: new Date(at.getTime() + 30 * 86400000 + 7200000).toISOString(),
+            broadcasts: [],
+          });
+        }
       }
       if (controls.noPickupCap && url.pathname === "/web/next-game") {
         fixture.game.capacity = null;
@@ -317,6 +332,43 @@ try {
         assert.equal(await page.locator("#mode-play").getAttribute("aria-pressed"), "true");
         assert.equal(await page.locator("#next-game-menu-trigger").isVisible(), true);
         assert.doesNotMatch(await page.locator("#next-game-title").textContent(), /Lakers/);
+        assert.deepEqual(errors, []);
+        await context.close();
+      });
+
+      await scenario(`${engine}: Watch schedule shows both sports and day total stays fixed across long horizon`, async () => {
+        const { context, page, errors, controls } = await prepare(browser, { reducedMotion: "reduce" });
+        controls.mixedWatchSports = true;
+        await ready(page);
+        await openHubTab(page, "settings");
+        await page.locator("#watch-teams-trigger").click();
+        await page.locator("#watch-teams-search").fill("Fixture Lakers");
+        await page.locator('#watch-teams-options [role="option"]').first().click();
+        await page.locator("#close-settings").click();
+        await page.locator("#mode-watch").click();
+        await page.waitForFunction(() =>
+          document.querySelectorAll("#watch-day-list .watch-day-card").length === 3);
+        assert.equal(await page.locator("#watch-day-position").textContent(), "1 / 3 days");
+        const firstDate = await page.locator("#watch-day-list .watch-day-card").first().getAttribute("data-watch-date");
+        const lastDate = await page.locator("#watch-day-list .watch-day-card").last().getAttribute("data-watch-date");
+        const icons = page.locator(`#calendar-grid .calendar-day[data-date="${firstDate}"] .calendar-watch-sports`);
+        assert.equal(await icons.textContent(), "⚽ 🏀");
+        assert.match(await page.locator(`#calendar-grid .calendar-day[data-date="${firstDate}"]`)
+          .getAttribute("aria-label"), /soccer and basketball/);
+        assert.equal(await page.locator("#watch-day-list .watch-day-card[aria-hidden='false'] .watch-match-row").count(), 3);
+        await page.locator("#watch-next").click();
+        assert.equal(await page.locator("#watch-day-position").textContent(), "2 / 3 days");
+        await page.locator("#watch-next").click();
+        assert.equal(await page.locator("#watch-day-position").textContent(), "3 / 3 days");
+        assert.equal(await page.locator("#watch-next").isDisabled(), true);
+        await page.locator("#watch-previous").click();
+        assert.equal(await page.locator("#watch-day-position").textContent(), "2 / 3 days");
+        await page.locator("#two-week-calendar .calendar-heading").click();
+        const lastDay = page.locator(`#calendar-grid .calendar-day[data-date="${lastDate}"]`);
+        await lastDay.waitFor();
+        await lastDay.click();
+        assert.equal(await page.locator("#watch-day-position").textContent(), "3 / 3 days");
+        assert.equal(await page.locator("#watch-day-list .watch-day-card[aria-hidden='false'] .watch-match-row").count(), 1);
         assert.deepEqual(errors, []);
         await context.close();
       });
