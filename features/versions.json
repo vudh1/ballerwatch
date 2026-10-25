@@ -1,20 +1,23 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.5.1",
+  "currentVersion": "11.6.0",
   "releases": [
     {
-      "version": "11.5.1",
+      "version": "11.6.0",
       "date": "2026-10-25",
-      "type": "patch",
+      "type": "minor",
       "source": "user-feedback",
-      "title": "Verified TV channels for teams you watch",
-      "webAnnouncement": "Watched matches now show U.S. TV channels where published, prioritized for your per-device Prime Video, ESPN and DrogonTV preferences. Check DrogonTV's own guide before relying on a channel.",
+      "title": "Daily watch match cards with verified US TV listings",
+      "webAnnouncement": "Teams to Watch now groups all watched matches by day instead of swiping through every match. Tap any fixture for details, including U.S. channels filtered to your Prime Video, ESPN and DrogonTV preferences. New games index automatically each week and near-term TV details refresh daily.",
       "changes": [
         "Show a subtle Where to Watch line on watch match cards and the swipe carousel, using published ESPN U.S. broadcast labels rather than league-night guesses.",
         "Prioritize the chosen device's Prime Video and ESPN access. Suggest specific channels advertised on DrogonTV only with a clear guide-check caveat; omit unowned regional subscription services.",
         "Keep channel selection local to each device, with three compact settings checkboxes and an honest unannounced/no-matching-channel fallback.",
         "Keep annual encrypted fixture backfill weekly, update near-term broadcast assignments daily with a bounded ESPN refresh, and surface broadcast revisions through read-only iCalendar subscriptions.",
-        "Add backend parsing, daily refresh, per-device preference, calendar and cross-browser tests; version the full installed PWA at 11.5.1."
+        "Add backend parsing, daily refresh, per-device preference, calendar and cross-browser tests; version the full installed PWA at 11.5.1.",
+        "Replace Watch mode carousel with one compact card per date and tappable, kickoff-ordered fixture rows, including dedupe when monitored teams play each other.",
+        "Open accessible native match-details dialog with venue, competition, kickoff, selectively suggested Where to Watch and verified ESPN match source link.",
+        "Select calendar dates to jump to their Watch card; show upcoming 14-day cards with incremental 14-day loading; Play match carousel and standings remain unchanged."
       ]
     },
     {
