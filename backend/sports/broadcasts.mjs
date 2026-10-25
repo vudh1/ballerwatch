@@ -40,7 +40,7 @@ function names(input) {
     input.media?.shortName, input.media?.longName,
   ].filter(x => typeof x === "string");
 }
-export function publishedUsBroadcasts(event) {
+export function publishedUsBroadcasts(event, competitionInfo = null) {
   const competition = event?.competitions?.[0] || {};
   const entries = [
     ...(Array.isArray(competition.broadcasts) ? competition.broadcasts : []),
@@ -56,6 +56,8 @@ export function publishedUsBroadcasts(event) {
     if (entry && typeof entry === "object" && !usOrUnspecified(entry)) continue;
     for (const name of names(entry)) {
       const channel = CHANNELS.get(norm(name));
+      if (channel === "Prime Video" && competitionInfo?.sport &&
+          competitionInfo.sport !== "basketball") continue;
       if (channel && !result.includes(channel)) result.push(channel);
     }
   }
