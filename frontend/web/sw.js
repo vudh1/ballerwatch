@@ -33,6 +33,7 @@ const ROOT_SHELL = [
   "./lib/public-standings-cache.js",
   "./lib/guest-profile.js",
   "./lib/first-run.js",
+  "./lib/calendar-sync.js",
   "./lib/local-match-edits.js",
   "./lib/settings-choice.js",
   "./lib/match-modes.mjs",
