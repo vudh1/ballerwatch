@@ -590,15 +590,16 @@ try {
         await page.waitForFunction(() => document.documentElement.dataset.timelineReady === "true");
         const result = await page.evaluate(() => {
           const target = document.querySelector("#matchday-app");
-          const touch = y => new Touch({
-            identifier: 1, target, clientX: 120, clientY: y, pageX: 120, pageY: y,
-          });
+          // WebKit desktop prohibits Touch/TouchEvent constructors even with
+          // a touch-enabled context. DOM dispatch still exercises the actual
+          // listener and its cancelable touch payload on every engine.
+          const touch = y => ({ identifier: 1, target, clientX: 120, clientY: y });
           function send(type, y) {
-            const event = new TouchEvent(type, {
-              bubbles: true, cancelable: true,
-              touches: type === "touchend" ? [] : [touch(y)],
-              targetTouches: type === "touchend" ? [] : [touch(y)],
-              changedTouches: [touch(y)],
+            const event = new Event(type, { bubbles: true, cancelable: true });
+            Object.defineProperties(event, {
+              touches: { value: type === "touchend" ? [] : [touch(y)] },
+              targetTouches: { value: type === "touchend" ? [] : [touch(y)] },
+              changedTouches: { value: [touch(y)] },
             });
             target.dispatchEvent(event);
             return { prevented: event.defaultPrevented,
