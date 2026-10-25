@@ -497,12 +497,54 @@ try {
         await context.close();
       });
 
+      await scenario(`${engine}: backward scroll needs a deliberate pull but Skip and normal scrolling work`, async () => {
+        const { context, page, errors } = await prepare(browser);
+        await ready(page);
+        await page.waitForFunction(() => !document.documentElement.classList.contains("v2-launching"));
+        await page.locator("#skip-intro").click();
+        const state = await page.evaluate(() => {
+          const intro = document.querySelector("#soccer-intro");
+          const stage = document.querySelector("#soccer-stage");
+          const boundary = intro.offsetHeight - stage.clientHeight;
+          const emit = deltaY => {
+            const event = new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY });
+            window.dispatchEvent(event);
+            return { canceled: event.defaultPrevented, position: window.scrollY };
+          };
+          // Weak upward wheel motion stops at the main page boundary.
+          const first = emit(-45);
+          const second = emit(-60);
+          const third = emit(-65);
+          // Once rewinding, normal backward movement is not throttled.
+          const withinIntro = emit(-40);
+          window.scrollTo({ top: boundary + 180, behavior: "instant" });
+          const normalMain = emit(-50);
+          window.scrollTo({ top: boundary, behavior: "instant" });
+          const normalDown = emit(50);
+          return { boundary, first, second, third, withinIntro, normalMain, normalDown };
+        });
+        assert.ok(state.boundary > 100);
+        assert.equal(state.first.canceled, true);
+        assert.equal(state.second.canceled, true);
+        assert.equal(state.first.position, state.boundary);
+        assert.equal(state.second.position, state.boundary);
+        assert.equal(state.third.canceled, true);
+        assert.ok(state.third.position < state.boundary, "A firm pull should rewind");
+        assert.equal(state.withinIntro.canceled, false, "Never throttle motion within the intro");
+        assert.equal(state.normalMain.canceled, false, "Main feed scrolling must remain native");
+        assert.equal(state.normalDown.canceled, false, "Downward scrolling is always free");
+        await page.emulateMedia({ reducedMotion: "reduce" });
+        assert.equal(await page.locator("#soccer-intro").isVisible(), false);
+        assert.deepEqual(errors, []);
+        await context.close();
+      });
+
       await scenario(`${engine}: feature tour keeps Settings and Inbox tappable during the reveal`, async () => {
         const { context, page, errors } = await prepare(browser);
         await ready(page);
         await page.waitForFunction(() => !document.documentElement.classList.contains("v2-launching"));
-        for (const [progress, text] of [[.05, "Pickup and league"], [.2, "RSVP capacity"], [.4, "standings"],
-          [.55, "follow-up"], [.7, "Web Push"], [.85, "Home Screen"]]) {
+        for (const [progress, text] of [[.05, "NBA and world football"], [.2, "waitlists"], [.4, "ten-game scouting"],
+          [.55, "contextual follow-ups"], [.7, "Web Push"], [.85, "Vela TV calendar subscriptions"]]) {
           await atProgress(page, progress);
           assert.ok((await page.locator("#scene-description").textContent()).includes(text));
         }
