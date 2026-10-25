@@ -32,6 +32,7 @@ import {
 import { createSettingsChoice } from "./lib/settings-choice.js";
 import { PLAY, WATCH, modeGames, watchMatchDetails } from "./lib/match-modes.mjs";
 import { DEFAULT_WATCH_SERVICES } from "./lib/watch-coverage.mjs";
+import { watchedDayGroups } from "./lib/watch-day-groups.mjs";
 import { readGuestProfile, saveGuestProfile, MAX_GUEST_TEAMS } from "./lib/guest-profile.js";
 import {
   applyLocalMatchEdits, readLocalMatchEdits, setLocalMatchOverride,
@@ -122,6 +123,17 @@ const els = {
   installHelp: document.querySelector("#install-help"),
   installDialog: document.querySelector("#install-dialog"),
   spotlightCarousel: document.querySelector("#spotlight-carousel"),
+  watchDays: document.querySelector("#watch-days"),
+  watchDayList: document.querySelector("#watch-day-list"),
+  watchShowMore: document.querySelector("#watch-show-more"),
+  watchMatchDialog: document.querySelector("#watch-match-dialog"),
+  watchMatchTitle: document.querySelector("#watch-match-title"),
+  watchMatchTime: document.querySelector("#watch-match-time"),
+  watchMatchVenue: document.querySelector("#watch-match-venue"),
+  watchMatchCompetition: document.querySelector("#watch-match-competition"),
+  watchMatchChannel: document.querySelector("#watch-match-channel"),
+  watchMatchSource: document.querySelector("#watch-match-source"),
+  closeWatchMatch: document.querySelector("#close-watch-match"),
   matchModeSwitch: document.querySelector(".match-mode-switch"),
   modePlay: document.querySelector("#mode-play"),
   modeWatch: document.querySelector("#mode-watch"),
@@ -236,6 +248,7 @@ let watchTeamSelector = null;
 let watchedGames = [];
 let watchedTeams = [];
 let watchedUpdatedAt = "";
+let watchVisibleDays = 14;
 let activeMatchMode = PLAY;
 const modeSelections = {
   play: { id: "", date: "" },
@@ -1454,8 +1467,9 @@ function syncPersonalCardVisibility() {
   const subtitle = document.querySelector(".hero .subtitle");
   if (heroLabel) heroLabel.textContent = play ? "SOCCER AT A GLANCE" : "SPORTS AT A GLANCE";
   if (subtitle) subtitle.textContent = play ? "Pickup + RATS monitor" : "Professional match schedule";
-  // Watch always has its own match/schedule cards, even when no team is selected.
-  els.spotlightCarousel.hidden = play && !(guestProfile.name || guestProfile.teams.length);
+  // Play keeps its existing carousel. Watch replaces it with grouped day cards.
+  els.spotlightCarousel.hidden = !play || !(guestProfile.name || guestProfile.teams.length);
+  els.watchDays.hidden = play;
   const standings = document.querySelector("#league-standings");
   if (standings) standings.hidden = !play || !guestProfile.teams.length;
 }
@@ -1470,6 +1484,7 @@ function switchMatchMode(next) {
   selectedCalendarGameId = selection.id;
   selectedCalendarDate = selection.date;
   closeMatchCardMenu();
+  els.watchMatchDialog?.close?.();
   cancelSpotlightIdleReset();
   syncPersonalCardVisibility();
   renderActiveMode();
@@ -2783,6 +2798,21 @@ function selectCalendarDate(date, { scrollToSpotlight = false, gameId = "" } = {
   if (!games.length) return;
 
   selectedCalendarDate = date;
+  if (activeMatchMode === WATCH) {
+    const start = activeCalendarStartDate();
+    const distance = isoDayDistance(start, date);
+    if (distance >= watchVisibleDays) watchVisibleDays = Math.min(366, distance + 1);
+    renderWatchDayList();
+    for (const button of els.calendarGrid.querySelectorAll(".calendar-day")) {
+      button.setAttribute("aria-selected", String(button.dataset.date === date));
+    }
+    if (scrollToSpotlight) {
+      const target = [...els.watchDayList.querySelectorAll(".watch-day-card")]
+        .find(card => card.dataset.watchDate === date);
+      target?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+    return;
+  }
   for (const button of els.calendarGrid.querySelectorAll(".calendar-day")) {
     button.setAttribute("aria-selected", String(button.dataset.date === date));
   }
@@ -3109,6 +3139,85 @@ function setCalendarExpanded(expanded) {
   renderCalendarGrid();
 }
 
+function showWatchDetails(game) {
+  if (!game || game.kind !== WATCH) return;
+  const details = watchMatchDetails(game, watchServices);
+  els.watchMatchTitle.textContent = details.title;
+  els.watchMatchCompetition.textContent = details.competition;
+  els.watchMatchTime.textContent = details.time;
+  els.watchMatchVenue.textContent = details.location;
+  els.watchMatchChannel.textContent = details.whereToWatch;
+  els.watchMatchSource.hidden = true;
+  els.watchMatchSource.removeAttribute("href");
+  try {
+    const source = new URL(game.url || "");
+    if (source.protocol === "https:" && source.hostname === "www.espn.com") {
+      els.watchMatchSource.href = source.href;
+      els.watchMatchSource.hidden = false;
+    }
+  } catch {}
+  if (!els.watchMatchDialog.open) els.watchMatchDialog.showModal();
+}
+
+function renderWatchDayList() {
+  els.watchDayList.replaceChildren();
+  const start = activeCalendarStartDate();
+  if (!start) return;
+  const groups = watchedDayGroups(watchedGames, start, watchVisibleDays);
+  if (!groups.length) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.textContent = watchedTeams.length
+      ? "No published matches in this period. Upcoming fixtures will appear automatically when announced."
+      : "Choose teams in Settings to show the matches you want to watch.";
+    els.watchDayList.append(empty);
+  }
+  for (const group of groups) {
+    const card = document.createElement("section");
+    card.className = "card watch-day-card bw-card-frame";
+    card.dataset.watchDate = group.date;
+    const header = document.createElement("header");
+    header.className = "watch-day-header";
+    const title = document.createElement("h3");
+    title.textContent = dateDisplay(group.date, {
+      weekday: "long", month: "short", day: "numeric",
+    });
+    const count = document.createElement("span");
+    count.className = "watch-day-count";
+    count.textContent = group.matches.length + (group.matches.length === 1 ? " match" : " matches");
+    header.append(title, count);
+    const matches = document.createElement("div");
+    matches.className = "watch-day-matches";
+    for (const game of group.matches) {
+      const details = watchMatchDetails(game, watchServices);
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "watch-match-row";
+      row.dataset.matchId = game.id;
+      row.setAttribute("aria-label", details.title + ", " + details.time + ". Open match details");
+      const name = document.createElement("span");
+      name.className = "watch-match-title";
+      name.textContent = details.title;
+      const time = document.createElement("span");
+      time.className = "watch-match-kickoff";
+      time.textContent = details.time.split(", ").at(-1) || details.time;
+      const meta = document.createElement("span");
+      meta.className = "watch-match-meta";
+      meta.textContent = details.competition +
+        (Array.isArray(game.broadcasts) && game.broadcasts.length
+          ? " · " + details.whereToWatch : "");
+      row.append(name, time, meta);
+      row.addEventListener("click", () => showWatchDetails(game));
+      matches.append(row);
+    }
+    card.append(header, matches);
+    els.watchDayList.append(card);
+  }
+  const moreAvailable = watchedGames.some(game => game.date >= start &&
+    game.date > addIsoDays(start, watchVisibleDays - 1));
+  els.watchShowMore.hidden = !moreAvailable;
+}
+
 function renderActiveMode() {
   const games = activeModeGames();
   const startDate = activeCalendarStartDate();
@@ -3126,6 +3235,15 @@ function renderActiveMode() {
     : `Updated ${new Intl.DateTimeFormat(undefined, {
         hour: "numeric", minute: "2-digit",
       }).format(updated)}`;
+
+  if (activeMatchMode === WATCH) {
+    els.calendarGamePicker.hidden = true;
+    syncCalendarExpansionUi();
+    renderCalendarGrid();
+    renderWatchDayList();
+    cancelSpotlightIdleReset();
+    return;
+  }
 
   const selectedGame = selectedCalendarGameId
     ? games.find(game => game.id === selectedCalendarGameId) : null;
@@ -4975,6 +5093,14 @@ for (const name of Object.keys(watchServices)) {
     if (activeMatchMode === WATCH) renderActiveMode();
   });
 }
+els.watchShowMore?.addEventListener("click", () => {
+  watchVisibleDays = Math.min(366, watchVisibleDays + 14);
+  renderWatchDayList();
+});
+els.closeWatchMatch?.addEventListener("click", () => els.watchMatchDialog.close());
+els.watchMatchDialog?.addEventListener("click", event => {
+  if (event.target === els.watchMatchDialog) els.watchMatchDialog.close();
+});
 els.modePlay?.addEventListener("click", () => switchMatchMode(PLAY));
 els.modeWatch?.addEventListener("click", () => switchMatchMode(WATCH));
 syncPersonalCardVisibility();
