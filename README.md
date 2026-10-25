@@ -6,6 +6,8 @@
 
 **FRIDAY:** [Integration ownership and agent guidance](FRIDAY.md).
 
+**v11.6.5:** The upward rewind now has a clearly perceptible elastic boundary: a light pull stretches the entire matchday page by up to 28 px and briefly displays a compact "Pull to rewind" progress hint. A firmer continuous swipe/scroll rewinds into the soccer intro; normal card scrolling and backward movement inside the animation stay native. Rewind thresholds are higher to avoid accidental transitions. Reduced motion, Skip Intro, and offline behavior remain unchanged.
+
 **v11.6.4:** Fix the reversible intro on repeat visits: even when the dashboard opens directly after the initial animation, a deliberate upward pull now reinstates the stadium. Light pulls show subtle elastic resistance; touch momentum is guarded on iOS. Updated calendar help explains why adding monitored teams does not modify a previously saved Vela TV `.ics` link: copy the new URL and replace Vela’s BallerWatch source; Vela currently shows only seven days of fixtures. PWA caches and regression tests updated.
 
 **v11.6.3:** Refreshed all six cinematic feature descriptions to the latest Play/Watch, RATS scouting, RSVP, AI, inbox, device settings and Vela TV calendar capabilities. Added a deliberate upward-scroll resistance at the main-to-soccer-intro boundary: light upward gestures stop at the dashboard; a stronger continuous wheel/trackpad or touch pull rewinds the animated stadium. Regular card scrolling, Skip Intro, offline data and reduced-motion behavior are unaffected. See [current animation documentation](docs/wiki/V2.md#animation--current-production-experience-1163).
