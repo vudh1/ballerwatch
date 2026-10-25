@@ -31,6 +31,7 @@ import {
 } from "./lib/notification-state.js";
 import { createSettingsChoice } from "./lib/settings-choice.js";
 import { PLAY, WATCH, modeGames, watchMatchDetails } from "./lib/match-modes.mjs";
+import { DEFAULT_WATCH_SERVICES } from "./lib/watch-coverage.mjs";
 import { readGuestProfile, saveGuestProfile, MAX_GUEST_TEAMS } from "./lib/guest-profile.js";
 import {
   applyLocalMatchEdits, readLocalMatchEdits, setLocalMatchOverride,
@@ -241,6 +242,14 @@ const modeSelections = {
   watch: { id: "", date: "" },
 };
 const WATCH_TEAM_KEY = experienceKey("ballerwatch-watched-teams-v1", "watched-teams");
+const WATCH_SERVICES_KEY = experienceKey("ballerwatch-watch-services-v1", "watch-services");
+let watchServices = { ...DEFAULT_WATCH_SERVICES };
+try {
+  const saved = JSON.parse(localStorage.getItem(WATCH_SERVICES_KEY) || "null");
+  if (saved && typeof saved === "object" && !Array.isArray(saved)) {
+    for (const service of Object.keys(watchServices)) watchServices[service] = saved[service] !== false;
+  }
+} catch { /* Settings remain usable when device storage is blocked. */ }
 try {
   const saved = JSON.parse(localStorage.getItem(WATCH_TEAM_KEY) || "[]");
   if (Array.isArray(saved)) watchedTeams = [...new Set(saved.filter(x =>
@@ -2302,7 +2311,7 @@ function pickupDisplayCapacity(game) {
 
 function spotlightModel(game, label = "NEXT GAME") {
   if (game?.kind === WATCH) {
-    const details = watchMatchDetails(game);
+    const details = watchMatchDetails(game, watchServices);
     return {
       label: label === "SELECTED GAME" ? "SELECTED MATCH" : "NEXT TO WATCH",
       title: details.title,
@@ -4956,6 +4965,16 @@ document.addEventListener("visibilitychange", () => {
 });
 
 document.documentElement.classList.toggle("is-standalone", standalone());
+for (const name of Object.keys(watchServices)) {
+  const control = document.querySelector("#watch-service-" + name);
+  if (!control) continue;
+  control.checked = watchServices[name];
+  control.addEventListener("change", () => {
+    watchServices[name] = control.checked;
+    try { localStorage.setItem(WATCH_SERVICES_KEY, JSON.stringify(watchServices)); } catch {}
+    if (activeMatchMode === WATCH) renderActiveMode();
+  });
+}
 els.modePlay?.addEventListener("click", () => switchMatchMode(PLAY));
 els.modeWatch?.addEventListener("click", () => switchMatchMode(WATCH));
 syncPersonalCardVisibility();
