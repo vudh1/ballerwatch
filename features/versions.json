@@ -14,7 +14,8 @@
         "Selecting a match date in the schedule jumps to the matching carousel card, expanding the loaded horizon when needed; Play cards and standings remain unchanged.",
         "List all watched matches on that date sorted by kickoff, with match details in a dialog; hide any unknown or unowned channel without placeholder noise.",
         "Use device-local time and date for watched fixtures, retaining timezone-correct UTC iCalendar events.",
-        "Add three-browser carousel and missing-channel coverage; version caches for offline support."
+        "Add three-browser carousel and missing-channel coverage; version caches for offline support.",
+        "Keep next/previous Watch controls visible despite the shared standings waterfall styles; scroll very busy match days inside the card without enlarging the carousel."
       ]
     },
     {
