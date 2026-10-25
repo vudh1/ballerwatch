@@ -1628,6 +1628,7 @@ function initializeCalendarSync() {
   bind("#calendar-sync-refresh", () => calendarSync.refresh());
   bind("#calendar-pair-generate", () => calendarSync.generatePairing());
   bind("#calendar-sync-rotate", () => calendarSync.rotate());
+  bind("#calendar-recovery-renew", () => calendarSync.renewRecovery());
   bind("#calendar-sync-disconnect", () => calendarSync.disconnect());
   bind("#calendar-sync-revoke-others", () => calendarSync.revokeOthers());
   bind("#calendar-sync-delete", () => calendarSync.remove());
