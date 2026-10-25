@@ -1710,7 +1710,7 @@ async function loadWatchIndex() {
     const status = document.querySelector("#watch-teams-status");
     if (status) status.textContent = payload.updatedAt
       ? "Sports schedule indexed " + new Date(payload.updatedAt).toLocaleDateString() +
-        ". Your selected fixtures appear in Teams to watch."
+        ". Your selected fixtures appear under Watching."
       : "Professional fixtures have not been indexed yet.";
     if (activeMatchMode === WATCH) renderActiveMode();
   } catch {
@@ -2059,7 +2059,7 @@ async function registerServiceWorker() {
     void syncServiceWorkerRsvpState();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=11.7.0", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=11.7.1", {
     scope: "./",
     updateViaCache: "none",
   });

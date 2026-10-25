@@ -11,12 +11,12 @@
   <meta name="apple-mobile-web-app-title" content="BallerWatch">
   <meta name="description" content="A moment of football. Then everything you need for your next match.">
   <title>BallerWatch — Your matchday</title>
-  <link rel="manifest" href="./manifest.webmanifest?v=11.7.0">
-  <link rel="icon" href="./icon.svg?v=11.7.0" type="image/svg+xml">
-  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=11.7.0">
-  <script src="./v2/prepaint.js?v=11.7.0"></script>
-  <link rel="stylesheet" href="./styles.css?v=11.7.0">
-  <link rel="stylesheet" href="./v2/styles.css?v=11.7.0">
+  <link rel="manifest" href="./manifest.webmanifest?v=11.7.1">
+  <link rel="icon" href="./icon.svg?v=11.7.1" type="image/svg+xml">
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=11.7.1">
+  <script src="./v2/prepaint.js?v=11.7.1"></script>
+  <link rel="stylesheet" href="./styles.css?v=11.7.1">
+  <link rel="stylesheet" href="./v2/styles.css?v=11.7.1">
 </head>
 <body>
   <div class="status-bar-glass" aria-hidden="true"></div>
@@ -75,7 +75,7 @@
     <p class="v2-static-welcome" hidden>Matchday, at your pace. Motion is reduced on this device.</p>
     <header class="hero">
       <div class="brand-lockup">
-        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=11.7.0" alt=""></div>
+        <div class="brand-mark" aria-hidden="true"><img class="brand-icon" src="./icon.svg?v=11.7.1" alt=""></div>
         <div>
           <p class="eyebrow">SOCCER AT A GLANCE</p>
           <h1 id="matchday-heading" tabindex="-1">BallerWatch</h1>
@@ -89,12 +89,12 @@
       <span id="system-status">Connecting…</span>
     </div>
 
-    <nav class="match-mode-switch" aria-label="Choose match calendar" data-mode="play">
-      <div class="match-mode-track" role="group" aria-label="Matches to play or watch">
+    <nav class="match-mode-switch" aria-label="Choose matchday view" data-mode="play">
+      <div class="match-mode-track" role="group" aria-label="Playing or Watching">
         <button type="button" id="mode-play" class="match-mode-option is-active"
-          aria-pressed="true">Teams to play</button>
+          aria-pressed="true">Playing</button>
         <button type="button" id="mode-watch" class="match-mode-option"
-          aria-pressed="false">Teams to watch</button>
+          aria-pressed="false">Watching</button>
       </div>
     </nav>
     <div id="setup-missing-note" class="setup-missing-note" hidden>
@@ -480,7 +480,7 @@
           <input type="hidden" id="setup-name-input">
         </section>
       <section data-setup-step hidden>
-          <p class="eyebrow">TEAMS TO PLAY</p>
+          <p class="eyebrow">PLAYING</p>
           <h3>Which RATS teams do you play for?</h3>
           <p class="hint">Choose up to 8 teams for your match cards and standings.</p>
           <div class="settings-choice" id="setup-teams-choice">
@@ -499,7 +499,7 @@
           <input type="hidden" id="setup-teams-input">
         </section>
       <section data-setup-step hidden>
-          <p class="eyebrow">TEAMS TO WATCH</p>
+          <p class="eyebrow">WATCHING</p>
           <h3>Which teams do you like to watch?</h3>
           <p class="hint">Choose up to 20 NBA, European football or international teams.</p>
           <div class="settings-choice" id="setup-watch-choice">
@@ -614,7 +614,7 @@
             <p class="hint">All current-season teams are indexed in advance. Team changes update your cards instantly, without changing other visitors’ settings.</p>
           </div>
           <div class="settings-choice-field">
-            <label for="watch-teams-trigger">Teams to watch · NBA, European football, national teams</label>
+            <label for="watch-teams-trigger">Watching · NBA, European football, national teams</label>
             <div class="settings-choice" id="watch-teams-choice">
               <button class="settings-choice-trigger" id="watch-teams-trigger" type="button"
                 aria-haspopup="listbox" aria-expanded="false" aria-controls="watch-teams-options">
@@ -809,7 +809,7 @@
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=11.7.0"></script>
-  <script type="module" src="./v2/app.js?v=11.7.0"></script>
+  <script type="module" src="./app.js?v=11.7.1"></script>
+  <script type="module" src="./v2/app.js?v=11.7.1"></script>
 </body>
 </html>

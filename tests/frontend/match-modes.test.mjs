@@ -41,3 +41,16 @@ test("unselected services are not advertised to a device", () => {
   assert.equal(watchCoverage({broadcasts:["Prime Video"]},
     {prime:false,espn:false,drogon:false}), "");
 });
+
+test("Playing and Watching labels are consistent in navigation and first-run setup", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const html = await readFile(new URL("../../frontend/web/index.html", import.meta.url), "utf8");
+  for (const [id, label] of [["mode-play", "Playing"], ["mode-watch", "Watching"]]) {
+    assert.match(html, new RegExp('id="' + id + '"[^>]*>' + label + '</button>'));
+  }
+  assert.match(html, /<p class="eyebrow">PLAYING<\/p>/);
+  assert.match(html, /<p class="eyebrow">WATCHING<\/p>/);
+  assert.match(html, /aria-label="Playing or Watching"/);
+  assert.match(html, /<label for="watch-teams-trigger">Watching · NBA/);
+  assert.doesNotMatch(html, /Teams to (?:play|watch)/i);
+});

@@ -1,7 +1,19 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.7.0",
+  "currentVersion": "11.7.1",
   "releases": [
+    {
+      "version": "11.7.1",
+      "date": "2026-10-25",
+      "type": "patch",
+      "source": "user-feedback",
+      "title": "Concise Playing and Watching labels",
+      "changes": [
+        "Shorten the dashboard mode buttons and accessible matchday-switching description to Playing and Watching.",
+        "Use the same terms in optional first-device setup, watched-team Settings and fixture-status copy, retaining all stored preferences and ICS contracts.",
+        "Refresh versioned PWA shell resources for installed browsers and add regression coverage for the visible labels."
+      ]
+    },
     {
       "version": "11.7.0",
       "date": "2026-10-25",
