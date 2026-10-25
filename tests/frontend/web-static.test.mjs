@@ -437,7 +437,8 @@ test("calendar defaults to fourteen days and expands to the latest match week", 
   assert.doesNotMatch(app, /let calendarWindowStart/);
   assert.match(app, /let calendarExpanded = false/);
   assert.match(app, /return Array\.from\(\{ length: 14 \}/);
-  assert.match(app, /Math\.ceil\(span \/ 7\) \* 7/);
+  assert.match(app, /Math\.ceil\(visibleSpan \/ 7\) \* 7/);
+  assert.match(app, /watchWindowDays\(base, watchDayWindow\)/);
   assert.match(app, /function setCalendarExpanded/);
   assert.match(app, /calendarCard\?\.addEventListener\("click"/);
   assert.match(css, /\.calendar-card\.is-expanded \.calendar-grid/);
