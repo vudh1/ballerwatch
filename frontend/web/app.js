@@ -30,6 +30,7 @@ import {
   saveLocalNotificationChannels,
 } from "./lib/notification-state.js";
 import { createSettingsChoice } from "./lib/settings-choice.js";
+import { createCalendarSync } from "./lib/calendar-sync.js";
 import { createFirstRunWizard, isFirstRunDevice } from "./lib/first-run.js";
 import { PLAY, WATCH, modeGames, watchMatchDetails } from "./lib/match-modes.mjs";
 import { DEFAULT_WATCH_SERVICES } from "./lib/watch-coverage.mjs";
@@ -254,6 +255,7 @@ let guestTeamSelector = null;
 let guestNameSelector = null;
 let watchTeamSelector = null;
 let firstRunWizard = null;
+let calendarSync = null;
 let watchedGames = [];
 let watchedTeams = [];
 let watchedUpdatedAt = "";
@@ -267,6 +269,7 @@ const WATCH_TEAM_KEY = experienceKey("ballerwatch-watched-teams-v1", "watched-te
 const FIRST_RUN_KEY = /^\/ballerwatch\/beta(?:\/|$)/.test(window.location.pathname)
   ? "ballerwatch-beta-first-run-v1" : "ballerwatch-first-run-v1";
 const WATCH_SERVICES_KEY = experienceKey("ballerwatch-watch-services-v1", "watch-services");
+const CALENDAR_PICKUP_KEY = experienceKey("ballerwatch-calendar-pickup-v1", "calendar-pickup");
 let watchServices = { ...DEFAULT_WATCH_SERVICES };
 try {
   const saved = JSON.parse(localStorage.getItem(WATCH_SERVICES_KEY) || "null");
@@ -1550,6 +1553,99 @@ function switchMatchMode(next) {
   if (next === WATCH) void loadWatchIndex();
 }
 
+function pickupIncludedInCalendar() {
+  try {
+    const saved = localStorage.getItem(CALENDAR_PICKUP_KEY);
+    return saved === null ? Boolean(guestProfile.name) : saved === "1";
+  } catch { return Boolean(guestProfile.name); }
+}
+
+function currentCalendarSelection() {
+  return { teams: guestProfile.teams, watch: watchedTeams, pickup: pickupIncludedInCalendar() };
+}
+
+function applySharedCalendarSelection(selected) {
+  if (!selected || !Array.isArray(selected.teams) || !Array.isArray(selected.watch)) return;
+  guestSelector().setValue(selected.teams);
+  saveGuestSettings();
+  watchSelector().setValue(selected.watch);
+  saveWatchSettings();
+  try { localStorage.setItem(CALENDAR_PICKUP_KEY, selected.pickup ? "1" : "0"); } catch {}
+  const pickup = document.querySelector("#calendar-include-pickup");
+  if (pickup) pickup.checked = selected.pickup === true;
+}
+
+function renderCalendarSyncState(state) {
+  const status = document.querySelector("#calendar-sync-status");
+  const button = document.querySelector("#calendar-sync-enable");
+  if (button) button.hidden = state.connected || !state.available;
+  const connected = document.querySelector("#calendar-sync-connected");
+  const unconnected = document.querySelector("#calendar-sync-unconnected");
+  if (connected) connected.hidden = !state.connected;
+  if (unconnected) unconnected.hidden = state.connected;
+  const refresh = document.querySelector("#calendar-sync-refresh");
+  if (refresh) refresh.disabled = !state.connected || !state.available;
+  const recovery = document.querySelector("#calendar-recovery-once");
+  const code = document.querySelector("#calendar-recovery-code");
+  if (recovery && code) {
+    recovery.hidden = !state.recoveryCode;
+    code.textContent = state.recoveryCode || "";
+  }
+  const pair = document.querySelector("#calendar-pair-display");
+  if (pair) {
+    pair.hidden = !state.pairingCode;
+    pair.textContent = state.pairingCode ? "One-time pairing code (expires in 5 minutes): " + state.pairingCode : "";
+  }
+  if (status) status.textContent = state.message ||
+    (state.connected ? "Permanent link enabled · team changes sync automatically." :
+      state.available ? "Not connected · enable sync or link an authorized device." :
+        "Cloud sync unavailable · local calendar still works.");
+  const help = document.querySelector("#calendar-subscription-status");
+  if (help) help.textContent = state.connected
+    ? "Your permanent read-only calendar URL updates when your teams change. Vela TV can keep the same link; it refreshes on its own schedule."
+    : "This device's existing calendar link embeds current teams. If you change them, replace the link in Vela TV.";
+}
+function initializeCalendarSync() {
+  const pickup = document.querySelector("#calendar-include-pickup");
+  if (pickup) {
+    pickup.checked = pickupIncludedInCalendar();
+    pickup.addEventListener("change", () => {
+      try { localStorage.setItem(CALENDAR_PICKUP_KEY, pickup.checked ? "1" : "0"); }
+      catch {}
+      calendarSync?.queueUpdate();
+    });
+  }
+  calendarSync = createCalendarSync({
+    storage: localStorage,
+    request: api,
+    getSelection: currentCalendarSelection,
+    applySelection: applySharedCalendarSelection,
+    onState: renderCalendarSyncState,
+    confirm: (message) => window.confirm(message),
+  });
+  const bind = (id, action) => document.querySelector(id)?.addEventListener("click", () => void action());
+  bind("#calendar-sync-enable", () => calendarSync.enable());
+  bind("#calendar-sync-refresh", () => calendarSync.refresh());
+  bind("#calendar-pair-generate", () => calendarSync.generatePairing());
+  bind("#calendar-sync-rotate", () => calendarSync.rotate());
+  bind("#calendar-sync-disconnect", () => calendarSync.disconnect());
+  bind("#calendar-sync-revoke-others", () => calendarSync.revokeOthers());
+  bind("#calendar-sync-delete", () => calendarSync.remove());
+  bind("#calendar-recovery-dismiss", () => calendarSync.dismissSensitive());
+  bind("#calendar-pair-redeem", async () => {
+    const field = document.querySelector("#calendar-pair-input");
+    await calendarSync.link(field.value);
+    field.value = "";
+  });
+  bind("#calendar-recover", async () => {
+    const field = document.querySelector("#calendar-recover-input");
+    await calendarSync.recover(field.value);
+    field.value = "";
+  });
+  renderCalendarSyncState({ connected: Boolean(calendarSync.state()),
+    available: false, message: "Calendar sync availability is checked when Settings opens." });
+}
+
 function calendarSubscriptionUrl() {
   const query = new URLSearchParams();
   if (guestProfile.teams.length) query.set("teams", guestProfile.teams.join(","));
@@ -1558,8 +1654,13 @@ function calendarSubscriptionUrl() {
   return API + "/web/calendar.ics" + (query.toString() ? "?" + query.toString() : "");
 }
 async function copyCalendarSubscription() {
-  const url = calendarSubscriptionUrl();
   const status = document.querySelector("#calendar-subscription-status");
+  if (calendarSync?.state()?.url) {
+    await calendarSync.copy();
+    if (status) status.textContent = "Permanent URL copied. Keep it private; Vela can refresh it after your team selections change.";
+    return;
+  }
+  const url = calendarSubscriptionUrl();
   try {
     if (!navigator.clipboard?.writeText) throw new Error("clipboard unavailable");
     await navigator.clipboard.writeText(url);
@@ -1582,9 +1683,11 @@ function saveWatchSettings() {
   watchedUpdatedAt = "";
   const subscriptionStatus = document.querySelector("#calendar-subscription-status");
   if (subscriptionStatus) subscriptionStatus.textContent =
-    "Your watched teams changed. Copy the updated calendar link and replace the BallerWatch source in Vela TV. Existing links keep the old team selection.";
+    calendarSync?.state() ? "Watched teams saved locally; permanent calendar sync will update."
+      : "Your watched teams changed. Copy the new calendar link to Vela TV unless permanent sync is enabled.";
   if (activeMatchMode === WATCH) renderActiveMode();
   void loadWatchIndex();
+  calendarSync?.queueUpdate();
 }
 async function loadWatchIndex() {
   try {
@@ -1724,6 +1827,9 @@ function saveGuestSettings() {
     return;
   }
   guestProfile = readGuestProfile(localStorage);
+  if (previousName !== guestProfile.name || JSON.stringify(guestProfile.teams) !== before) {
+    calendarSync?.queueUpdate();
+  }
   if (previousName !== guestProfile.name) {
     scheduleDevicePushRefresh();
     renderDeviceCalendar();
@@ -1764,6 +1870,7 @@ async function openSettings(options = {}) {
   // Anonymous preferences save immediately as the visitor edits fields.
   // No form submission or password/account flow is involved.
   renderGuestSettings();
+  void calendarSync?.status();
   void loadRsvpNameOptions();
   renderDeviceHiddenMatches();
   void loadGuestTeamOptions();
@@ -5347,6 +5454,7 @@ document.querySelector("#setup-open-settings")?.addEventListener("click", () => 
 els.modePlay?.addEventListener("click", () => switchMatchMode(PLAY));
 els.modeWatch?.addEventListener("click", () => switchMatchMode(WATCH));
 syncPersonalCardVisibility();
+initializeCalendarSync();
 document.querySelector("#copy-calendar-link")?.addEventListener("click", copyCalendarSubscription);
 playLaunchIntro();
 renderMusicControl();
