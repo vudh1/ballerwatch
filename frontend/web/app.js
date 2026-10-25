@@ -30,6 +30,7 @@ import {
   saveLocalNotificationChannels,
 } from "./lib/notification-state.js";
 import { createSettingsChoice } from "./lib/settings-choice.js";
+import { PLAY, WATCH, modeGames, watchMatchDetails } from "./lib/match-modes.mjs";
 import { readGuestProfile, saveGuestProfile, MAX_GUEST_TEAMS } from "./lib/guest-profile.js";
 import {
   applyLocalMatchEdits, readLocalMatchEdits, setLocalMatchOverride,
@@ -120,6 +121,9 @@ const els = {
   installHelp: document.querySelector("#install-help"),
   installDialog: document.querySelector("#install-dialog"),
   spotlightCarousel: document.querySelector("#spotlight-carousel"),
+  matchModeSwitch: document.querySelector(".match-mode-switch"),
+  modePlay: document.querySelector("#mode-play"),
+  modeWatch: document.querySelector("#mode-watch"),
   spotlightPrevious: document.querySelector("#spotlight-previous"),
   spotlightNext: document.querySelector("#spotlight-next"),
   nextGameCard: document.querySelector("#next-game-card"),
@@ -228,8 +232,13 @@ let guestProfile = readGuestProfile(localStorage);
 let guestTeamSelector = null;
 let watchTeamSelector = null;
 let watchedGames = [];
-let watchedDate = "";
 let watchedTeams = [];
+let watchedUpdatedAt = "";
+let activeMatchMode = PLAY;
+const modeSelections = {
+  play: { id: "", date: "" },
+  watch: { id: "", date: "" },
+};
 const WATCH_TEAM_KEY = experienceKey("ballerwatch-watched-teams-v1", "watched-teams");
 try {
   const saved = JSON.parse(localStorage.getItem(WATCH_TEAM_KEY) || "[]");
@@ -1416,12 +1425,42 @@ function watchSelector() {
   });
   return watchTeamSelector;
 }
-function syncPersonalCardVisibility() {
-  const spotlight = document.querySelector("#spotlight-carousel");
-  const standings = document.querySelector("#league-standings");
-  if (spotlight) spotlight.hidden = !(guestProfile.name || guestProfile.teams.length);
-  if (standings) standings.hidden = !guestProfile.teams.length;
+function activeModeGames() {
+  return modeGames(activeMatchMode, currentCalendar?.games || [], watchedGames);
 }
+
+function activeCalendarStartDate() {
+  return activeMatchMode === WATCH ? todaySeattleKey() : currentCalendar?.startDate || "";
+}
+
+function syncPersonalCardVisibility() {
+  const play = activeMatchMode === PLAY;
+  els.matchModeSwitch.dataset.mode = activeMatchMode;
+  els.modePlay.classList.toggle("is-active", play);
+  els.modeWatch.classList.toggle("is-active", !play);
+  els.modePlay.setAttribute("aria-pressed", String(play));
+  els.modeWatch.setAttribute("aria-pressed", String(!play));
+  // Watch always has its own match/schedule cards, even when no team is selected.
+  els.spotlightCarousel.hidden = play && !(guestProfile.name || guestProfile.teams.length);
+  document.querySelector("#league-standings").hidden = !play || !guestProfile.teams.length;
+}
+
+function switchMatchMode(next) {
+  if (![PLAY, WATCH].includes(next) || next === activeMatchMode) return;
+  modeSelections[activeMatchMode] = {
+    id: selectedCalendarGameId, date: selectedCalendarDate,
+  };
+  activeMatchMode = next;
+  const selection = modeSelections[next];
+  selectedCalendarGameId = selection.id;
+  selectedCalendarDate = selection.date;
+  closeMatchCardMenu();
+  cancelSpotlightIdleReset();
+  syncPersonalCardVisibility();
+  renderActiveMode();
+  if (next === WATCH) void loadWatchIndex();
+}
+
 function calendarSubscriptionUrl() {
   const query = new URLSearchParams();
   if (guestProfile.teams.length) query.set("teams", guestProfile.teams.join(","));
@@ -1450,7 +1489,8 @@ function saveWatchSettings() {
     return;
   }
   watchedGames = [];
-  renderCalendarGrid();
+  watchedUpdatedAt = "";
+  if (activeMatchMode === WATCH) renderActiveMode();
   void loadWatchIndex();
 }
 async function loadWatchIndex() {
@@ -1461,13 +1501,14 @@ async function loadWatchIndex() {
     if (selection !== JSON.stringify(watchedTeams)) return;
     if (!payload?.ok || !Array.isArray(payload.teams)) throw new Error("Unavailable");
     watchSelector().setOptions([...new Set([...watchedTeams, ...payload.teams])]);
-    watchedGames = Array.isArray(payload.games) ? payload.games.filter(g=>g.kind==="watch") : [];
+    watchedGames = Array.isArray(payload.games) ? payload.games.filter(g => g.kind === WATCH) : [];
+    watchedUpdatedAt = payload.updatedAt || "";
     const status = document.querySelector("#watch-teams-status");
     if (status) status.textContent = payload.updatedAt
       ? "Sports schedule indexed " + new Date(payload.updatedAt).toLocaleDateString() +
-        ". Your selected fixtures appear in the calendar."
+        ". Your selected fixtures appear in Teams to watch."
       : "Professional fixtures have not been indexed yet.";
-    if (currentCalendar) renderCalendarGrid();
+    if (activeMatchMode === WATCH) renderActiveMode();
   } catch {
     const status = document.querySelector("#watch-teams-status");
     if (status) status.textContent = "Sports index unavailable. Your saved watchlist is preserved.";
