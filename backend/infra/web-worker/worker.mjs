@@ -52,6 +52,7 @@ import {
 import { visiblePickupCapacity } from "../../shared/pickup-capacity.mjs";
 import { ALL_RUNTIME_FILE_PATHS } from "../../shared/runtime-paths.mjs";
 import { DEFAULT_LEAGUE_TEAMS } from "../../shared/defaults.mjs";
+import { calendarToIcs } from "../../shared/ical-feed.mjs";
 import { KEY_CONTEXT } from "../../shared/security-contexts.mjs";
 import { validWebPushEndpoint } from "../../shared/web-push-endpoint.mjs";
 
@@ -3048,6 +3049,36 @@ export function webCalendarDetails(
   };
 }
 
+async function loadSportsIndex(env) {
+  return publicReadCache.get("sports-fixture-index-v1", 300_000, async () => {
+    const encrypted = await githubFile(env, "sports/state/fixtures.json", "runtime-state");
+    const snapshot = await decryptState(encrypted, env);
+    if (!snapshot || !Array.isArray(snapshot.teams) || !Array.isArray(snapshot.games)) {
+      throw new Error("Professional fixture index unavailable.");
+    }
+    return snapshot;
+  }, { staleMs: 7 * 86400_000, transientError: transientPublicLoadError });
+}
+function webTeamSelection(params, key, limit = 20) {
+  const raw = params.get(key) || "";
+  const teams = [...new Set(raw.split(",").map(value => value.trim()).filter(Boolean))];
+  if (raw.length > 3200 || teams.length > limit ||
+      teams.some(value => value.length < 2 || value.length > 120 || /[\u0000-\u001f]/.test(value))) {
+    throw new RangeError("Invalid team selection.");
+  }
+  return teams;
+}
+function watchedFixtures(index, selected) {
+  if (!Array.isArray(index?.games) || !selected.length) return [];
+  const allowed = new Set((index.teams || []).map(x => x.toLowerCase()));
+  const wanted = new Set(selected.map(x => x.toLowerCase()).filter(x => allowed.has(x)));
+  if (!wanted.size) return [];
+  const now = Date.now() - 3 * 3600_000;
+  return index.games.filter(game =>
+    game.kind === "watch" && Array.isArray(game.teams) &&
+    game.teams.some(team => wanted.has(String(team).toLowerCase())) &&
+    Date.parse(game.startUtc) >= now).slice(0, 450);
+}
 async function loadWebWeather(env) {
   // Previously every /web/calendar response fetched and decrypted GitHub
   // weather before the user could see their schedule. Cache the public-only
@@ -3828,6 +3859,54 @@ export default {
     if (request.method === "GET" && url.pathname === "/web/board") {
       const entries = await webBoard(env, url.searchParams.get("limit") || 30);
       return webJson(request, { ok: true, entries });
+    }
+    if (request.method === "GET" && url.pathname === "/web/sports") {
+      try {
+        const selection = webTeamSelection(url.searchParams, "teams", 20);
+        const index = await loadSportsIndex(env);
+        return webJson(request, { ok: true, updatedAt: index.updatedAt,
+          provider: index.provider, teams: index.teams,
+          games: watchedFixtures(index, selection) });
+      } catch (error) {
+        return webJson(request, { ok: false, error: "Professional fixture index is not ready." },
+          { status: error instanceof RangeError ? 400 : 503 });
+      }
+    }
+    if (request.method === "GET" && url.pathname === "/web/calendar.ics") {
+      try {
+        const teams = webTeamSelection(url.searchParams, "teams", 8);
+        const watches = webTeamSelection(url.searchParams, "watch", 20);
+        const pickup = url.searchParams.get("pickup") === "1";
+        let published = [];
+        let updatedAt = "";
+        if (teams.length || pickup) {
+          const snapshot = await loadSnapshot(env);
+          const index = teams.length ? await loadScoutingIndex(env) : null;
+          if (teams.length && (!scoutingSeasonCurrent(index, snapshot) ||
+              !Array.isArray(index.availableMatches))) throw new Error("Team index pending");
+          const matches = webCalendarDetails(snapshot, {}, 14, localDate(), new Date(), {},
+            teams.length ? { teams, matches: index.availableMatches } : null);
+          published = matches.games.filter(game => game.kind === "league" ? teams.length > 0 :
+            pickup && (game.kind === "pickup" || game.kind === "free_pickup"));
+          updatedAt = matches.updatedAt;
+        }
+        if (watches.length) {
+          const indexed = await loadSportsIndex(env);
+          published.push(...watchedFixtures(indexed, watches));
+          updatedAt = indexed.updatedAt || updatedAt;
+        }
+        const body = calendarToIcs(published, {
+          name: "BallerWatch · My sports", updatedAt,
+        });
+        const headers = new Headers(webResponseHeaders(request));
+        headers.set("content-type", "text/calendar; charset=utf-8");
+        headers.set("cache-control", "public, max-age=300");
+        headers.set("content-disposition", 'inline; filename="ballerwatch.ics"');
+        return new Response(body, { status: 200, headers });
+      } catch (error) {
+        return webJson(request, { ok: false, error: "Calendar subscription temporarily unavailable." },
+          { status: error instanceof RangeError ? 400 : 503 });
+      }
     }
     if (request.method === "GET" && url.pathname === "/web/calendar") {
       try {
