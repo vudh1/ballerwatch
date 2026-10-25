@@ -1435,14 +1435,15 @@ function activeCalendarStartDate() {
 
 function syncPersonalCardVisibility() {
   const play = activeMatchMode === PLAY;
-  els.matchModeSwitch.dataset.mode = activeMatchMode;
-  els.modePlay.classList.toggle("is-active", play);
-  els.modeWatch.classList.toggle("is-active", !play);
-  els.modePlay.setAttribute("aria-pressed", String(play));
-  els.modeWatch.setAttribute("aria-pressed", String(!play));
+  els.matchModeSwitch?.setAttribute("data-mode", activeMatchMode);
+  els.modePlay?.classList.toggle("is-active", play);
+  els.modeWatch?.classList.toggle("is-active", !play);
+  els.modePlay?.setAttribute("aria-pressed", String(play));
+  els.modeWatch?.setAttribute("aria-pressed", String(!play));
   // Watch always has its own match/schedule cards, even when no team is selected.
   els.spotlightCarousel.hidden = play && !(guestProfile.name || guestProfile.teams.length);
-  document.querySelector("#league-standings").hidden = !play || !guestProfile.teams.length;
+  const standings = document.querySelector("#league-standings");
+  if (standings) standings.hidden = !play || !guestProfile.teams.length;
 }
 
 function switchMatchMode(next) {
@@ -4944,8 +4945,8 @@ document.addEventListener("visibilitychange", () => {
 });
 
 document.documentElement.classList.toggle("is-standalone", standalone());
-els.modePlay.addEventListener("click", () => switchMatchMode(PLAY));
-els.modeWatch.addEventListener("click", () => switchMatchMode(WATCH));
+els.modePlay?.addEventListener("click", () => switchMatchMode(PLAY));
+els.modeWatch?.addEventListener("click", () => switchMatchMode(WATCH));
 syncPersonalCardVisibility();
 document.querySelector("#copy-calendar-link")?.addEventListener("click", copyCalendarSubscription);
 playLaunchIntro();
