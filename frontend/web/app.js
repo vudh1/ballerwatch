@@ -264,7 +264,8 @@ const modeSelections = {
   watch: { id: "", date: "" },
 };
 const WATCH_TEAM_KEY = experienceKey("ballerwatch-watched-teams-v1", "watched-teams");
-const FIRST_RUN_KEY = experienceKey("ballerwatch-first-run-v1", "first-run");
+const FIRST_RUN_KEY = /^\/ballerwatch\/beta(?:\/|$)/.test(window.location.pathname)
+  ? "ballerwatch-beta-first-run-v1" : "ballerwatch-first-run-v1";
 const WATCH_SERVICES_KEY = experienceKey("ballerwatch-watch-services-v1", "watch-services");
 let watchServices = { ...DEFAULT_WATCH_SERVICES };
 try {
