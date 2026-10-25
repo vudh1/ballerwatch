@@ -55,12 +55,6 @@ jobs:
             node --test "$file"
           done < <(find tests -name '*.test.mjs' -print0 | sort -z)
 
-      # One-off read-only audit on the Drogon release PR. No canonical state,
-      # keys, tokens or external EPG queries. Remove before main merge.
-      - name: Measure published 28-day broadcasts versus saved Drogon channels
-        if: github.event_name == 'pull_request' && github.head_ref == 'release/11.8.0-drogon-lineup'
-        run: node scripts/audit-drogon-coverage.mjs
-
       - name: Bundle Cloudflare Worker
         working-directory: backend/infra/web-worker
         run: npx --yes wrangler@4.145.0 deploy --dry-run --outdir /tmp/ballerwatch-worker
