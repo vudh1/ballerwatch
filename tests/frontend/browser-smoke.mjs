@@ -285,7 +285,7 @@ try {
             <div id="test-panel" hidden><input id="test-search">
             <div id="test-options"></div></div>`;
           document.body.append(root);
-          let saves = 0;
+          window.testProfileSaves = 0;
           const input = root.querySelector("#test-value");
           const panel = root.querySelector("#test-panel");
           const search = root.querySelector("#test-search");
@@ -294,7 +294,7 @@ try {
           const select = createSettingsChoice({
             root, trigger, panel, search, optionsList: options,
             display: root.querySelector("#test-display"), input, multiple: false,
-            onChange: () => { saves += 1; },
+            onChange: () => { window.testProfileSaves += 1; },
           });
           const started = performance.now();
           select.setOptions(Array.from({ length: 1200 }, (_, i) => "Synthetic Team " + i));
@@ -308,8 +308,7 @@ try {
           const selected = options.querySelector('[role="option"]');
           selected.click();
           const immediate = input.value;
-          await new Promise(resolve => setTimeout(resolve, 80));
-          const result = { initialRows, matches, immediate, saved: saves,
+          const result = { initialRows, matches, immediate,
             firstPaint, expanded: trigger.getAttribute("aria-expanded") };
           root.remove();
           return result;
@@ -319,7 +318,9 @@ try {
         assert.ok(result.matches.some(text => text.includes("Synthetic Team 1199")),
           "Search still reaches unloaded options");
         assert.equal(result.immediate, "Synthetic Team 1199");
-        assert.equal(result.saved, 1, "Persist the selected value only once");
+        await page.waitForFunction(() => window.testProfileSaves === 1);
+        assert.equal(await page.evaluate(() => window.testProfileSaves), 1,
+          "Persist the selected value only once after feedback paints");
         assert.equal(result.expanded, "false", "Single selection closes the popover");
         assert.deepEqual(errors, []);
         await context.close();
