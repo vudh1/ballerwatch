@@ -278,7 +278,7 @@ try {
         });
         await ready(page);
         const result = await page.evaluate(async () => {
-          const { createSettingsChoice } = await import("./lib/settings-choice.js");
+          const { createSettingsChoice } = await import(new URL("lib/settings-choice.js", location.href).href);
           const root = document.createElement("div");
           root.innerHTML = `<button id="test-trigger"></button>
             <span id="test-display"></span><input id="test-value">
