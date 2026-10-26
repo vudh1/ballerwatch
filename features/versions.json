@@ -1,7 +1,19 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.11.1",
+  "currentVersion": "11.11.2",
   "releases": [
+    {
+      "version": "11.11.2",
+      "date": "2026-10-25",
+      "type": "patch",
+      "source": "user-feedback",
+      "title": "Correct beta's displayed frontend build version",
+      "changes": [
+        "Use the version of the loaded PWA module rather than the shared production Cloudflare /web/config release version when labeling the beta and production frontends.",
+        "Show the local build version without waiting on API responses; keep /web/config behavior, encrypted runtime state, calendars/ICS, per-device preferences, and offline fallback unchanged.",
+        "Refresh versioned PWA assets and service-worker shell and test a stale API version in Chromium, Firefox and WebKit."
+      ]
+    },
     {
       "version": "11.11.1",
       "date": "2026-10-25",

@@ -216,6 +216,10 @@ const els = {
   matchOverrideStatus: document.querySelector("#match-override-status"),
 };
 
+// The API is shared with production; the loaded PWA module owns its release label.
+const FRONTEND_VERSION = new URL(import.meta.url).searchParams.get("v");
+if (FRONTEND_VERSION) els.version.textContent = `BallerWatch v${FRONTEND_VERSION}`;
+
 let config = null;
 let currentNextGame = null;
 let currentCalendar = null;
@@ -2063,7 +2067,7 @@ async function registerServiceWorker() {
     void syncServiceWorkerRsvpState();
   });
 
-  const registration = await navigator.serviceWorker.register("./sw.js?v=11.11.1", {
+  const registration = await navigator.serviceWorker.register("./sw.js?v=11.11.2", {
     scope: "./",
     updateViaCache: "none",
   });
@@ -2075,7 +2079,8 @@ async function registerServiceWorker() {
 async function loadConfig() {
   try {
     config = await api("/web/config", {retryNetwork: true});
-    els.version.textContent = `BallerWatch v${config.version}`;
+    const displayVersion = FRONTEND_VERSION || config.version;
+    if (displayVersion) els.version.textContent = `BallerWatch v${displayVersion}`;
     return true;
   } catch {
     // Version metadata is optional. A config failure does not mean the
