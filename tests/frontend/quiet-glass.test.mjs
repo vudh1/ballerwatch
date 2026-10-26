@@ -49,7 +49,7 @@ test("offline shell assets and system chrome share this review version", () => {
     assert.ok(file.includes("11.11.2"));
     assert.ok(!file.includes("11.10.1"));
   }
-  assert.match(sw, /ballerwatch-v11-11-1-shell/);
+  assert.match(sw, /ballerwatch-v11-11-2-shell/);
   assert.match(html, /styles\.css\?v=11\.11\.2/);
   assert.equal(JSON.parse(manifest).theme_color, "#0D121B");
   assert.equal(JSON.parse(manifest).background_color, "#0D121B");

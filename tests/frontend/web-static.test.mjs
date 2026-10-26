@@ -25,7 +25,7 @@ test("GitHub Pages PWA has installable project-path manifest and service worker"
   const sw = fs.readFileSync("frontend/web/sw.js", "utf8");
   assert.match(sw, /self\.addEventListener\("push"/);
   assert.match(sw, /showNotification/);
-  assert.match(sw, /ballerwatch-v11-11-1-shell/);
+  assert.match(sw, /ballerwatch-v11-11-2-shell/);
 });
 
 test("footer uses the actual frontend build version even when shared API is older", () => {
@@ -33,7 +33,7 @@ test("footer uses the actual frontend build version even when shared API is olde
   const html = fs.readFileSync("frontend/web/index.html", "utf8");
   assert.ok(app.includes('const FRONTEND_VERSION = new URL(import.meta.url).searchParams.get("v");'));
   assert.ok(app.includes("const displayVersion = FRONTEND_VERSION || config.version;"));
-  assert.ok(!app.includes("els.version.textContent = `BallerWatch v\${config.version}`;"));
+  assert.ok(!app.includes("els.version.textContent = `BallerWatch v${config.version}`;"));
   assert.ok(html.includes("app.js?v=11.11.2"));
 });
 
