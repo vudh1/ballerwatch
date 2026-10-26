@@ -41,8 +41,10 @@ test("watch calendar titles and descriptions identify the actual competition", (
       competition:"UEFA Nations League",startUtc:"2026-11-08T20:00:00Z"},
   ];
   const ics = calendarToIcs(fixtures, { updatedAt: "2026-10-25T12:00:00Z" });
+  // RFC 5545 folds lines after 75 bytes; compare unfolded event properties.
+  const unfolded = ics.replace(/\r\n /g, "");
   for (const game of fixtures) {
-    assert.ok(ics.includes("SUMMARY:" + game.competition + " · " + game.title), game.competition);
+    assert.ok(unfolded.includes("SUMMARY:" + game.competition + " · " + game.title), game.competition);
     assert.ok(ics.includes("Competition: " + game.competition), game.competition);
     assert.ok(ics.includes(encodeURIComponent(game.id) + "@ballerwatch"));
   }
