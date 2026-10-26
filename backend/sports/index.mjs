@@ -1,6 +1,7 @@
 /**
  * Low-cost, scheduled public professional-sport fixture catalogue.
  * This is isolated from RATS fixtures, scouting, RSVP and Web Push.
+ * League and European cup fixtures share selected club identities by name.
  * ESPN's public site feed is unofficial and can change; fail closed rather
  * than clearing a previously verified, encrypted fixture snapshot.
  */
@@ -18,6 +19,8 @@ export const COMPETITIONS = Object.freeze([
   { sport: "soccer", code: "ger.1", label: "Bundesliga", group: "club" },
   { sport: "soccer", code: "ita.1", label: "Serie A", group: "club" },
   { sport: "soccer", code: "fra.1", label: "Ligue 1", group: "club" },
+  { sport: "soccer", code: "uefa.champions", label: "UEFA Champions League", group: "cup" },
+  { sport: "soccer", code: "uefa.europa", label: "UEFA Europa League", group: "cup" },
   { sport: "soccer", code: "uefa.euro", label: "UEFA Euro", group: "national" },
   { sport: "soccer", code: "uefa.nations", label: "UEFA Nations League", group: "national" },
   { sport: "soccer", code: "fifa.worldq.uefa", label: "UEFA World Cup Qualifiers", group: "national" },
@@ -128,7 +131,7 @@ async function getJson(fetcher, url) {
  * ESPN retired multi-day date ranges in 2026. Calendar months and years are
  * still supported, but silently truncate to 100 games unless 'limit' is set.
  * Query published monthly fixture pages across a rolling 13-month horizon.
- * This is ~180 requests per week, with no user-request-time ESPN calls.
+ * This is ~210 requests per week, with no user-request-time ESPN calls.
  */
 export async function indexSports(fetcher = fetch, today = new Date(), previous = null) {
   const from = startOfDay(today);
