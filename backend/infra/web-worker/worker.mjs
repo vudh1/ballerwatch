@@ -54,6 +54,7 @@ import { visiblePickupCapacity } from "../../shared/pickup-capacity.mjs";
 import { ALL_RUNTIME_FILE_PATHS } from "../../shared/runtime-paths.mjs";
 import { DEFAULT_LEAGUE_TEAMS } from "../../shared/defaults.mjs";
 import { calendarToIcs } from "../../shared/ical-feed.mjs";
+import { watchedFixtures } from "../../sports/watch-team-matching.mjs";
 import { handleCalendarProfileRequest } from "./calendar-profiles.mjs";
 import { KEY_CONTEXT } from "../../shared/security-contexts.mjs";
 import { validWebPushEndpoint } from "../../shared/web-push-endpoint.mjs";
@@ -3071,17 +3072,6 @@ function webTeamSelection(params, key, limit = 20) {
     throw new RangeError("Invalid team selection.");
   }
   return teams;
-}
-function watchedFixtures(index, selected) {
-  if (!Array.isArray(index?.games) || !selected.length) return [];
-  const allowed = new Set((index.teams || []).map(x => x.toLowerCase()));
-  const wanted = new Set(selected.map(x => x.toLowerCase()).filter(x => allowed.has(x)));
-  if (!wanted.size) return [];
-  const now = Date.now() - 3 * 3600_000;
-  return index.games.filter(game =>
-    game.kind === "watch" && Array.isArray(game.teams) &&
-    game.teams.some(team => wanted.has(String(team).toLowerCase())) &&
-    Date.parse(game.startUtc) >= now).slice(0, 450);
 }
 async function loadWebWeather(env) {
   // Previously every /web/calendar response fetched and decrypted GitHub
