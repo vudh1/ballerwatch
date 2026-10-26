@@ -1,10 +1,13 @@
 # BallerWatch × FRIDAY calendar subscription v1
 
-**Code status:** Implemented in draft branch `release/11.7.0-first-run-setup` and
-[PR #196](https://github.com/vudh1/ballerwatch/pull/196). **Not merged or deployed.**
-The optional Cloudflare D1 service is **not provisioned by source changes**;
-until its database and separate encryption secret are configured, the new APIs
-respond unavailable and the original parameter-based ICS links remain usable.
+**Code status (2026-10-25):** Profile source was merged by
+[PR #196](https://github.com/vudh1/ballerwatch/pull/196), and BallerWatch's
+normal production release advanced separately. **Stable profile activation is
+not verified or available:** its dedicated D1 database and encryption key have
+not been provisioned through the approved owner gate. The optional profile
+API returns unavailable while the original parameter-based ICS continues to
+work. Source regression coverage and synthetic Vela fixture are tracked
+independently; CI passing does not certify live authorization or hardware.
 Owner authorization decision: **Option A, independently managed anonymous profiles**
 (approved 2026-10-25). Cross-app register:
 [FRIDAY issue #12](https://github.com/vudh1/friday/issues/12).
@@ -114,8 +117,9 @@ Before an authorized production rollout:
 4. Verify free-tier D1 database size and daily read/write allowances and
    Cloudflare Worker quotas before production, set Cloudflare edge rate
    limits, and verify restore/key-rotation and backup procedures.
-5. Separately authorize feature-branch integration to `main`/beta and
-   later a reviewed production release; neither is implicit.
+5. Require a new, explicit owner-approved D1/key activation and reviewed
+   rollout through the owning repo's CI, production release and live auth
+   checks. The existing source merge/release is not that approval.
 
 Do not destroy or change the dedicated AES-GCM key without a reviewed
 re-encryption/key-rotation migration. Otherwise current ciphertext will
