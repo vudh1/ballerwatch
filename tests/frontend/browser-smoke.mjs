@@ -1046,7 +1046,7 @@ try {
           });
           assert.ok(Math.abs(coverage.top) <= 1 && coverage.bottom >= coverage.screenHeight - 1);
           assert.equal(coverage.atBottom, true, "The animation must cover the viewport footer before the reveal");
-          assert.equal(coverage.background, "rgb(6, 26, 24)");
+          assert.equal(coverage.background, "rgb(13, 18, 27)");
           assert.equal(coverage.opacity, "1");
           assert.equal(coverage.views[0], coverage.views[1]);
           assert.equal(coverage.cameras[0], coverage.cameras[1]);
