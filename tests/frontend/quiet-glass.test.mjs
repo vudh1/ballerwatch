@@ -37,7 +37,7 @@ test("mode, watch, hub and reduced motion remain accessible and lightweight", ()
   }
   const layer = css.slice(css.indexOf("FRIDAY Quiet Glass v1, review candidate"));
   assert.match(layer, /\.v2 \.match-mode-track[\s\S]*?backdrop-filter: none;/);
-  assert.match(layer, /\.v2 \.bw-card-frame,[\s\S]*?backdrop-filter: none;/);
+  assert.match(layer, /\.v2 \.watch-day-card[\s\S]*?backdrop-filter: none;/);
   assert.match(layer, /\.v2 \.app-hub-tabs button[\s\S]*?min-height: 44px;/);
   assert.match(layer, /@media \(max-width: 430px\)/);
   assert.match(layer, /@media \(prefers-reduced-motion: reduce\)/);

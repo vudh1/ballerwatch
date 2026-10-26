@@ -8,9 +8,9 @@ First-device setup (three optional steps); intro and immediate Skip; intentional
 
 ## Before → after
 
-- **Before:** green-teal tint is used across nearly every selection, cards use mobile backdrop blur, and controls have competing emphasis. **After:** a charcoal/graphite base, retained soccer-only green accents, sky `#68CFF7` on primary selections and match context, and semantic focus `#BCEAFF`.
+- **Before:** green-teal tint is used across nearly every selection, Watching cards and dialogs still use mobile backdrop blur, and controls have competing emphasis. **After:** a charcoal/graphite base, retained soccer-only green accents, sky `#68CFF7` on primary selections and match context, and semantic focus `#BCEAFF`.
 - **Before:** Playing/Watching and AI/Settings/Notifications work but visual states compete. **After:** an opaque thumb-friendly 44px switch with selected position, a quieter tab bar and visible keyboard focus. No added fetches or JavaScript animations.
-- **Before:** richly blurred cards risk repaint on iPhone Safari. **After:** solid high-opacity cards and detail/first-run surfaces; zero new image assets, shaders or network dependencies.
+- **Before:** richly blurred cards risk repaint on iPhone Safari. **After:** a solid high-opacity Watching day card and detail/first-run surfaces while preserving the exact V1 Playing/standings card appearance; zero new image assets, shaders or network dependencies.
 - **No behavior change:** 366-day source index, Watching single-card mounting, scroll resistance, data freshness, no RSVP admin access, calendar UID/ICS and push subscriptions.
 
 ## UI state / representative viewport review checklist

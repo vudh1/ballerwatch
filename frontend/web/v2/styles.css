@@ -133,7 +133,8 @@
   color: var(--friday-text-primary);
   border-color: var(--friday-border-subtle);
 }
-.v2 .bw-card-frame,
+/* Shared Playing/standing cards deliberately retain their exact V1 appearance.
+ * Watching mounts one day at a time and can use the light solid surface. */
 .v2 .watch-day-card {
   background-color: rgba(24, 33, 46, 0.94);
   border-color: rgba(60, 75, 93, 0.72);
@@ -213,7 +214,6 @@
   .v2 .watch-match-row { transition: none; }
 }
 @media (prefers-contrast: more), (prefers-reduced-transparency: reduce) {
-  .v2 .bw-card-frame,
   .v2 .watch-day-card { background-color: var(--friday-surface-base); }
   .v2 .match-mode-track { border-color: var(--friday-focus-ring); }
 }

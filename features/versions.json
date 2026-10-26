@@ -11,7 +11,7 @@
       "changes": [
         "Map BallerWatch's cinematic V2 to local FRIDAY Quiet Glass v1 graphite, text, sky and focus semantic colors; retain the existing soccer scene, independent frontend and all runtime/API paths.",
         "Clarify Playing/Watching selection and AI/Settings/Notifications tabs with sky-tinted selection, 44px controls, keyboard focus and compact 430px layouts.",
-        "Use opaque mobile-first match cards, match details and first-run surfaces without GPU-heavy backdrop blurs, preserving watch day swipes, native dialogs, data freshness and offline behavior.",
+        "Use a lightweight opaque one-at-a-time Watching day card, match-details and first-run surfaces without GPU-heavy blur while preserving the exact V1 Playing/standings card appearance, data freshness and offline behavior.",
         "Respect reduced motion and higher-contrast or reduced-transparency preferences; update the PWA cache/manifest together and test code-level invariants."
       ]
     },
