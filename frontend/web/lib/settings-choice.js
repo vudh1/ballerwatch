@@ -25,10 +25,18 @@ export function createSettingsChoice({
     // Persisting a team can rebuild fixtures/standings and kick off requests.
     // Commit only the latest selection AFTER its checkmark and popover paint.
     const sequence = ++changeSequence;
+    let committed = false;
+    const commit = () => {
+      if (committed || sequence !== changeSequence) return;
+      committed = true;
+      onChange?.([...selected]);
+    };
+    // WebKit can throttle animation frames while the OS keyboard opens.
+    // A bounded timer keeps the setting persistent without waiting on rAF.
+    const fallback = setTimeout(commit, 45);
     requestAnimationFrame(() => {
-      setTimeout(() => {
-        if (sequence === changeSequence) onChange?.([...selected]);
-      }, 0);
+      clearTimeout(fallback);
+      setTimeout(commit, 0);
     });
   };
 
