@@ -1134,6 +1134,11 @@ try {
         await page.locator("#first-run-dialog[open]").waitFor();
         assert.equal(await page.locator("#setup-progress").textContent(), "STEP 1 OF 3");
         await page.locator("#setup-name-trigger").click();
+        // A fresh device has no RSVP name and no personalized pickup cards.
+        // Real published names must already be present before typing; the
+        // manual-entry suggestion otherwise masks an empty server choice list.
+        await page.locator('#setup-name-options [role="option"]')
+          .filter({ hasText: "Fixture Player" }).waitFor();
         await page.locator("#setup-name-search").fill("Fixture Player");
         await page.locator('#setup-name-options [role="option"]').filter({ hasText: "Fixture Player" }).first().click();
         await page.locator("#setup-next").click();
@@ -1270,8 +1275,8 @@ try {
         await ready(page, "beta/");
         assert.equal(new URL(page.url()).pathname, "/ballerwatch/beta/");
         // Shared API fixtures report 11.0.0; the visible label must be the beta shell.
-        await page.waitForFunction(() => document.querySelector("#version")?.textContent === "BallerWatch v11.11.2");
-        assert.equal(await page.locator("#version").textContent(), "BallerWatch v11.11.2");
+        await page.waitForFunction(() => document.querySelector("#version")?.textContent === "BallerWatch v11.11.3");
+        assert.equal(await page.locator("#version").textContent(), "BallerWatch v11.11.3");
         await page.locator("#next-game-menu-trigger").click();
         await page.locator("#next-game-menu-edit").click();
         await page.locator("#match-override-location").fill("Beta-only Fixture Field");
