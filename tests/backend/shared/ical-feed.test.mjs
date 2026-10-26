@@ -28,3 +28,23 @@ test("escape injection and keep watch events separate", () => {
   assert.match(text, /A\\,B\\;C\\\\D\\nX/);
   assert.match(text, /DTEND:20261026T030000Z/);
 });
+
+test("watch calendar titles and descriptions identify the actual competition", () => {
+  const fixtures = [
+    {id:"watch:eng.1:1",kind:"watch",title:"Arsenal vs Chelsea",
+      competition:"Premier League",startUtc:"2026-11-02T20:00:00Z"},
+    {id:"watch:uefa.champions:2",kind:"watch",title:"Arsenal vs Benfica",
+      competition:"UEFA Champions League",startUtc:"2026-11-04T20:00:00Z"},
+    {id:"watch:uefa.europa:3",kind:"watch",title:"Arsenal vs Porto",
+      competition:"UEFA Europa League",startUtc:"2026-11-06T20:00:00Z"},
+    {id:"watch:uefa.nations:4",kind:"watch",title:"Portugal vs Spain",
+      competition:"UEFA Nations League",startUtc:"2026-11-08T20:00:00Z"},
+  ];
+  const ics = calendarToIcs(fixtures, { updatedAt: "2026-10-25T12:00:00Z" });
+  for (const game of fixtures) {
+    assert.ok(ics.includes("SUMMARY:" + game.competition + " · " + game.title), game.competition);
+    assert.ok(ics.includes("Competition: " + game.competition), game.competition);
+    assert.ok(ics.includes(encodeURIComponent(game.id) + "@ballerwatch"));
+  }
+  assert.equal((ics.match(/BEGIN:VEVENT/g) || []).length, 4);
+});
