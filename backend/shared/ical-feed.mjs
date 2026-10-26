@@ -90,14 +90,16 @@ export function calendarToIcs(games = [], { name = "BallerWatch", updatedAt = ""
     seen.add(game.id);
     const uid = encodeURIComponent(String(game.id).slice(0, 250)) + "@ballerwatch";
     const title = String(game.title || [game.team, game.opponent].filter(Boolean).join(" vs ") || "Match");
+    const summary = game.kind === "watch" && game.competition
+      ? game.competition + " · " + title : title;
     const description = [game.kind === "watch" ? "Watching · professional sports" : "Playing · BallerWatch",
-      game.competition || "", game.jerseyColor ? "Jersey: " + game.jerseyColor : "",
+      game.competition ? (game.kind === "watch" ? "Competition: " : "") + game.competition : "", game.jerseyColor ? "Jersey: " + game.jerseyColor : "",
       game.opponentJerseyColor ? "Opponent jersey: " + game.opponentJerseyColor : "",
       game.kind === "watch" && Array.isArray(game.broadcasts) && game.broadcasts.length
         ? "US TV: " + game.broadcasts.slice(0, 2).join(", ") : "",
       game.rsvpUrl || "", game.locationUrl || "", game.url || ""].filter(Boolean).join("\n");
     lines.push("BEGIN:VEVENT", "UID:" + uid, "DTSTAMP:" + generated,
-      ...times, "SUMMARY:" + icalEscape(title),
+      ...times, "SUMMARY:" + icalEscape(summary),
       "DESCRIPTION:" + icalEscape(description));
     if (game.location || game.address) lines.push("LOCATION:" + icalEscape(game.address || game.location));
     if (game.cancelled) lines.push("STATUS:CANCELLED");

@@ -6,6 +6,8 @@ import { DROGON_CHANNELS, DROGON_TEST_CHANNELS, matchDrogonChannels } from "../.
 import { COMPETITIONS, teamLabel, parsedFixtures, parsedTeams, refreshUpcomingBroadcasts } from "../../../backend/sports/index.mjs";
 test("NBA, top five European football leagues, UEFA and CONMEBOL represented", () => {
  assert.equal(COMPETITIONS.filter(c=>c.group==="club").length,5);
+ assert.deepEqual(COMPETITIONS.filter(c=>c.group==="cup").map(c=>c.code),
+   ["uefa.champions", "uefa.europa"]);
  assert.equal(COMPETITIONS.some(c=>c.code==="nba"),true);
  assert.equal(COMPETITIONS.some(c=>c.code==="uefa.nations"),true);
  assert.equal(COMPETITIONS.some(c=>c.code==="conmebol.america"),true);
@@ -174,4 +176,20 @@ test("NBA Prime match matching uses U.S. Eastern fixture date, not Pacific date"
   assert.deepEqual(withPublishedPrimeVideo(official).broadcasts,["Prime Video"]);
   assert.deepEqual(withPublishedPrimeVideo(withPublishedPrimeVideo(official)).broadcasts,
     ["Prime Video"]);
+});
+
+test("European cup fixtures preserve real competition names and unique source IDs", () => {
+  for (const code of ["uefa.champions", "uefa.europa", "uefa.nations"]) {
+    const comp = COMPETITIONS.find(entry => entry.code === code);
+    const [match] = parsedFixtures({ events: [{
+      id: "401", date: "2026-11-04T20:00:00Z",
+      competitions: [{ competitors: [
+        { homeAway: "home", team: { displayName: code === "uefa.nations" ? "France" : "Arsenal" } },
+        { homeAway: "away", team: { displayName: code === "uefa.nations" ? "Germany" : "Benfica" } },
+      ] }],
+    }] }, comp);
+    assert.equal(match.competition, comp.label);
+    assert.equal(match.id, "watch:" + code + ":401");
+    assert.equal(match.teams[0], teamLabel(comp, code === "uefa.nations" ? "France" : "Arsenal"));
+  }
 });

@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.10.1",
+  "currentVersion": "11.11.0",
   "releases": [
+    {
+      "version": "11.11.0",
+      "date": "2026-10-25",
+      "type": "minor",
+      "source": "user-feedback",
+      "title": "Cross-competition Watching fixtures and calendar labels",
+      "changes": [
+        "Index UEFA Champions League and UEFA Europa League with the existing weekly encrypted professional fixture and daily broadcast refresh workflows, while retaining already-indexed UEFA Nations League coverage.",
+        "Include a selected domestic-league club in its European cup fixtures using a canonical exact club-name match across recognized soccer competition labels; keep NBA, national-team and unrecognized names isolated.",
+        "Show the actual indexed competition in Watch matches and prefix read-only ICS event titles with that competition; Vela and other subscribers retain event UIDs, timestamps, stable URLs and compatible read-only descriptions.",
+        "Retain all existing provider-failure, encrypted runtime-state, offline, best-effort fixture, privacy and notification-silent behavior without new client-side third-party requests."
+      ]
+    },
     {
       "version": "11.10.1",
       "date": "2026-10-25",
