@@ -1,7 +1,19 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.11.2",
+  "currentVersion": "11.11.3",
   "releases": [
+    {
+      "version": "11.11.3",
+      "date": "2026-10-26",
+      "type": "patch",
+      "source": "user-feedback",
+      "title": "Restore RSVP name picker on devices without a saved player",
+      "changes": [
+        "Use the unfiltered public fixture snapshot for the next published pickup date so new users can choose an RSVP name before local pickup cards are shown.",
+        "Preserve event-scoped published RSVP names, manual entry, no account requirement, privacy of the monthly encrypted roster catalog, and all existing notifications and calendar feeds.",
+        "Rotate the 11.11.3 PWA shell and cache for beta/production isolation, cache the RSVP choice module for offline loading, and add synthetic plus browser regressions."
+      ]
+    },
     {
       "version": "11.11.2",
       "date": "2026-10-25",
