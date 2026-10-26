@@ -5,8 +5,8 @@
 ## Design source and provenance
 
 - **Production UI:** `frontend/web/index.html`, `frontend/web/styles.css`, `frontend/web/v2/styles.css`, and their controllers on the explicitly promoted `production` branch.
-- **Editable design:** [BallerWatch Figma](https://www.figma.com/design/dv0XebWKIeqq6MuheNMzEh), page **BallerWatch · Mobile flows**. Thirty-two editable frames: 16 states at 390 × 844 CSS px and the corresponding 16 at 430 × 932. The original StatusBadge specimen is preserved.
-- **Covered screens:** cinematic landing/Skip; three optional setup steps; Playing; published-date RSVP/withdrawal; Watching day and details; AI Q&A; Inbox/permission; device Settings and calendar link; unselected, stale/offline, rewind, and reduced-motion states.
+- **Editable design:** [BallerWatch Figma](https://www.figma.com/design/dv0XebWKIeqq6MuheNMzEh), page **BallerWatch · Mobile flows**. Thirty-six editable frames: 18 states at 390 × 844 CSS px and the corresponding 18 at 430 × 932. Includes an editable reusable 44px Button component family (primary/secondary, default/focus/disabled) and native SVG brand-icon layers sourced from this repository. The original StatusBadge specimen is preserved.
+- **Covered screens:** cinematic landing/Skip; three optional setup steps; Playing; published-date RSVP/withdrawal; Watching day and details; AI Q&A; Inbox/permission; device Settings and calendar link; unselected, loading, long-title stress, stale/offline, rewind, and reduced-motion states.
 - **Privacy:** Figma content uses invented/example names, fixtures, fields, and counts. No real RSVP identities, tokens, private profile records, or subscription URLs belong in a design export.
 - **Important fidelity limitation:** the first-pass design employs editable Inter text and abstract labels, while the browser uses a system font stack and a real SVG stadium scene. It is a **reference, not pixel-approved source parity**. Match against production screenshots at both sizes before marking design acceptance complete.
 
