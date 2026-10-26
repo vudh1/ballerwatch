@@ -50,7 +50,7 @@ test("offline shell assets and system chrome share this review version", () => {
     assert.ok(!file.includes("11.10.1"));
   }
   assert.match(sw, /ballerwatch-v11-11-3-shell/);
-  assert.match(html, /styles\.css\?v=11\.11\.2/);
+  assert.match(html, /styles\.css\?v=11\.11\.3/);
   assert.equal(JSON.parse(manifest).theme_color, "#0D121B");
   assert.equal(JSON.parse(manifest).background_color, "#0D121B");
 });
