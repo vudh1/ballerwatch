@@ -5981,9 +5981,9 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
   border-radius: 18px;
   background: linear-gradient(145deg, rgba(14, 43, 46, 0.99), rgba(7, 22, 34, 0.98));
   box-shadow: 0 16px 35px rgba(0, 8, 12, 0.25), inset 0 1px 0 rgba(255,255,255,0.06);
-  -webkit-backdrop-filter: blur(20px) saturate(150%);
-  backdrop-filter: blur(20px) saturate(150%);
-  animation: settings-choices-in 150ms ease-out;
+  /* The surface is already ~opaque. Blurring the entire dashboard behind
+     every option scroll causes expensive repainting on iPhone Safari. */
+  animation: settings-choices-in 110ms ease-out;
 }
 @keyframes settings-choices-in {
   from { opacity: 0; transform: translateY(-5px); }
@@ -6641,8 +6641,7 @@ body:has(.rsvp-roster-dialog[open]) { overflow: hidden; }
   border: 1px solid rgba(148, 210, 196, 0.18);
   border-radius: 24px;
   background: rgba(15, 30, 41, 0.96);
-  -webkit-backdrop-filter: blur(24px);
-  backdrop-filter: blur(24px);
+  /* A nearly opaque setup sheet needs no live GPU backdrop blur. */
 }
 .first-run-shell { display: grid; gap: 0.9rem; padding: 1.35rem; }
 .first-run-shell > h2 { font-size: 1.3rem; letter-spacing: -0.025em; }
