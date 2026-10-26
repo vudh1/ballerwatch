@@ -1758,9 +1758,11 @@ async function loadRsvpNameOptions() {
   const status = document.querySelector("#guest-name-options-status");
   nameSelector().setOptions(guestProfile.name ? [guestProfile.name] : []);
   firstRunWizard?.setNameOptions(guestProfile.name ? [guestProfile.name] : []);
-  // Public roster access is explicitly scoped to one published pickup date.
-  // Never index identities across dates or persist names from the roster.
-  const date = nextPublishedPickupDate(currentCalendar?.games || [], todaySeattleKey());
+  // Resolve from the canonical public fixture calendar, not the personalized
+  // dashboard: a new device has no RSVP name yet, so its visible pickup games
+  // are hidden. Using those filtered games makes the picker impossible to fill.
+  // Names are still fetched only for one published date and never persisted.
+  const date = nextPublishedPickupDate(currentCanonicalCalendar?.games || [], todaySeattleKey());
   rsvpNameOptionsAwaitCalendar = !date;
   if (!date) {
     if (status) status.textContent = "No upcoming published pickup roster. Search and add your own name.";
