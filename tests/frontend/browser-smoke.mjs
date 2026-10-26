@@ -1343,6 +1343,50 @@ try {
         await context.close();
       });
 
+      await scenario(`${engine}: Quiet Glass 390/430 mobile layout and simulated 200% text`, async () => {
+        for (const width of [390, 430]) {
+          const { context, page, errors } = await prepare(browser, {
+            viewport: { width, height: width === 390 ? 844 : 932 },
+            hasTouch: true, reducedMotion: "reduce",
+            ...(engine === "firefox" ? {} : { isMobile: true }),
+          });
+          try {
+            await ready(page);
+            await page.waitForFunction(() => !document.querySelector("#matchday-app").inert);
+            for (const scale of [1, 2]) {
+              // Root-size scaling approximates 200% text; real iOS Dynamic Type/VoiceOver need device QA.
+              await page.evaluate((factor) => {
+                document.documentElement.style.fontSize = factor === 1 ? "" : "200%";
+              }, scale);
+              const layout = await page.evaluate(() => {
+                const rect = (selector) => {
+                  const r = document.querySelector(selector).getBoundingClientRect();
+                  return { left: r.left, right: r.right, width: r.width, height: r.height };
+                };
+                return { viewport: innerWidth, horizontal: document.documentElement.scrollWidth,
+                  play: rect("#mode-play"), watch: rect("#mode-watch") };
+              });
+              assert.ok(layout.horizontal <= layout.viewport + 2,
+                `${width}px at ${scale}x: horizontal document overflow ${layout.horizontal}`);
+              for (const control of [layout.play, layout.watch]) {
+                assert.ok(control.height >= 44, `${width}px at ${scale}x: small mode target`);
+                assert.ok(control.left >= -1 && control.right <= layout.viewport + 1,
+                  `${width}px at ${scale}x: mode target clipped horizontally`);
+              }
+              await page.locator("#mode-watch").click();
+              assert.equal(await page.locator("#mode-watch").getAttribute("aria-pressed"), "true");
+              await page.locator("#mode-play").click();
+              assert.equal(await page.locator("#mode-play").getAttribute("aria-pressed"), "true");
+            }
+            await openHubTab(page, "settings");
+            assert.equal(await page.locator("#settings-dialog").evaluate((dialog) => dialog.open), true);
+            assert.ok((await page.locator("#settings-dialog .app-hub-tabs").boundingBox()).width <= width);
+            assert.deepEqual(errors, []);
+          } finally {
+            await context.close();
+          }
+        }
+      });
       await scenario(`${engine}: skip, direct refresh, navigation, iPhone portrait and landscape`, async () => {
         const { context, page, errors } = await prepare(browser, { ...(engine === "firefox"
           ? { viewport: { width: 390, height: 844 }, hasTouch: true, userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1" }
