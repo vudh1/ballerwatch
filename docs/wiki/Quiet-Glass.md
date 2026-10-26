@@ -2,6 +2,8 @@
 
 This is a **frontend-only proposal** against `main`, not a production deployment. [FRIDAY v1](https://github.com/vudh1/friday/blob/main/docs/DESIGN_SYSTEM.md) is the token reference; BallerWatch retains independent implementation. Figma: https://www.figma.com/design/dv0XebWKIeqq6MuheNMzEh
 
+**Status update (2026-10-26):** Quiet Glass subsequently shipped in v11.11.1; the independent frontend-version fix shipped as v11.11.2. This page preserves the original design-review rationale. [Mobile acceptance and evidence checklist](Quiet-Glass-Mobile-Acceptance.md) tracks issue #218, Figma's editable 390/430px flows, automated smoke coverage and still-unverified real-iPhone QA. A Figma frame or WebKit CI run does not constitute hardware acceptance.
+
 ## Current surface inventory (preserved)
 
 First-device setup (three optional steps); intro and immediate Skip; intentional pull-to-rewind; Playing next-game carousel with RSVP, availability, venue, weather, roster and standings; Watching one-mounted-day carousel with schedule, competition, match detail and verified provider links; schedule/day selection, team scouting, notification inbox and Push, AI Q&A, settings/choice search, per-device edits and preferences, ICS subscription management, install UI, service-worker last-good and beta/V2 alias.
