@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.10.0",
+  "currentVersion": "11.10.1",
   "releases": [
+    {
+      "version": "11.10.1",
+      "date": "2026-10-25",
+      "type": "patch",
+      "source": "user-feedback",
+      "title": "Faster mobile profile selection",
+      "changes": [
+        "Index searchable RSVP/team choices once and mount only up to 36 lightweight options per picker, retaining full search and accessibility.",
+        "Show selection feedback immediately while deferring downstream schedule/standings refresh until after the UI can paint, with a Safari-safe persistence fallback.",
+        "Remove redundant expensive backdrop blur from nearly opaque chooser and onboarding panels on iPhone and Android.",
+        "Prepare first-device profile setup before waiting for initial calendar HTTP verification, while retaining intro gating and offline preferences."
+      ]
+    },
     {
       "version": "11.10.0",
       "date": "2026-10-25",
