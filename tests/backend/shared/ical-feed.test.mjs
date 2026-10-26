@@ -45,8 +45,8 @@ test("watch calendar titles and descriptions identify the actual competition", (
   const unfolded = ics.replace(/\r\n /g, "");
   for (const game of fixtures) {
     assert.ok(unfolded.includes("SUMMARY:" + game.competition + " · " + game.title), game.competition);
-    assert.ok(ics.includes("Competition: " + game.competition), game.competition);
-    assert.ok(ics.includes(encodeURIComponent(game.id) + "@ballerwatch"));
+    assert.ok(unfolded.includes("Competition: " + game.competition), game.competition);
+    assert.ok(unfolded.includes(encodeURIComponent(game.id) + "@ballerwatch"));
   }
   assert.equal((ics.match(/BEGIN:VEVENT/g) || []).length, 4);
 });
