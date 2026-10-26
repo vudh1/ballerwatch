@@ -4,6 +4,12 @@ The installable PWA is BallerWatch's sole user surface.
 
 The website works without a visitor account. RSVP rosters for an individual published pickup event are readable without sign-in; RSVP names, monitored teams, match edits and notification choices stay on each browser installation. Administrator software maintenance remains password-protected.
 
+## Watching across competitions (11.11.0)
+
+Watching uses the existing encrypted professional fixture index. The weekly annual sweep now queries the five major European domestic leagues, UEFA Champions League, UEFA Europa League, UEFA Nations League and other supported national competitions; the daily broadcast-only sweep uses those same codes. Team selections are still stored per device (or in an explicitly opted-in stable calendar profile). Selecting a domestic club shows its indexed European cup games as well, provided ESPN identifies that club by the same normalized display name. Clubs with a different published alias may need their European competition option selected separately. A matching league does not imply that an unpublished fixture or broadcaster is known.
+
+Each Watching match shows the indexed **competition** in its day row and details. The subscribed ICS feed also uses `Competition · Home vs Away` as the title and `Competition: ...` in its description, including UEFA Nations League. Existing read-only ICS URLs, event UIDs, calendar times, Vela subscription refreshes and cancellation behavior are unchanged. This is public fixture metadata only: no roster, account, team-private setting or encrypted state is shared with Vela. No new page-load provider call, Web Push or billed service is introduced.
+
 ## First-device setup (11.7.0 preview)
 
 New installations are offered three optional choices after the soccer introduction: pickup RSVP name, teams to play in RATS, and professional teams to watch. Every step can be skipped; the small Play/Watch empty-preference note points directly to Settings. Only installations without established local preferences or public cache receive this first-visit prompt, so current users are not unexpectedly interrupted. Beta and production retain separate setup markers. The wizard remains dismissible if a visitor does not want to configure anything.
