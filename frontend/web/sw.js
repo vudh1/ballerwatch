@@ -6,22 +6,22 @@
 const IS_V2 = /\/v2\/sw\.js$/.test(self.location.pathname);
 const IS_BETA = /\/beta\/sw\.js$/.test(self.location.pathname);
 const CACHE = IS_BETA ? "ballerwatch-beta-__BETA_BUILD_ID__-shell"
-  : IS_V2 ? "ballerwatch-v2-v9-1-2-shell" : "ballerwatch-v11-11-2-shell";
+  : IS_V2 ? "ballerwatch-v2-v9-1-2-shell" : "ballerwatch-v11-11-3-shell";
 const ROOT_SHELL = [
   "./",
   "./index.html",
-  "./v2/prepaint.js?v=11.11.2",
-  "./styles.css?v=11.11.2",
-  "./v2/styles.css?v=11.11.2",
-  "./app.js?v=11.11.2",
-  "./v2/app.js?v=11.11.2",
+  "./v2/prepaint.js?v=11.11.3",
+  "./styles.css?v=11.11.3",
+  "./v2/styles.css?v=11.11.3",
+  "./app.js?v=11.11.3",
+  "./v2/app.js?v=11.11.3",
   "./v2/timeline.js",
   "./v2/scene-config.mjs",
   "./v2/rewind-gate.mjs",
   "./v2/assets/stadium.svg",
-  "./manifest.webmanifest?v=11.11.2",
-  "./icon.svg?v=11.11.2",
-  "./apple-touch-icon.png?v=11.11.2",
+  "./manifest.webmanifest?v=11.11.3",
+  "./icon.svg?v=11.11.3",
+  "./apple-touch-icon.png?v=11.11.3",
   "./icon-192.png",
   "./icon-512.png",
   "./v2/index.html",
@@ -36,6 +36,7 @@ const ROOT_SHELL = [
   "./lib/calendar-sync.js",
   "./lib/local-match-edits.js",
   "./lib/settings-choice.js",
+  "./lib/rsvp-choice-source.mjs",
   "./lib/match-modes.mjs",
   "./lib/watch-coverage.mjs",
   "./lib/watch-day-groups.mjs",
