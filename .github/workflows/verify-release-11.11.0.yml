@@ -1,0 +1,52 @@
+name: Verify v11.11.0 release candidate safely
+
+on:
+  push:
+    branches: ["release/11.11.0-watch-competitions"]
+    paths:
+      - ".github/workflows/verify-release-11.11.0.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ballerwatch-release-11-11-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: release/11.11.0-watch-competitions
+          fetch-depth: 1
+      - name: Pull only hardened encrypted state (read-only)
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$TRACKER_STATE_KEY"
+          for scope in sports pickup league; do
+            node backend/shared/runtime-state.mjs pull "$scope"
+          done
+      - name: Verify source-qualified indexed sports fixtures
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: node scripts/verify-drogon-sports-index.mjs
+      - name: Verify pickup and league without push or mutations
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: node tests/backend/smoke/manual-smoke.mjs
+      - name: Audit hardened encrypted canonical state
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: node backend/shared/runtime-state.mjs audit
+      - name: Remove temporary local encrypted files
+        if: always()
+        run: |
+          for scope in sports pickup league; do
+            node backend/shared/runtime-state.mjs clean "$scope"
+          done
+          rm -rf .runtime
