@@ -217,3 +217,84 @@ test("daily request budget prevents excessive anonymous mutations", async () => 
   }
   assert.equal(limited, true);
 });
+
+test("read-only subscription cannot manage profiles or reveal authorization headers", async () => {
+  const { call } = harness();
+  const created = (await call("/web/v1/calendar-profiles", "POST",
+    { optIn: true, selection: aSelection })).json;
+  const path = "/web/v1/calendar-profiles/" + created.id;
+  const readToken = created.url.split("/").at(-1).slice(0, -4);
+  assert.equal((await call(path, "GET", undefined, readToken)).code, 404);
+  assert.equal((await call(path + "/rotate", "POST", undefined, readToken)).code, 404);
+  assert.equal((await call(path + "/selection", "PUT",
+    { revision: 1, selection: bSelection }, readToken)).code, 404);
+  const anonymousFeed = await call(created.url, "GET", undefined, "", { noOrigin: true });
+  assert.equal(anonymousFeed.code, 200);
+  assert.equal(anonymousFeed.headers.get("access-control-allow-origin"), null);
+  assert.equal(anonymousFeed.headers.get("cache-control"), "no-store");
+  assert.equal(anonymousFeed.headers.get("referrer-policy"), "no-referrer");
+  assert.doesNotMatch(anonymousFeed.text, new RegExp(created.manager));
+  assert.doesNotMatch(anonymousFeed.text, new RegExp(created.recoveryCode));
+  assert.equal((await call("/web/v1/calendar-ics/" + created.manager + ".ics")).code, 404);
+  assert.equal((await call(path, "GET", undefined, created.manager, { noOrigin: true })).code, 403);
+});
+
+test("corrupt ciphertext, wrong encryption key and database outage do not leak selections", async () => {
+  const { call, db, env } = harness();
+  const created = (await call("/web/v1/calendar-profiles", "POST",
+    { optIn: true, selection: aSelection })).json;
+  const second = (await call("/web/v1/calendar-profiles", "POST",
+    { optIn: true, selection: bSelection })).json;
+  db.sqlite.prepare("UPDATE calendar_profiles SET selection_cipher = ? WHERE id = ?")
+    .run("not-an-envelope", created.id);
+  const failed = await call(created.url);
+  assert.equal(failed.code, 503);
+  assert.equal(failed.json.error, "Calendar sync is temporarily unavailable.");
+  assert.doesNotMatch(failed.text, /Example FC|selection_cipher|not-an-envelope/);
+  assert.match((await call(second.url)).text, /Other FC/);
+  const originalKey = env.CALENDAR_SYNC_KEY;
+  env.CALENDAR_SYNC_KEY = Buffer.alloc(32, 74).toString("base64url");
+  assert.equal((await call(second.url)).code, 503);
+  env.CALENDAR_SYNC_KEY = originalKey;
+  assert.equal((await call(second.url)).code, 200);
+  const prepare = db.prepare;
+  db.prepare = () => { throw new Error("synthetic D1 failure: private detail"); };
+  const unavailable = await call(second.url);
+  assert.equal(unavailable.code, 503);
+  assert.doesNotMatch(unavailable.text, /private detail|Other FC/);
+  db.prepare = prepare;
+  assert.equal((await call(second.url)).code, 200);
+});
+
+test("read quotas deny excess fetches without reading or mutating profiles", async () => {
+  const { call, db } = harness();
+  const created = (await call("/web/v1/calendar-profiles", "POST",
+    { optIn: true, selection: aSelection })).json;
+  const ip = "192.0.2.55";
+  assert.equal((await call(created.url, "GET", undefined, "", { ip })).code, 200);
+  db.sqlite.prepare("UPDATE calendar_rate SET hits = 160").run();
+  const limited = await call(created.url, "GET", undefined, "", { ip });
+  assert.equal(limited.code, 429);
+  assert.equal(limited.headers.get("cache-control"), "no-store");
+  assert.doesNotMatch(limited.text, /Example FC|selection_cipher/);
+  assert.equal((await call(created.url, "GET", undefined, "", { ip: "192.0.2.56" })).code, 200);
+  assert.equal(db.sqlite.prepare("SELECT count(*) AS n FROM calendar_profiles").get().n, 1);
+});
+
+test("recovery redemption invalidates the used code while retaining independent managers", async () => {
+  const { call } = harness();
+  const created = (await call("/web/v1/calendar-profiles", "POST",
+    { optIn: true, selection: aSelection })).json;
+  const path = "/web/v1/calendar-profiles/" + created.id;
+  const recovered = await call("/web/v1/calendar-profiles/recover", "POST",
+    { recoveryCode: created.recoveryCode });
+  assert.equal(recovered.code, 200);
+  assert.equal((await call("/web/v1/calendar-profiles/recover", "POST",
+    { recoveryCode: created.recoveryCode })).code, 404);
+  assert.notEqual(recovered.json.recoveryCode, created.recoveryCode);
+  assert.equal((await call(path, "GET", undefined, created.manager)).code, 200);
+  assert.equal((await call(path, "GET", undefined, recovered.json.manager)).code, 200);
+  const other = await call(path + "/other-devices", "POST", undefined, recovered.json.manager);
+  assert.equal(other.code, 200);
+  assert.equal((await call(path, "GET", undefined, created.manager)).code, 404);
+});
