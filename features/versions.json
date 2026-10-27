@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.11.3",
+  "currentVersion": "11.12.0",
   "releases": [
+    {
+      "version": "11.12.0",
+      "date": "2026-10-26",
+      "type": "minor",
+      "source": "user-feedback",
+      "title": "Offer the full registered RSVP member list in name selectors",
+      "changes": [
+        "Show display-name suggestions for every registered public RSVP member in first-device onboarding and Settings, including players who have not RSVP'd for the next pickup.",
+        "Serve names only through an anonymous no-store Worker endpoint using the encrypted monthly canonical catalog first, or a bounded server-side read of upstream's already-public listRoster until it is populated. Never expose contact, payment, registration history or unpublished attendance.",
+        "Keep only the chosen profile name on the device, preserve published-date attendee and manual-entry fallback, and leave ICS, Web Push, third-party RSVP repository and FRIDAY contracts unchanged.",
+        "Rotate the PWA service-worker and static shell, refresh tests for name-only privacy and Chromium/Firefox/WebKit selection, and retain independently gated beta and production rollout."
+      ]
+    },
     {
       "version": "11.11.3",
       "date": "2026-10-26",
