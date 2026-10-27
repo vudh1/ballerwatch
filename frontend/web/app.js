@@ -1754,40 +1754,66 @@ async function loadGuestTeamOptions() {
     }
   } catch { /* Existing team choices remain usable offline. */ }
 }
+let rsvpMemberChoiceRequest = 0;
 async function loadRsvpNameOptions() {
+  const requestId = ++rsvpMemberChoiceRequest;
   const status = document.querySelector("#guest-name-options-status");
-  nameSelector().setOptions(guestProfile.name ? [guestProfile.name] : []);
-  firstRunWizard?.setNameOptions(guestProfile.name ? [guestProfile.name] : []);
-  // Resolve from the canonical public fixture calendar, not the personalized
-  // dashboard: a new device has no RSVP name yet, so its visible pickup games
-  // are hidden. Using those filtered games makes the picker impossible to fill.
-  // Names are still fetched only for one published date and never persisted.
+  const ownName = guestProfile.name ? [guestProfile.name] : [];
+  nameSelector().setOptions(ownName);
+  firstRunWizard?.setNameOptions(ownName);
+  rsvpNameOptionsAwaitCalendar = false;
+  if (status) status.textContent = "Loading registered RSVP members…";
+  try {
+    // A name-only response contains all registered members, including those
+    // without a future RSVP. Never persist other people's names on this device.
+    const payload = await api("/web/rsvp-members", {
+      retryNetwork: false, timeoutMs: 6000,
+    });
+    if (!Array.isArray(payload?.names)) throw new Error("Member choices unavailable.");
+    if (requestId !== rsvpMemberChoiceRequest) return;
+    const names = [...new Set(payload.names.filter(name =>
+      typeof name === "string" && name.length >= 2 && name.length <= 120))];
+    if (!names.length) throw new Error("Member choices empty.");
+    const options = [...new Set([...names, ...ownName])];
+    nameSelector().setOptions(options);
+    firstRunWizard?.setNameOptions(options);
+    if (status) status.textContent =
+      "All registered RSVP members. Choosing a name does not sign you up for a game.";
+    return;
+  } catch {
+    if (requestId !== rsvpMemberChoiceRequest) return;
+    // Older Workers and offline sessions may lack the names-only endpoint.
+    // Preserve the existing single-published-date attendee fallback.
+  }
   const date = nextPublishedPickupDate(currentCanonicalCalendar?.games || [], todaySeattleKey());
   rsvpNameOptionsAwaitCalendar = !date;
   if (!date) {
-    if (status) status.textContent = "No upcoming published pickup roster. Search and add your own name.";
+    if (status) status.textContent =
+      "Member list unavailable. Search and add your name; this does not RSVP for a game.";
     return;
   }
   try {
     const payload = await api("/web/rsvp-roster?date=" + encodeURIComponent(date),
       { retryNetwork: false, timeoutMs: 4500 });
+    if (requestId !== rsvpMemberChoiceRequest) return;
     const entries = [
-      ...(Array.isArray(payload?.roster?.["players"]) ? payload.roster["players"] : []),
-      ...(Array.isArray(payload?.roster?.["waitlist"]) ? payload.roster["waitlist"] : []),
+      ...(Array.isArray(payload?.roster?.players) ? payload.roster.players : []),
+      ...(Array.isArray(payload?.roster?.waitlist) ? payload.roster.waitlist : []),
     ];
     const names = [...new Set(entries.map(entry => String(entry?.name || "").trim())
       .filter(value => value.length >= 2 && value.length <= 120))];
-    const options = [...new Set([...names, ...(guestProfile.name ? [guestProfile.name] : [])])];
+    const options = [...new Set([...names, ...ownName])];
     nameSelector().setOptions(options);
     firstRunWizard?.setNameOptions(options);
     if (status) status.textContent = names.length
-      ? "Names from the next published pickup (" + date + "). Search to choose yours."
-      : "No names published yet. Search and add your own name.";
+      ? "Member directory unavailable. Showing players signed up for " + date + " only."
+      : "Member directory unavailable. Nobody has signed up for the next game yet.";
   } catch {
-    if (status) status.textContent = "RSVP roster unavailable. Your saved name stays; you can search and add it manually.";
+    if (requestId !== rsvpMemberChoiceRequest) return;
+    if (status) status.textContent =
+      "RSVP names unavailable. Search and add your own name; it stays on this device.";
   }
 }
-
 function beginFirstRunSetup() {
   if (!IS_FIRST_RUN_DEVICE) return;
   const dialog = document.querySelector("#first-run-dialog");
@@ -4513,8 +4539,8 @@ async function loadCalendar({ initial = false } = {}) {
     } else {
       els.calendarUpdated.textContent = matchUpdatedText(next.updatedAt) || "Updated pending";
     }
-    // First-run can open while initial fixtures are still loading. Retry the
-    // one published-date RSVP dropdown then, never with a global name index.
+    // If member lookup failed before fixtures loaded, retry the event-only
+    // fallback once the canonical calendar arrives.
     if (rsvpNameOptionsAwaitCalendar &&
         (els.settingsDialog?.open || document.querySelector("#first-run-dialog")?.open)) {
       void loadRsvpNameOptions();
