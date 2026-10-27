@@ -11,6 +11,7 @@
  * Updated v8.1.0: privacy-gated model intent fallback and authenticated RSVP facts.
  * Updated v11.0.2: published pickup-event RSVP rosters available without login.
  * Updated v11.3.0: event-scoped rosters expose only the upstream withdrawal-request flag per participant.
+ * Updated v11.12.0: approved name-only registered-member choices for new devices.
  */
 import {
   fetchPickupSnapshot,
@@ -58,6 +59,7 @@ import { watchedFixtures } from "../../sports/watch-team-matching.mjs";
 import { handleCalendarProfileRequest } from "./calendar-profiles.mjs";
 import { KEY_CONTEXT } from "../../shared/security-contexts.mjs";
 import { validWebPushEndpoint } from "../../shared/web-push-endpoint.mjs";
+import { livePublicMemberNames, namesFromEncryptedCatalog } from "./rsvp-members.mjs";
 
 const REPO = "vudh1/ballerwatch";
 const PICKUP_RSVP_SITE = "https://nhcuong95.github.io/rsvp/";
@@ -1626,6 +1628,25 @@ async function runtimeSettings(env) {
 // A per-request Cache API JSON parse otherwise destroys the WeakMap indexes
 // and forces repeated all-season indexing even within one Worker isolate.
 const publicReadCache = createBoundedLoadCache({ maxEntries: 55 });
+
+// This is an explicitly approved public membership name projection, distinct
+// from dated RSVP attendance. Keep the decrypted list only in bounded Worker
+// memory; never cache its JSON in GitHub, KV or browser storage.
+const memberNameReadCache = createBoundedLoadCache({ maxEntries: 2 });
+async function loadPublicRsvpMemberNames(env) {
+  return memberNameReadCache.get("rsvp-member-names-v1", 15 * 60000, async () => {
+    const record = await githubStateRecord(env, "pickup/state/roster-catalog.json");
+    if (record.value) {
+      const catalog = await decryptState(record.value, env);
+      // Invalid encrypted state fails closed; an absent or out-of-date snapshot
+      // can use the read-only, already public upstream roster as bootstrap.
+      if (!catalog) throw new Error("Encrypted member catalog could not be decrypted.");
+      try { return namesFromEncryptedCatalog(catalog); }
+      catch { /* Stale catalog: load the current public Roster sheet. */ }
+    }
+    return livePublicMemberNames();
+  });
+}
 const transientPublicLoadError = (error) =>
   /\b(?:429|500|502|503|504)\b|timeout|network|fetch failed/i
     .test(String(error?.message || ""));
@@ -4298,8 +4319,19 @@ export default {
       }
     }
 
-    // Event-scoped names are public on request, but other projections and
-    // the participant catalog remain anonymous.
+    // All registered RSVP member names are shown in the optional selector
+    // by user approval. Only names cross this endpoint; date attendance
+    // remains a separate, individually published event-scoped projection.
+    if (request.method === "GET" && url.pathname === "/web/rsvp-members") {
+      try {
+        return webJson(request, { ok: true, names: await loadPublicRsvpMemberNames(env) });
+      } catch {
+        return webJson(request, { ok: false,
+          error: "Registered RSVP names are temporarily unavailable." }, { status: 503 });
+      }
+    }
+
+    // Event-scoped attendance remains limited to one published pickup date.
     if (request.method === "GET" && url.pathname === "/web/rsvp-roster") {
       try {
         return webJson(request, {
@@ -4329,8 +4361,7 @@ export default {
       }, { status: 410 });
     }
 
-    // Selection catalog is lazy, authenticated and name-only. The public
-    // team directory is indexed hourly; RSVP options come from private state.
+    // Old selection endpoints remain closed; use the names-only route.
     if (userRoute(url.pathname, "selection-options")) {
       // Do not expose a searchable private participant directory to visitors.
       return webJson(request,
