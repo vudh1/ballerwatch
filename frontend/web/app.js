@@ -1797,8 +1797,8 @@ async function loadRsvpNameOptions() {
       { retryNetwork: false, timeoutMs: 4500 });
     if (requestId !== rsvpMemberChoiceRequest) return;
     const entries = [
-      ...(Array.isArray(payload?.roster?.players) ? payload.roster.players : []),
-      ...(Array.isArray(payload?.roster?.waitlist) ? payload.roster.waitlist : []),
+      ...(Array.isArray(payload?.roster?.["players"]) ? payload.roster["players"] : []),
+      ...(Array.isArray(payload?.roster?.["waitlist"]) ? payload.roster["waitlist"] : []),
     ];
     const names = [...new Set(entries.map(entry => String(entry?.name || "").trim())
       .filter(value => value.length >= 2 && value.length <= 120))];
