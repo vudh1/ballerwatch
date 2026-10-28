@@ -179,7 +179,7 @@ test("NBA Prime match matching uses U.S. Eastern fixture date, not Pacific date"
 });
 
 test("European cup fixtures preserve real competition names and unique source IDs", () => {
-  for (const code of ["uefa.champions", "uefa.europa", "uefa.nations"]) {
+  for (const code of ["uefa.champions", "uefa.europa", "eng.league_cup", "uefa.nations"]) {
     const comp = COMPETITIONS.find(entry => entry.code === code);
     const [match] = parsedFixtures({ events: [{
       id: "401", date: "2026-11-04T20:00:00Z",
@@ -192,4 +192,21 @@ test("European cup fixtures preserve real competition names and unique source ID
     assert.equal(match.id, "watch:" + code + ":401");
     assert.equal(match.teams[0], teamLabel(comp, code === "uefa.nations" ? "France" : "Arsenal"));
   }
+});
+
+test("EFL Cup indexed as distinct source-qualified fixtures; domestic league retained", () => {
+  const comp = COMPETITIONS.find(entry => entry.code === "eng.league_cup");
+  assert.deepEqual(comp, { sport: "soccer", code: "eng.league_cup", label: "EFL Cup", group: "cup" });
+  const fixtures = parsedFixtures({events:[{
+    id: "401999991", date: "2026-10-28T20:00:00Z",
+    competitions:[{competitors:[
+      {homeAway:"home",team:{displayName:"Liverpool"}},
+      {homeAway:"away",team:{displayName:"Chelsea"}},
+    ]}],
+  }]}, comp);
+  assert.equal(fixtures.length, 1);
+  assert.equal(fixtures[0].competition, "EFL Cup");
+  assert.equal(fixtures[0].id, "watch:eng.league_cup:401999991");
+  assert.deepEqual(fixtures[0].teams, ["EFL Cup · Liverpool", "EFL Cup · Chelsea"]);
+  assert.ok(COMPETITIONS.some(entry => entry.code === "eng.1"));
 });
