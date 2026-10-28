@@ -70,8 +70,12 @@ jobs:
             echo "::error::Candidate's encrypted EFL Cup fixture indexing must pass before release."
             exit 1
           }
-          encrypted="$(gh api -X GET "/repos/$GITHUB_REPOSITORY/contents/sports/state/fixtures.json?ref=runtime-state" --jq '.content // empty')"
-          test -n "$encrypted" || { echo "::error::Missing encrypted sports runtime index."; exit 1; }
+          encrypted_count="$(gh api -X GET "/repos/$GITHUB_REPOSITORY/git/trees/runtime-state?recursive=1" \
+            --jq '[.tree[] | select(.path == "sports/state/fixtures.json" and .type == "blob" and .size > 0)] | length')"
+          test "$encrypted_count" = "1" || {
+            echo "::error::Missing encrypted sports runtime index."
+            exit 1
+          }
           existing="$(gh release view v11.12.0 --repo "$GITHUB_REPOSITORY" \
             --json isDraft --jq 'if .isDraft then "draft" else "published" end' \
             2>/dev/null || printf 'missing')"
