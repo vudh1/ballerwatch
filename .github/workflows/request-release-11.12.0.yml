@@ -33,7 +33,7 @@ jobs:
           set -euo pipefail
           test -n "$GH_TOKEN" || { echo "::error::Missing protected release token"; exit 1; }
           candidate="$(git log -1 --format=%H HEAD -- features/versions.json)"
-          test "$candidate" = "6a012688eb8f21995d7bd473770ee4e3962b1254" || {
+          test "$candidate" = "a2e2aeb9331fb1a1514f8bfe040711b300a000b4" || {
             echo "::error::Release candidate moved; refusing production promotion."
             exit 1
           }
