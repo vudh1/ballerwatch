@@ -83,3 +83,40 @@ test("existing Premier League follow also includes published EFL Cup schedule", 
   assert.notEqual(watchingTeamKey("National · England"),
     watchingTeamKey("EFL Cup · England"));
 });
+
+test("existing watched clubs inherit all eight new knockout and super cup competitions", () => {
+  const leagues = [
+    ["Premier League · Arsenal", "FA Cup", "Arsenal", "eng.fa"],
+    ["Premier League · Manchester City", "FA Community Shield", "Manchester City", "eng.charity"],
+    ["La Liga · Barcelona", "Copa del Rey", "Barcelona", "esp.copa_del_rey"],
+    ["La Liga · Real Madrid", "Supercopa de España", "Real Madrid", "esp.super_cup"],
+    ["Bundesliga · Bayern Munich", "UEFA Super Cup", "Bayern Munich", "uefa.super_cup"],
+    ["Ligue 1 · Paris Saint-Germain", "UEFA Conference League",
+      "Paris Saint-Germain", "uefa.europa.conf"],
+    ["Premier League · Liverpool", "FIFA Club World Cup", "Liverpool", "fifa.cwc"],
+    ["Premier League · Chelsea", "FIFA Intercontinental Cup", "Chelsea", "fifa.intercontinental_cup"],
+  ];
+  const games = leagues.map(([selected, label, name, code], i) =>
+    make("watch:" + code + ":" + i, label, [label + " · " + name,
+      label + " · Opponent " + i]));
+  const index = { teams: leagues.map(x => x[0]), games };
+  for (const [selected, label] of leagues) {
+    const matches = watchedFixtures(index, [selected], Date.parse(start));
+    assert.equal(matches.length, 1, label);
+    assert.equal(matches[0].competition, label);
+    assert.equal(watchingTeamKey(selected), watchingTeamKey(label + " · " +
+      selected.split(" · ")[1]));
+  }
+  assert.deepEqual(watchedFixtures(index, ["National · England"], Date.parse(start)), []);
+  assert.notEqual(watchingTeamKey("National · Brazil"),
+    watchingTeamKey("FIFA Club World Cup · Brazil"));
+});
+
+test("two selected aliases cannot duplicate an indexed FA Cup event", () => {
+  const game = make("watch:eng.fa:777", "FA Cup",
+    ["FA Cup · Manchester United", "FA Cup · Arsenal"]);
+  const index = {teams:["Premier League · Manchester United", "FA Cup · Manchester United"],
+    games:[game]};
+  assert.deepEqual(watchedFixtures(index, index.teams, Date.parse(start)).map(g=>g.id),
+    ["watch:eng.fa:777"]);
+});
