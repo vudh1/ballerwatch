@@ -1,6 +1,6 @@
 /**
  * FRIDAY Quiet Glass presentation contract; synthetic, no API requests or state writes.
- * Baseline: v11.12.0. Keep iOS-friendly CSS and PWA offline versioning aligned.
+ * Baseline: v11.13.0. Keep iOS-friendly CSS and PWA offline versioning aligned.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -46,7 +46,7 @@ test("mode, watch, hub and reduced motion remain accessible and lightweight", ()
 
 test("offline shell assets and system chrome share this review version", () => {
   for (const file of [html, sw, manifest]) {
-    assert.ok(file.includes("11.12.0"));
+    assert.ok(file.includes("11.13.0"));
     assert.ok(!file.includes("11.10.1"));
   }
   assert.match(sw, /ballerwatch-v11-12-0-shell/);
