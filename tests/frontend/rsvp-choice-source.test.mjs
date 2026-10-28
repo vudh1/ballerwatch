@@ -30,14 +30,16 @@ test("only the next future, individually published pickup is eligible", () => {
   assert.equal(nextPublishedPickupDate(games, "bad-date"), "");
 });
 
-test("settings and first-run RSVP name choices use the canonical public calendar", () => {
+test("RSVP names use registered-member choices and preserve canonical event-only fallback", () => {
   const app = fs.readFileSync("frontend/web/app.js", "utf8");
   const loader = app.split("async function loadRsvpNameOptions() {")[1]
     ?.split("\nfunction beginFirstRunSetup()")[0] || "";
   assert.match(loader,
     /nextPublishedPickupDate\(currentCanonicalCalendar\?\.games \|\| \[\], todaySeattleKey\(\)\)/);
   assert.doesNotMatch(loader, /nextPublishedPickupDate\(currentCalendar/);
+  assert.match(loader, /\/web\/rsvp-members/);
   assert.match(loader, /\/web\/rsvp-roster\?date=/);
+  assert.match(loader, /Choosing a name does not sign you up/);
   assert.match(loader, /firstRunWizard\?\.setNameOptions\(options\)/);
   assert.doesNotMatch(loader, /roster-catalog|localStorage\.setItem|sessionStorage\.setItem/);
 });

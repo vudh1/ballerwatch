@@ -1219,6 +1219,8 @@ test("public RSVP roster is accountless and does not publish name catalogs", () 
   assert.doesNotMatch(publicRoute, /resolveOwnerCapability|bearerToken|selection-options/);
   assert.match(publicRoute, /status === 404/);
   assert.match(worker, /Personal signup names are entered locally/);
+  assert.match(worker, /url.pathname === "\/web\/rsvp-members"/);
+  assert.match(worker, /loadPublicRsvpMemberNames/);
 });
 
 test("public fixtures strip legacy shared-edit state and reject writes by old PWA clients", () => {

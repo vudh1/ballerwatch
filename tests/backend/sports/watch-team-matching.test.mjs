@@ -61,3 +61,25 @@ test("keep the original cutoff, public selection whitelist and 450-game bound", 
   assert.equal(watchedFixtures(index, ["La Liga · Barcelona"], now)[0].id, "new-0");
   assert.deepEqual(watchedFixtures(index, ["La Liga · Barcelona2"], now), []);
 });
+
+test("existing Premier League follow also includes published EFL Cup schedule", () => {
+  const index = { teams: ["Premier League · Liverpool", "EFL Cup · Fleetwood Town"],
+    games: [
+      make("watch:eng.1:20", "Premier League",
+        ["Premier League · Liverpool", "Premier League · Chelsea"]),
+      make("watch:eng.league_cup:21", "EFL Cup",
+        ["EFL Cup · Liverpool", "EFL Cup · Chelsea"]),
+      make("watch:eng.league_cup:22", "EFL Cup",
+        ["EFL Cup · Fleetwood Town", "EFL Cup · Arsenal"]),
+      make("watch:uefa.europa:23", "UEFA Europa League",
+        ["UEFA Europa League · Liverpool", "UEFA Europa League · Roma"]),
+    ] };
+  assert.deepEqual(watchedFixtures(index, ["Premier League · Liverpool"], Date.parse(start))
+    .map(game => game.id), ["watch:eng.1:20", "watch:eng.league_cup:21", "watch:uefa.europa:23"]);
+  assert.deepEqual(watchedFixtures(index, ["EFL Cup · Fleetwood Town"], Date.parse(start))
+    .map(game => game.id), ["watch:eng.league_cup:22"]);
+  assert.equal(watchingTeamKey("EFL Cup · Liverpool"),
+    watchingTeamKey("Premier League · Liverpool"));
+  assert.notEqual(watchingTeamKey("National · England"),
+    watchingTeamKey("EFL Cup · England"));
+});

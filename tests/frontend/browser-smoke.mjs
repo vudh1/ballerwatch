@@ -1135,12 +1135,12 @@ try {
         assert.equal(await page.locator("#setup-progress").textContent(), "STEP 1 OF 3");
         await page.locator("#setup-name-trigger").click();
         // A fresh device has no RSVP name and no personalized pickup cards.
-        // Real published names must already be present before typing; the
-        // manual-entry suggestion otherwise masks an empty server choice list.
+        // Fixture Member is registered but has NO per-game RSVP; the selector
+        // must offer that real server option before anyone types.
         await page.locator('#setup-name-options [role="option"]')
-          .filter({ hasText: "Fixture Player" }).waitFor();
-        await page.locator("#setup-name-search").fill("Fixture Player");
-        await page.locator('#setup-name-options [role="option"]').filter({ hasText: "Fixture Player" }).first().click();
+          .filter({ hasText: "Fixture Member" }).waitFor();
+        await page.locator("#setup-name-search").fill("Fixture Member");
+        await page.locator('#setup-name-options [role="option"]').filter({ hasText: "Fixture Member" }).first().click();
         await page.locator("#setup-next").click();
         assert.equal(await page.locator("#setup-progress").textContent(), "STEP 2 OF 3");
         await page.locator("#setup-teams-trigger").click();
@@ -1159,7 +1159,7 @@ try {
           watch: JSON.parse(localStorage.getItem("ballerwatch-watched-teams-v1")),
           done: localStorage.getItem("ballerwatch-first-run-v1"),
         }));
-        assert.equal(saved.profile.name, "Fixture Player");
+        assert.equal(saved.profile.name, "Fixture Member");
         assert.deepEqual(saved.profile.teams, ["Fixture FC"]);
         assert.deepEqual(saved.watch, ["NBA · Fixture Lakers"]);
         assert.equal(saved.done, "complete");
@@ -1275,8 +1275,8 @@ try {
         await ready(page, "beta/");
         assert.equal(new URL(page.url()).pathname, "/ballerwatch/beta/");
         // Shared API fixtures report 11.0.0; the visible label must be the beta shell.
-        await page.waitForFunction(() => document.querySelector("#version")?.textContent === "BallerWatch v11.11.3");
-        assert.equal(await page.locator("#version").textContent(), "BallerWatch v11.11.3");
+        await page.waitForFunction(() => document.querySelector("#version")?.textContent === "BallerWatch v11.12.0");
+        assert.equal(await page.locator("#version").textContent(), "BallerWatch v11.12.0");
         await page.locator("#next-game-menu-trigger").click();
         await page.locator("#next-game-menu-edit").click();
         await page.locator("#match-override-location").fill("Beta-only Fixture Field");
