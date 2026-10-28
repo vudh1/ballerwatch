@@ -1,0 +1,94 @@
+name: Request BallerWatch 11.12.0 production promotion
+
+# One-time, explicitly user-authorized request for RSVP member suggestions and
+# EFL Cup indexing. The existing guarded promotion owns refs, release, Worker,
+# and Pages. This workflow itself never writes the production branch.
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/request-release-11.12.0.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  request:
+    if: "startsWith(github.event.head_commit.message, 'chore(release): request 11.12.0 production promotion')"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Verify exact reviewed candidate and all production preflight gates
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+          CALENDAR_D1_DATABASE_ID: ${{ secrets.CALENDAR_D1_DATABASE_ID }}
+          CALENDAR_SYNC_KEY: ${{ secrets.CALENDAR_SYNC_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$GH_TOKEN" || { echo "::error::Missing protected release token"; exit 1; }
+          candidate="$(git log -1 --format=%H HEAD -- features/versions.json)"
+          test "$candidate" = "a2e2aeb9331fb1a1514f8bfe040711b300a000b4" || {
+            echo "::error::Release candidate moved; refusing production promotion."
+            exit 1
+          }
+          changes="$(git diff --name-only "$candidate" HEAD)"
+          test "$changes" = ".github/workflows/request-release-11.12.0.yml" || {
+            echo "::error::Unreviewed changes since release candidate."
+            exit 1
+          }
+          version="$(git show "$candidate:features/versions.json" |
+            node -e 'let s="";process.stdin.on("data",x=>s+=x).on("end",()=>process.stdout.write(JSON.parse(s).currentVersion))')"
+          test "$version" = "11.12.0" || { echo "::error::Unexpected release version"; exit 1; }
+          if [ -n "$CALENDAR_D1_DATABASE_ID" ] || [ -n "$CALENDAR_SYNC_KEY" ]; then
+            echo "::error::Optional calendar D1 is configured; requires separate specific authorization."
+            exit 1
+          fi
+          passing="$(gh api -X GET "/repos/$GITHUB_REPOSITORY/actions/workflows/validate.yml/runs" \
+            -f head_sha="$candidate" -f status=completed -f per_page=30 \
+            --jq '[.workflow_runs[] | select(.conclusion == "success" and .event == "push")] | length')"
+          test "$passing" -ge 1 || {
+            echo "::error::Candidate must pass main Validate code."
+            exit 1
+          }
+          pages="$(gh api -X GET "/repos/$GITHUB_REPOSITORY/actions/workflows/pages.yml/runs" \
+            -f head_sha="$candidate" -f status=completed -f per_page=30 \
+            --jq '[.workflow_runs[] | select(.conclusion == "success" and .event == "workflow_run")] | length')"
+          test "$pages" -ge 1 || {
+            echo "::error::Validated beta Pages deployment must be live."
+            exit 1
+          }
+          indexed="$(gh api -X GET "/repos/$GITHUB_REPOSITORY/actions/workflows/pro-sports.yml/runs" \
+            -f head_sha="$candidate" -f status=completed -f per_page=30 \
+            --jq '[.workflow_runs[] | select(.conclusion == "success" and .event == "push")] | length')"
+          test "$indexed" -ge 1 || {
+            echo "::error::Candidate's encrypted EFL Cup fixture indexing must pass before release."
+            exit 1
+          }
+          encrypted_count="$(gh api -X GET "/repos/$GITHUB_REPOSITORY/git/trees/runtime-state?recursive=1" \
+            --jq '[.tree[] | select(.path == "sports/state/fixtures.json" and .type == "blob" and .size > 0)] | length')"
+          test "$encrypted_count" = "1" || {
+            echo "::error::Missing encrypted sports runtime index."
+            exit 1
+          }
+          existing="$(gh release view v11.12.0 --repo "$GITHUB_REPOSITORY" \
+            --json isDraft --jq 'if .isDraft then "draft" else "published" end' \
+            2>/dev/null || printf 'missing')"
+          test "$existing" != "published" || {
+            echo "::error::Release already published; refusing double dispatch."
+            exit 1
+          }
+
+      - name: Request protected production promotion
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh workflow run promote-release.yml --repo "$GITHUB_REPOSITORY" --ref main
+          echo "Requested protected v11.12.0 release, Worker and Pages rollout."
