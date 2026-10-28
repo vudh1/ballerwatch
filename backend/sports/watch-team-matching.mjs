@@ -1,12 +1,16 @@
 /**
- * Public Watching selection matching across domestic and European club cups, including EFL Cup.
+ * Public Watching selection matching across domestic leagues, club cups,
+ * super cups and intercontinental club fixtures.
  * Existing device/ICS choices keep their legacy league-prefixed labels; an
  * exact club name can match fixtures in another indexed club competition.
  * NBA and national-team choices remain isolated. No private data is stored.
  */
 const CLUB_COMPETITIONS = new Set([
   "Premier League", "La Liga", "Bundesliga", "Serie A", "Ligue 1",
-  "UEFA Champions League", "UEFA Europa League", "EFL Cup",
+  "UEFA Champions League", "UEFA Europa League", "UEFA Conference League",
+  "UEFA Super Cup", "EFL Cup", "FA Cup", "FA Community Shield",
+  "Copa del Rey", "Supercopa de España", "FIFA Club World Cup",
+  "FIFA Intercontinental Cup",
 ]);
 const normalized = value => String(value || "").normalize("NFKC").trim()
   .replace(/\s+/g, " ").toLowerCase();

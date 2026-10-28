@@ -3,11 +3,13 @@ import assert from "node:assert/strict";
 import { publishedUsBroadcasts } from "../../../backend/sports/broadcasts.mjs";
 import { confirmedPrimeVideoNba, withPublishedPrimeVideo } from "../../../backend/sports/prime-video.mjs";
 import { DROGON_CHANNELS, DROGON_TEST_CHANNELS, matchDrogonChannels } from "../../../backend/sports/drogon-lineup.mjs";
-import { COMPETITIONS, teamLabel, parsedFixtures, parsedTeams, refreshUpcomingBroadcasts, watchCompetitionCode } from "../../../backend/sports/index.mjs";
+import { COMPETITIONS, teamLabel, parsedFixtures, parsedTeams, refreshUpcomingBroadcasts, watchCompetitionCode, prioritizedTeamOptions } from "../../../backend/sports/index.mjs";
 test("NBA, top five European football leagues, UEFA and CONMEBOL represented", () => {
  assert.equal(COMPETITIONS.filter(c=>c.group==="club").length,5);
  assert.deepEqual(COMPETITIONS.filter(c=>c.group==="cup").map(c=>c.code),
-   ["eng.league_cup", "uefa.champions", "uefa.europa"]);
+   ["eng.league_cup", "eng.fa", "eng.charity", "esp.copa_del_rey",
+    "esp.super_cup", "uefa.champions", "uefa.europa", "uefa.europa.conf",
+    "uefa.super_cup", "fifa.cwc", "fifa.intercontinental_cup"]);
  assert.equal(COMPETITIONS.some(c=>c.code==="nba"),true);
  assert.equal(COMPETITIONS.some(c=>c.code==="uefa.nations"),true);
  assert.equal(COMPETITIONS.some(c=>c.code==="conmebol.america"),true);
@@ -219,4 +221,53 @@ test("smoke gate source ID parser accepts ESPN underscores and rejects malformed
   for (const bad of ["watch:eng/leaguecup:1", "watch::401", "league:eng.1:10", ""]) {
     assert.equal(watchCompetitionCode(bad), "");
   }
+});
+
+test("new club trophies retain competition names, stable IDs and national World Cup isolation", () => {
+  const cups = new Map([
+    ["fifa.cwc", "FIFA Club World Cup"],
+    ["fifa.intercontinental_cup", "FIFA Intercontinental Cup"],
+    ["uefa.super_cup", "UEFA Super Cup"],
+    ["uefa.europa.conf", "UEFA Conference League"],
+    ["eng.charity", "FA Community Shield"],
+    ["esp.super_cup", "Supercopa de España"],
+    ["esp.copa_del_rey", "Copa del Rey"],
+    ["eng.fa", "FA Cup"],
+  ]);
+  assert.equal(new Set(COMPETITIONS.map(x => x.code)).size, COMPETITIONS.length);
+  for (const [code, label] of cups) {
+    const comp = COMPETITIONS.find(c => c.code === code);
+    assert.ok(comp, code);
+    assert.equal(comp.group, "cup");
+    assert.equal(comp.label, label);
+    const [game] = parsedFixtures({ events: [{
+      id: "999", date: "2026-12-21T22:30:00Z",
+      competitions: [{ competitors: [
+        { homeAway: "home", team: { displayName: "Arsenal" } },
+        { homeAway: "away", team: { displayName: "Chelsea" } },
+      ] }],
+    }] }, comp);
+    assert.equal(game.id, "watch:" + code + ":999");
+    assert.equal(watchCompetitionCode(game.id), code);
+    assert.equal(game.competition, label);
+    assert.equal(game.kind, "watch");
+    assert.deepEqual(game.teams, [label + " · Arsenal", label + " · Chelsea"]);
+  }
+  assert.equal(COMPETITIONS.find(c => c.code === "fifa.world").group, "national");
+  assert.equal(teamLabel(COMPETITIONS.find(c => c.code === "fifa.world"), "England"),
+    "National · England");
+});
+
+test("cup-only opponents cannot displace established watched club choices", () => {
+  const core = new Set(["NBA · Lakers", "Premier League · Arsenal",
+    "La Liga · Real Madrid", "National · England"]);
+  const all = new Set([...core,
+    ...Array.from({length: 740}, (_, i) => "FA Cup · Amateur " + String(i).padStart(4, "0"))]);
+  const options = prioritizedTeamOptions(core, all, ["Premier League · Manchester City"]);
+  assert.equal(options.length, 700);
+  for (const name of [...core, "Premier League · Manchester City"]) {
+    assert.ok(options.includes(name), name);
+  }
+  assert.ok(options.some(name => name.startsWith("FA Cup · ")));
+  assert.equal(new Set(options).size, options.length);
 });

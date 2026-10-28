@@ -1,7 +1,8 @@
 /**
  * Low-cost, scheduled public professional-sport fixture catalogue.
  * This is isolated from RATS fixtures, scouting, RSVP and Web Push.
- * League, EFL Cup and European cup fixtures share selected club identities by name.
+ * Domestic leagues, knockout cups and international club trophies share selected
+ * club identities by name, with FIFA national-team tournaments kept separate.
  * ESPN's public site feed is unofficial and can change; fail closed rather
  * than clearing a previously verified, encrypted fixture snapshot.
  */
@@ -21,12 +22,20 @@ export const COMPETITIONS = Object.freeze([
   { sport: "basketball", code: "nba", label: "NBA", group: "NBA" },
   { sport: "soccer", code: "eng.1", label: "Premier League", group: "club" },
   { sport: "soccer", code: "eng.league_cup", label: "EFL Cup", group: "cup" },
+  { sport: "soccer", code: "eng.fa", label: "FA Cup", group: "cup" },
+  { sport: "soccer", code: "eng.charity", label: "FA Community Shield", group: "cup" },
   { sport: "soccer", code: "esp.1", label: "La Liga", group: "club" },
+  { sport: "soccer", code: "esp.copa_del_rey", label: "Copa del Rey", group: "cup" },
+  { sport: "soccer", code: "esp.super_cup", label: "Supercopa de España", group: "cup" },
   { sport: "soccer", code: "ger.1", label: "Bundesliga", group: "club" },
   { sport: "soccer", code: "ita.1", label: "Serie A", group: "club" },
   { sport: "soccer", code: "fra.1", label: "Ligue 1", group: "club" },
   { sport: "soccer", code: "uefa.champions", label: "UEFA Champions League", group: "cup" },
   { sport: "soccer", code: "uefa.europa", label: "UEFA Europa League", group: "cup" },
+  { sport: "soccer", code: "uefa.europa.conf", label: "UEFA Conference League", group: "cup" },
+  { sport: "soccer", code: "uefa.super_cup", label: "UEFA Super Cup", group: "cup" },
+  { sport: "soccer", code: "fifa.cwc", label: "FIFA Club World Cup", group: "cup" },
+  { sport: "soccer", code: "fifa.intercontinental_cup", label: "FIFA Intercontinental Cup", group: "cup" },
   { sport: "soccer", code: "uefa.euro", label: "UEFA Euro", group: "national" },
   { sport: "soccer", code: "uefa.nations", label: "UEFA Nations League", group: "national" },
   { sport: "soccer", code: "fifa.worldq.uefa", label: "UEFA World Cup Qualifiers", group: "national" },
@@ -137,12 +146,23 @@ async function getJson(fetcher, url) {
  * ESPN retired multi-day date ranges in 2026. Calendar months and years are
  * still supported, but silently truncate to 100 games unless 'limit' is set.
  * Query published monthly fixture pages across a rolling 13-month horizon.
- * This is ~210 requests per week, with no user-request-time ESPN calls.
+ * This is bounded to one teams lookup and 13 monthly pages per competition
+ * each week (plus sparse recovery); never query ESPN on a user's request.
  */
+// Keep established team subscriptions selectable if large knockout tournaments
+// add hundreds of lower-division opponents. Limit only the visible choices;
+// fixture coverage and source-qualified calendar IDs stay intact.
+export function prioritizedTeamOptions(core, all, previous = [], limit = 700) {
+  const priority = new Set([...core, ...previous]);
+  const sorted = values => [...values].sort((a, b) => a.localeCompare(b));
+  return [...sorted(priority),
+    ...sorted(new Set([...all].filter(x => !priority.has(x))))].slice(0, limit);
+}
 export async function indexSports(fetcher = fetch, today = new Date(), previous = null) {
   const from = startOfDay(today);
   const until = new Date(from.getTime() + 366 * 86400000);
   const catalogue = new Set(NATIONAL_OPTIONS);
+  const coreOptions = new Set(NATIONAL_OPTIONS);
   const fixtureMap = new Map();
   const failures = [];
   const coverage = {};
@@ -151,7 +171,12 @@ export async function indexSports(fetcher = fetch, today = new Date(), previous 
     try {
       const response = await getJson(fetcher, apiUrl(comp, "teams", "?limit=500"));
       teamRecords = parsedTeamRecords(response, comp);
-      for (const team of teamRecords) catalogue.add(team.name);
+      for (const team of teamRecords) {
+        catalogue.add(team.name);
+        if (comp.group === "club" || comp.sport === "basketball") {
+          coreOptions.add(team.name);
+        }
+      }
     } catch {
       failures.push(comp.code + ":teams");
     }
@@ -181,7 +206,12 @@ export async function indexSports(fetcher = fetch, today = new Date(), previous 
             if (Array.isArray(old?.broadcasts)) fixture.broadcasts = old.broadcasts;
           }
           fixtureMap.set(fixture.id, fixture);
-          fixture.teams.forEach(team => catalogue.add(team));
+          fixture.teams.forEach(team => {
+            catalogue.add(team);
+            if (comp.group === "club" || comp.sport === "basketball") {
+              coreOptions.add(team);
+            }
+          });
           matchesFound++;
         }
       } catch {
@@ -193,7 +223,10 @@ export async function indexSports(fetcher = fetch, today = new Date(), previous 
     // If all monthly responses failed, one per-team schedule is an alternate
     // route for planned fixtures. Do not turn routine empty international
     // windows into hundreds of redundant requests.
-    if (!successfulMonths && teamRecords.length) {
+    // Large cup registries (especially the FA Cup) can list hundreds of
+    // teams; do not trigger hundreds of fallback requests after an outage.
+    if (!successfulMonths && teamRecords.length &&
+        (comp.group !== "cup" || teamRecords.length <= 24)) {
       const visited = new Set();
       for (const team of teamRecords) {
         if (!team.id || visited.has(team.id)) continue;
@@ -245,7 +278,7 @@ export async function indexSports(fetcher = fetch, today = new Date(), previous 
     drogonLineupCapturedAt: DROGON_LINEUP_CAPTURED_AT,
     provider: "ESPN public site feeds (unofficial)",
     refreshHours: 168,
-    teams: [...catalogue].sort((a, b) => a.localeCompare(b)).slice(0, 700),
+    teams: prioritizedTeamOptions(coreOptions, catalogue, previous?.teams),
     games, failures, coverage,
   };
   console.log("Professional fixture coverage:", JSON.stringify(coverage));

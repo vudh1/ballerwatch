@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.12.0",
+  "currentVersion": "11.13.0",
   "releases": [
+    {
+      "version": "11.13.0",
+      "date": "2026-10-28",
+      "type": "minor",
+      "source": "user-feedback",
+      "title": "Follow major domestic cups, UEFA trophies and FIFA club tournaments",
+      "changes": [
+        "Expand the scheduled, encrypted Watching fixture index with FIFA Club World Cup, FIFA Intercontinental Cup, UEFA Super Cup, UEFA Conference League, FA Community Shield, Supercopa de España, Copa del Rey and FA Cup, using the existing unofficial ESPN public feeds and competition-qualified event IDs.",
+        "Automatically include published matches from those competitions when a club is followed from its domestic league; keep national-team FIFA World Cup and NBA isolated and do not create imagined future fixtures or extra push notifications.",
+        "Preserve stable calendar subscription URLs, source-qualified event UIDs, published league labels, offline behavior, FRIDAY ICS backcompat and existing per-device team selections; no new provider, account, D1, chargeable service or new front-end polling.",
+        "Protect established and previously published team options when large FA Cup catalogues exceed the selectable team limit; bound outage fallback to prevent runaway per-club fetches, retaining the last verified encrypted snapshot on source failures.",
+        "Refresh the versioned PWA shell and add synthetic competition, monitoring-key, duplicate-event, national isolation and team-selection regression tests. Promotion to production remains separately gated."
+      ]
+    },
     {
       "version": "11.12.0",
       "date": "2026-10-26",

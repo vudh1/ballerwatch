@@ -1275,8 +1275,8 @@ try {
         await ready(page, "beta/");
         assert.equal(new URL(page.url()).pathname, "/ballerwatch/beta/");
         // Shared API fixtures report 11.0.0; the visible label must be the beta shell.
-        await page.waitForFunction(() => document.querySelector("#version")?.textContent === "BallerWatch v11.12.0");
-        assert.equal(await page.locator("#version").textContent(), "BallerWatch v11.12.0");
+        await page.waitForFunction(() => document.querySelector("#version")?.textContent === "BallerWatch v11.13.0");
+        assert.equal(await page.locator("#version").textContent(), "BallerWatch v11.13.0");
         await page.locator("#next-game-menu-trigger").click();
         await page.locator("#next-game-menu-edit").click();
         await page.locator("#match-override-location").fill("Beta-only Fixture Field");
