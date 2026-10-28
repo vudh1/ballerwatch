@@ -6,7 +6,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { decryptState, isHardenedStateEnvelope } from "../backend/shared/state-crypto.mjs";
-import { COMPETITIONS, SPORTS_INDEX_PATH } from "../backend/sports/index.mjs";
+import { COMPETITIONS, SPORTS_INDEX_PATH, watchCompetitionCode } from "../backend/sports/index.mjs";
 import { DROGON_LINEUP_CAPTURED_AT, DROGON_CHANNELS, DROGON_TEST_CHANNELS,
   matchDrogonChannels } from "../backend/sports/drogon-lineup.mjs";
 
@@ -35,9 +35,10 @@ for (const game of index.games) {
   assert.ok(!uniqueIds.has(game.id), "duplicate indexed game ID");
   uniqueIds.add(game.id);
   assert.equal(game.kind, "watch", "sports index should contain only Watch events");
-  const match = /^watch:([a-z0-9.]+):/.exec(game.id || "");
-  assert.ok(match, "invalid source-qualified watch ID");
-  if (Object.hasOwn(counts, match[1])) counts[match[1]]++;
+  const code = watchCompetitionCode(game.id);
+  assert.ok(code, "invalid source-qualified watch ID");
+  assert.ok(Object.hasOwn(counts, code), "unrecognized indexed competition: " + code);
+  counts[code]++;
   assert.ok(Array.isArray(game.broadcasts), "indexed broadcasters must be an array");
   assert.ok(Array.isArray(game.drogonChannels), "missing computed guide matches");
   assert.equal(game.drogonBroadcastKey, JSON.stringify(game.broadcasts),

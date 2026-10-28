@@ -11,6 +11,11 @@ import { encryptState, decryptState } from "../shared/state-crypto.mjs";
 import { publishedUsBroadcasts } from "./broadcasts.mjs";
 import { withPublishedPrimeVideo } from "./prime-video.mjs";
 import { DROGON_LINEUP_CAPTURED_AT, matchDrogonChannels } from "./drogon-lineup.mjs";
+// ESPN competition slugs may contain underscores (e.g. eng.league_cup).
+// Preserve the source-qualified UID namespace across indexing and smoke checks.
+export function watchCompetitionCode(id) {
+  return /^watch:([a-z0-9._]+):/.exec(String(id || ""))?.[1] || "";
+}
 export const SPORTS_INDEX_PATH = "sports/state/fixtures.json";
 export const COMPETITIONS = Object.freeze([
   { sport: "basketball", code: "nba", label: "NBA", group: "NBA" },
