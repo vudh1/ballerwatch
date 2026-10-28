@@ -7,7 +7,7 @@ import { COMPETITIONS, teamLabel, parsedFixtures, parsedTeams, refreshUpcomingBr
 test("NBA, top five European football leagues, UEFA and CONMEBOL represented", () => {
  assert.equal(COMPETITIONS.filter(c=>c.group==="club").length,5);
  assert.deepEqual(COMPETITIONS.filter(c=>c.group==="cup").map(c=>c.code),
-   ["uefa.champions", "uefa.europa"]);
+   ["eng.league_cup", "uefa.champions", "uefa.europa"]);
  assert.equal(COMPETITIONS.some(c=>c.code==="nba"),true);
  assert.equal(COMPETITIONS.some(c=>c.code==="uefa.nations"),true);
  assert.equal(COMPETITIONS.some(c=>c.code==="conmebol.america"),true);
