@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { publishedUsBroadcasts } from "../../../backend/sports/broadcasts.mjs";
 import { confirmedPrimeVideoNba, withPublishedPrimeVideo } from "../../../backend/sports/prime-video.mjs";
 import { DROGON_CHANNELS, DROGON_TEST_CHANNELS, matchDrogonChannels } from "../../../backend/sports/drogon-lineup.mjs";
-import { COMPETITIONS, teamLabel, parsedFixtures, parsedTeams, refreshUpcomingBroadcasts } from "../../../backend/sports/index.mjs";
+import { COMPETITIONS, teamLabel, parsedFixtures, parsedTeams, refreshUpcomingBroadcasts, watchCompetitionCode } from "../../../backend/sports/index.mjs";
 test("NBA, top five European football leagues, UEFA and CONMEBOL represented", () => {
  assert.equal(COMPETITIONS.filter(c=>c.group==="club").length,5);
  assert.deepEqual(COMPETITIONS.filter(c=>c.group==="cup").map(c=>c.code),
@@ -209,4 +209,14 @@ test("EFL Cup indexed as distinct source-qualified fixtures; domestic league ret
   assert.equal(fixtures[0].id, "watch:eng.league_cup:401999991");
   assert.deepEqual(fixtures[0].teams, ["EFL Cup · Liverpool", "EFL Cup · Chelsea"]);
   assert.ok(COMPETITIONS.some(entry => entry.code === "eng.1"));
+});
+
+test("smoke gate source ID parser accepts ESPN underscores and rejects malformed slugs", () => {
+  assert.equal(watchCompetitionCode("watch:eng.league_cup:401999991"), "eng.league_cup");
+  assert.equal(watchCompetitionCode("watch:uefa.champions:401"), "uefa.champions");
+  assert.equal(watchCompetitionCode("watch:eng.1:123"), "eng.1");
+  assert.equal(watchCompetitionCode("watch:nba:401"), "nba");
+  for (const bad of ["watch:eng/leaguecup:1", "watch::401", "league:eng.1:10", ""]) {
+    assert.equal(watchCompetitionCode(bad), "");
+  }
 });
