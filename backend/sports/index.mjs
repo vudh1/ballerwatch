@@ -1,7 +1,7 @@
 /**
  * Low-cost, scheduled public professional-sport fixture catalogue.
  * This is isolated from RATS fixtures, scouting, RSVP and Web Push.
- * League and European cup fixtures share selected club identities by name.
+ * League, EFL Cup and European cup fixtures share selected club identities by name.
  * ESPN's public site feed is unofficial and can change; fail closed rather
  * than clearing a previously verified, encrypted fixture snapshot.
  */
@@ -15,6 +15,7 @@ export const SPORTS_INDEX_PATH = "sports/state/fixtures.json";
 export const COMPETITIONS = Object.freeze([
   { sport: "basketball", code: "nba", label: "NBA", group: "NBA" },
   { sport: "soccer", code: "eng.1", label: "Premier League", group: "club" },
+  { sport: "soccer", code: "eng.league_cup", label: "EFL Cup", group: "cup" },
   { sport: "soccer", code: "esp.1", label: "La Liga", group: "club" },
   { sport: "soccer", code: "ger.1", label: "Bundesliga", group: "club" },
   { sport: "soccer", code: "ita.1", label: "Serie A", group: "club" },
