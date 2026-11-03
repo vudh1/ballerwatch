@@ -11,9 +11,10 @@ import {
   historyRefreshDue,
   historySeasonIds,
   normalizeHistoryAggregate,
+  mergeVerifiedCurrentSeason,
   refreshRatsHistory,
 } from "../../../backend/league/history.mjs";
-import { decryptState } from "../../../backend/shared/state-crypto.mjs";
+import { decryptState, encryptState } from "../../../backend/shared/state-crypto.mjs";
 
 test("default RATS history discovery uses the source-supported archive window recent-first", () => {
   const ids = historySeasonIds(new Date("2026-10-07T12:00:00Z"));
@@ -148,6 +149,122 @@ test("RATS history ignores empty unpublished season aggregates", () => {
     normalizeHistoryAggregate("winter-2023", {teams: [], events: []}),
     null,
   );
+});
+
+
+test("verified current-season scores update standings without another archive fetch", async (t) => {
+  const oldKey = process.env.TRACKER_STATE_KEY;
+  process.env.TRACKER_STATE_KEY = "synthetic-rats-fast-standings-key";
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ballerwatch-rats-fast-results-"));
+  t.after(() => {
+    if (oldKey == null) delete process.env.TRACKER_STATE_KEY;
+    else process.env.TRACKER_STATE_KEY = oldKey;
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+  const file = path.join(dir, "history.json");
+  const live = path.join(dir, "verified-current.json");
+  const flag = path.join(dir, "standings-changed.json");
+  const now = new Date("2026-11-02T23:00:00Z");
+  const aggregate = {
+    teams: [
+      { name: "Alpha", day: "Monday", gender: "Coed", division: "3" },
+      { name: "Beta", day: "Monday", gender: "Coed", division: "3" },
+    ],
+    events: [{
+      id: "match-1", start_date: "2026-11-01", start_time: "20:00:00",
+      home_team_name: "Alpha", away_team_name: "Beta", score: "2-0",
+    }],
+  };
+  const current = normalizeHistoryAggregate("fall-2026", aggregate);
+  const previous = {
+    schemaVersion: 3, updatedAt: "2026-11-01T22:00:00Z",
+    coverage: { complete: true, requestedSeasonCount: 1, checkedSeasonCount: 1,
+      completedMatchCount: 0, unresolvedSeasonIds: [] },
+    scan: { pendingSeasonIds: [], checkedSeasonIds: ["fall-2026"],
+      unresolvedSeasonIds: [], attemptCounts: {} },
+    seasons: [{ ...current, matches: current.matches.map((match) => ({
+      ...match, homeScore: null, awayScore: null,
+    })) }],
+  };
+  fs.writeFileSync(file, JSON.stringify(encryptState(previous)));
+  fs.writeFileSync(live, JSON.stringify({ schemaVersion: 1,
+    seasonId: "fall-2026", season: current }));
+  let calls = 0;
+  const updated = await refreshRatsHistory({
+    now, file, startYear: 2026, currentResultsFile: live, standingsFlagFile: flag,
+    callFn: async () => { calls += 1; throw new Error("source not needed"); },
+  });
+  assert.equal(calls, 0, "a fresh validated aggregate should not trigger more provider traffic");
+  assert.equal(updated.seasons[0].matches[0].homeScore, 2);
+  assert.equal(updated.coverage.completedMatchCount, 1);
+  assert.equal(updated.updatedAt, now.toISOString());
+  assert.equal(fs.existsSync(flag), true);
+  assert.equal(decryptState(JSON.parse(fs.readFileSync(file, "utf8"))).seasons[0]
+    .matches[0].awayScore, 0);
+  assert.doesNotMatch(fs.readFileSync(file, "utf8"), /Alpha|match-1/);
+  const unchanged = mergeVerifiedCurrentSeason(updated, current, now);
+  assert.equal(unchanged, null, "unchanged results must not bump the published timestamp");
+});
+
+test("partial RATS feeds cannot erase scored games or active team coverage", () => {
+  const current = normalizeHistoryAggregate("fall-2026", {
+    teams: [
+      { name: "Alpha", day: "Monday", gender: "Coed", division: "3" },
+      { name: "Beta", day: "Monday", gender: "Coed", division: "3" },
+    ],
+    events: [{ id: "match-1", start_date: "2026-10-31",
+      home_team_name: "Alpha", away_team_name: "Beta", score: "3-2" }],
+  });
+  const history = {
+    schemaVersion: 3, seasons: [current],
+    coverage: { requestedSeasonCount: 1, checkedSeasonCount: 1, unresolvedSeasonIds: [] },
+  };
+  assert.equal(mergeVerifiedCurrentSeason(history, {
+    ...current, matches: current.matches.map((match) => ({
+      ...match, homeScore: null, awayScore: null,
+    })),
+  }), null);
+  assert.equal(mergeVerifiedCurrentSeason(history, {
+    ...current, teams: current.teams.slice(0, 1),
+  }), null);
+  assert.equal(mergeVerifiedCurrentSeason(history, {
+    ...current, matches: [],
+  }), null);
+  const corrected = mergeVerifiedCurrentSeason(history, {
+    ...current, matches: current.matches.map((match) => ({
+      ...match, homeScore: 4, awayScore: 2,
+    })),
+  }, new Date("2026-11-02T23:00:00Z"));
+  assert.equal(corrected.seasons[0].matches[0].homeScore, 4,
+    "verified published score corrections must update standings");
+});
+
+test("history polling outage must not mislabel cached standings as freshly synced", async (t) => {
+  const oldKey = process.env.TRACKER_STATE_KEY;
+  process.env.TRACKER_STATE_KEY = "synthetic-rats-stale-results-key";
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ballerwatch-rats-stale-results-"));
+  t.after(() => {
+    if (oldKey == null) delete process.env.TRACKER_STATE_KEY;
+    else process.env.TRACKER_STATE_KEY = oldKey;
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+  const file = path.join(dir, "history.json");
+  const prior = {
+    schemaVersion: 3, updatedAt: "2026-10-30T18:00:00Z",
+    coverage: { completedMatchCount: 1, complete: true },
+    scan: { pendingSeasonIds: [], checkedSeasonIds: [], unresolvedSeasonIds: [] },
+    seasons: [{ seasonId: "fall-2026", teams: [{ name: "Alpha" }],
+      matches: [{ id: "m", homeScore: 2, awayScore: 0 }] }],
+  };
+  fs.writeFileSync(file, JSON.stringify(encryptState(prior)));
+  const after = await refreshRatsHistory({
+    now: new Date("2026-11-02T23:00:00Z"), force: true, startYear: 2026,
+    file, currentResultsFile: path.join(dir, "none.json"),
+    standingsFlagFile: path.join(dir, "never.json"),
+    callFn: async () => { throw new Error("ENOTFOUND source"); },
+  });
+  assert.equal(after.updatedAt, prior.updatedAt);
+  assert.deepEqual(decryptState(JSON.parse(fs.readFileSync(file, "utf8"))), prior);
 });
 
 test("RATS history builder stores discovered public results only as encrypted runtime state", async (t) => {
