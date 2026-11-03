@@ -9,6 +9,10 @@ import { appendVenueObservations, matchVenue } from "../shared/venue-directory.m
 import fs from "node:fs";
 import { scheduleNotificationUpdates } from "./schedule-updates.mjs";
 import { normalizeHistoryAggregate } from "./history.mjs";
+import {
+  PUBLIC_RATS_ORIGIN, PUBLIC_RATS_SOURCE, PUBLIC_TEAM_EXPORT_HEADERS,
+  publishedRatsCall,
+} from "./rats-public-source.mjs";
 import { pathToFileURL } from "node:url";
 import {
   dateInZone,
@@ -20,26 +24,11 @@ import {
 } from "./rats-utils.mjs";
 
 const SEASONS = ["winter", "spring", "summer", "fall"];
-export const SOURCE = "https://seattlerats.org/standings";
-export const API = "https://service.rats.team.op-dev.io/";
+export const SOURCE = PUBLIC_RATS_SOURCE;
+export const API = PUBLIC_RATS_ORIGIN + "/";
 export const CALENDAR_TRACKING_KEY_VERSION = "v2";
 const TEAM_CONFIG = "teams.json";
-export const HEADERS = [
-  "Event Type",
-  "Start Date",
-  "Start Time",
-  "End Date",
-  "End Time",
-  "Timezone ID",
-  "Home or Away",
-  "Opponent/Event Title",
-  "Location Name",
-  "Shirt Color",
-  "Opponent Shirt Color",
-  "Allow RSVPs",
-  "Send Reminders",
-  "Notes/Comments",
-];
+export const HEADERS = PUBLIC_TEAM_EXPORT_HEADERS;
 
 export class HttpError extends Error {
   constructor(status, message = `HTTP ${status}`) {
@@ -194,17 +183,7 @@ export async function call(
 ) {
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
-      const response = await fetchImpl(API + action, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "User-Agent": "rats-league-watcher/1.0",
-        },
-        body: JSON.stringify(params),
-        signal: AbortSignal.timeout(timeoutMs),
-      });
-      if (!response.ok) throw new HttpError(response.status);
-      return await response.json();
+      return await publishedRatsCall(action, params, { fetchImpl, timeoutMs });
     } catch (error) {
       if (!isTransientSourceError(error) || attempt === maxAttempts - 1) throw error;
       await sleepFn(2 ** attempt * 1000);
