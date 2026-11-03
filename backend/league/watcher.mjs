@@ -167,7 +167,7 @@ export function isTransientSourceError(error) {
     if ([408, 429, 500, 502, 503, 504].includes(Number(current.status))) return true;
     if (["AbortError", "TimeoutError"].includes(current.name)) return true;
     if (
-      ["ETIMEDOUT", "ECONNRESET", "ECONNREFUSED", "EAI_AGAIN", "ENETUNREACH"].includes(
+      ["ETIMEDOUT", "ECONNRESET", "ECONNREFUSED", "EAI_AGAIN", "ENOTFOUND", "ENETUNREACH"].includes(
         current.code,
       )
     ) {
