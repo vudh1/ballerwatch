@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "currentVersion": "11.13.0",
+  "currentVersion": "11.13.1",
   "releases": [
+    {
+      "version": "11.13.1",
+      "date": "2026-11-02",
+      "type": "patch",
+      "source": "user-feedback",
+      "title": "Restore live RATS standings and public match synchronization",
+      "changes": [
+        "Replace the retired RATS service API with its official public-site sources: a public Google Visualization sheet for active seasons and verified frozen RATS JSON snapshots for completed seasons, never executing third-party scripts or accessing private Sheets.",
+        "Reuse each five-minute verified league aggregate to merge current scored fixtures into the encrypted historical index and refresh prepared standings only on material results changes, preserving the separate hourly archive and offline fallbacks.",
+        "Preserve verified legacy match keys, ICS subscription identities and venue links across source migration; fail closed on schema drift, partial teams, dropped scores and ambiguous fixtures to avoid false schedule notices or invented match results.",
+        "Keep backend-only source requests bounded and free of credentials, preserve device-local choices, FRIDAY/ICS contracts, push policy (no score-only notifications), approved cron dispatches, encrypted runtime-state and protected Worker/Pages release gates.",
+        "Add public-source normalization, score-reconciliation, legacy-ID retention, DNS outage, frozen archive and privacy regression tests plus a read-only live score comparison. Production is a separately controlled release."
+      ]
+    },
     {
       "version": "11.13.0",
       "date": "2026-10-28",
