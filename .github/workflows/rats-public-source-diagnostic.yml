@@ -1,0 +1,49 @@
+# Temporary diagnostics for issue #226. Remove before release.
+name: RATS public source diagnostic
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/rats-public-source-diagnostic.yml"
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Install pinned headless browser
+        run: |
+          npm install --prefix /tmp/ballerwatch-source-probe --no-save playwright@1.56.1
+          node /tmp/ballerwatch-source-probe/node_modules/playwright/cli.js install --with-deps chromium
+      - name: Inspect public RATS schedule network (no secrets or response bodies)
+        run: |
+          node --input-type=module <<'NODE'
+          const {chromium}=await import("/tmp/ballerwatch-source-probe/node_modules/playwright/index.mjs");
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1280,height:920}});
+          const seen=new Set();
+          page.on("response",res=>{
+            const u=new URL(res.url());const ct=res.headers()["content-type"]||"";
+            if(/json|graphql|schedule|standings|league|fixture/i.test(ct+" "+u.pathname) &&
+              /^https?:$/.test(u.protocol)) {
+              const id=u.hostname+" "+u.pathname.split("/").map(s=>s.length>30?"[id]":s).join("/");
+              if(seen.size<80 && !seen.has(id)){seen.add(id);console.log("PUBLIC RESPONSE",res.status(),id,ct.slice(0,45));}
+            }
+          });
+          for(const url of ["https://seattlerats.org/schedule--standings","https://seattlerats.org/standings"]){
+            try {
+              const response=await page.goto(url,{waitUntil:"domcontentloaded",timeout:30000});
+              await page.waitForTimeout(8500);
+              console.log("PAGE",new URL(page.url()).hostname+new URL(page.url()).pathname,
+                "status",response?.status(),"title",await page.title());
+              console.log("PUBLIC DOM HEADINGS",await page.locator("h1,h2,h3").allTextContents().then(a=>a.slice(0,12).map(x=>x.trim().slice(0,80))));
+              console.log("PUBLIC LINKS",await page.locator("a[href]").evaluateAll(els=>els.map(el=>{
+                try { const u=new URL(el.href); return u.origin+u.pathname; }catch{return "";}
+              }).filter(x=>/rats|gametimehero|schedule|standings|league/.test(x)).slice(0,15)));
+            } catch(error){console.log("PAGE ERROR",String(error.message).slice(0,180));}
+          }
+          console.log("TOTAL NAMED API ROUTES",seen.size);
+          await browser.close();
+          NODE
