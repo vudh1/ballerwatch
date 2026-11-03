@@ -18,6 +18,7 @@ import {
   normalize,
   publishedVenueUrl,
   publishedVenueCoordinates,
+  runWatcher,
   validPublishedVenueUrl,
   validPreviousSchedule,
 } from "../../../backend/league/watcher.mjs";
@@ -245,7 +246,43 @@ test("transient errors are narrowly classified", () => {
   assert.equal(isTransientSourceError(new HttpError(503)), true);
   assert.equal(isTransientSourceError(new HttpError(401)), false);
   assert.equal(isTransientSourceError(new HttpError(501)), false);
+  const dns = Object.assign(new Error("DNS lookup failed"), { code: "ENOTFOUND" });
+  assert.equal(isTransientSourceError(new Error("fetch failed", { cause: dns })), true);
   assert.equal(isTransientSourceError(new Error("schema changed")), false);
+});
+
+test("verified RATS aggregate reaches the score fast path without breaking fixtures", async (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ballerwatch-verified-rats-"));
+  const cwd = process.cwd();
+  t.after(() => {
+    process.chdir(cwd);
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+  process.chdir(dir);
+  fs.writeFileSync("teams.json", JSON.stringify({ teams: TEAM_NAMES }));
+  const data = fixtures();
+  const seen = [];
+  const season = "fall-2026";
+  const callback = async (seasonId, aggregate, now) => {
+    seen.push([seasonId, aggregate.events.length, now.toISOString()]);
+    throw new Error("Optional index unavailable");
+  };
+  const result = await runWatcher({
+    now: new Date("2026-10-07T12:00:00Z"),
+    callFn: async (action, args) => {
+      if (action === "get-aggregate") return data.aggregate;
+      if (action === "get-schedule") {
+        return args.key === "a" ? data.exportsByTeam["Team Alpha"] :
+          data.exportsByTeam["Team Beta"];
+      }
+      throw new Error("Unexpected source action");
+    },
+    onVerifiedAggregate: callback,
+  });
+  assert.equal(result.ok, true, "optional scoring failure must not block a valid schedule");
+  assert.equal(result.teams[0].publishedMatchCount, 1);
+  assert.deepEqual(seen, [[season, 1, "2026-10-07T12:00:00.000Z"]]);
+  assert.equal(JSON.parse(fs.readFileSync("schedule.json", "utf8")).seasonId, season);
 });
 
 test("RATS call retries transient errors then succeeds", async () => {
