@@ -607,7 +607,9 @@ export function preservePreviousMatchIdentities(previous, current) {
       match.identityBasis = oldMatch.identityBasis || match.identityBasis;
       if (normalizeTeamName(oldMatch.location) === normalizeTeamName(match.location)) {
         if (!match.locationUrl && oldMatch.locationUrl) match.locationUrl = oldMatch.locationUrl;
-        if (!match.mapUrl && oldMatch.mapUrl) match.mapUrl = oldMatch.mapUrl;
+        // Preserve a previously verified map link over the new generic
+        // Maps query fallback when the venue itself has not changed.
+        if (oldMatch.mapUrl) match.mapUrl = oldMatch.mapUrl;
         if (!match.venueCoordinates && oldMatch.venueCoordinates) {
           match.venueCoordinates = oldMatch.venueCoordinates;
         }
