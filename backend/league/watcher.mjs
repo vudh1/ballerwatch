@@ -608,6 +608,7 @@ export function canRetainPreviousSchedule(error, previous) {
 export async function runWatcher({
   now = new Date(),
   callFn = call,
+  onVerifiedAggregate = null,
 } = {}) {
   let previous = null;
   try {
@@ -706,6 +707,15 @@ export async function runWatcher({
     console.log(
       `Validated published match counts: [${payload.teams.map((team) => team.publishedMatchCount).join(", ")}]`,
     );
+    // This runs only after the full monitored schedule/export validation. An
+    // optional current-season results fast path cannot break fixture delivery.
+    if (typeof onVerifiedAggregate === "function") {
+      try {
+        await onVerifiedAggregate(seasonId, aggregate, now);
+      } catch {
+        console.warn("::warning::Verified RATS results fast path skipped; hourly history fallback remains.");
+      }
+    }
     return payload;
   } catch (error) {
     if (canRetainPreviousSchedule(error, previous)) {
@@ -724,5 +734,12 @@ export async function runWatcher({
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  await runWatcher();
+  await runWatcher({
+    onVerifiedAggregate: async (seasonId, aggregate) => {
+      const { normalizeHistoryAggregate } = await import("./history.mjs");
+      const season = normalizeHistoryAggregate(seasonId, aggregate);
+      // Public scores only; transient workspace file, never canonical runtime state.
+      if (season) writeJson("current-results.json", { schemaVersion: 1, seasonId, season });
+    },
+  });
 }
