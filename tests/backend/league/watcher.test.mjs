@@ -289,30 +289,33 @@ test("verified RATS aggregate reaches the score fast path without breaking fixtu
   assert.equal(JSON.parse(fs.readFileSync("schedule.json", "utf8")).seasonId, season);
 });
 
-test("RATS call retries transient errors then succeeds", async () => {
+test("RATS public source retries a transient registry failure then succeeds", async () => {
   const responses = [
     {ok: false, status: 500},
     {ok: false, status: 502},
-    {ok: true, status: 200, json: async () => ({ok: true})},
+    {ok: true, status: 200, text: async () =>
+      "export const SEASONS = [{ key: 'fall-2026', title: 'Fall 2026', " +
+      "sheetId: 'publicSyntheticSheet_abcdefghijklmnopqrstuvwxyz' }];"},
   ];
   const sleeps = [];
   let calls = 0;
-  const result = await call("test", {x: 1}, {
-    fetchImpl: async () => {
+  const result = await call("get-aggregate", {season: "winter-2027"}, {
+    fetchImpl: async (url) => {
+      assert.match(url, /^https:\/\/rats\.team\.op-dev\.io\/lib\/seasons\.js$/);
       calls += 1;
       return responses.shift();
     },
     sleepFn: async (ms) => sleeps.push(ms),
   });
-  assert.deepEqual(result, {ok: true});
+  assert.deepEqual(result, {teams: [], events: []});
   assert.equal(calls, 3);
   assert.deepEqual(sleeps, [1000, 2000]);
 });
 
-test("permanent RATS error is not retried", async () => {
+test("RATS public source does not retry a permanent authorization failure", async () => {
   let calls = 0;
   await assert.rejects(
-    call("test", {x: 1}, {
+    call("get-aggregate", {season: "fall-2026"}, {
       fetchImpl: async () => {
         calls += 1;
         return {ok: false, status: 401};
