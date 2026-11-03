@@ -1,0 +1,136 @@
+name: Request BallerWatch 11.13.1 production promotion
+
+# One-time, user-approved production request for the RATS source recovery.
+# Only the existing protected promotion workflow may publish a release and
+# advance production. This workflow never writes canonical runtime state.
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/request-release-11.13.1.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  request:
+    if: "startsWith(github.event.head_commit.message, 'chore(release): request 11.13.1 production promotion')"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Verify fixed release candidate and beta deployment
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+          CALENDAR_D1_DATABASE_ID: ${{ secrets.CALENDAR_D1_DATABASE_ID }}
+          CALENDAR_SYNC_KEY: ${{ secrets.CALENDAR_SYNC_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$GH_TOKEN" || { echo "::error::Protected release token unavailable."; exit 1; }
+          candidate="$(git log -1 --format=%H HEAD -- features/versions.json)"
+          test "$candidate" = "4df50582d7dbc50dadf230dd83dce3f4f939cea9" || {
+            echo "::error::Reviewed RATS candidate changed. Stop.";
+            exit 1;
+          }
+          changes="$(git diff --name-only "$candidate" HEAD)"
+          test "$changes" = ".github/workflows/request-release-11.13.1.yml" || {
+            echo "::error::Unreviewed files were added after the release candidate.";
+            exit 1;
+          }
+          version="$(git show "$candidate:features/versions.json" |
+            node -e 'let x="";process.stdin.on("data",c=>x+=c).on("end",()=>process.stdout.write(JSON.parse(x).currentVersion))')"
+          test "$version" = "11.13.1" || { echo "::error::Wrong release version."; exit 1; }
+          if [ -n "$CALENDAR_D1_DATABASE_ID" ] || [ -n "$CALENDAR_SYNC_KEY" ]; then
+            echo "::error::Optional D1 is configured; requires separate specific rollout authorization.";
+            exit 1;
+          fi
+          passing="$(gh api -X GET "/repos/$GITHUB_REPOSITORY/actions/workflows/validate.yml/runs"             -f head_sha="$candidate" -f status=completed -f per_page=30             --jq '[.workflow_runs[] | select(.conclusion == "success" and .event == "push")] | length')"
+          test "$passing" -ge 1 || { echo "::error::Main candidate validation did not pass."; exit 1; }
+          pages="$(gh api -X GET "/repos/$GITHUB_REPOSITORY/actions/workflows/pages.yml/runs"             -f head_sha="$candidate" -f status=completed -f per_page=30             --jq '[.workflow_runs[] | select(.conclusion == "success" and .event == "workflow_run")] | length')"
+          test "$pages" -ge 1 || { echo "::error::Validated beta must be live first."; exit 1; }
+          existing="$(gh release view v11.13.1 --repo "$GITHUB_REPOSITORY"             --json isDraft --jq 'if .isDraft then "draft" else "published" end'             2>/dev/null || printf 'missing')"
+          test "$existing" != "published" || {
+            echo "::error::The 11.13.1 release is already published.";
+            exit 1;
+          }
+
+      - name: Read canonical encrypted snapshots for notification-silent smoke
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$TRACKER_STATE_KEY"
+          for scope in pickup league sports; do
+            node backend/shared/runtime-state.mjs pull "$scope"
+          done
+          node backend/shared/league-state.mjs prepare
+
+      - name: Verify deployed-source parity with monitored RATS teams without sending notifications
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          import assert from "node:assert/strict";
+          import { decryptState } from "./backend/shared/state-crypto.mjs";
+          import { discoverLatestSeason, normalize } from "./backend/league/watcher.mjs";
+          import { publishedRatsCall } from "./backend/league/rats-public-source.mjs";
+          const state = decryptState(JSON.parse(fs.readFileSync("league/state/teams.json", "utf8")));
+          const names = state?.teams;
+          assert.ok(Array.isArray(names) && names.length && names.length <= 20);
+          const [season, aggregate] = await discoverLatestSeason(null, {
+            now: new Date(), teamNames: names, callFn: publishedRatsCall,
+          });
+          const exports = Object.fromEntries(await Promise.all(names.map(async name => {
+            const matched = aggregate.teams.filter(team =>
+              team.name.trim().toLowerCase() === name.trim().toLowerCase());
+            assert.equal(matched.length, 1, "A monitored team must uniquely match the published season.");
+            return [name, await publishedRatsCall("get-schedule", {
+              season, key: matched[0].schedule_key,
+            })];
+          })));
+          const result = normalize(season, aggregate, exports, { teamNames: names });
+          assert.equal(result.teams.length, names.length);
+          assert.ok(result.teams.every(team => team.matches.length > 0));
+          console.log("Verified public RATS source for encrypted monitored teams:",
+            result.teams.length, "teams,",
+            result.teams.reduce((count, team) => count + team.matches.length, 0),
+            "published team fixtures; season", season, "(no private team names logged).");
+          NODE
+
+      - name: Verify prebuilt data, smoke and encrypted runtime privacy
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/backend/smoke/manual-smoke.mjs
+          node scripts/verify-drogon-sports-index.mjs
+          node backend/shared/runtime-state.mjs audit
+
+      - name: Remove all temporary state even after failure
+        if: always()
+        shell: bash
+        run: |
+          for scope in pickup league sports; do
+            node backend/shared/runtime-state.mjs clean "$scope"
+          done
+          rm -rf .runtime
+          rm -f league/teams.json league/schedule.json league/today.json
+          rm -f league/current-results.json league/standings-changed.json
+          rm -f league/notification-update.json league/score-changes.json
+
+      - name: Dispatch the existing protected production promotion
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh workflow run promote-release.yml --repo "$GITHUB_REPOSITORY" --ref main
+          echo "Requested protected BallerWatch v11.13.1 release, Worker, and Pages rollout."
