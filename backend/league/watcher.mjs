@@ -8,6 +8,7 @@
 import { appendVenueObservations, matchVenue } from "../shared/venue-directory.mjs";
 import fs from "node:fs";
 import { scheduleNotificationUpdates } from "./schedule-updates.mjs";
+import { normalizeHistoryAggregate } from "./history.mjs";
 import { pathToFileURL } from "node:url";
 import {
   dateInZone,
@@ -736,7 +737,6 @@ export async function runWatcher({
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   await runWatcher({
     onVerifiedAggregate: async (seasonId, aggregate) => {
-      const { normalizeHistoryAggregate } = await import("./history.mjs");
       const season = normalizeHistoryAggregate(seasonId, aggregate);
       // Public scores only; transient workspace file, never canonical runtime state.
       if (season) writeJson("current-results.json", { schemaVersion: 1, seasonId, season });
