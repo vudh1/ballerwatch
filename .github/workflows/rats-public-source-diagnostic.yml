@@ -1,4 +1,4 @@
-# Temporary public-data diagnostic for issue #226. Remove before merge.
+# Temporary public-source comparison, no state changes; remove before merge.
 name: RATS public source diagnostic
 on:
   pull_request:
@@ -13,40 +13,36 @@ jobs:
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - name: Verify live RATS public seasonal Sheets and archived snapshot
+      - name: Compare adapter to live RATS official sheet scores
         run: |
           node --input-type=module <<'NODE'
-          const registryRes=await fetch("https://rats.team.op-dev.io/lib/seasons.js",{signal:AbortSignal.timeout(9000)});
-          const registry=await registryRes.text();
-          const current=registry.match(/key:\s*'fall-2026'[^\n]*sheetId:\s*'([A-Za-z0-9_-]+)'/);
-          console.log("REGISTRY",registryRes.status,"fall-2026-published",!!current);
-          if(!current)process.exit(1);
-          for(const tab of ["Field List","Team Name, Color, and Division","Field Name Translation"]){
-            const url="https://docs.google.com/spreadsheets/d/"+current[1]+"/gviz/tq?tqx=out:json&headers=1&sheet="+encodeURIComponent(tab);
-            const r=await fetch(url,{signal:AbortSignal.timeout(13000)});
-            const text=await r.text();
-            const j=JSON.parse(text.slice(text.indexOf("(")+1,text.lastIndexOf(")")));
-            const table=j.table||{cols:[],rows:[]};
-            const headers=(table.cols||[]).map(x=>x.label||"");
-            console.log("PUBLIC TAB",tab,"HTTP",r.status,"status",j.status,"rows",table.rows.length,"cols",headers.length);
-            console.log("PUBLIC HEADER",tab,JSON.stringify(headers.slice(0,35)));
-            console.log("PUBLIC TYPES",tab,JSON.stringify((table.cols||[]).map(x=>x.type).slice(0,35)));
-            const keys=Object.fromEntries(headers.map((name,i)=>[name,i]));
-            if(tab==="Field List"){
-              let scored=0, published=0, examples=[];
-              for(const row of table.rows){
-                const value=(name)=>row.c[keys[name]]?.v;
-                if(value("Publish"))published++;
-                if(value("Home Score")!==null&&value("Away Score")!==null&&value("Home Score")!==undefined&&value("Away Score")!==undefined){
-                  scored++;
-                  if(examples.length<2)examples.push({home:String(value("Home")||""),away:String(value("Away")||""),h:value("Home Score"),a:value("Away Score")});
-                }
-              }
-              console.log("PUBLIC SCORE TOTALS",JSON.stringify({scored,published,examples}));
-            }
+          import assert from "node:assert/strict";
+          import { parsePublicGviz, parsePublicSeasonRegistry, publishedRatsCall, PUBLIC_RATS_REGISTRY } from "./backend/league/rats-public-source.mjs";
+          const registry = parsePublicSeasonRegistry(await (await fetch(PUBLIC_RATS_REGISTRY)).text());
+          const season=registry.get("fall-2026");assert.ok(season);
+          const url="https://docs.google.com/spreadsheets/d/"+season.sheetId+"/gviz/tq?tqx=out:json&headers=1&sheet=Field%20List";
+          const raw=parsePublicGviz(await (await fetch(url)).text());
+          const rows=raw.rows.map(row=>Object.fromEntries(raw.headers.map((header,i)=>[header,row[i]])));
+          const aggregate=await publishedRatsCall("get-aggregate",{season:"fall-2026"});
+          assert.ok(aggregate.teams.length>200,"current RATS official teams are present");
+          assert.ok(aggregate.events.length>500,"current RATS official events are present");
+          const sourceScored=rows.filter(row=>row.Home&&row.Away&&row["Home Color"]&&row["Away Color"]&&
+            Number.isInteger(row["Home Score"])&&Number.isInteger(row["Away Score"]));
+          const scored=aggregate.events.filter(e=>e.score);
+          assert.ok(scored.length>300,"current RATS scores populated");
+          const compared=[];
+          for(const row of sourceScored){
+            const found=scored.find(e=>e.home_team_name===String(row.Home).trim()&&
+              e.away_team_name===String(row.Away).trim()&&
+              e.score===String(row["Home Score"])+"-"+String(row["Away Score"]));
+            if(found && !compared.some(x=>x===found)) compared.push(found);
+            if(compared.length>=2)break;
           }
-          const archive=await fetch("https://rats.team.op-dev.io/data/summer-2026.json",{signal:AbortSignal.timeout(10000)});
-          const body=await archive.text();
-          console.log("FROZEN PUBLIC ARCHIVE",archive.status,body.length);
-          if(archive.ok){const data=JSON.parse(body);console.log("ARCHIVE SCHEMA",Array.isArray(data.teams),Array.isArray(data.events),data.teams?.length,data.events?.length);}
+          assert.equal(compared.length,2,"two public score pairs must match the RATS published table");
+          console.log("LIVE RATS ADAPTER VERIFIED",JSON.stringify({
+            officialSheet:"fall-2026",teams:aggregate.teams.length,events:aggregate.events.length,
+            scored:scored.length,compared:compared.map(e=>({
+              date:e.start_date,home:e.home_team_name,away:e.away_team_name,score:e.score,
+            })),
+          }));
           NODE
