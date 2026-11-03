@@ -226,7 +226,7 @@ function coverageFor(
  */
 export function mergeVerifiedCurrentSeason(history, incoming, now = new Date()) {
   if (Number(history?.schemaVersion) < 3 || !Array.isArray(history?.seasons) ||
-      !incoming || !/^(winter|spring|summer|fall)-\\d{4}$/.test(String(incoming.seasonId || "")) ||
+      !incoming || !/^(winter|spring|summer|fall)-\d{4}$/.test(String(incoming.seasonId || "")) ||
       !Array.isArray(incoming.teams) || !incoming.teams.length ||
       !Array.isArray(incoming.matches)) return null;
 
@@ -336,7 +336,7 @@ export async function refreshRatsHistory({
       if (merged) {
         writeEncryptedHistory(merged, file);
         previous = merged;
-        fs.writeFileSync(standingsFlagFile, "updated\\n");
+        fs.writeFileSync(standingsFlagFile, "updated\n");
         console.log("Verified current-season RATS results advanced the encrypted index.");
       }
     } catch {
