@@ -53,13 +53,12 @@ jobs:
               const u="https://rats.team.op-dev.io/lib/"+name+".js";
               const response=await fetch(u,{signal:AbortSignal.timeout(9000)});
               const js=await response.text();
-              const domains=[...new Set((js.match(/https?:\\/\\/[^"'`\\s)]+/g)||[])
-                .map(x=>{try{return new URL(x).hostname}catch{return ""}}).filter(Boolean))];
               console.log("RATS LIB",name,"status",response.status,"chars",js.length,
-                "domains",domains.slice(0,12),"has-aggregate",js.includes("get-aggregate"),
-                "has-service-host",js.includes("service.rats.team.op-dev.io"));
-              const paths=[...new Set((js.match(/get-(?:aggregate|schedule)|\/api\/[a-z-]+|postMessage|fetch\\(/g)||[]))].slice(0,12);
-              console.log("RATS LIB TOKENS",name,paths);
+                "old-service-host",js.includes("service.rats.team.op-dev.io"),
+                "get-aggregate",js.includes("get-aggregate"),
+                "get-schedule",js.includes("get-schedule"),
+                "fetch",js.includes("fetch("),"XMLHttpRequest",js.includes("XMLHttpRequest"),
+                "gametimehero",js.includes("gametimehero"));
             }catch(e){console.log("RATS LIB ERROR",name,String(e.message).slice(0,140));}
           }
           await browser.close();
