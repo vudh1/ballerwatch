@@ -22,28 +22,45 @@ jobs:
           node --input-type=module <<'NODE'
           const {chromium}=await import("/tmp/ballerwatch-source-probe/node_modules/playwright/index.mjs");
           const browser=await chromium.launch({headless:true});
-          const page=await browser.newPage({viewport:{width:1280,height:920}});
+          const page=await browser.newPage({viewport:{width:1280,height:900}});
           const seen=new Set();
-          page.on("response",res=>{
-            const u=new URL(res.url());const ct=res.headers()["content-type"]||"";
-            if(/json|graphql|schedule|standings|league|fixture/i.test(ct+" "+u.pathname) &&
-              /^https?:$/.test(u.protocol)) {
-              const id=u.hostname+" "+u.pathname.split("/").map(s=>s.length>30?"[id]":s).join("/");
-              if(seen.size<80 && !seen.has(id)){seen.add(id);console.log("PUBLIC RESPONSE",res.status(),id,ct.slice(0,45));}
+          page.on("requestfailed",request=>{
+            const u=new URL(request.url());
+            if(/rats|op-dev|gametimehero/i.test(u.hostname))
+              console.log("PUBLIC FAILED REQUEST",request.method(),u.hostname+u.pathname,request.failure()?.errorText?.slice(0,120));
+          });
+          page.on("response",response=>{
+            const u=new URL(response.url());
+            if(/rats.team.op-dev.io|service.rats.team.op-dev.io/i.test(u.hostname)){
+              const path=u.hostname+u.pathname;
+              if(!seen.has(path) && seen.size<60){
+                seen.add(path);
+                console.log("RATS REQUEST",response.request().method(),response.status(),path,response.headers()["content-type"]||"");
+              }
             }
           });
-          for(const url of ["https://seattlerats.org/schedule--standings","https://seattlerats.org/standings"]){
-            try {
-              const response=await page.goto(url,{waitUntil:"domcontentloaded",timeout:30000});
-              await page.waitForTimeout(8500);
-              console.log("PAGE",new URL(page.url()).hostname+new URL(page.url()).pathname,
-                "status",response?.status(),"title",await page.title());
-              console.log("PUBLIC DOM HEADINGS",await page.locator("h1,h2,h3").allTextContents().then(a=>a.slice(0,12).map(x=>x.trim().slice(0,80))));
-              console.log("PUBLIC LINKS",await page.locator("a[href]").evaluateAll(els=>els.map(el=>{
-                try { const u=new URL(el.href); return u.origin+u.pathname; }catch{return "";}
-              }).filter(x=>/rats|gametimehero|schedule|standings|league/.test(x)).slice(0,15)));
-            } catch(error){console.log("PAGE ERROR",String(error.message).slice(0,180));}
+          try{
+            const res=await page.goto("https://seattlerats.org/schedule--standings",{waitUntil:"domcontentloaded",timeout:30000});
+            await page.waitForTimeout(10000);
+            console.log("RATS PAGE STATUS",res?.status());
+            console.log("EMBEDS",await page.locator("iframe").evaluateAll(els=>els.map(el=>{
+              try{const u=new URL(el.src);return u.hostname+u.pathname;}catch{return "";}
+            })));
+            console.log("RATS DOM TAIL",await page.locator("body").innerText().then(t=>t.slice(-550).replace(/\\s+/g," ")));
+          }catch(error){console.log("RATS PAGE ERROR",String(error.message).slice(0,180));}
+          for(const name of ["schedule","standings"]){
+            try{
+              const u="https://rats.team.op-dev.io/lib/"+name+".js";
+              const response=await fetch(u,{signal:AbortSignal.timeout(9000)});
+              const js=await response.text();
+              const domains=[...new Set((js.match(/https?:\\/\\/[^"'`\\s)]+/g)||[])
+                .map(x=>{try{return new URL(x).hostname}catch{return ""}}).filter(Boolean))];
+              console.log("RATS LIB",name,"status",response.status,"chars",js.length,
+                "domains",domains.slice(0,12),"has-aggregate",js.includes("get-aggregate"),
+                "has-service-host",js.includes("service.rats.team.op-dev.io"));
+              const paths=[...new Set((js.match(/get-(?:aggregate|schedule)|\/api\/[a-z-]+|postMessage|fetch\\(/g)||[]))].slice(0,12);
+              console.log("RATS LIB TOKENS",name,paths);
+            }catch(e){console.log("RATS LIB ERROR",name,String(e.message).slice(0,140));}
           }
-          console.log("TOTAL NAMED API ROUTES",seen.size);
           await browser.close();
           NODE
