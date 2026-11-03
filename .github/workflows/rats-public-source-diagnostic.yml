@@ -46,3 +46,27 @@ jobs:
             })),
           }));
           NODE
+          node --input-type=module <<'NODE'
+          import assert from "node:assert/strict";
+          import { publishedRatsCall } from "./backend/league/rats-public-source.mjs";
+          import { normalize } from "./backend/league/watcher.mjs";
+          import { normalizeHistoryAggregate } from "./backend/league/history.mjs";
+          const season="fall-2026";
+          const aggregate=await publishedRatsCall("get-aggregate",{season});
+          const monitored=["HatTrick Swayze","Octopods"];
+          const exportsByTeam=Object.fromEntries(await Promise.all(monitored.map(async name=>{
+            const team=aggregate.teams.find(t=>t.name===name);
+            assert.ok(team,"public team is present");
+            const rows=await publishedRatsCall("get-schedule",{season,key:team.schedule_key});
+            return [name,rows];
+          })));
+          const payload=normalize(season,aggregate,exportsByTeam,{teamNames:monitored});
+          const history=normalizeHistoryAggregate(season,aggregate);
+          assert.ok(history.matches.length>=1000);
+          assert.ok(payload.ok);
+          assert.equal(payload.teams.length,2);
+          for(const team of payload.teams) assert.ok(team.matches.length>=1);
+          const checked=payload.teams.map(team=>({name:team.name,matches:team.matches.length,scored:
+            team.matches.filter(m=>Number.isInteger(m.teamScore)&&Number.isInteger(m.opponentScore)).length}));
+          console.log("VALIDATED RATS WATCHER NORMALIZATION",JSON.stringify({season,checked,historicalResults:history.matches.filter(m=>m.homeScore!==null&&m.awayScore!==null).length}));
+          NODE
