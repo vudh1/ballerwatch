@@ -231,23 +231,52 @@ export function mergeVerifiedCurrentSeason(history, incoming, now = new Date()) 
       !Array.isArray(incoming.matches)) return null;
 
   const prior = history.seasons.find((season) => season.seasonId === incoming.seasonId);
+  let validated = incoming;
   if (prior) {
     if (incoming.teams.length < prior.teams.length ||
         incoming.matches.length < prior.matches.length) return null;
-    const key = (match) => String(match?.id || [
-      match?.date, match?.startTime, match?.homeTeam, match?.awayTeam,
-    ].join("|"));
-    const next = new Map(incoming.matches.map((match) => [key(match), match]));
+    // The old service used opaque IDs, but the official public sheet exposes
+    // fixtures without those IDs. Preserve the previously verified identity on
+    // a unique public fixture match, or refuse ambiguous scored snapshots.
+    const key = (match) => [
+      match?.date, match?.startTime,
+      cleanText(match?.homeTeam).toLowerCase(),
+      cleanText(match?.awayTeam).toLowerCase(),
+    ].join("|");
+    const original = new Map();
+    const duplicate = new Set();
+    for (const match of prior.matches || []) {
+      const id = key(match);
+      if (original.has(id)) duplicate.add(id);
+      else original.set(id, match);
+    }
+    const next = new Map();
+    const freshDuplicate = new Set();
+    for (const match of incoming.matches) {
+      const id = key(match);
+      if (next.has(id)) freshDuplicate.add(id);
+      else next.set(id, match);
+    }
     for (const old of prior.matches || []) {
       if (numericScore(old.homeScore) === null || numericScore(old.awayScore) === null) continue;
-      const fresh = next.get(key(old));
-      if (!fresh || numericScore(fresh.homeScore) === null ||
+      const id = key(old);
+      const fresh = next.get(id);
+      if (duplicate.has(id) || freshDuplicate.has(id) ||
+          !fresh || numericScore(fresh.homeScore) === null ||
           numericScore(fresh.awayScore) === null) return null;
     }
-    if (JSON.stringify(prior) === JSON.stringify(incoming)) return null;
+    validated = {
+      ...incoming,
+      matches: incoming.matches.map((match) => {
+        const id = key(match);
+        const old = !duplicate.has(id) && !freshDuplicate.has(id) ? original.get(id) : null;
+        return old?.id && !match.id ? { ...match, id: old.id } : match;
+      }),
+    };
+    if (JSON.stringify(prior) === JSON.stringify(validated)) return null;
   }
   const seasons = [...history.seasons.filter((season) => season.seasonId !== incoming.seasonId),
-    incoming].sort((a, b) => seasonOrder(a.seasonId) - seasonOrder(b.seasonId));
+    validated].sort((a, b) => seasonOrder(a.seasonId) - seasonOrder(b.seasonId));
   return {
     ...history,
     updatedAt: now.toISOString(),
