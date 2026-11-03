@@ -1,4 +1,4 @@
-# Temporary diagnostics for issue #226. Remove before release.
+# Temporary public data adapter discovery for #226; remove before merge.
 name: RATS public source diagnostic
 on:
   pull_request:
@@ -10,56 +10,20 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 3
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - name: Install pinned headless browser
-        run: |
-          npm install --prefix /tmp/ballerwatch-source-probe --no-save playwright@1.56.1
-          node /tmp/ballerwatch-source-probe/node_modules/playwright/cli.js install --with-deps chromium
-      - name: Inspect public RATS schedule network (no secrets or response bodies)
+      - name: Inspect public RATS widget scripts (no secrets or writes)
         run: |
           node --input-type=module <<'NODE'
-          const {chromium}=await import("/tmp/ballerwatch-source-probe/node_modules/playwright/index.mjs");
-          const browser=await chromium.launch({headless:true});
-          const page=await browser.newPage({viewport:{width:1280,height:900}});
-          const seen=new Set();
-          page.on("requestfailed",request=>{
-            const u=new URL(request.url());
-            if(/rats|op-dev|gametimehero/i.test(u.hostname))
-              console.log("PUBLIC FAILED REQUEST",request.method(),u.hostname+u.pathname,request.failure()?.errorText?.slice(0,120));
-          });
-          page.on("response",response=>{
-            const u=new URL(response.url());
-            if(/rats.team.op-dev.io|service.rats.team.op-dev.io/i.test(u.hostname)){
-              const path=u.hostname+u.pathname;
-              if(!seen.has(path) && seen.size<60){
-                seen.add(path);
-                console.log("RATS REQUEST",response.request().method(),response.status(),path,response.headers()["content-type"]||"");
-              }
-            }
-          });
-          try{
-            const res=await page.goto("https://seattlerats.org/schedule--standings",{waitUntil:"domcontentloaded",timeout:30000});
-            await page.waitForTimeout(10000);
-            console.log("RATS PAGE STATUS",res?.status());
-            console.log("EMBEDS",await page.locator("iframe").evaluateAll(els=>els.map(el=>{
-              try{const u=new URL(el.src);return u.hostname+u.pathname;}catch{return "";}
-            })));
-            console.log("RATS DOM TAIL",await page.locator("body").innerText().then(t=>t.slice(-550).replace(/\\s+/g," ")));
-          }catch(error){console.log("RATS PAGE ERROR",String(error.message).slice(0,180));}
-          for(const name of ["schedule","standings"]){
+          const files=["/lib/seasons.js","/lib/load.js","/lib/gviz.js","/lib/parse.js","/lib/schedule.js","/lib/standings.js","/app.js"];
+          for(const path of files){
             try{
-              const u="https://rats.team.op-dev.io/lib/"+name+".js";
-              const response=await fetch(u,{signal:AbortSignal.timeout(9000)});
+              const response=await fetch("https://rats.team.op-dev.io"+path,{signal:AbortSignal.timeout(8000)});
               const js=await response.text();
-              console.log("RATS LIB",name,"status",response.status,"chars",js.length,
-                "old-service-host",js.includes("service.rats.team.op-dev.io"),
-                "get-aggregate",js.includes("get-aggregate"),
-                "get-schedule",js.includes("get-schedule"),
-                "fetch",js.includes("fetch("),"XMLHttpRequest",js.includes("XMLHttpRequest"),
-                "gametimehero",js.includes("gametimehero"));
-            }catch(e){console.log("RATS LIB ERROR",name,String(e.message).slice(0,140));}
+              console.log("BEGIN PUBLIC SCRIPT",path,response.status,js.length);
+              console.log(js.slice(0,10000));
+              console.log("END PUBLIC SCRIPT",path);
+            }catch(error){console.log("FAILED PUBLIC SCRIPT",path,String(error.message).slice(0,140));}
           }
-          await browser.close();
           NODE
