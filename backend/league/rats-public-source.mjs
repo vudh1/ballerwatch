@@ -24,6 +24,14 @@ const TABS = Object.freeze({
   venues: "Field Name Translation",
 });
 const cache = new Map();
+const clients = new WeakMap();
+let clientSequence = 0;
+
+function clientId(fetchImpl) {
+  if (typeof fetchImpl !== "function") throw sourceError("RATS source fetch unavailable");
+  if (!clients.has(fetchImpl)) clients.set(fetchImpl, ++clientSequence);
+  return clients.get(fetchImpl);
+}
 const text = (value) => String(value ?? "").trim().replace(/\s+/g, " ");
 const nameKey = (value) => text(value).toLocaleLowerCase("en-US");
 const validSeason = (value) => /^(winter|spring|summer|fall)-20\d{2}$/.test(String(value || ""));
@@ -271,14 +279,15 @@ export async function publishedRatsCall(action, params, {
 } = {}) {
   const season = text(params?.season);
   if (!validSeason(season)) throw sourceError("Invalid RATS season");
-  const registry = await cached("public-rats-registry", 30 * 60000, async () =>
+  const scope = String(clientId(fetchImpl)) + ":";
+  const registry = await cached(scope + "public-rats-registry", 30 * 60000, async () =>
     parsePublicSeasonRegistry(await publicText(PUBLIC_RATS_REGISTRY, { fetchImpl, timeoutMs })));
   const entry = registry.get(season);
   if (!entry) {
     if (action === "get-aggregate") return { teams: [], events: [] };
     throw sourceError("RATS season is not published");
   }
-  const aggregate = await cached("public-rats-season:" + season,
+  const aggregate = await cached(scope + "public-rats-season:" + season,
     entry.frozen ? 24 * 3600000 : 240000, async () => {
       if (entry.frozen) {
         const url = PUBLIC_RATS_ORIGIN + "/data/" + season + ".json";
