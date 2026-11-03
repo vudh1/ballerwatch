@@ -19,6 +19,8 @@ import { decryptState, encryptState } from "../shared/state-crypto.mjs";
 import { captureVenueEvents } from "./venue-cache.mjs";
 
 export const HISTORY_FILE = "league/state/history.json";
+export const CURRENT_RESULTS_FILE = "league/current-results.json";
+export const STANDINGS_CHANGE_FLAG = "league/standings-changed.json";
 export const HISTORY_START_YEAR = 2023;
 export const HISTORY_REFRESH_MS = 60 * 60 * 1000;
 export const HISTORY_RETRY_MS = 30 * 60 * 1000;
@@ -216,6 +218,77 @@ function coverageFor(
   };
 }
 
+
+/**
+ * Accept a newly validated public-season aggregate without polling the source
+ * a second time. Keep the historical index and its scan cursor intact. Partial
+ * upstream feeds cannot erase established teams or already-scored matches.
+ */
+export function mergeVerifiedCurrentSeason(history, incoming, now = new Date()) {
+  if (Number(history?.schemaVersion) < 3 || !Array.isArray(history?.seasons) ||
+      !incoming || !/^(winter|spring|summer|fall)-\d{4}$/.test(String(incoming.seasonId || "")) ||
+      !Array.isArray(incoming.teams) || !incoming.teams.length ||
+      !Array.isArray(incoming.matches)) return null;
+
+  const prior = history.seasons.find((season) => season.seasonId === incoming.seasonId);
+  let validated = incoming;
+  if (prior) {
+    if (incoming.teams.length < prior.teams.length ||
+        incoming.matches.length < prior.matches.length) return null;
+    // The old service used opaque IDs, but the official public sheet exposes
+    // fixtures without those IDs. Preserve the previously verified identity on
+    // a unique public fixture match, or refuse ambiguous scored snapshots.
+    const key = (match) => [
+      match?.date, match?.startTime,
+      cleanText(match?.homeTeam).toLowerCase(),
+      cleanText(match?.awayTeam).toLowerCase(),
+    ].join("|");
+    const original = new Map();
+    const duplicate = new Set();
+    for (const match of prior.matches || []) {
+      const id = key(match);
+      if (original.has(id)) duplicate.add(id);
+      else original.set(id, match);
+    }
+    const next = new Map();
+    const freshDuplicate = new Set();
+    for (const match of incoming.matches) {
+      const id = key(match);
+      if (next.has(id)) freshDuplicate.add(id);
+      else next.set(id, match);
+    }
+    for (const old of prior.matches || []) {
+      if (numericScore(old.homeScore) === null || numericScore(old.awayScore) === null) continue;
+      const id = key(old);
+      const fresh = next.get(id);
+      if (duplicate.has(id) || freshDuplicate.has(id) ||
+          !fresh || numericScore(fresh.homeScore) === null ||
+          numericScore(fresh.awayScore) === null) return null;
+    }
+    validated = {
+      ...incoming,
+      matches: incoming.matches.map((match) => {
+        const id = key(match);
+        const old = !duplicate.has(id) && !freshDuplicate.has(id) ? original.get(id) : null;
+        return old?.id && !match.id ? { ...match, id: old.id } : match;
+      }),
+    };
+    if (JSON.stringify(prior) === JSON.stringify(validated)) return null;
+  }
+  const seasons = [...history.seasons.filter((season) => season.seasonId !== incoming.seasonId),
+    validated].sort((a, b) => seasonOrder(a.seasonId) - seasonOrder(b.seasonId));
+  return {
+    ...history,
+    updatedAt: now.toISOString(),
+    seasons,
+    coverage: coverageFor(seasons, {
+      requestedSeasonCount: history.coverage?.requestedSeasonCount || seasons.length,
+      checkedSeasonCount: history.coverage?.checkedSeasonCount || seasons.length,
+      failedSeasonIds: history.coverage?.unresolvedSeasonIds || [],
+    }),
+  };
+}
+
 async function defaultHistoryCall(action, params) {
   return call(action, params, {
     maxAttempts: 1,
@@ -277,8 +350,28 @@ export async function refreshRatsHistory({
   file = HISTORY_FILE,
   force = String(process.env.RATS_HISTORY_FORCE || "").toLowerCase() === "true",
   startYear = Number(process.env.RATS_HISTORY_START_YEAR || HISTORY_START_YEAR),
+  currentResultsFile = CURRENT_RESULTS_FILE,
+  standingsFlagFile = STANDINGS_CHANGE_FLAG,
 } = {}) {
-  const previous = readEncryptedHistory(file);
+  let previous = readEncryptedHistory(file);
+  // The five-minute watcher already fetched and cross-checked this season's
+  // public results. Consume only its validated, sanitized transient projection.
+  if (fs.existsSync(currentResultsFile) && previous) {
+    try {
+      const current = JSON.parse(fs.readFileSync(currentResultsFile, "utf8"));
+      const merged = current?.schemaVersion === 1 &&
+        current.seasonId === current.season?.seasonId
+        ? mergeVerifiedCurrentSeason(previous, current.season, now) : null;
+      if (merged) {
+        writeEncryptedHistory(merged, file);
+        previous = merged;
+        fs.writeFileSync(standingsFlagFile, "updated\n");
+        console.log("Verified current-season RATS results advanced the encrypted index.");
+      }
+    } catch {
+      console.warn("::warning::Skipped invalid current-season RATS results; retained the existing archive.");
+    }
+  }
   if (previous) {
     console.log(
       `RATS history resume: schema ${Number(previous.schemaVersion || 0)}, ` +
@@ -407,7 +500,13 @@ export async function refreshRatsHistory({
     seasons,
   };
 
-  if (!successfulFetches && !seasons.length) {
+  if (!successfulFetches) {
+    if (previous) {
+      // A failed source poll is not a successful score sync. In particular,
+      // never advance updatedAt merely because a cached archive was re-sealed.
+      console.warn("::warning::RATS history source unavailable; retaining last verified timestamp and results.");
+      return previous;
+    }
     writeEncryptedHistory(history, file);
     console.log("::warning::RATS history scan has no usable season yet; continuing next run.");
     return history;

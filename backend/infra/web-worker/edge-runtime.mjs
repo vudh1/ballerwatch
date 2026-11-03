@@ -3,7 +3,7 @@
  *
  * Documentation baseline: v2.3.0. Runtime/private data must never be committed to Git.
  */
-const RATS_API = "https://service.rats.team.op-dev.io/";
+import { publishedRatsCall } from "../../league/rats-public-source.mjs";
 const TIME_ZONE = "America/Los_Angeles";
 const HEADERS = ["Event Type","Start Date","Start Time","End Date","End Time","Timezone ID","Home or Away","Opponent/Event Title","Location Name","Shirt Color","Opponent Shirt Color","Allow RSVPs","Send Reminders","Notes/Comments"];
 const SEASONS = ["winter","spring","summer","fall"];
@@ -35,18 +35,10 @@ function seasonCandidates(now = new Date()) {
   return out;
 }
 
-async function jsonFetch(url, options={}) {
-  const response = await fetch(url, { ...options, signal: AbortSignal.timeout(20_000) });
-  if(!response.ok) throw new Error(`HTTP ${response.status}`);
-  return response.json();
-}
-
 async function ratsCall(action, body) {
-  return jsonFetch(RATS_API + action, {
-    method:"POST",
-    headers:{"content-type":"application/json","user-agent":"ballerwatch-edge/2.0"},
-    body:JSON.stringify(body),
-  });
+  // Reuse the same verified public source as the GitHub watcher. No private
+  // Google credentials, legacy service host, or unbounded season search.
+  return publishedRatsCall(action, body, { fetchImpl: fetch, timeoutMs: 18000 });
 }
 
 function teamMatches(aggregate, name) {

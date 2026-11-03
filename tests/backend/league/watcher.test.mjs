@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { scheduleNotificationUpdates } from "../../../backend/league/schedule-updates.mjs";
 
 import {
   HEADERS,
@@ -18,6 +19,8 @@ import {
   normalize,
   publishedVenueUrl,
   publishedVenueCoordinates,
+  preservePreviousMatchIdentities,
+  runWatcher,
   validPublishedVenueUrl,
   validPreviousSchedule,
 } from "../../../backend/league/watcher.mjs";
@@ -219,6 +222,31 @@ test("RATS aggregate score strings map to home and away numeric scores", () => {
   assert.equal(eventScore({ score: "2–3" }, "away"), 3);
 });
 
+test("legacy RATS identities survive migration without duplicate schedule alerts", () => {
+  const data = fixtures();
+  const previous = normalized(data);
+  const old = previous.teams[0].matches[0];
+  old.key = "v2:legacy-rats-event-18";
+  old.sourceMatchId = "legacy-rats-event-18";
+  old.identityBasis = "source-id";
+  old.locationUrl = "https://maps.app.goo.gl/verified123";
+  old.mapUrl = old.locationUrl;
+  const migrated = normalized(data);
+  assert.notEqual(migrated.teams[0].matches[0].key, old.key);
+  const restored = preservePreviousMatchIdentities(previous, migrated);
+  const game = restored.teams[0].matches[0];
+  assert.equal(game.key, old.key);
+  assert.equal(game.sourceMatchId, old.sourceMatchId);
+  assert.equal(game.locationUrl, old.locationUrl);
+  assert.deepEqual(scheduleNotificationUpdates(previous, restored,
+    new Date("2026-10-01T12:00:00Z")), []);
+  const changed = normalized(data);
+  changed.teams[0].matches[0].location = "New stadium";
+  preservePreviousMatchIdentities(previous, changed);
+  assert.equal(changed.teams[0].matches[0].key, old.key);
+  assert.equal(changed.teams[0].matches[0].locationUrl, "");
+});
+
 test("metadata changes fingerprint but score-only changes do not", () => {
   const before = normalized().teams[0].matches[0];
 
@@ -245,33 +273,76 @@ test("transient errors are narrowly classified", () => {
   assert.equal(isTransientSourceError(new HttpError(503)), true);
   assert.equal(isTransientSourceError(new HttpError(401)), false);
   assert.equal(isTransientSourceError(new HttpError(501)), false);
+  const dns = Object.assign(new Error("DNS lookup failed"), { code: "ENOTFOUND" });
+  assert.equal(isTransientSourceError(new Error("fetch failed", { cause: dns })), true);
   assert.equal(isTransientSourceError(new Error("schema changed")), false);
 });
 
-test("RATS call retries transient errors then succeeds", async () => {
+test("verified RATS aggregate reaches the score fast path without breaking fixtures", async (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ballerwatch-verified-rats-"));
+  const cwd = process.cwd();
+  t.after(() => {
+    process.chdir(cwd);
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+  process.chdir(dir);
+  fs.writeFileSync("teams.json", JSON.stringify({ teams: TEAM_NAMES }));
+  const data = fixtures();
+  const seen = [];
+  const season = "fall-2026";
+  const callback = async (seasonId, aggregate, now) => {
+    seen.push([seasonId, aggregate.events.length, now.toISOString()]);
+    throw new Error("Optional index unavailable");
+  };
+  const result = await runWatcher({
+    now: new Date("2026-10-07T12:00:00Z"),
+    callFn: async (action, args) => {
+      if (action === "get-aggregate") {
+        // The watcher probes future seasons first; only the published Fall
+        // 2026 aggregate may be treated as this fixture's source.
+        return args.season === season ? data.aggregate : { teams: [], events: [] };
+      }
+      if (action === "get-schedule") {
+        return args.key === "a" ? data.exportsByTeam["Team Alpha"] :
+          data.exportsByTeam["Team Beta"];
+      }
+      throw new Error("Unexpected source action");
+    },
+    onVerifiedAggregate: callback,
+  });
+  assert.equal(result.ok, true, "optional scoring failure must not block a valid schedule");
+  assert.equal(result.teams[0].publishedMatchCount, 1);
+  assert.deepEqual(seen, [[season, 1, "2026-10-07T12:00:00.000Z"]]);
+  assert.equal(JSON.parse(fs.readFileSync("schedule.json", "utf8")).seasonId, season);
+});
+
+test("RATS public source retries a transient registry failure then succeeds", async () => {
   const responses = [
     {ok: false, status: 500},
     {ok: false, status: 502},
-    {ok: true, status: 200, json: async () => ({ok: true})},
+    {ok: true, status: 200, text: async () =>
+      "export const SEASONS = [{ key: 'fall-2026', title: 'Fall 2026', " +
+      "sheetId: 'publicSyntheticSheet_abcdefghijklmnopqrstuvwxyz' }];"},
   ];
   const sleeps = [];
   let calls = 0;
-  const result = await call("test", {x: 1}, {
-    fetchImpl: async () => {
+  const result = await call("get-aggregate", {season: "winter-2027"}, {
+    fetchImpl: async (url) => {
+      assert.match(url, /^https:\/\/rats\.team\.op-dev\.io\/lib\/seasons\.js$/);
       calls += 1;
       return responses.shift();
     },
     sleepFn: async (ms) => sleeps.push(ms),
   });
-  assert.deepEqual(result, {ok: true});
+  assert.deepEqual(result, {teams: [], events: []});
   assert.equal(calls, 3);
   assert.deepEqual(sleeps, [1000, 2000]);
 });
 
-test("permanent RATS error is not retried", async () => {
+test("RATS public source does not retry a permanent authorization failure", async () => {
   let calls = 0;
   await assert.rejects(
-    call("test", {x: 1}, {
+    call("get-aggregate", {season: "fall-2026"}, {
       fetchImpl: async () => {
         calls += 1;
         return {ok: false, status: 401};

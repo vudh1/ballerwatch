@@ -8,6 +8,11 @@
 import { appendVenueObservations, matchVenue } from "../shared/venue-directory.mjs";
 import fs from "node:fs";
 import { scheduleNotificationUpdates } from "./schedule-updates.mjs";
+import { normalizeHistoryAggregate } from "./history.mjs";
+import {
+  PUBLIC_RATS_ORIGIN, PUBLIC_RATS_SOURCE, PUBLIC_TEAM_EXPORT_HEADERS,
+  publishedRatsCall,
+} from "./rats-public-source.mjs";
 import { pathToFileURL } from "node:url";
 import {
   dateInZone,
@@ -19,26 +24,11 @@ import {
 } from "./rats-utils.mjs";
 
 const SEASONS = ["winter", "spring", "summer", "fall"];
-export const SOURCE = "https://seattlerats.org/standings";
-export const API = "https://service.rats.team.op-dev.io/";
+export const SOURCE = PUBLIC_RATS_SOURCE;
+export const API = PUBLIC_RATS_ORIGIN + "/";
 export const CALENDAR_TRACKING_KEY_VERSION = "v2";
 const TEAM_CONFIG = "teams.json";
-export const HEADERS = [
-  "Event Type",
-  "Start Date",
-  "Start Time",
-  "End Date",
-  "End Time",
-  "Timezone ID",
-  "Home or Away",
-  "Opponent/Event Title",
-  "Location Name",
-  "Shirt Color",
-  "Opponent Shirt Color",
-  "Allow RSVPs",
-  "Send Reminders",
-  "Notes/Comments",
-];
+export const HEADERS = PUBLIC_TEAM_EXPORT_HEADERS;
 
 export class HttpError extends Error {
   constructor(status, message = `HTTP ${status}`) {
@@ -166,7 +156,7 @@ export function isTransientSourceError(error) {
     if ([408, 429, 500, 502, 503, 504].includes(Number(current.status))) return true;
     if (["AbortError", "TimeoutError"].includes(current.name)) return true;
     if (
-      ["ETIMEDOUT", "ECONNRESET", "ECONNREFUSED", "EAI_AGAIN", "ENETUNREACH"].includes(
+      ["ETIMEDOUT", "ECONNRESET", "ECONNREFUSED", "EAI_AGAIN", "ENOTFOUND", "ENETUNREACH"].includes(
         current.code,
       )
     ) {
@@ -193,17 +183,7 @@ export async function call(
 ) {
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
-      const response = await fetchImpl(API + action, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "User-Agent": "rats-league-watcher/1.0",
-        },
-        body: JSON.stringify(params),
-        signal: AbortSignal.timeout(timeoutMs),
-      });
-      if (!response.ok) throw new HttpError(response.status);
-      return await response.json();
+      return await publishedRatsCall(action, params, { fetchImpl, timeoutMs });
     } catch (error) {
       if (!isTransientSourceError(error) || attempt === maxAttempts - 1) throw error;
       await sleepFn(2 ** attempt * 1000);
@@ -597,6 +577,49 @@ export function normalize(
   };
 }
 
+/**
+ * The retired service supplied opaque event IDs; the published sheet does not.
+ * Match only unambiguous, already-verified fixtures so ICS UIDs and existing
+ * calendar subscriptions survive the source migration. Real fixture edits still
+ * flow through the normal schedule-change comparison.
+ */
+export function preservePreviousMatchIdentities(previous, current) {
+  if (previous?.seasonId !== current?.seasonId || !Array.isArray(previous?.teams)) {
+    return current;
+  }
+  const signature = (match) => [
+    normalizeTeamName(match.team), normalizeTeamName(match.opponent),
+    match.homeAway, match.date, String(match.startTime || ""),
+  ].join("|");
+  const old = new Map();
+  for (const team of previous.teams) {
+    for (const match of team.matches || []) {
+      const key = signature(match);
+      old.set(key, old.has(key) ? null : match);
+    }
+  }
+  for (const team of current.teams || []) {
+    for (const match of team.matches || []) {
+      const oldMatch = old.get(signature(match));
+      if (!oldMatch?.key) continue;
+      match.key = oldMatch.key;
+      match.sourceMatchId = oldMatch.sourceMatchId ?? null;
+      match.identityBasis = oldMatch.identityBasis || match.identityBasis;
+      if (normalizeTeamName(oldMatch.location) === normalizeTeamName(match.location)) {
+        if (!match.locationUrl && oldMatch.locationUrl) match.locationUrl = oldMatch.locationUrl;
+        // Preserve a previously verified map link over the new generic
+        // Maps query fallback when the venue itself has not changed.
+        if (oldMatch.mapUrl) match.mapUrl = oldMatch.mapUrl;
+        if (!match.venueCoordinates && oldMatch.venueCoordinates) {
+          match.venueCoordinates = oldMatch.venueCoordinates;
+        }
+      }
+      match.calendarFingerprint = calendarFingerprint(match);
+    }
+  }
+  return current;
+}
+
 export function validPreviousSchedule(value) {
   return Boolean(value && typeof value === "object" && value.ok === true && Array.isArray(value.teams));
 }
@@ -608,6 +631,7 @@ export function canRetainPreviousSchedule(error, previous) {
 export async function runWatcher({
   now = new Date(),
   callFn = call,
+  onVerifiedAggregate = null,
 } = {}) {
   let previous = null;
   try {
@@ -638,7 +662,9 @@ export async function runWatcher({
       ]),
     );
     const exportsByTeam = Object.fromEntries(pairs);
-    const payload = normalize(seasonId, aggregate, exportsByTeam, {teamNames: teams});
+    const payload = preservePreviousMatchIdentities(
+      previous, normalize(seasonId, aggregate, exportsByTeam, {teamNames: teams}),
+    );
 
     const scoreUpdates = [];
     if (previous?.seasonId === payload.seasonId) {
@@ -706,6 +732,15 @@ export async function runWatcher({
     console.log(
       `Validated published match counts: [${payload.teams.map((team) => team.publishedMatchCount).join(", ")}]`,
     );
+    // This runs only after the full monitored schedule/export validation. An
+    // optional current-season results fast path cannot break fixture delivery.
+    if (typeof onVerifiedAggregate === "function") {
+      try {
+        await onVerifiedAggregate(seasonId, aggregate, now);
+      } catch {
+        console.warn("::warning::Verified RATS results fast path skipped; hourly history fallback remains.");
+      }
+    }
     return payload;
   } catch (error) {
     if (canRetainPreviousSchedule(error, previous)) {
@@ -724,5 +759,11 @@ export async function runWatcher({
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  await runWatcher();
+  await runWatcher({
+    onVerifiedAggregate: async (seasonId, aggregate) => {
+      const season = normalizeHistoryAggregate(seasonId, aggregate);
+      // Public scores only; transient workspace file, never canonical runtime state.
+      if (season) writeJson("current-results.json", { schemaVersion: 1, seasonId, season });
+    },
+  });
 }
