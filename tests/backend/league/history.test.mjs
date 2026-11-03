@@ -206,6 +206,29 @@ test("verified current-season scores update standings without another archive fe
   assert.equal(unchanged, null, "unchanged results must not bump the published timestamp");
 });
 
+test("historical source IDs survive public-sheet migration so current scores refresh", () => {
+  const current = normalizeHistoryAggregate("fall-2026", {
+    teams: [{ name: "Alpha", day: "Sunday", gender: "Coed", division: "3" },
+      { name: "Beta", day: "Sunday", gender: "Coed", division: "3" }],
+    events: [{ start_date: "2026-10-31", start_time: "20:00:00",
+      home_team_name: "Alpha", away_team_name: "Beta", score: "4-2" }],
+  });
+  const legacy = { ...current, matches: current.matches.map((match) => ({
+    ...match, id: "legacy-rats-source-417", homeScore: 3, awayScore: 2,
+  })) };
+  const old = {
+    schemaVersion: 3, seasons: [legacy],
+    coverage: { requestedSeasonCount: 1, checkedSeasonCount: 1, unresolvedSeasonIds: [] },
+  };
+  const updated = mergeVerifiedCurrentSeason(old, current,
+    new Date("2026-11-02T23:00:00Z"));
+  assert.equal(updated.seasons[0].matches[0].id, "legacy-rats-source-417");
+  assert.equal(updated.seasons[0].matches[0].homeScore, 4);
+  assert.equal(updated.seasons[0].matches[0].awayScore, 2);
+  assert.equal(mergeVerifiedCurrentSeason(updated, current), null,
+    "unchanged records must not reset the last-score timestamp");
+});
+
 test("partial RATS feeds cannot erase scored games or active team coverage", () => {
   const current = normalizeHistoryAggregate("fall-2026", {
     teams: [
