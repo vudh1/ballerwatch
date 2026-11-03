@@ -577,6 +577,47 @@ export function normalize(
   };
 }
 
+/**
+ * The retired service supplied opaque event IDs; the published sheet does not.
+ * Match only unambiguous, already-verified fixtures so ICS UIDs and existing
+ * calendar subscriptions survive the source migration. Real fixture edits still
+ * flow through the normal schedule-change comparison.
+ */
+export function preservePreviousMatchIdentities(previous, current) {
+  if (previous?.seasonId !== current?.seasonId || !Array.isArray(previous?.teams)) {
+    return current;
+  }
+  const signature = (match) => [
+    normalizeTeamName(match.team), normalizeTeamName(match.opponent),
+    match.homeAway, match.date, String(match.startTime || ""),
+  ].join("|");
+  const old = new Map();
+  for (const team of previous.teams) {
+    for (const match of team.matches || []) {
+      const key = signature(match);
+      old.set(key, old.has(key) ? null : match);
+    }
+  }
+  for (const team of current.teams || []) {
+    for (const match of team.matches || []) {
+      const oldMatch = old.get(signature(match));
+      if (!oldMatch?.key) continue;
+      match.key = oldMatch.key;
+      match.sourceMatchId = oldMatch.sourceMatchId ?? null;
+      match.identityBasis = oldMatch.identityBasis || match.identityBasis;
+      if (normalizeTeamName(oldMatch.location) === normalizeTeamName(match.location)) {
+        if (!match.locationUrl && oldMatch.locationUrl) match.locationUrl = oldMatch.locationUrl;
+        if (!match.mapUrl && oldMatch.mapUrl) match.mapUrl = oldMatch.mapUrl;
+        if (!match.venueCoordinates && oldMatch.venueCoordinates) {
+          match.venueCoordinates = oldMatch.venueCoordinates;
+        }
+      }
+      match.calendarFingerprint = calendarFingerprint(match);
+    }
+  }
+  return current;
+}
+
 export function validPreviousSchedule(value) {
   return Boolean(value && typeof value === "object" && value.ok === true && Array.isArray(value.teams));
 }
@@ -619,7 +660,9 @@ export async function runWatcher({
       ]),
     );
     const exportsByTeam = Object.fromEntries(pairs);
-    const payload = normalize(seasonId, aggregate, exportsByTeam, {teamNames: teams});
+    const payload = preservePreviousMatchIdentities(
+      previous, normalize(seasonId, aggregate, exportsByTeam, {teamNames: teams}),
+    );
 
     const scoreUpdates = [];
     if (previous?.seasonId === payload.seasonId) {
