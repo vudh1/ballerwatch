@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { scheduleNotificationUpdates } from "../../../backend/league/schedule-updates.mjs";
 
 import {
   HEADERS,
@@ -18,6 +19,7 @@ import {
   normalize,
   publishedVenueUrl,
   publishedVenueCoordinates,
+  preservePreviousMatchIdentities,
   runWatcher,
   validPublishedVenueUrl,
   validPreviousSchedule,
@@ -218,6 +220,31 @@ test("RATS aggregate score strings map to home and away numeric scores", () => {
   assert.equal(eventScore(event, "away"), 0);
   assert.equal(eventScore({ score: "2–3" }, "home"), 2);
   assert.equal(eventScore({ score: "2–3" }, "away"), 3);
+});
+
+test("legacy RATS identities survive migration without duplicate schedule alerts", () => {
+  const data = fixtures();
+  const previous = normalized(data);
+  const old = previous.teams[0].matches[0];
+  old.key = "v2:legacy-rats-event-18";
+  old.sourceMatchId = "legacy-rats-event-18";
+  old.identityBasis = "source-id";
+  old.locationUrl = "https://maps.app.goo.gl/verified123";
+  old.mapUrl = old.locationUrl;
+  const migrated = normalized(data);
+  assert.notEqual(migrated.teams[0].matches[0].key, old.key);
+  const restored = preservePreviousMatchIdentities(previous, migrated);
+  const game = restored.teams[0].matches[0];
+  assert.equal(game.key, old.key);
+  assert.equal(game.sourceMatchId, old.sourceMatchId);
+  assert.equal(game.locationUrl, old.locationUrl);
+  assert.deepEqual(scheduleNotificationUpdates(previous, restored,
+    new Date("2026-10-01T12:00:00Z")), []);
+  const changed = normalized(data);
+  changed.teams[0].matches[0].location = "New stadium";
+  preservePreviousMatchIdentities(previous, changed);
+  assert.equal(changed.teams[0].matches[0].key, old.key);
+  assert.equal(changed.teams[0].matches[0].locationUrl, "");
 });
 
 test("metadata changes fingerprint but score-only changes do not", () => {
