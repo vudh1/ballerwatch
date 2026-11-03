@@ -270,7 +270,11 @@ test("verified RATS aggregate reaches the score fast path without breaking fixtu
   const result = await runWatcher({
     now: new Date("2026-10-07T12:00:00Z"),
     callFn: async (action, args) => {
-      if (action === "get-aggregate") return data.aggregate;
+      if (action === "get-aggregate") {
+        // The watcher probes future seasons first; only the published Fall
+        // 2026 aggregate may be treated as this fixture's source.
+        return args.season === season ? data.aggregate : { teams: [], events: [] };
+      }
       if (action === "get-schedule") {
         return args.key === "a" ? data.exportsByTeam["Team Alpha"] :
           data.exportsByTeam["Team Beta"];
