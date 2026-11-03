@@ -103,6 +103,18 @@ jobs:
           node backend/shared/league-state.mjs seal
           rm -f league/teams.json
 
+      - name: Update standings from newly validated league results
+        if: steps.gate.outputs.should_run == 'true'
+        working-directory: .
+        env:
+          TRACKER_STATE_KEY: ${{ secrets.TRACKER_STATE_KEY }}
+        run: |
+          # The watcher already fetched this aggregate; avoid a second source
+          # request or full archive/AI crawl for unchanged scores.
+          if [ -f league/standings-changed.json ]; then
+            node backend/league/scouting-index.mjs
+          fi
+
       - name: Push GitHub runtime state
         if: always() && steps.gate.outputs.should_run == 'true'
         working-directory: .
@@ -166,4 +178,5 @@ jobs:
           rm -f league/teams.json league/schedule.json league/today.json
           rm -f league/calendar-snapshot.json league/calendar-changes.json
           rm -f league/notification-update.json league/score-changes.json league/status.json
+          rm -f league/current-results.json league/standings-changed.json
 
