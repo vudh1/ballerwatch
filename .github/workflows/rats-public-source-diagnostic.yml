@@ -1,4 +1,4 @@
-# Temporary public data adapter discovery for #226; remove before merge.
+# Temporary public-data diagnostic for issue #226. Remove before merge.
 name: RATS public source diagnostic
 on:
   pull_request:
@@ -13,17 +13,40 @@ jobs:
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - name: Inspect public RATS widget scripts (no secrets or writes)
+      - name: Verify live RATS public seasonal Sheets and archived snapshot
         run: |
           node --input-type=module <<'NODE'
-          const files=["/lib/seasons.js","/lib/load.js","/lib/gviz.js","/lib/parse.js","/lib/schedule.js","/lib/standings.js","/app.js"];
-          for(const path of files){
-            try{
-              const response=await fetch("https://rats.team.op-dev.io"+path,{signal:AbortSignal.timeout(8000)});
-              const js=await response.text();
-              console.log("BEGIN PUBLIC SCRIPT",path,response.status,js.length);
-              console.log(js.slice(0,10000));
-              console.log("END PUBLIC SCRIPT",path);
-            }catch(error){console.log("FAILED PUBLIC SCRIPT",path,String(error.message).slice(0,140));}
+          const registryRes=await fetch("https://rats.team.op-dev.io/lib/seasons.js",{signal:AbortSignal.timeout(9000)});
+          const registry=await registryRes.text();
+          const current=registry.match(/key:\s*'fall-2026'[^\n]*sheetId:\s*'([A-Za-z0-9_-]+)'/);
+          console.log("REGISTRY",registryRes.status,"fall-2026-published",!!current);
+          if(!current)process.exit(1);
+          for(const tab of ["Field List","Team Name, Color, and Division","Field Name Translation"]){
+            const url="https://docs.google.com/spreadsheets/d/"+current[1]+"/gviz/tq?tqx=out:json&headers=1&sheet="+encodeURIComponent(tab);
+            const r=await fetch(url,{signal:AbortSignal.timeout(13000)});
+            const text=await r.text();
+            const j=JSON.parse(text.slice(text.indexOf("(")+1,text.lastIndexOf(")")));
+            const table=j.table||{cols:[],rows:[]};
+            const headers=(table.cols||[]).map(x=>x.label||"");
+            console.log("PUBLIC TAB",tab,"HTTP",r.status,"status",j.status,"rows",table.rows.length,"cols",headers.length);
+            console.log("PUBLIC HEADER",tab,JSON.stringify(headers.slice(0,35)));
+            console.log("PUBLIC TYPES",tab,JSON.stringify((table.cols||[]).map(x=>x.type).slice(0,35)));
+            const keys=Object.fromEntries(headers.map((name,i)=>[name,i]));
+            if(tab==="Field List"){
+              let scored=0, published=0, examples=[];
+              for(const row of table.rows){
+                const value=(name)=>row.c[keys[name]]?.v;
+                if(value("Publish"))published++;
+                if(value("Home Score")!==null&&value("Away Score")!==null&&value("Home Score")!==undefined&&value("Away Score")!==undefined){
+                  scored++;
+                  if(examples.length<2)examples.push({home:String(value("Home")||""),away:String(value("Away")||""),h:value("Home Score"),a:value("Away Score")});
+                }
+              }
+              console.log("PUBLIC SCORE TOTALS",JSON.stringify({scored,published,examples}));
+            }
           }
+          const archive=await fetch("https://rats.team.op-dev.io/data/summer-2026.json",{signal:AbortSignal.timeout(10000)});
+          const body=await archive.text();
+          console.log("FROZEN PUBLIC ARCHIVE",archive.status,body.length);
+          if(archive.ok){const data=JSON.parse(body);console.log("ARCHIVE SCHEMA",Array.isArray(data.teams),Array.isArray(data.events),data.teams?.length,data.events?.length);}
           NODE
